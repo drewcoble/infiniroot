@@ -1,8 +1,13 @@
 import { v } from "convex/values";
 import { action, ActionCtx } from "../../_generated/server";
 import { api, internal } from "../../_generated/api";
-import { fetchSleeperJson, fetchSleeperLeagueSettings, sleeperPlayerIdToFpid } from "../../sleeper/league";
-import { SLOT_CODE_MAP } from "../../sleeper/leagueSettingsMapping";
+import {
+  fetchSleeperJson,
+  fetchSleeperLeagueSettings,
+  sleeperPlayerIdToFpid,
+  type SleeperRoster,
+} from "../../sleeper/league";
+import { SLOT_CODE_MAP, mapRosterPositions } from "../../sleeper/leagueSettingsMapping";
 import type { POSITIONS } from "../../positions";
 
 type Position = (typeof POSITIONS)[number];
@@ -34,7 +39,9 @@ export type SlotLabel =
   | "TE"
   | "DST"
   | "K"
-  | "BENCH";
+  | "BENCH"
+  | "IR"
+  | "TAXI";
 
 const SLOT_ORDER_RANK: Record<SlotLabel, number> = {
   QB: 0,
@@ -46,15 +53,20 @@ const SLOT_ORDER_RANK: Record<SlotLabel, number> = {
   DST: 6,
   K: 7,
   BENCH: 8,
+  IR: 9,
+  TAXI: 10,
 };
 
 export interface TeamRosterRow {
-  fpid: number;
-  name: string;
-  position: Position;
-  team: string | null;
+  // Absent for an unfilled roster slot (an open starter/bench/taxi spot
+  // per the league's own configured counts) - still emitted as a row so
+  // the slot itself doesn't just disappear from the page.
+  fpid?: number;
+  name?: string;
+  position?: Position;
+  team?: string | null;
   byeWeek?: number;
-  isRookie: boolean;
+  isRookie?: boolean;
   injury?: { status: string; statusShort: string };
   // Absent only when the team isn't Sleeper-linked (no per-week matchup
   // source to read a starting lineup from at all).
@@ -94,38 +106,89 @@ export const getTeamRosterForWeek = action({
       { teamId: args.teamId },
     );
 
-    const fpids: number[] = [];
-    const slotByFpid = new Map<number, SlotLabel>();
-    const actualPointsByFpid = new Map<number, number>();
     const isSleeperLinked = Boolean(team.sleeperRosterId && season.sleeperLeagueId);
 
+    // One entry per physical roster slot the league is configured for -
+    // starters 1:1 via startingSlotSequence, then however many bench/IR/taxi
+    // slots the league's own settings define, empty ones included (null
+    // playerId) - so the team page always shows every slot Sleeper's own
+    // roster view would, not just however many players happen to be
+    // rostered right now. Only ever populated on the Sleeper-linked path;
+    // the fallback path below has no slot structure to build this from.
+    let assignments: { slot: SlotLabel; playerId: string | null }[] = [];
+    let fpids: number[] = [];
+    const actualPointsBySleeperId = new Map<string, number>();
+
     if (isSleeperLinked && team.sleeperRosterId && season.sleeperLeagueId) {
-      const [matchups, leagueSettings] = await Promise.all([
+      const [matchups, leagueSettings, rosters] = await Promise.all([
         fetchSleeperJson<SleeperMatchupEntry[]>(
           `/league/${season.sleeperLeagueId}/matchups/${args.week}`,
         ),
         fetchSleeperLeagueSettings(season.sleeperLeagueId),
+        fetchSleeperJson<SleeperRoster[]>(`/league/${season.sleeperLeagueId}/rosters`),
       ]);
       const entry = matchups.find(
         (m) => String(m.roster_id) === team.sleeperRosterId,
       );
+      const roster = rosters.find(
+        (r) => String(r.roster_id) === team.sleeperRosterId,
+      );
+
+      // Taxi/IR membership is per-roster, not per-week matchup data (see
+      // sleeper/league.ts's SleeperRoster.taxi/reserve) - both are subsets
+      // of entry.players that never appear in starters, so they have to be
+      // excluded explicitly or they'd fall into the bench bucket below.
+      const taxiIds = new Set(roster?.taxi ?? []);
+      const reserveIds = new Set(roster?.reserve ?? []);
       const startingSlotSequence = buildStartingSlotSequence(
         leagueSettings.roster_positions,
       );
       const starters = entry?.starters ?? [];
-      const slotBySleeperId = new Map<string, SlotLabel>();
-      starters.forEach((playerId, index) => {
-        slotBySleeperId.set(playerId, startingSlotSequence[index] ?? "BENCH");
-      });
-      const rawPoints = entry?.players_points ?? {};
+      // Sleeper marks an unfilled starter slot with the literal string "0"
+      // rather than omitting the array index (verified live) - a missing
+      // index (starters shorter than roster_positions) shouldn't happen
+      // against Sleeper's real behavior either, but is treated the same way
+      // rather than thrown over.
+      const startingPlayerId = (index: number): string | null => {
+        const id = starters[index];
+        return id && id !== "0" ? id : null;
+      };
+      const startingIds = new Set(starters);
+      const benchPlayerIds = (entry?.players ?? []).filter(
+        (id) => !startingIds.has(id) && !taxiIds.has(id) && !reserveIds.has(id),
+      );
+      const benchSlotCount = mapRosterPositions(
+        leagueSettings.roster_positions,
+      ).rosterSlots.BENCH;
+      const taxiSlotCount = leagueSettings.settings?.taxi_slots ?? 0;
 
-      for (const playerId of entry?.players ?? []) {
+      assignments = [
+        ...startingSlotSequence.map((slot, i) => ({
+          slot,
+          playerId: startingPlayerId(i),
+        })),
+        ...Array.from({ length: benchSlotCount }, (_, i) => ({
+          slot: "BENCH" as const,
+          playerId: benchPlayerIds[i] ?? null,
+        })),
+        // IR isn't a counted/configurable-empty slot the way bench/taxi are
+        // above (Sleeper doesn't report "how many IR spots are open," only
+        // who's currently on IR) - just the players actually on it.
+        ...[...reserveIds].map((playerId) => ({ slot: "IR" as const, playerId })),
+        ...Array.from({ length: taxiSlotCount }, (_, i) => ({
+          slot: "TAXI" as const,
+          playerId: [...taxiIds][i] ?? null,
+        })),
+      ];
+
+      const rawPoints = entry?.players_points ?? {};
+      for (const { playerId } of assignments) {
+        if (playerId === null) continue;
         const fpid = sleeperPlayerIdToFpid(playerId);
         if (fpid === null) continue;
         fpids.push(fpid);
-        slotByFpid.set(fpid, slotBySleeperId.get(playerId) ?? "BENCH");
         if (rawPoints[playerId] !== undefined) {
-          actualPointsByFpid.set(fpid, rawPoints[playerId]);
+          actualPointsBySleeperId.set(playerId, rawPoints[playerId]);
         }
       }
     } else {
@@ -133,12 +196,12 @@ export const getTeamRosterForWeek = action({
       // to whatever the last roster sync stored. Shouldn't normally happen
       // for a season infinileague can see (those are always provider-
       // linked - see convex/leagues.ts's listLinkedSeasons), but handled
-      // rather than left to throw.
-      const rosterFpids: number[] = await ctx.runQuery(
+      // rather than left to throw. No slot structure here, so no empty-slot
+      // rows either - just whatever's actually rostered.
+      fpids = await ctx.runQuery(
         internal.infinileague.season.rosterPlayers.listRosterFpidsForTeam,
         { teamId: args.teamId },
       );
-      fpids.push(...rosterFpids);
     }
 
     const [players, allInjuries, byeWeeks, weekProjections] = await Promise.all([
@@ -152,10 +215,17 @@ export const getTeamRosterForWeek = action({
     const projectionByFpid = new Map(
       weekProjections.map((row) => [row.fpid, row]),
     );
+    const playerByFpid = new Map(players.map((player) => [player.fpid, player]));
 
-    const rows: TeamRosterRow[] = players.map((player) => {
-      const injury = injuryByFpid.get(player.fpid);
-      const projection = projectionByFpid.get(player.fpid);
+    function buildFilledRow(
+      fpid: number,
+      slot: SlotLabel | undefined,
+      actualPoints: number | undefined,
+    ): TeamRosterRow | null {
+      const player = playerByFpid.get(fpid);
+      if (!player) return null;
+      const injury = injuryByFpid.get(fpid);
+      const projection = projectionByFpid.get(fpid);
       const projectedPoints = projection
         ? season.scoring === "PPR"
           ? projection.pointsPpr
@@ -164,11 +234,9 @@ export const getTeamRosterForWeek = action({
             : projection.pointsStd
         : undefined;
       const byeWeek = player.team ? byeWeeks[player.team] : undefined;
-      const actualPoints = actualPointsByFpid.get(player.fpid);
-      const slot = slotByFpid.get(player.fpid);
 
       return {
-        fpid: player.fpid,
+        fpid,
         name: player.name,
         position: player.position,
         team: player.team,
@@ -183,9 +251,25 @@ export const getTeamRosterForWeek = action({
           : {}),
         ...(projectedPoints !== undefined ? { projectedPoints } : {}),
       };
-    });
+    }
+
+    const rows: TeamRosterRow[] = isSleeperLinked
+      ? assignments.map(({ slot, playerId }): TeamRosterRow => {
+          if (playerId === null) return { slot };
+          const fpid = sleeperPlayerIdToFpid(playerId);
+          const filled =
+            fpid !== null
+              ? buildFilledRow(fpid, slot, actualPointsBySleeperId.get(playerId))
+              : null;
+          return filled ?? { slot };
+        })
+      : fpids
+          .map((fpid) => buildFilledRow(fpid, undefined, undefined))
+          .filter((row): row is TeamRosterRow => row !== null);
 
     // Same canonical order as infinidraft's My Team tab - see SLOT_ORDER_RANK.
+    // Stable sort keeps each slot bucket's own construction order (filled
+    // slots before the empty ones appended after them above).
     return rows.sort(
       (a, b) => SLOT_ORDER_RANK[a.slot ?? "BENCH"] - SLOT_ORDER_RANK[b.slot ?? "BENCH"],
     );

@@ -13,11 +13,13 @@ function formatPoints(points: number | undefined): string {
 }
 
 // Rows arrive pre-sorted from the backend in infinidraft's own canonical
-// slot order (QB, SUPERFLEX, RB, WR, FLEX, TE, DST, K, BENCH - see
-// convex/season/teamRoster.ts's SLOT_ORDER_RANK) - rendered as-is. Slot
+// slot order (QB, SUPERFLEX, RB, WR, FLEX, TE, DST, K, BENCH, IR, TAXI -
+// see convex/season/teamRoster.ts's SLOT_ORDER_RANK) - rendered as-is. Slot
 // leads (empty header, just the colored badge - which lineup spot a player
 // occupies is the primary grouping signal here) with Pos following it -
-// still colorized, just relocated from the lead spot it held before.
+// still colorized, just relocated from the lead spot it held before. A row
+// with no fpid is an unfilled slot (open bench/taxi spot, etc.) - rendered
+// as a single dimmed "Empty" cell spanning every column but the slot badge.
 export function TeamRosterTable({ rows }: TeamRosterTableProps) {
   return (
     <Table striped highlightOnHover>
@@ -33,35 +35,47 @@ export function TeamRosterTable({ rows }: TeamRosterTableProps) {
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {rows.map((row) => (
-          <Table.Tr key={row.fpid}>
+        {rows.map((row, index) => (
+          <Table.Tr key={row.fpid ?? `empty-${row.slot}-${index}`}>
             <Table.Td>
               {row.slot !== undefined && (
                 <Badge size="sm" color={positionColorOrDefault(row.slot)} variant="light">
-                  {row.slot === "BENCH" ? "Bench" : row.slot}
+                  {row.slot === "BENCH" ? "Bench" : row.slot === "TAXI" ? "Taxi" : row.slot}
                 </Badge>
               )}
             </Table.Td>
-            <Table.Td>
-              <Group gap={6} wrap="nowrap">
-                <Text span>{row.name}</Text>
-                {row.isRookie && <RookieBadge />}
-                {row.injury && (
-                  <Badge color={injuryColor(row.injury.status)} size="sm" variant="light">
-                    {row.injury.statusShort}
-                  </Badge>
-                )}
-              </Group>
-            </Table.Td>
-            <Table.Td>{row.team ?? "—"}</Table.Td>
-            <Table.Td>{row.byeWeek ?? "—"}</Table.Td>
-            <Table.Td>
-              <Badge size="sm" color={positionColorOrDefault(row.position)} variant="light">
-                {row.position}
-              </Badge>
-            </Table.Td>
-            <Table.Td>{formatPoints(row.projectedPoints)}</Table.Td>
-            <Table.Td>{formatPoints(row.actualPoints)}</Table.Td>
+            {row.fpid === undefined ? (
+              <Table.Td colSpan={6}>
+                <Text span c="dimmed" fs="italic">
+                  Empty
+                </Text>
+              </Table.Td>
+            ) : (
+              <>
+                <Table.Td>
+                  <Group gap={6} wrap="nowrap">
+                    <Text span>{row.name}</Text>
+                    {row.isRookie && <RookieBadge />}
+                    {row.injury && (
+                      <Badge color={injuryColor(row.injury.status)} size="sm" variant="light">
+                        {row.injury.statusShort}
+                      </Badge>
+                    )}
+                  </Group>
+                </Table.Td>
+                <Table.Td>{row.team ?? "—"}</Table.Td>
+                <Table.Td>{row.byeWeek ?? "—"}</Table.Td>
+                <Table.Td>
+                  {row.position && (
+                    <Badge size="sm" color={positionColorOrDefault(row.position)} variant="light">
+                      {row.position}
+                    </Badge>
+                  )}
+                </Table.Td>
+                <Table.Td>{formatPoints(row.projectedPoints)}</Table.Td>
+                <Table.Td>{formatPoints(row.actualPoints)}</Table.Td>
+              </>
+            )}
           </Table.Tr>
         ))}
       </Table.Tbody>

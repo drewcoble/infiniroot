@@ -45,21 +45,27 @@ export type SlotLabel =
   | "TE"
   | "DST"
   | "K"
-  | "BENCH";
+  | "BENCH"
+  | "IR"
+  | "TAXI";
 
 // Mirrors convex/season/teamRoster.ts's TeamRosterRow - already sorted by
 // the backend in infinidraft's own canonical slot order (QB, SUPERFLEX, RB,
-// WR, FLEX, TE, DST, K, BENCH - see src/lib/rosterSlots.ts's SLOT_ORDER
-// there), so this just renders in the order given. slot/actualPoints are
-// only ever absent when the team isn't Sleeper-linked; projectedPoints is
-// absent whenever that week hasn't been projected yet.
+// WR, FLEX, TE, DST, K, BENCH, IR, TAXI - see src/lib/rosterSlots.ts's
+// SLOT_ORDER there), so this just renders in the order given. slot/
+// actualPoints are only ever absent when the team isn't Sleeper-linked;
+// projectedPoints is absent whenever that week hasn't been projected yet.
+// Every other field (fpid, name, position, ...) is absent together for an
+// unfilled roster slot - an open starter/bench/taxi spot the league is
+// configured for but hasn't had a player assigned to yet - rather than
+// that slot just not appearing as a row at all.
 export interface TeamRosterRow {
-  fpid: number;
-  name: string;
-  position: "QB" | "RB" | "WR" | "TE" | "DST" | "K";
-  team: string | null;
+  fpid?: number;
+  name?: string;
+  position?: "QB" | "RB" | "WR" | "TE" | "DST" | "K";
+  team?: string | null;
   byeWeek?: number;
-  isRookie: boolean;
+  isRookie?: boolean;
   injury?: { status: string; statusShort: string };
   slot?: SlotLabel;
   actualPoints?: number;

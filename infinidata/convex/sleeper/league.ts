@@ -12,10 +12,21 @@ import type { DraftType } from "../draftType";
 // projections/stats endpoints in ./client.ts. No auth required.
 const LEAGUE_API_BASE_URL = "https://api.sleeper.app/v1";
 
-interface SleeperRoster {
+export interface SleeperRoster {
   roster_id: number;
   owner_id: string | null;
   players: string[] | null;
+  // Player ids on this roster's taxi squad (a subset of `players`, verified
+  // live - not reflected in roster_positions/settings.rosterSlots at all,
+  // that's governed separately by the league's own settings.taxi_slots).
+  // Absent/null means the league doesn't use a taxi squad, or this roster
+  // has none assigned yet.
+  taxi?: string[] | null;
+  // Player ids on injured reserve - same shape/verification as `taxi`
+  // above, a subset of `players` that also isn't reflected in
+  // roster_positions (governed by settings.reserve_slots instead). Needed
+  // so an IR'd player isn't miscounted as an open bench slot.
+  reserve?: string[] | null;
   // Player ids this roster has designated as keepers for the upcoming
   // draft - set by the commissioner/owner in Sleeper's own UI, independent
   // of whether that draft has actually run yet (unlike draftPicks.is_keeper
@@ -353,6 +364,10 @@ interface SleeperLeagueSettings {
   settings?: {
     waiver_type?: number;
     waiver_budget?: number;
+    // Configured taxi squad size - verified live (Shadynasty's: 2) -
+    // independent of roster_positions, which never lists "TAXI" itself.
+    // Absent means the league doesn't use a taxi squad at all.
+    taxi_slots?: number;
   };
 }
 
