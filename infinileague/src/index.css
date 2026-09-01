@@ -1,0 +1,10 @@
+/* iOS Safari zooms the whole page in when a focused text input's effective
+   font-size is under 16px - carried over from infinidraft's index.css,
+   same fix applies to any compact Mantine input size here too. */
+@media (max-width: 48em) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "infiniroot",
+  "private": true,
+  "workspaces": [
+    "infinidraft",
+    "infinileague",
+    "infinidata"
+  ]
+}

@@ -1,0 +1,31 @@
+/* iOS Safari zooms the whole page in when a focused text input's
+   effective font-size is under 16px - most of the app's inputs use
+   Mantine's "xs"/"sm" sizes (12px/14px) for density, which trips this on
+   phones. Force 16px on any focusable text field below the "sm" breakpoint
+   (768px, matching the rest of the app's mobile layout) rather than
+   auditing every input's `size` prop across the codebase; the `!important`
+   is required to beat Mantine's own inline `font-size` (set via a CSS
+   custom property per `size`). Desktop keeps the compact sizing as-is. */
+@media (max-width: 48em) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Table's `fz` prop (see theme.ts) only sets the <table> element's own
+   inline font-size - normal CSS inheritance carries that into plain text
+   nodes, but Mantine's Text/Anchor components (player-name links, etc.)
+   render their own font-size from the --text-fz custom property, which
+   falls back to --mantine-font-size-md (16px) whenever a Text/Anchor
+   doesn't set its own `size` prop, ignoring the ambient/inherited value
+   entirely. Setting --text-fz here inherits into every such descendant
+   instead, so any Text/Anchor inside a table matches the table's font size
+   unless it explicitly opts out with its own `size` prop (e.g. the compact
+   xs search-result rows in NominationPanel). mantine-Table-table/
+   mantine-Anchor-root/mantine-Text-root are Mantine's stable static
+   selector classes (see MantineProvider's default classNamesPrefix). */
+.mantine-Table-table {
+  --text-fz: var(--mantine-font-size-sm);
+}

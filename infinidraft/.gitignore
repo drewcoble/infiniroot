@@ -1,0 +1,14 @@
+
+.env.local
+node_modules
+dist
+*.tsbuildinfo
+.tanstack
+DEPLOY.md
+YAHOO.md
+TODO.md
+STRIPE.md
+GEMINI.md
+MAILJET.md
+GOOGLE.md
+SNAKE_DRAFT.md
