@@ -17,8 +17,9 @@ import { api } from "@infinidata/api";
 import { AppHeader } from "../../../../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
 import { TeamRosterTable } from "../../../../components/TeamRosterTable";
+import { LineupSuggestionsCard } from "../../../../components/LineupSuggestionsCard";
 import { getErrorMessage } from "@shared/errors";
-import type { StandingsRow, TeamRosterRow } from "../../../../types/season";
+import type { SlotLabel, StandingsRow, TeamRosterRow } from "../../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/teams/$teamId")({
   component: TeamPage,
@@ -31,6 +32,30 @@ interface NflState {
 }
 
 const WEEK_OPTIONS = Array.from({ length: 18 }, (_, i) => String(i + 1));
+
+// Starting lineup slots only - excludes BENCH/IR/TAXI, whose points don't
+// count toward the team's total for the week (mirrors Sleeper's own
+// matchup total, which is starters-only).
+const STARTER_SLOTS = new Set<SlotLabel>([
+  "QB",
+  "SUPERFLEX",
+  "RB",
+  "WR",
+  "FLEX",
+  "TE",
+  "DST",
+  "K",
+]);
+
+function sumStarterPoints(
+  rows: TeamRosterRow[],
+  field: "projectedPoints" | "actualPoints",
+): number {
+  return rows.reduce((total, row) => {
+    if (!row.slot || !STARTER_SLOTS.has(row.slot)) return total;
+    return total + (row[field] ?? 0);
+  }, 0);
+}
 
 function TeamPage() {
   const { leagueId, teamId } = Route.useParams();
@@ -114,16 +139,43 @@ function TeamPage() {
               </Group>
             </Card>
 
+            {roster !== undefined && <LineupSuggestionsCard rows={roster} />}
+
             <Card withBorder padding="md">
               <Stack gap="sm">
-                <Select
-                  label="Week"
-                  data={WEEK_OPTIONS}
-                  value={week}
-                  onChange={(value) => value && setWeek(value)}
-                  allowDeselect={false}
-                  w={120}
-                />
+                <Group justify="space-between" wrap="wrap" gap="sm" align="flex-end">
+                  <Select
+                    label="Week"
+                    data={WEEK_OPTIONS}
+                    value={week}
+                    onChange={(value) => value && setWeek(value)}
+                    allowDeselect={false}
+                    w={120}
+                  />
+
+                  {roster !== undefined && (
+                    <Card withBorder padding="xs">
+                      <Group gap="lg">
+                        <Stack gap={0} align="center">
+                          <Text size="xs" c="dimmed" tt="uppercase">
+                            Projected
+                          </Text>
+                          <Text fw={600}>
+                            {sumStarterPoints(roster, "projectedPoints").toFixed(1)}
+                          </Text>
+                        </Stack>
+                        <Stack gap={0} align="center">
+                          <Text size="xs" c="dimmed" tt="uppercase">
+                            Actual
+                          </Text>
+                          <Text fw={600}>
+                            {sumStarterPoints(roster, "actualPoints").toFixed(1)}
+                          </Text>
+                        </Stack>
+                      </Group>
+                    </Card>
+                  )}
+                </Group>
 
                 {loadError && (
                   <Alert color="red" withCloseButton onClose={() => setLoadError(null)}>
