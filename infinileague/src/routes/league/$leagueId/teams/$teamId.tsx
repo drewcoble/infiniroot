@@ -114,26 +114,30 @@ function TeamPage() {
               </Group>
             </Card>
 
-            <Select
-              label="Week"
-              data={WEEK_OPTIONS}
-              value={week}
-              onChange={(value) => value && setWeek(value)}
-              allowDeselect={false}
-              w={120}
-            />
+            <Card withBorder padding="md">
+              <Stack gap="sm">
+                <Select
+                  label="Week"
+                  data={WEEK_OPTIONS}
+                  value={week}
+                  onChange={(value) => value && setWeek(value)}
+                  allowDeselect={false}
+                  w={120}
+                />
 
-            {loadError && (
-              <Alert color="red" withCloseButton onClose={() => setLoadError(null)}>
-                {loadError}
-              </Alert>
-            )}
+                {loadError && (
+                  <Alert color="red" withCloseButton onClose={() => setLoadError(null)}>
+                    {loadError}
+                  </Alert>
+                )}
 
-            {loading || roster === undefined ? (
-              <Loader />
-            ) : (
-              <TeamRosterTable rows={roster} />
-            )}
+                {loading || roster === undefined ? (
+                  <Loader />
+                ) : (
+                  <TeamRosterTable rows={roster} />
+                )}
+              </Stack>
+            </Card>
           </Stack>
         )}
       </Stack>
