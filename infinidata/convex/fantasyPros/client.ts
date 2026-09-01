@@ -1,6 +1,3 @@
-import { api } from "../_generated/api";
-import { ActionCtx } from "../_generated/server";
-
 /**
  * Official FantasyPros API (https://api.fantasypros.com/v2/docs). Requires an
  * API key from an MVP/HOF FantasyPros membership - see
@@ -32,21 +29,6 @@ export function requireApiKey() {
   return apiKey;
 }
 
-export async function requireSuperAdmin(ctx: ActionCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new Error("Please sign in before fetching data.");
-  }
-
-  const currentUser = await ctx.runQuery(
-    api.users.getCurrentUserForDataFetch,
-    {},
-  );
-  if (currentUser?.role !== "super-admin") {
-    throw new Error("Only super-admins can fetch data.");
-  }
-}
-
 export async function fetchFantasyPros(
   path: string,
   params: Record<string, string | undefined>,
@@ -75,10 +57,6 @@ export async function fetchFantasyPros(
   }
 
   return await response.json();
-}
-
-export function currentSeason() {
-  return processEnv?.FANTASYPROS_SEASON ?? String(new Date().getFullYear());
 }
 
 // FantasyPros datetimes come back as "2026-06-24 15:30:14" - UTC, no offset.

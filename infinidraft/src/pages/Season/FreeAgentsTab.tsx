@@ -44,7 +44,7 @@ export function FreeAgentsTab({
   const [selectedFpid, setSelectedFpid] = useState<number | null>(null);
   const rookieFpids = useRookieFpids();
 
-  const result = useQuery(api.season.faabValues.getFaabSuggestions, {
+  const result = useQuery(api.infinidraft.season.faabValues.getFaabSuggestions, {
     seasonId,
     teamId: selfTeamId,
   });

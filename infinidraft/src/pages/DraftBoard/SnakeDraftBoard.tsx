@@ -52,10 +52,10 @@ export function SnakeDraftBoard({ seasonId }: SnakeDraftBoardProps) {
   // the actual round grid.
   const isDesktop = useMediaQuery("(min-width: 48em)");
   const settings = useQuery(api.leagues.getSeasonPublic, { seasonId });
-  const board = useQuery(api.draft.pickSlots.getSnakeBoardPublic, {
+  const board = useQuery(api.infinidraft.draft.pickSlots.getSnakeBoardPublic, {
     seasonId,
   });
-  const picks = useQuery(api.draft.picks.listDraftPicksPublic, { seasonId });
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicksPublic, { seasonId });
   const allProjections = useQuery(api.projections.getAllProjections, {
     week: WEEK,
   });

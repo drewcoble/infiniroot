@@ -45,7 +45,7 @@ function TeamPage() {
   // no dedicated "one team's info" query exists or is needed (see this
   // feature's plan doc).
   const standings: StandingsRow[] | undefined = useQuery(
-    api.season.standings.getStandings,
+    api.infinileague.season.standings.getStandings,
     isAuthenticated ? { seasonId } : "skip",
   );
   const team = standings?.find((row) => row.teamId === teamId);
@@ -67,7 +67,7 @@ function TeamPage() {
     setWeek(currentWeek > 0 ? String(currentWeek) : "1");
   }, [nflState, week]);
 
-  const getTeamRosterForWeek = useAction(api.season.teamRoster.getTeamRosterForWeek);
+  const getTeamRosterForWeek = useAction(api.infinileague.season.teamRoster.getTeamRosterForWeek);
   const [roster, setRoster] = useState<TeamRosterRow[] | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);

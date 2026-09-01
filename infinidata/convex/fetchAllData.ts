@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { action, internalAction, ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requireSuperAdmin, currentSeason } from "./fantasyPros/client";
+import { requireSuperAdmin, currentSeason } from "./lib/dataFetch";
 import { fetchCurrentNflWeek, fetchNflSeasonState } from "./sleeper/state";
 import { Scoring, TeScoring, ScoringConfig, scoringConfigFromSeason } from "./scoring";
 import { BLENDED_POSITIONS } from "./positions";
@@ -50,7 +50,7 @@ async function refreshCachedComputations(
   // and refreshes its one (fixed) scoring combo here with no special-casing.
   const seasons = await ctx.runQuery(internal.leagues.listAllSeasons, {});
   for (const season of seasons) {
-    const draft = await ctx.runQuery(internal.draft.fetchHelpers.getRealDraftInternal, {
+    const draft = await ctx.runQuery(internal.infinidraft.draft.fetchHelpers.getRealDraftInternal, {
       seasonId: season._id,
     });
     if (!draft) continue;

@@ -97,7 +97,7 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
     api.leagues.listSeasons,
     isAuthenticated ? {} : "skip",
   );
-  const entitlement = useQuery(api.billing.queries.getMyEntitlement);
+  const entitlement = useQuery(api.infinidraft.billing.queries.getMyEntitlement);
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   const inLeagueView = location.pathname.startsWith("/league");

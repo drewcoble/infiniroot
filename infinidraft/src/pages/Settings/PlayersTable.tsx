@@ -194,11 +194,11 @@ export function PlayersTable({ week, selectedLeagueId }: PlayersTableProps) {
   // (see convex/draft/tags.ts) - marking a target/avoid here shows up there
   // too, and vice versa, since both key off seasonId.
   const playerTags = useQuery(
-    api.draft.tags.listPlayerTags,
+    api.infinidraft.draft.tags.listPlayerTags,
     seasonId ? { seasonId } : "skip",
   );
-  const cyclePlayerTag = useMutation(api.draft.tags.cyclePlayerTag);
-  const setPlayerTag = useMutation(api.draft.tags.setPlayerTag);
+  const cyclePlayerTag = useMutation(api.infinidraft.draft.tags.cyclePlayerTag);
+  const setPlayerTag = useMutation(api.infinidraft.draft.tags.setPlayerTag);
   const tagByFpid = useMemo(() => {
     const map = new Map<number, PlayerTag>();
     for (const row of playerTags ?? []) map.set(row.fpid, row.tag);
@@ -209,7 +209,7 @@ export function PlayersTable({ week, selectedLeagueId }: PlayersTableProps) {
   // Keepers tab (see KeepersTab.tsx's addKeeper), not a projected/suggested
   // cost from the keeper rules formula.
   const picks = useQuery(
-    api.draft.picks.listDraftPicks,
+    api.infinidraft.draft.picks.listDraftPicks,
     seasonId ? { seasonId } : "skip",
   );
   const showKeeperYear =
@@ -251,7 +251,7 @@ export function PlayersTable({ week, selectedLeagueId }: PlayersTableProps) {
   // getDraftValues with tiers on top of the identical args, so this is a
   // pure superset, not a second computation to keep in sync.
   const draftValuesQueryOptions = convexQuery(
-    api.draft.board.getDraftBoard,
+    api.infinidraft.draft.board.getDraftBoard,
     seasonId ? { seasonId, week, scoringConfig } : "skip",
   );
   interface DraftValuesResult {

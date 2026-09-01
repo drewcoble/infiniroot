@@ -145,7 +145,7 @@ function LeagueLayout() {
 
   const settingsList = useQuery(api.leagues.listSeasons, {});
   const settings = settingsList?.find((s) => s._id === leagueId);
-  const entitlement = useQuery(api.billing.queries.getMyEntitlement);
+  const entitlement = useQuery(api.infinidraft.billing.queries.getMyEntitlement);
   const phase = useDraftPhase(seasonId);
   // Only mounted once started (see below) - no teams/no self team pre-start
   // is completely normal (teams are created on the Settings tab, in this

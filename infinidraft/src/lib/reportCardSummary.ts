@@ -3,7 +3,7 @@ import { api } from "@infinidata/api";
 import { formatSignedNumber } from "./keeperValue";
 
 type ReportCardResult = FunctionReturnType<
-  typeof api.draft.reportCard.getDraftReportCardPublic
+  typeof api.infinidraft.draft.reportCard.getDraftReportCardPublic
 >;
 // The "ok" branch's payload - the only branch with real data to summarize.
 // "not_ready"/"requires_upgrade" are handled by DraftReportCard.tsx before

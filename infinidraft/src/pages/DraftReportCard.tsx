@@ -71,7 +71,7 @@ function gradeColor(gradeScore: number): string {
 export function DraftReportCard({ seasonId }: DraftReportCardProps) {
   const settings = useQuery(api.leagues.getSeasonPublic, { seasonId });
   const report = useQuery(
-    api.draft.reportCard.getDraftReportCardPublic,
+    api.infinidraft.draft.reportCard.getDraftReportCardPublic,
     settings
       ? { seasonId, week: WEEK, scoringConfig: scoringConfigFromSeason(settings) }
       : "skip",
@@ -85,10 +85,10 @@ export function DraftReportCard({ seasonId }: DraftReportCardProps) {
   const isOwner = report?.status === "ok" && report.isOwner;
 
   const ensureSummaryGenerated = useMutation(
-    api.draft.reportCard.ensureReportSummaryGenerated,
+    api.infinidraft.draft.reportCard.ensureReportSummaryGenerated,
   );
   const regenerateSummary = useMutation(
-    api.draft.reportCard.regenerateReportSummary,
+    api.infinidraft.draft.reportCard.regenerateReportSummary,
   );
   const [isRegenerating, setIsRegenerating] = useState(false);
   // Backfills the AI recap for a draft that completed while the owner was
@@ -117,7 +117,7 @@ export function DraftReportCard({ seasonId }: DraftReportCardProps) {
   }, [report, isOwner, settings, seasonId, ensureSummaryGenerated]);
 
   const ensureSnapshot = useMutation(
-    api.draft.reportCard.ensureReportCardSnapshotted,
+    api.infinidraft.draft.reportCard.ensureReportCardSnapshotted,
   );
   // Backfills the frozen numbers snapshot (see draftReportCardSnapshots'
   // schema comment) for a draft that completed before this existed, or the

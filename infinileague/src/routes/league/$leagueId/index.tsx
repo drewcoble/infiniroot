@@ -54,11 +54,11 @@ function LeaguePage() {
   const season = seasonsList?.find((s) => s._id === leagueId);
 
   const syncStatus: RosterSyncStatusRow[] | undefined = useQuery(
-    api.season.rosterPlayers.getRosterSyncStatus,
+    api.infinileague.season.rosterPlayers.getRosterSyncStatus,
     isAuthenticated ? { seasonId } : "skip",
   );
   const standings: StandingsRow[] | undefined = useQuery(
-    api.season.standings.getStandings,
+    api.infinileague.season.standings.getStandings,
     isAuthenticated ? { seasonId } : "skip",
   );
   const syncLeagueRoster = useAction(api.sleeper.league.syncLeagueRoster);

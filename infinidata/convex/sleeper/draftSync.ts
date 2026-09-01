@@ -10,10 +10,10 @@ import {
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import { requireDraftOwner, requireRealDraft } from "../draft/auth";
+import { requireDraftOwner, requireRealDraft } from "../lib/access";
 import { resolveDraftType } from "../draftType";
-import { resolveTeamPositionInRound } from "../draft/pickOrder";
-import { countForfeitedByRound, countRealSlotsThroughRound } from "../draft/pickSlots";
+import { resolveTeamPositionInRound } from "../infinidraft/draft/pickOrder";
+import { countForfeitedByRound, countRealSlotsThroughRound } from "../infinidraft/draft/pickSlots";
 import {
   fetchSleeperJson,
   fetchSleeperLeagueSettings,
@@ -80,7 +80,7 @@ async function upsertSyncStatus(
 }
 
 // Resolves the real draft for a season the caller already proved ownership
-// of (via internal.season.rosterPlayers.requireOwnedSeasonForSync) - actions
+// of (via internal.rosterSync.requireOwnedSeasonForSync) - actions
 // can't call the QueryCtx-typed requireRealDraft directly, same reason
 // convex/sleeper/league.ts's syncLeagueRoster needs
 // listSeasonTeamsInternal instead of listSeasonTeams.
@@ -122,7 +122,7 @@ export const fetchSleeperDraftSchedule = action({
   args: { seasonId: v.id("seasons") },
   handler: async (ctx, args): Promise<{ scheduledAt: number | null }> => {
     const { season } = await ctx.runQuery(
-      internal.season.rosterPlayers.requireOwnedSeasonForSync,
+      internal.rosterSync.requireOwnedSeasonForSync,
       { seasonId: args.seasonId },
     );
     if (!season.sleeperLeagueId) return { scheduledAt: null };
@@ -189,7 +189,7 @@ export const linkSleeperDraft = action({
   args: { seasonId: v.id("seasons") },
   handler: async (ctx, args): Promise<{ sleeperDraftId: string }> => {
     const { season } = await ctx.runQuery(
-      internal.season.rosterPlayers.requireOwnedSeasonForSync,
+      internal.rosterSync.requireOwnedSeasonForSync,
       { seasonId: args.seasonId },
     );
     if (!season.sleeperLeagueId) {
@@ -202,7 +202,7 @@ export const linkSleeperDraft = action({
     );
 
     const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
-      internal.draft.teams.listSeasonTeamsInternal,
+      internal.seasonTeams.listSeasonTeamsInternal,
       { seasonId: args.seasonId },
     );
     if (teams.length === 0 || teams.some((t) => !t.sleeperRosterId)) {
@@ -297,7 +297,7 @@ export const recordWatchTick = internalMutation({
 // resolveTeamPositionInRound/countRealSlotsThroughRound helpers draftPick
 // and addKeeper use, so a synced pick's slot always agrees with the board
 // regardless of Sleeper's own raw slot numbering. Hands the fully-resolved
-// subset to convex/draft/picks.ts's applySleeperSyncedPicks for the actual
+// subset to convex/infinidraft/draft/picks.ts's applySleeperSyncedPicks for the actual
 // draftPicks writes. A pick with no fpid/price (auction) or no resolvable
 // round/position (snake/linear), or no mapped team, is skipped rather than
 // thrown, so one bad mapping doesn't halt the rest of the draft - the
@@ -424,7 +424,7 @@ export const applySleeperSyncTick = internalMutation({
     }
 
     const { applied, skipped: unknownPlayerCount } = await ctx.runMutation(
-      internal.draft.picks.applySleeperSyncedPicks,
+      internal.infinidraft.draft.picks.applySleeperSyncedPicks,
       { draftId: args.draftId, picks: resolved },
     );
 
@@ -535,7 +535,7 @@ export const syncSleeperDraft = internalAction({
           return null;
         }
         await ctx.runMutation(
-          internal.draft.lifecycle.startDraftForSyncInternal,
+          internal.infinidraft.draft.lifecycle.startDraftForSyncInternal,
           { draftId: args.draftId },
         );
       }

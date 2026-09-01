@@ -58,7 +58,7 @@ export function PlayerDetailModal({
   seasonId,
 }: PlayerDetailModalProps) {
   const detail = useQuery(
-    api.draft.playerDetail.getPlayerDetail,
+    api.infinidraft.draft.playerDetail.getPlayerDetail,
     fpid !== null
       ? { fpid, week, ...(seasonId ? { seasonId } : {}) }
       : "skip",
@@ -79,7 +79,7 @@ export function PlayerDetailModal({
       : "skip",
   );
   const draftValues = draftValuesResult?.values;
-  const cyclePlayerTag = useMutation(api.draft.tags.cyclePlayerTag);
+  const cyclePlayerTag = useMutation(api.infinidraft.draft.tags.cyclePlayerTag);
 
   // The 5 most recently *completed* seasons relative to `season` (the
   // upcoming/current draft season, already shown above as the live

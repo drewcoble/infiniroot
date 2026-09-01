@@ -35,8 +35,8 @@ export function SeasonSummary({ seasonId }: SeasonSummaryProps) {
   // 2026-08-30). `fillPct` already reads roster fill, not $, so it needed
   // no change.
   const isAuction = (settings?.draftType ?? "auction") === "auction";
-  const teams = useQuery(api.draft.teams.listSeasonTeams, { seasonId });
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
+  const teams = useQuery(api.infinidraft.draft.teams.listSeasonTeams, { seasonId });
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
   const allProjections = useQuery(api.projections.getAllProjections, {
     week: WEEK,
   });

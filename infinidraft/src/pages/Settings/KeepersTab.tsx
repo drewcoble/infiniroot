@@ -35,7 +35,7 @@ export function KeepersTab({ seasonId }: KeepersTabProps) {
   // price (SNAKE_DRAFT.md §8) - same "derive from draftType" convention as
   // LeagueDetails.tsx's isSnakeOrLinear and KeeperRulesPanel's copy of it.
   const isSnakeOrLinear = (settings?.draftType ?? "auction") !== "auction";
-  const draftTeams = useQuery(api.draft.teams.listSeasonTeams, {
+  const draftTeams = useQuery(api.infinidraft.draft.teams.listSeasonTeams, {
     seasonId,
   });
   const allProjections = useQuery(api.projections.getAllProjections, {
@@ -55,16 +55,16 @@ export function KeepersTab({ seasonId }: KeepersTabProps) {
   );
   const draftValues = draftValuesResult?.values;
   const usingGenericValues = draftValuesResult?.isGeneric ?? false;
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
-  const priceHistory = useQuery(api.draft.history.getPlayerPriceHistory, {
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
+  const priceHistory = useQuery(api.infinidraft.draft.history.getPlayerPriceHistory, {
     seasonId,
   });
-  const addKeeper = useMutation(api.draft.picks.addKeeper);
-  const removeKeeper = useMutation(api.draft.picks.removeKeeper);
-  const setKeeperStreak = useMutation(api.draft.picks.setKeeperStreak);
-  const setKeeperPriceMutation = useMutation(api.draft.picks.setKeeperPrice);
-  const setKeeperRoundMutation = useMutation(api.draft.picks.setKeeperRound);
-  const setKeeperTeamMutation = useMutation(api.draft.picks.setKeeperTeam);
+  const addKeeper = useMutation(api.infinidraft.draft.picks.addKeeper);
+  const removeKeeper = useMutation(api.infinidraft.draft.picks.removeKeeper);
+  const setKeeperStreak = useMutation(api.infinidraft.draft.picks.setKeeperStreak);
+  const setKeeperPriceMutation = useMutation(api.infinidraft.draft.picks.setKeeperPrice);
+  const setKeeperRoundMutation = useMutation(api.infinidraft.draft.picks.setKeeperRound);
+  const setKeeperTeamMutation = useMutation(api.infinidraft.draft.picks.setKeeperTeam);
 
   const [keeperSearch, setKeeperSearch] = useState("");
   const [keeperTeamId, setKeeperTeamId] = useState<Id<"seasonTeams"> | null>(

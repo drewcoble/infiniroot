@@ -197,11 +197,11 @@ export function ManualPreviousSeasonModal({
   // or un-portaled (the two options Combobox normally offers).
   const [portalTarget, setPortalTarget] = useState<HTMLDivElement | null>(null);
 
-  const currentTeams = useQuery(api.draft.teams.listSeasonTeams, {
+  const currentTeams = useQuery(api.infinidraft.draft.teams.listSeasonTeams, {
     seasonId,
   });
   const existingEntry = useQuery(
-    api.draft.manualHistory.getManualPreviousSeasonEntry,
+    api.infinidraft.draft.manualHistory.getManualPreviousSeasonEntry,
     opened ? { seasonId, year } : "skip",
   );
   const allProjections = useQuery(
@@ -209,7 +209,7 @@ export function ManualPreviousSeasonModal({
     opened ? { week: WEEK } : "skip",
   );
   const setResults = useMutation(
-    api.draft.manualHistory.setManualPreviousSeasonResults,
+    api.infinidraft.draft.manualHistory.setManualPreviousSeasonResults,
   );
 
   const nameByFpid = useMemo(() => {

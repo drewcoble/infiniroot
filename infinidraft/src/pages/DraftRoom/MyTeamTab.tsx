@@ -24,8 +24,8 @@ interface MyTeamTabProps {
 
 export function MyTeamTab({ seasonId, selfTeamId }: MyTeamTabProps) {
   const settingsList = useQuery(api.leagues.listSeasons, {});
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
-  const plan = useQuery(api.draft.plan.getLiveBudgetPlan, { seasonId });
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
+  const plan = useQuery(api.infinidraft.draft.plan.getLiveBudgetPlan, { seasonId });
   const allProjections = useQuery(api.projections.getAllProjections, {
     week: WEEK,
   });
@@ -38,7 +38,7 @@ export function MyTeamTab({ seasonId, selfTeamId }: MyTeamTabProps) {
   // and a wall of "plan $0" rows for every slot (user report, 2026-08-30).
   const isAuction = (settings?.draftType ?? "auction") === "auction";
   const stats = useTeamBudget(seasonId, selfTeamId);
-  const removePick = useMutation(api.draft.picks.removePick);
+  const removePick = useMutation(api.infinidraft.draft.picks.removePick);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [selectedFpid, setSelectedFpid] = useState<number | null>(null);
 

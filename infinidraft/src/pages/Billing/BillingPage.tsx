@@ -34,12 +34,12 @@ function formatDate(epochMs: number): string {
 // The app's one paid plan - see convex/schema.ts's subscriptions table and
 // src/constants/proFeatures.ts for what this unlocks.
 export function BillingPage() {
-  const subscription = useQuery(api.billing.queries.getMySubscription);
+  const subscription = useQuery(api.infinidraft.billing.queries.getMySubscription);
   const pricing = useProPricing();
-  const startCheckout = useAction(api.billing.actions.startCheckout);
-  const openBillingPortal = useAction(api.billing.actions.openBillingPortal);
+  const startCheckout = useAction(api.infinidraft.billing.actions.startCheckout);
+  const openBillingPortal = useAction(api.infinidraft.billing.actions.openBillingPortal);
   const reconcileCheckoutSession = useAction(
-    api.billing.actions.reconcileCheckoutSession,
+    api.infinidraft.billing.actions.reconcileCheckoutSession,
   );
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
