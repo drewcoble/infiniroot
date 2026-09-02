@@ -141,55 +141,53 @@ function TeamPage() {
 
             {roster !== undefined && <LineupSuggestionsCard rows={roster} />}
 
-            <Card withBorder padding="md">
-              <Stack gap="sm">
-                <Group justify="space-between" wrap="wrap" gap="sm" align="flex-end">
-                  <Select
-                    label="Week"
-                    data={WEEK_OPTIONS}
-                    value={week}
-                    onChange={(value) => value && setWeek(value)}
-                    allowDeselect={false}
-                    w={120}
-                  />
+            <Stack gap="sm">
+              <Group justify="space-between" wrap="wrap" gap="sm" align="flex-end">
+                <Select
+                  label="Week"
+                  data={WEEK_OPTIONS}
+                  value={week}
+                  onChange={(value) => value && setWeek(value)}
+                  allowDeselect={false}
+                  w={120}
+                />
 
-                  {roster !== undefined && (
-                    <Card withBorder padding="xs">
-                      <Group gap="lg">
-                        <Stack gap={0} align="center">
-                          <Text size="xs" c="dimmed" tt="uppercase">
-                            Projected
-                          </Text>
-                          <Text fw={600}>
-                            {sumStarterPoints(roster, "projectedPoints").toFixed(1)}
-                          </Text>
-                        </Stack>
-                        <Stack gap={0} align="center">
-                          <Text size="xs" c="dimmed" tt="uppercase">
-                            Actual
-                          </Text>
-                          <Text fw={600}>
-                            {sumStarterPoints(roster, "actualPoints").toFixed(1)}
-                          </Text>
-                        </Stack>
-                      </Group>
-                    </Card>
-                  )}
-                </Group>
-
-                {loadError && (
-                  <Alert color="red" withCloseButton onClose={() => setLoadError(null)}>
-                    {loadError}
-                  </Alert>
+                {roster !== undefined && (
+                  <Card withBorder padding="xs">
+                    <Group gap="lg">
+                      <Stack gap={0} align="center">
+                        <Text size="xs" c="dimmed" tt="uppercase">
+                          Projected
+                        </Text>
+                        <Text fw={600}>
+                          {sumStarterPoints(roster, "projectedPoints").toFixed(1)}
+                        </Text>
+                      </Stack>
+                      <Stack gap={0} align="center">
+                        <Text size="xs" c="dimmed" tt="uppercase">
+                          Actual
+                        </Text>
+                        <Text fw={600}>
+                          {sumStarterPoints(roster, "actualPoints").toFixed(1)}
+                        </Text>
+                      </Stack>
+                    </Group>
+                  </Card>
                 )}
+              </Group>
 
-                {loading || roster === undefined ? (
-                  <Loader />
-                ) : (
-                  <TeamRosterTable rows={roster} />
-                )}
-              </Stack>
-            </Card>
+              {loadError && (
+                <Alert color="red" withCloseButton onClose={() => setLoadError(null)}>
+                  {loadError}
+                </Alert>
+              )}
+
+              {loading || roster === undefined ? (
+                <Loader />
+              ) : (
+                <TeamRosterTable rows={roster} />
+              )}
+            </Stack>
           </Stack>
         )}
       </Stack>
