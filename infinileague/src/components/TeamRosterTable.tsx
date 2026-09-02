@@ -41,6 +41,7 @@ export function TeamRosterTable({ rows }: TeamRosterTableProps) {
       verticalSpacing={4}
       layout="fixed"
       w="100%"
+      withRowBorders={false}
       style={{ maxWidth: 480 }}
     >
       <Table.Thead>
@@ -57,7 +58,7 @@ export function TeamRosterTable({ rows }: TeamRosterTableProps) {
               <Group gap={6} wrap="nowrap" align="center">
                 {row.slot !== undefined && (
                   <Badge size="sm" variant="light" color={positionColorOrDefault(row.slot)}>
-                    {row.slot === "BENCH" ? "Bench" : row.slot === "TAXI" ? "Taxi" : row.slot}
+                    {row.slot === "BENCH" ? "BN" : row.slot === "TAXI" ? "Taxi" : row.slot}
                   </Badge>
                 )}
                 {row.fpid !== undefined ? (
