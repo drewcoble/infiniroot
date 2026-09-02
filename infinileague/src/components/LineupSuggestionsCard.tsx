@@ -1,4 +1,5 @@
 import { Badge, Card, Group, Stack, Text } from "@mantine/core";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { buildLineupSuggestions } from "../lib/lineupSuggestions";
 import type { TeamRosterRow } from "../types/season";
@@ -29,48 +30,35 @@ export function LineupSuggestionsCard({ rows }: LineupSuggestionsCardProps) {
           {suggestions.map(({ start, sit }) => {
             const delta = start.projectedPoints - (sit?.projectedPoints ?? 0);
             return (
-              <Group key={start.fpid} gap={6} wrap="wrap" align="center">
-                <Text size="sm" span>
-                  Start
-                </Text>
-                <Badge size="sm" variant="light" color={positionColorOrDefault(start.position)}>
-                  {start.position}
-                </Badge>
-                <Text size="sm" fw={600} span>
-                  {start.name}
-                </Text>
-                <Text size="sm" c="dimmed" span>
-                  at
-                </Text>
-                <Badge size="sm" variant="light" color={positionColorOrDefault(start.slot)}>
-                  {start.slot}
-                </Badge>
+              <Stack key={start.fpid} gap={2}>
+                <Group gap={6} wrap="nowrap" align="center">
+                  <ArrowUp size={14} color="var(--mantine-color-green-6)" />
+                  <Text size="sm" fw={600} span>
+                    {start.name}
+                  </Text>
+                  <Text size="sm" c="dimmed" span>
+                    at
+                  </Text>
+                  <Badge size="sm" variant="light" color={positionColorOrDefault(start.slot)}>
+                    {start.slot}
+                  </Badge>
+                  <Text size="xs" c={delta > 0 ? "green" : "dimmed"} span ml="auto">
+                    {formatDelta(delta)} pts
+                  </Text>
+                </Group>
                 {sit ? (
-                  <>
-                    <Text size="sm" c="dimmed" span>
-                      · Sit
-                    </Text>
-                    <Badge size="sm" variant="light" color={positionColorOrDefault(sit.position)}>
-                      {sit.position}
-                    </Badge>
+                  <Group gap={6} wrap="nowrap" align="center">
+                    <ArrowDown size={14} color="var(--mantine-color-red-6)" />
                     <Text size="sm" fw={600} span>
                       {sit.name}
                     </Text>
-                  </>
+                  </Group>
                 ) : (
-                  <Text size="sm" c="dimmed" span>
-                    · currently an empty slot
+                  <Text size="sm" c="dimmed" span ml={20}>
+                    Currently an empty slot
                   </Text>
                 )}
-                <Text
-                  size="xs"
-                  c={delta > 0 ? "green" : "dimmed"}
-                  span
-                  ml="auto"
-                >
-                  {formatDelta(delta)} pts
-                </Text>
-              </Group>
+              </Stack>
             );
           })}
         </Stack>
