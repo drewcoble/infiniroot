@@ -58,7 +58,13 @@ export function TeamRosterTable({ rows }: TeamRosterTableProps) {
               <Group gap={6} wrap="nowrap" align="center">
                 {row.slot !== undefined && (
                   <Badge size="sm" variant="light" color={positionColorOrDefault(row.slot)}>
-                    {row.slot === "BENCH" ? "BN" : row.slot === "TAXI" ? "Taxi" : row.slot}
+                    {row.slot === "BENCH"
+                      ? "BN"
+                      : row.slot === "TAXI"
+                        ? "Taxi"
+                        : row.slot === "SUPERFLEX"
+                          ? "SFLEX"
+                          : row.slot}
                   </Badge>
                 )}
                 {row.fpid !== undefined ? (
