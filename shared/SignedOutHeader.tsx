@@ -21,7 +21,7 @@ export function SignedOutHeader({ wordmark }: SignedOutHeaderProps) {
       left={0}
       right={0}
       px={{ base: "md", sm: 0 }}
-      py={{ base: "sm", sm: "xs" }}
+      py={{ base: 6, sm: "xs" }}
       h={{ base: MOBILE_HEADER_HEIGHT, sm: "auto" }}
       style={{
         zIndex: 220,

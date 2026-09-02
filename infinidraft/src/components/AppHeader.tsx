@@ -203,7 +203,7 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
       left={0}
       right={0}
       px={{ base: "md", sm: 0 }}
-      py={{ base: "sm", sm: "xs" }}
+      py={{ base: 6, sm: "xs" }}
       h={{ base: MOBILE_HEADER_HEIGHT, sm: "auto" }}
       style={{
         // Above the Keepers route's non-dismissible free-plan upgrade Modal
