@@ -46,8 +46,8 @@ export function TeamRosterTable({ rows }: TeamRosterTableProps) {
       <Table.Thead>
         <Table.Tr>
           <Table.Th>Player</Table.Th>
-          <Table.Th w={70}>Proj</Table.Th>
-          <Table.Th w={70}>Actual</Table.Th>
+          <Table.Th w={50}>Proj</Table.Th>
+          <Table.Th w={50}>Actual</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
