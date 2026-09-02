@@ -1,4 +1,4 @@
-import { Group, Image, Stack, Text, Title } from "@mantine/core";
+import { Flex, Image, Text } from "@mantine/core";
 import logo from "./infini_logo.png";
 
 interface AppLogoProps {
@@ -11,35 +11,49 @@ interface AppLogoProps {
 // The logo + wordmark, shared between both apps' AppHeader/SignedOutHeader
 // (and infinidraft's public report-card page) so they don't drift.
 //
-// Desktop (sm+) renders the full mark - logo beside "infini" + wordmark, as
-// always. Below "sm" there's rarely room for that next to whatever else the
-// header needs (league picker, mode-switch, ...), so rather than hiding the
-// wordmark outright it collapses to the logo stacked above just the
-// wordmark's suffix (no "infini" prefix) in small burlywood letters - still
-// legible as a brand mark, just compact.
+// One element tree with responsive props throughout (Flex's own direction,
+// Image's h, the wordmark Text's fz/c), rather than two parallel hiddenFrom/
+// visibleFrom-gated trees - a previous version of this component rendered a
+// whole separate mobile Stack + desktop Group side by side, and if the
+// breakpoint toggle ever failed to fully hide one of them (a stale deploy
+// caught mid-cache-bust did exactly this), both rendered on top of each
+// other: a full-size unconstrained logo blown out over the page. A single
+// tree can't get into that state - worst case a responsive prop just doesn't
+// swap, not two full logos stacking.
+//
+// Desktop (sm+): logo beside "infini" + wordmark, side by side. Below "sm"
+// there's rarely room for that next to whatever else the header needs
+// (league picker, mode-switch, ...), so it collapses to the logo stacked
+// above just the wordmark's suffix (the "infini" prefix hides) in small
+// burlywood letters - still legible as a brand mark, just compact.
 export function AppLogo({ wordmark }: AppLogoProps) {
   return (
-    <>
-      <Stack hiddenFrom="sm" gap={0} align="center" style={{ flexShrink: 0 }}>
-        <Image src={logo} alt={`infini${wordmark}`} h={34} w="auto" />
-        <Text fz={10} fw={700} lh={1.2} c="burlywood.6">
+    <Flex
+      direction={{ base: "column", sm: "row" }}
+      align="center"
+      gap={{ base: 0, sm: "sm" }}
+      wrap="nowrap"
+      style={{ minWidth: 0, flexShrink: 0 }}
+    >
+      <Image
+        src={logo}
+        alt={`infini${wordmark}`}
+        h={{ base: 34, sm: 60 }}
+        w="auto"
+        fit="contain"
+      />
+      <Text fw={700} lh={1.2} fz={{ base: 10, sm: "1.625rem" }}>
+        <Text component="span" inherit c="saddlebrown.7" hiddenFrom="sm">
+          infini
+        </Text>
+        <Text
+          component="span"
+          inherit
+          c={{ base: "burlywood.6", sm: "var(--mantine-color-text)" }}
+        >
           {wordmark}
         </Text>
-      </Stack>
-      <Group
-        visibleFrom="sm"
-        gap="sm"
-        wrap="nowrap"
-        style={{ minWidth: 0, flex: 1 }}
-      >
-        <Image src={logo} alt={`infini${wordmark}`} h={60} w="auto" />
-        <Title order={2} c="var(--mantine-color-text)" fz="1.625rem">
-          <Text component="span" inherit c="saddlebrown.7">
-            infini
-          </Text>
-          {wordmark}
-        </Title>
-      </Group>
-    </>
+      </Text>
+    </Flex>
   );
 }
