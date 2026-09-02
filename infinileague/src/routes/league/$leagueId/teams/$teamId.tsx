@@ -4,7 +4,6 @@ import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import {
   Alert,
-  Badge,
   Card,
   Group,
   Loader,
@@ -114,14 +113,7 @@ function TeamPage() {
       <Card withBorder padding="lg">
         <Group justify="space-between" wrap="wrap" gap="sm">
           <Stack gap={4}>
-            <Group gap={8}>
-              <Title order={3}>{team.name}</Title>
-              {team.isSelf && (
-                <Badge size="sm" variant="light">
-                  You
-                </Badge>
-              )}
-            </Group>
+            <Title order={3}>{team.name}</Title>
             <Text c="dimmed" size="sm">
               Rank #{team.rank} · {team.wins}-{team.losses}-{team.ties} ·{" "}
               {team.pointsFor.toFixed(1)} PF / {team.pointsAgainst.toFixed(1)} PA

@@ -30,16 +30,7 @@ export function PowerRankingsCard({ rows }: PowerRankingsCardProps) {
             {rows.map((row, index) => (
               <Table.Tr key={row.teamId}>
                 <Table.Td>{index + 1}</Table.Td>
-                <Table.Td>
-                  <Text fw={row.isSelf ? 700 : 400} span>
-                    {row.name}
-                  </Text>
-                  {row.isSelf && (
-                    <Text c="dimmed" size="xs" span ml={6}>
-                      (You)
-                    </Text>
-                  )}
-                </Table.Td>
+                <Table.Td>{row.name}</Table.Td>
                 <Table.Td>{row.totalProjectedPoints.toFixed(1)}</Table.Td>
               </Table.Tr>
             ))}
