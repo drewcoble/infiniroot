@@ -348,7 +348,7 @@ export function MobileSnakeDraft({ seasonId, teams }: MobileSnakeDraftProps) {
           </Group>
 
           <Table.ScrollContainer minWidth={340}>
-            <Table striped highlightOnHover verticalSpacing={8}>
+            <Table highlightOnHover verticalSpacing={8}>
               <Table.Thead>
                 <Table.Tr>
                   {(["rank"] as const).map((key) => (

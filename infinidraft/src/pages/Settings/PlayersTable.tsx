@@ -595,7 +595,7 @@ export function PlayersTable({ week, selectedLeagueId }: PlayersTableProps) {
           <>
             <Box visibleFrom="sm">
               <Table.ScrollContainer minWidth={640}>
-                <Table striped highlightOnHover verticalSpacing={4}>
+                <Table highlightOnHover verticalSpacing={4}>
                   <Table.Thead>
                     <Table.Tr>
                       {renderSortableTh("Rank", "rank")}

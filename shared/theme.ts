@@ -478,10 +478,14 @@ export const theme = createTheme({
     // ambient size happened to be in scope and drifted out of sync with each
     // other) - "sm" matches the size DraftRoom/MyTeamTab's SlotTable reads
     // as. A table can still override with its own `fz` prop if it genuinely
-    // needs to differ.
+    // needs to differ. striped defaults off now too - every existing call
+    // site used to pass `striped` explicitly (an explicit prop always wins
+    // over a defaultProp), so those were all stripped out to actually pick
+    // this default up instead of silently overriding it back to true.
     Table: {
       defaultProps: {
         fz: "sm",
+        striped: false,
       },
     },
     // Mantine's own default Tooltip is inverted relative to the page (light

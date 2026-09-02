@@ -43,7 +43,7 @@ export function RecentPicksTable({
           </Text>
         ) : (
           <Table.ScrollContainer minWidth={360}>
-            <Table striped highlightOnHover verticalSpacing={4}>
+            <Table highlightOnHover verticalSpacing={4}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Player</Table.Th>

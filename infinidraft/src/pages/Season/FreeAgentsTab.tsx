@@ -90,7 +90,7 @@ export function FreeAgentsTab({
       />
       <Card withBorder padding="md">
         <Table.ScrollContainer minWidth={680}>
-          <Table striped highlightOnHover verticalSpacing={4}>
+          <Table highlightOnHover verticalSpacing={4}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Player</Table.Th>

@@ -410,7 +410,7 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
               ))}
             </Group>
             <Table.ScrollContainer minWidth={360} mah={480}>
-              <Table striped highlightOnHover verticalSpacing={4}>
+              <Table highlightOnHover verticalSpacing={4}>
                 <Table.Thead>
                   <Table.Tr>
                     {renderSortableTh("Rank", "rank")}
@@ -507,7 +507,7 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
               </Text>
             ) : (
               <Table.ScrollContainer minWidth={360}>
-                <Table striped highlightOnHover verticalSpacing={4}>
+                <Table highlightOnHover verticalSpacing={4}>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Pick</Table.Th>

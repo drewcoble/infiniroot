@@ -12,13 +12,13 @@ interface PowerRankingsCardProps {
 export function PowerRankingsCard({ rows }: PowerRankingsCardProps) {
   return (
     <Card withBorder padding="md">
-      <Text size="sm" fw={500} mb="sm">
+      <Text size="lg" fw={500} mb="sm">
         Power rankings
       </Text>
       {rows === undefined ? (
         <Loader size="sm" />
       ) : (
-        <Table striped highlightOnHover>
+        <Table highlightOnHover>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>#</Table.Th>

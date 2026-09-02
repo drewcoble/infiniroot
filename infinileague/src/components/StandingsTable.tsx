@@ -18,7 +18,7 @@ export function StandingsTable({ leagueId, rows, waiverType }: StandingsTablePro
   const waiverColumnLabel = waiverType === "faab" ? "FAAB $" : "Waiver #";
 
   return (
-    <Table striped highlightOnHover>
+    <Table highlightOnHover>
       <Table.Thead>
         <Table.Tr>
           <Table.Th>#</Table.Th>

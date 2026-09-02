@@ -98,7 +98,7 @@ export function RecommendedNominations({
           </Text>
         ) : (
           <Table.ScrollContainer minWidth={420}>
-            <Table striped highlightOnHover verticalSpacing={4}>
+            <Table highlightOnHover verticalSpacing={4}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Player</Table.Th>
