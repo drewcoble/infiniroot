@@ -42,7 +42,7 @@ export function SignedOutHeader({ wordmark }: SignedOutHeaderProps) {
         style={{ flex: 1, minWidth: 0 }}
       >
         <Link to="/" style={{ flexShrink: 0, textDecoration: "none" }}>
-          <AppLogo wordmark={wordmark} wordmarkAlwaysVisible />
+          <AppLogo wordmark={wordmark} />
         </Link>
       </Group>
     </Box>

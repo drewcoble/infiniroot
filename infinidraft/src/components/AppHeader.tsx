@@ -237,11 +237,7 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
         style={{ flex: 1, minWidth: 0 }}
       >
         <Link to="/" style={{ flexShrink: 0, textDecoration: "none" }}>
-          {/* Hidden below "sm" by default - the league picker and
-              mode-switch button need the room on mobile. hideLeagueControls
-              callers (e.g. the dashboard) have room to spare, so the
-              wordmark stays visible there instead. */}
-          <AppLogo wordmark="draft" wordmarkAlwaysVisible={hideLeagueControls} />
+          <AppLogo wordmark="draft" />
         </Link>
         <Group gap="xs" wrap="nowrap" align="center" style={{ flexShrink: 0 }}>
           {!hideLeagueControls && (

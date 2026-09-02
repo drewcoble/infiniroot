@@ -1,4 +1,4 @@
-import { Group, Image, Text, Title } from "@mantine/core";
+import { Group, Image, Stack, Text, Title } from "@mantine/core";
 import logo from "./infini_logo.png";
 
 interface AppLogoProps {
@@ -6,34 +6,40 @@ interface AppLogoProps {
   // has no product name baked into it (just the infinity/football-laces
   // mark), only the wordmark differs per app.
   wordmark: string;
-  // Keeps the wordmark visible below "sm" too - defaults to true (matching
-  // infinileague's simpler usage, which never had a competing element to
-  // make room for). infinidraft's own call sites all pass this explicitly
-  // (AppHeader hides it below "sm" outside its dashboard mode, to make room
-  // for the league picker/mode-switch button), so the default only matters
-  // for future callers that don't care either way.
-  wordmarkAlwaysVisible?: boolean;
 }
 
 // The logo + wordmark, shared between both apps' AppHeader/SignedOutHeader
 // (and infinidraft's public report-card page) so they don't drift.
-export function AppLogo({ wordmark, wordmarkAlwaysVisible = true }: AppLogoProps) {
+//
+// Desktop (sm+) renders the full mark - logo beside "infini" + wordmark, as
+// always. Below "sm" there's rarely room for that next to whatever else the
+// header needs (league picker, mode-switch, ...), so rather than hiding the
+// wordmark outright it collapses to the logo stacked above just the
+// wordmark's suffix (no "infini" prefix) in small burlywood letters - still
+// legible as a brand mark, just compact.
+export function AppLogo({ wordmark }: AppLogoProps) {
   return (
-    <Group gap="sm" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
-      <Image src={logo} alt={`infini${wordmark}`} h={60} w="auto" />
-      <Title
-        order={2}
-        c="var(--mantine-color-text)"
-        // Same size on mobile as desktop, to match the 60px logo's visual
-        // weight.
-        fz="1.625rem"
-        {...(wordmarkAlwaysVisible ? {} : { visibleFrom: "sm" })}
-      >
-        <Text component="span" inherit c="saddlebrown.7">
-          infini
+    <>
+      <Stack hiddenFrom="sm" gap={0} align="center" style={{ flexShrink: 0 }}>
+        <Image src={logo} alt={`infini${wordmark}`} h={34} w="auto" />
+        <Text fz={10} fw={700} lh={1.2} c="burlywood.6">
+          {wordmark}
         </Text>
-        {wordmark}
-      </Title>
-    </Group>
+      </Stack>
+      <Group
+        visibleFrom="sm"
+        gap="sm"
+        wrap="nowrap"
+        style={{ minWidth: 0, flex: 1 }}
+      >
+        <Image src={logo} alt={`infini${wordmark}`} h={60} w="auto" />
+        <Title order={2} c="var(--mantine-color-text)" fz="1.625rem">
+          <Text component="span" inherit c="saddlebrown.7">
+            infini
+          </Text>
+          {wordmark}
+        </Title>
+      </Group>
+    </>
   );
 }
