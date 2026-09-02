@@ -76,13 +76,15 @@ function LeagueLayout() {
   // Path-based rather than TAB_META's exact route string, since the
   // standings tab's own route has no trailing segment to match against (the
   // way infinidraft's `pathname.split("/").pop()` compares against each
-  // tab's flat leaf segment) - and any team page (not just the self team's)
-  // should still highlight "My Team" as the active section.
+  // tab's flat leaf segment). "My Team" only lights up on the self team's
+  // own team page specifically - viewing another team (e.g. clicked from
+  // the standings table) is still the /teams/$teamId route, but it isn't
+  // "My Team", so it shouldn't claim that tab as active.
   const activeValue: TabValue | undefined =
     location.pathname === `/league/${leagueId}` ||
     location.pathname === `/league/${leagueId}/`
       ? "standings"
-      : location.pathname.startsWith(`/league/${leagueId}/teams`)
+      : selfTeam && location.pathname === `/league/${leagueId}/teams/${selfTeam.teamId}`
         ? "myTeam"
         : undefined;
 
