@@ -43,7 +43,7 @@ export function LineupSuggestionsCard({ rows }: LineupSuggestionsCardProps) {
                   </Text>
                 </Group>
                 {sit ? (
-                  <Group gap={6} wrap="nowrap" align="center">
+                  <Group gap={6} wrap="nowrap" align="center" ml={5}>
                     <ArrowDown size={14} color="var(--mantine-color-red-6)" />
                     <Text size="sm" fw={600} span>
                       {sit.name}
@@ -53,7 +53,7 @@ export function LineupSuggestionsCard({ rows }: LineupSuggestionsCardProps) {
                     </Text>
                   </Group>
                 ) : (
-                  <Text size="sm" c="dimmed" span ml={20}>
+                  <Text size="sm" c="dimmed" span ml={25}>
                     Currently an empty slot
                   </Text>
                 )}
