@@ -13,8 +13,6 @@ import {
 } from "@mantine/core";
 import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
-import { AppHeader } from "../../../components/AppHeader";
-import { PageContainer } from "@shared/PageContainer";
 import { StandingsTable } from "../../../components/StandingsTable";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
@@ -101,54 +99,49 @@ function LeaguePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, syncStatus]);
 
+  if (season === undefined) {
+    return <Loader />;
+  }
+
   return (
-    <PageContainer>
-      <Stack gap="lg">
-        <AppHeader />
-        {season === undefined ? (
-          <Loader />
-        ) : (
-          <Stack gap="md">
-            <Title order={2}>{season.name}</Title>
-            <Group gap="xs">
-              <Text size="sm" c="dimmed">
-                {syncing
-                  ? "Syncing…"
-                  : lastSyncedAt !== undefined
-                    ? `Last synced ${formatRelativeTime(lastSyncedAt)}`
-                    : "Rosters haven't synced yet."}
-              </Text>
-              <Button
-                size="xs"
-                variant="default"
-                leftSection={<RefreshCw size={14} />}
-                onClick={() => void runSync()}
-                loading={syncing}
-              >
-                Sync now
-              </Button>
-            </Group>
-            {syncError && (
-              <Alert color="red" withCloseButton onClose={() => setSyncError(null)}>
-                {syncError}
-              </Alert>
-            )}
-            {standings === undefined ? (
-              <Loader />
-            ) : (
-              <StandingsTable
-                leagueId={leagueId}
-                rows={standings}
-                waiverType={season.waiverType}
-              />
-            )}
-            <Text c="dimmed">
-              Waiver recommendations, FAAB bid suggestions, and trade
-              analysis land here next.
-            </Text>
-          </Stack>
-        )}
-      </Stack>
-    </PageContainer>
+    <Stack gap="md">
+      <Title order={2}>{season.name}</Title>
+      <Group gap="xs">
+        <Text size="sm" c="dimmed">
+          {syncing
+            ? "Syncing…"
+            : lastSyncedAt !== undefined
+              ? `Last synced ${formatRelativeTime(lastSyncedAt)}`
+              : "Rosters haven't synced yet."}
+        </Text>
+        <Button
+          size="xs"
+          variant="default"
+          leftSection={<RefreshCw size={14} />}
+          onClick={() => void runSync()}
+          loading={syncing}
+        >
+          Sync now
+        </Button>
+      </Group>
+      {syncError && (
+        <Alert color="red" withCloseButton onClose={() => setSyncError(null)}>
+          {syncError}
+        </Alert>
+      )}
+      {standings === undefined ? (
+        <Loader />
+      ) : (
+        <StandingsTable
+          leagueId={leagueId}
+          rows={standings}
+          waiverType={season.waiverType}
+        />
+      )}
+      <Text c="dimmed">
+        Waiver recommendations, FAAB bid suggestions, and trade analysis land
+        here next.
+      </Text>
+    </Stack>
   );
 }

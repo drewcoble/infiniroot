@@ -1,14 +1,118 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { Box, Stack, Tabs } from "@mantine/core";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { useConvexAuth, useQuery } from "convex/react";
+import type { GenericId as Id } from "convex/values";
+import type { LucideIcon } from "lucide-react";
+import { CircleUserRound, Trophy } from "lucide-react";
+import { api } from "@infinidata/api";
+import { AppHeader } from "../../../components/AppHeader";
+import { BottomNav } from "../../../components/BottomNav";
+import { PageContainer } from "@shared/PageContainer";
+import type { StandingsRow } from "../../../types/season";
 
-// Pathless layout for this segment - required by TanStack Router's file-
-// based codegen once a nested directory (teams/$teamId.tsx) exists
-// alongside index.tsx here. Without this file, the generator produced a
-// route tree that referenced a parent route it never actually defined,
-// silently dropping the index route out of the tree entirely (confirmed
-// live: /league/$leagueId 404'd with the index route missing from
-// rootRouteChildren in the generated file). No shared chrome needed here -
-// both children (index.tsx, teams/$teamId.tsx) render their own full
-// AppHeader/PageContainer independently, so this is just an Outlet.
 export const Route = createFileRoute("/league/$leagueId")({
-  component: () => <Outlet />,
+  component: LeagueLayout,
 });
+
+type TabValue = "standings" | "myTeam";
+
+interface TabItem {
+  value: TabValue;
+  label: string;
+  icon: LucideIcon;
+  to: string;
+  params: Record<string, string>;
+}
+
+// Only two destinations exist today - Standings is always reachable, "My
+// Team" only once the self team is known (it needs a concrete teamId param,
+// unlike infinidraft's flat per-league tabs) so it's appended conditionally
+// below rather than listed here.
+const STANDINGS_VALUE: TabValue = "standings";
+
+// Same "top Tabs on desktop, fixed BottomNav on mobile" shell infinidraft's
+// own league/$leagueId/route.tsx uses, scaled down to infinileague's two
+// pages - AppHeader/PageContainer now live here (once per layout mount)
+// instead of being duplicated in each child route file, and every child
+// route (index.tsx, teams/$teamId.tsx) renders bare content straight into
+// this layout's Outlet, the same way infinidraft's settings.tsx/myTeam.tsx/
+// etc. do.
+function LeagueLayout() {
+  const { leagueId } = Route.useParams();
+  const location = useLocation();
+  const { isAuthenticated } = useConvexAuth();
+  const seasonId = leagueId as Id<"seasons">;
+
+  // Standings already carries an isSelf flag per row (see convex/season/
+  // standings.ts) - reused here instead of a dedicated "my team" query, same
+  // as the team page itself reusing this query for the header card.
+  const standings: StandingsRow[] | undefined = useQuery(
+    api.infinileague.season.standings.getStandings,
+    isAuthenticated ? { seasonId } : "skip",
+  );
+  const selfTeam = standings?.find((row) => row.isSelf);
+
+  const tabs: TabItem[] = [
+    {
+      value: STANDINGS_VALUE,
+      label: "Standings",
+      icon: Trophy,
+      to: "/league/$leagueId",
+      params: { leagueId },
+    },
+    ...(selfTeam
+      ? [
+          {
+            value: "myTeam" as const,
+            label: "My Team",
+            icon: CircleUserRound,
+            to: "/league/$leagueId/teams/$teamId",
+            params: { leagueId, teamId: selfTeam.teamId },
+          },
+        ]
+      : []),
+  ];
+
+  // Path-based rather than TAB_META's exact route string, since the
+  // standings tab's own route has no trailing segment to match against (the
+  // way infinidraft's `pathname.split("/").pop()` compares against each
+  // tab's flat leaf segment) - and any team page (not just the self team's)
+  // should still highlight "My Team" as the active section.
+  const activeValue: TabValue | undefined =
+    location.pathname === `/league/${leagueId}` ||
+    location.pathname === `/league/${leagueId}/`
+      ? "standings"
+      : location.pathname.startsWith(`/league/${leagueId}/teams`)
+        ? "myTeam"
+        : undefined;
+
+  return (
+    <PageContainer pb={{ base: 100, sm: "xl" }}>
+      <Stack gap="md">
+        <AppHeader />
+        <Box visibleFrom="sm">
+          <Tabs value={activeValue ?? null}>
+            <Tabs.List>
+              {tabs.map((tab) => (
+                <Tabs.Tab
+                  key={tab.value}
+                  value={tab.value}
+                  renderRoot={(props) => (
+                    <Link
+                      {...({ to: tab.to, params: tab.params } as { to: "/" })}
+                      {...props}
+                    />
+                  )}
+                >
+                  {tab.label}
+                </Tabs.Tab>
+              ))}
+            </Tabs.List>
+          </Tabs>
+        </Box>
+        <Outlet />
+      </Stack>
+      <BottomNav items={tabs} activeValue={activeValue} />
+    </PageContainer>
+  );
+}

@@ -14,8 +14,6 @@ import {
   Title,
 } from "@mantine/core";
 import { api } from "@infinidata/api";
-import { AppHeader } from "../../../../components/AppHeader";
-import { PageContainer } from "@shared/PageContainer";
 import { TeamRosterTable } from "../../../../components/TeamRosterTable";
 import { LineupSuggestionsCard } from "../../../../components/LineupSuggestionsCard";
 import { getErrorMessage } from "@shared/errors";
@@ -107,90 +105,85 @@ function TeamPage() {
       .finally(() => setLoading(false));
   }, [week, teamIdTyped, getTeamRosterForWeek]);
 
+  if (team === undefined) {
+    return <Loader />;
+  }
+
   return (
-    <PageContainer>
-      <Stack gap="lg">
-        <AppHeader />
-        {team === undefined ? (
-          <Loader />
-        ) : (
-          <Stack gap="md">
-            <Card withBorder padding="lg">
-              <Group justify="space-between" wrap="wrap" gap="sm">
-                <Stack gap={4}>
-                  <Group gap={8}>
-                    <Title order={3}>{team.name}</Title>
-                    {team.isSelf && (
-                      <Badge size="sm" variant="light">
-                        You
-                      </Badge>
-                    )}
-                  </Group>
-                  <Text c="dimmed" size="sm">
-                    Rank #{team.rank} · {team.wins}-{team.losses}-{team.ties} ·{" "}
-                    {team.pointsFor.toFixed(1)} PF / {team.pointsAgainst.toFixed(1)} PA
+    <Stack gap="md">
+      <Card withBorder padding="lg">
+        <Group justify="space-between" wrap="wrap" gap="sm">
+          <Stack gap={4}>
+            <Group gap={8}>
+              <Title order={3}>{team.name}</Title>
+              {team.isSelf && (
+                <Badge size="sm" variant="light">
+                  You
+                </Badge>
+              )}
+            </Group>
+            <Text c="dimmed" size="sm">
+              Rank #{team.rank} · {team.wins}-{team.losses}-{team.ties} ·{" "}
+              {team.pointsFor.toFixed(1)} PF / {team.pointsAgainst.toFixed(1)} PA
+            </Text>
+          </Stack>
+          <Text fw={600}>
+            {team.faabRemaining !== undefined
+              ? `$${team.faabRemaining} FAAB`
+              : `Waiver #${team.waiverPosition ?? "—"}`}
+          </Text>
+        </Group>
+      </Card>
+
+      {roster !== undefined && <LineupSuggestionsCard rows={roster} />}
+
+      <Stack gap="sm">
+        <Group justify="space-between" wrap="wrap" gap="sm" align="flex-end">
+          <Select
+            label="Week"
+            data={WEEK_OPTIONS}
+            value={week}
+            onChange={(value) => value && setWeek(value)}
+            allowDeselect={false}
+            w={120}
+          />
+
+          {roster !== undefined && (
+            <Card withBorder padding="xs">
+              <Group gap="lg">
+                <Stack gap={0} align="center">
+                  <Text size="xs" c="dimmed" tt="uppercase">
+                    Projected
+                  </Text>
+                  <Text fw={600}>
+                    {sumStarterPoints(roster, "projectedPoints").toFixed(1)}
                   </Text>
                 </Stack>
-                <Text fw={600}>
-                  {team.faabRemaining !== undefined
-                    ? `$${team.faabRemaining} FAAB`
-                    : `Waiver #${team.waiverPosition ?? "—"}`}
-                </Text>
+                <Stack gap={0} align="center">
+                  <Text size="xs" c="dimmed" tt="uppercase">
+                    Actual
+                  </Text>
+                  <Text fw={600}>
+                    {sumStarterPoints(roster, "actualPoints").toFixed(1)}
+                  </Text>
+                </Stack>
               </Group>
             </Card>
+          )}
+        </Group>
 
-            {roster !== undefined && <LineupSuggestionsCard rows={roster} />}
+        {loadError && (
+          <Alert color="red" withCloseButton onClose={() => setLoadError(null)}>
+            {loadError}
+          </Alert>
+        )}
 
-            <Stack gap="sm">
-              <Group justify="space-between" wrap="wrap" gap="sm" align="flex-end">
-                <Select
-                  label="Week"
-                  data={WEEK_OPTIONS}
-                  value={week}
-                  onChange={(value) => value && setWeek(value)}
-                  allowDeselect={false}
-                  w={120}
-                />
-
-                {roster !== undefined && (
-                  <Card withBorder padding="xs">
-                    <Group gap="lg">
-                      <Stack gap={0} align="center">
-                        <Text size="xs" c="dimmed" tt="uppercase">
-                          Projected
-                        </Text>
-                        <Text fw={600}>
-                          {sumStarterPoints(roster, "projectedPoints").toFixed(1)}
-                        </Text>
-                      </Stack>
-                      <Stack gap={0} align="center">
-                        <Text size="xs" c="dimmed" tt="uppercase">
-                          Actual
-                        </Text>
-                        <Text fw={600}>
-                          {sumStarterPoints(roster, "actualPoints").toFixed(1)}
-                        </Text>
-                      </Stack>
-                    </Group>
-                  </Card>
-                )}
-              </Group>
-
-              {loadError && (
-                <Alert color="red" withCloseButton onClose={() => setLoadError(null)}>
-                  {loadError}
-                </Alert>
-              )}
-
-              {loading || roster === undefined ? (
-                <Loader />
-              ) : (
-                <TeamRosterTable rows={roster} />
-              )}
-            </Stack>
-          </Stack>
+        {loading || roster === undefined ? (
+          <Loader />
+        ) : (
+          <TeamRosterTable rows={roster} />
         )}
       </Stack>
-    </PageContainer>
+    </Stack>
   );
 }
