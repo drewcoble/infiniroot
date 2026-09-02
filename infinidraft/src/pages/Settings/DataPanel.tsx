@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { useAction } from "convex/react";
+import { useEffect, useState } from "react";
+import { useAction, useQuery } from "convex/react";
 import {
   Alert,
   Button,
   Card,
   Group,
+  Loader,
+  Select,
   SimpleGrid,
   Stack,
   Text,
@@ -13,17 +15,7 @@ import {
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 
-interface DataPanelProps {
-  week: string;
-}
-
-type ActionKey =
-  | "projections"
-  | "playerPoints"
-  | "caches"
-  | "espnLinks"
-  | "espnRankings"
-  | "blend";
+type ActionKey = "sync" | "playerPoints";
 
 interface ActionState {
   isRunning: boolean;
@@ -32,19 +24,48 @@ interface ActionState {
 
 const IDLE_STATE: ActionState = { isRunning: false, status: null };
 
-export function DataPanel({ week }: DataPanelProps) {
-  const fetchProjections = useAction(api.sleeper.projections.fetchProjections);
+// "0" is infinidraft's own draft/season-long sentinel (see
+// src/constants/general.ts's WEEK) - every draft-app page reads it, since
+// drafting is always done against season-long projections regardless of
+// what week it actually is. This panel is different: it's also the manual
+// trigger for the same sync the nightly cron runs (see convex/fetchAllData.ts
+// and convex/crons.ts), which infinileague depends on for in-season,
+// per-week projections - so unlike the rest of the app, this one needs a
+// real week selector rather than always hardcoding "0".
+const WEEK_OPTIONS = [
+  { value: "0", label: "0 (Draft / season-long)" },
+  ...Array.from({ length: 18 }, (_, i) => ({
+    value: String(i + 1),
+    label: `Week ${i + 1}`,
+  })),
+];
+
+// Down to 2 buttons (was 6 - players/rankings/injuries, ESPN id links, ESPN
+// values, blend, and value caches were all separate steps that had to be run
+// in a specific order to actually update anything - see this file's own git
+// history). fetchAllData.fetchAll now runs that whole pipeline itself in the
+// right order (it's also what the nightly cron calls - see convex/crons.ts),
+// so "Sync all data" is just that. Player points stays separate since it's
+// the one action here with a genuinely different scope - actual per-week
+// results for a specific (optionally past) season, not this week's
+// projections/rankings.
+export function DataPanel() {
+  const fetchAll = useAction(api.fetchAllData.fetchAll);
   const fetchPlayerPoints = useAction(
     api.sleeper.playerPoints.fetchAllPlayerPoints,
   );
-  const refreshCaches = useAction(api.fetchAllData.refreshCaches);
-  const fetchSleeperPlayerLinks = useAction(
-    api.sleeper.playerLinks.fetchSleeperPlayerLinks,
-  );
-  const fetchEspnRankings = useAction(api.espn.rankings.fetchEspnRankings);
-  const blendAllProjections = useAction(
-    api.projectionBlending.blendAllProjections,
-  );
+
+  // Defaults to whatever the last sync detected as the live NFL week (see
+  // convex/nflState.ts, upserted by fetchAllData regardless of which week it
+  // was asked to sync) - "0" outside the regular season, same rule
+  // fetchCurrentNflWeek itself uses server-side. Only a starting value for
+  // the dropdown; picking a different week doesn't get overwritten once set.
+  const nflState = useQuery(api.nflState.getNflState, {});
+  const [week, setWeek] = useState<string | null>(null);
+  useEffect(() => {
+    if (week !== null || nflState === undefined) return;
+    setWeek(nflState?.seasonType === "regular" ? nflState.week : "0");
+  }, [nflState, week]);
 
   // Defaults to the current season server-side (see fetchAllPlayerPoints)
   // when left blank - only needs to be filled in to backfill a past season
@@ -53,35 +74,35 @@ export function DataPanel({ week }: DataPanelProps) {
   const [playerPointsYear, setPlayerPointsYear] = useState("");
 
   const [states, setStates] = useState<Record<ActionKey, ActionState>>({
-    projections: IDLE_STATE,
+    sync: IDLE_STATE,
     playerPoints: IDLE_STATE,
-    caches: IDLE_STATE,
-    espnLinks: IDLE_STATE,
-    espnRankings: IDLE_STATE,
-    blend: IDLE_STATE,
   });
+
+  // Only rendered once the week selector has its starting value (see the
+  // effect above) - the actions below assume a real string, not the
+  // momentary null before that resolves.
+  if (week === null) return <Loader />;
 
   const actions: Array<{
     key: ActionKey;
     label: string;
     description: string;
     run: () => Promise<unknown>;
-    // Either a fixed string, or built from the resolved action result (e.g.
-    // match counts) - see runAction below.
     successMessage: string | ((result: unknown) => string);
   }> = [
     {
-      key: "projections",
-      label: "Fetch projections",
+      key: "sync",
+      label: "Sync all data",
       description:
-        "Players, ADP/rankings, and injuries (K/DST projections too). QB/RB/WR/TE projections need \"Fetch ESPN values\" + \"Blend projections\" after this to actually update.",
-      run: () => fetchProjections({ week }),
-      successMessage: `Projections refreshed for week "${week}".`,
+        "Runs the full pipeline for the selected week: players, projections (Sleeper + ESPN blended), ADP/rankings, injuries, and the value-gap/$-value caches. Same job the nightly cron runs - for an in-season week, it also schedules background jobs to backfill every later week.",
+      run: () => fetchAll({ week }),
+      successMessage: `Synced for week "${week}".`,
     },
     {
       key: "playerPoints",
       label: "Fetch player points",
-      description: "Actual scored fantasy points, per week.",
+      description:
+        "Actual scored fantasy points, per week. Leave the year blank for the current season (also covered by \"Sync all data\") - fill it in to backfill a past season.",
       run: () =>
         fetchPlayerPoints(
           playerPointsYear.trim() ? { year: playerPointsYear.trim() } : {},
@@ -89,79 +110,6 @@ export function DataPanel({ week }: DataPanelProps) {
       successMessage: `Player points refreshed${
         playerPointsYear.trim() ? ` for ${playerPointsYear.trim()}` : ""
       }.`,
-    },
-    {
-      key: "caches",
-      label: "Refresh value caches",
-      description: "Recomputes value-gap and $-value caches.",
-      run: () => refreshCaches({ week }),
-      successMessage: "Value caches refreshed.",
-    },
-    {
-      key: "espnLinks",
-      label: "Link ESPN/Yahoo IDs",
-      description:
-        "Backfills each player's ESPN/Yahoo id from Sleeper's full player list, for joining external rankings.",
-      run: () => fetchSleeperPlayerLinks({}),
-      successMessage: (result) => {
-        const { patched, scanned } = result as {
-          patched: number;
-          skipped: number;
-          scanned: number;
-        };
-        return `Linked ${patched} of ${scanned} candidate players.`;
-      },
-    },
-    {
-      key: "espnRankings",
-      label: "Fetch ESPN values",
-      description:
-        "ESPN's standard/PPR/superflex draft-kit ranks & auction values, plus raw per-category projected stats, matched to players by ESPN id (falling back to name+position, which also backfills the id for next time).",
-      run: () => fetchEspnRankings({ week }),
-      successMessage: (result) => {
-        const {
-          directMatched,
-          nameMatched,
-          ambiguous,
-          unmatched,
-          totalPlayers,
-          rowsByFormat,
-          statRowsByPosition,
-        } = result as {
-          totalPlayers: number;
-          directMatched: number;
-          nameMatched: number;
-          ambiguous: number;
-          unmatched: number;
-          rowsByFormat: { standard: number; ppr: number; superflex: number };
-          statRowsByPosition: Record<string, number>;
-        };
-        const statCounts = Object.entries(statRowsByPosition)
-          .map(([position, count]) => `${position}=${count}`)
-          .join(", ");
-        return (
-          `Matched ${directMatched + nameMatched} of ${totalPlayers} players (${directMatched} by id, ` +
-          `${nameMatched} by name; ${ambiguous} ambiguous, ${unmatched} unmatched). ` +
-          `Values: standard=${rowsByFormat.standard}, ppr=${rowsByFormat.ppr}, superflex=${rowsByFormat.superflex}. ` +
-          `Stat rows: ${statCounts}.`
-        );
-      },
-    },
-    {
-      key: "blend",
-      label: "Blend projections",
-      description:
-        "Averages every provider's raw stats (Sleeper + ESPN) into the QB/RB/WR/TE projections everything else reads. Run after \"Fetch projections\" and \"Fetch ESPN values\".",
-      run: () => blendAllProjections({ week }),
-      successMessage: (result) => {
-        const byPosition = result as Record<
-          string,
-          { upserted: number; removed: number }
-        >;
-        return Object.entries(byPosition)
-          .map(([position, { upserted }]) => `${position}=${upserted}`)
-          .join(", ");
-      },
     },
   ];
 
@@ -195,6 +143,18 @@ export function DataPanel({ week }: DataPanelProps) {
 
   return (
     <Stack gap="md" py="sm">
+      <Select
+        label="Week"
+        description={
+          'Which week "Sync all data" below fetches. Defaults to the detected current NFL week; "Fetch player points" is unaffected (it covers every week of a season at once).'
+        }
+        data={WEEK_OPTIONS}
+        value={week}
+        onChange={(value) => value && setWeek(value)}
+        allowDeselect={false}
+        w={260}
+      />
+
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         {actions.map((action) => {
           const state = states[action.key];

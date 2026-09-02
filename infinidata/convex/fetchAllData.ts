@@ -12,6 +12,24 @@ import { BLENDED_POSITIONS } from "./positions";
 const SCORINGS: Scoring[] = ["STD", "HALF", "PPR"];
 const TE_SCORINGS: TeScoring[] = ["NONE", "HALF", "FULL"];
 
+// Prefetches every remaining week's projections, not just the current one,
+// so a team page browsing ahead (see infinileague's team page) isn't
+// looking at a week the nightly cron never populated - it otherwise only
+// ever fetches the single "current" week. Capped at week 18 (WEEK_OPTIONS'
+// own bound - see infinileague/src/routes/.../teams/$teamId.tsx) and
+// skipped entirely for the "0" season-long sentinel (pre/off-season, or an
+// explicit draft-mode backfill), which has no "next week" to speak of.
+function weeksToFetch(week: string): string[] {
+  const weekNum = Number(week);
+  if (!Number.isInteger(weekNum) || weekNum <= 0) return [week];
+
+  const weeks = [];
+  for (let w = weekNum; w <= 18; w += 1) {
+    weeks.push(String(w));
+  }
+  return weeks;
+}
+
 // Full cross-product for valueGaps, the one remaining league-independent
 // shared cache - 3 x 3 x 2 = 18 combos. draftValues (including the generic
 // league's own row - see convex/genericLeague.ts) stays one combo per real
@@ -102,6 +120,12 @@ async function fetchAllHandler(
   // against (new rookies etc. Sleeper only recently backfilled). Then ESPN's
   // rankings+raw-stats fetch, then the blend that turns both providers' raw
   // stats into the actual projections rows every reader uses.
+  //
+  // Only `week` itself runs inline here (awaited) - refreshCachedComputations
+  // below reads straight from its output, so it has to be done and committed
+  // before that call. Every other remaining week of the season (see
+  // weeksToFetch) is instead handed to its own scheduled job below, once
+  // playerLinks has run - see that loop's own comment for why.
   await ctx.runAction(internal.sleeper.projections.fetchProjectionsInternal, {
     week,
     ...(args.season ? { season: args.season } : {}),
@@ -122,6 +146,24 @@ async function fetchAllHandler(
     });
   }
 
+  // Every other remaining week of the season, each as its own independently
+  // scheduled job (fetchWeekProjectionsInternal below) rather than another
+  // turn of an inline loop - a week that far out failing (e.g. Sleeper/ESPN
+  // not having published data for some position yet) throws and fails only
+  // that one scheduled run, instead of aborting every week after it along
+  // with this function's own remaining once-a-day work (playerPoints fetch,
+  // refreshCachedComputations). Scheduled rather than awaited, so this
+  // function doesn't sit blocked on 17 more weeks' worth of external fetches
+  // before it can get to that remaining work either. playerLinks has already
+  // run by this point (above), so none of these need to repeat it themselves.
+  for (const futureWeek of weeksToFetch(week).slice(1)) {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.fetchAllData.fetchWeekProjectionsInternal,
+      { week: futureWeek, season },
+    );
+  }
+
   await ctx.runAction(
     internal.sleeper.playerPoints.fetchAllPlayerPointsInternal,
     { ...(args.season ? { year: args.season } : {}) },
@@ -132,6 +174,32 @@ async function fetchAllHandler(
   // convex/valueGaps.ts and convex/draftValues.ts's cache comments.
   await refreshCachedComputations(ctx, { week, season });
 }
+
+// One future week's Sleeper fetch -> ESPN fetch -> blend pipeline, run as
+// its own scheduled job by fetchAllHandler above (see that function's own
+// comment on why) rather than another iteration of an inline loop. No
+// playerLinks call here - fetchAllHandler already refreshes it once before
+// scheduling any of these, and it isn't week-scoped data to begin with.
+export const fetchWeekProjectionsInternal = internalAction({
+  args: { week: v.string(), season: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.runAction(internal.sleeper.projections.fetchProjectionsInternal, {
+      week: args.week,
+      season: args.season,
+    });
+    await ctx.runAction(internal.espn.rankings.fetchEspnRankingsInternal, {
+      season: args.season,
+      week: args.week,
+    });
+    for (const position of BLENDED_POSITIONS) {
+      await ctx.runMutation(internal.projectionBlending.blendProjections, {
+        position,
+        season: args.season,
+        week: args.week,
+      });
+    }
+  },
+});
 
 export const fetchAll = action({
   args: {

@@ -14,7 +14,6 @@ import { ArrowLeft } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
-import { WEEK } from "../../constants/general";
 import { DataPanel } from "../Settings/DataPanel";
 
 // Super-admin-only data-fetch tool, formerly a per-league Setup tab -
@@ -71,7 +70,7 @@ export function AdminDataPanel() {
             <Title order={2}>Admin: Data</Title>
           </Group>
 
-          <DataPanel week={WEEK} />
+          <DataPanel />
         </Stack>
       </Stack>
     </PageContainer>
