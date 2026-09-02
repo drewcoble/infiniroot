@@ -80,6 +80,7 @@ export function AppHeader() {
         zIndex: 195,
         display: "flex",
         alignItems: "center",
+        overflow: "hidden",
         background:
           "color-mix(in srgb, var(--mantine-color-body) 75%, transparent)",
         backdropFilter: "blur(16px)",

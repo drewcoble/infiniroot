@@ -218,6 +218,7 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
         zIndex: 195,
         display: "flex",
         alignItems: "center",
+        overflow: "hidden",
         // Translucent + blurred rather than a flat cutout - same frosted-
         // glass treatment as BottomNav.tsx, so content scrolling underneath
         // the fixed mobile header still shows through softly instead of

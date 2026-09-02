@@ -27,6 +27,7 @@ export function SignedOutHeader({ wordmark }: SignedOutHeaderProps) {
         zIndex: 220,
         display: "flex",
         alignItems: "center",
+        overflow: "hidden",
         background:
           "color-mix(in srgb, var(--mantine-color-body) 75%, transparent)",
         backdropFilter: "blur(16px)",
