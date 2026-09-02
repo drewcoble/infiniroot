@@ -1,6 +1,5 @@
-import { Badge, Card, Group, Stack, Text } from "@mantine/core";
+import { Card, Group, Stack, Text } from "@mantine/core";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { positionColorOrDefault } from "@shared/positionColors";
 import { buildLineupSuggestions } from "../lib/lineupSuggestions";
 import type { TeamRosterRow } from "../types/season";
 
@@ -37,11 +36,8 @@ export function LineupSuggestionsCard({ rows }: LineupSuggestionsCardProps) {
                     {start.name}
                   </Text>
                   <Text size="sm" c="dimmed" span>
-                    at
+                    {start.projectedPoints.toFixed(1)}
                   </Text>
-                  <Badge size="sm" variant="light" color={positionColorOrDefault(start.slot)}>
-                    {start.slot}
-                  </Badge>
                   <Text size="xs" c={delta > 0 ? "green" : "dimmed"} span ml="auto">
                     {formatDelta(delta)} pts
                   </Text>
@@ -51,6 +47,9 @@ export function LineupSuggestionsCard({ rows }: LineupSuggestionsCardProps) {
                     <ArrowDown size={14} color="var(--mantine-color-red-6)" />
                     <Text size="sm" fw={600} span>
                       {sit.name}
+                    </Text>
+                    <Text size="sm" c="dimmed" span>
+                      {sit.projectedPoints.toFixed(1)}
                     </Text>
                   </Group>
                 ) : (
