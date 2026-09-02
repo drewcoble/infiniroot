@@ -55,7 +55,13 @@ export function AppLogo({ wordmark }: AppLogoProps) {
             objectFit: "contain",
           }}
         />
-        <Text fz={10} fw={700} lh={1.2} c="burlywood.6" style={{ marginTop: -10 }}>
+        <Text
+          fz={10}
+          fw={700}
+          lh={1.2}
+          c="burlywood.6"
+          style={{ marginTop: -7, letterSpacing: 1 }}
+        >
           {wordmark}
         </Text>
       </Stack>
