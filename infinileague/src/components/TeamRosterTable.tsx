@@ -1,4 +1,4 @@
-import { Badge, Group, Table, Text } from "@mantine/core";
+import { Badge, Group, Stack, Table, Text } from "@mantine/core";
 import { RookieBadge } from "@shared/RookieBadge";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault } from "@shared/positionColors";
@@ -25,16 +25,21 @@ function formatPoints(points: number | undefined): string {
 // SLOT_ORDER_RANK), rendered as-is. A row with no fpid is an unfilled slot
 // (an open bench/taxi spot the league is configured for) - same "badge +
 // dimmed em dash" treatment SlotTable uses for an empty draft slot.
+//
+// Player cell's name + dimmed "pos - team - bye" subtext follows infinidraft's
+// pre-draft players table mobile row convention (Settings/components/
+// PlayerRowMobile.tsx's `${team} - Tier ${tier}` line), swapping tier for
+// position + bye week - which is why Pos/Team/Bye no longer need their own
+// columns here. Position renders as plain (non-badge) text colored via
+// positionColorOrDefault, unlike the slot label beside it, which stays a
+// badge.
 export function TeamRosterTable({ rows }: TeamRosterTableProps) {
   return (
-    <Table.ScrollContainer minWidth={520}>
+    <Table.ScrollContainer minWidth={420}>
       <Table highlightOnHover verticalSpacing={4}>
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Player</Table.Th>
-            <Table.Th miw={70}>Pos</Table.Th>
-            <Table.Th>Team</Table.Th>
-            <Table.Th>Bye</Table.Th>
             <Table.Th>Proj</Table.Th>
             <Table.Th>Actual</Table.Th>
           </Table.Tr>
@@ -50,17 +55,31 @@ export function TeamRosterTable({ rows }: TeamRosterTableProps) {
                     </Badge>
                   )}
                   {row.fpid !== undefined ? (
-                    <Group gap={6} wrap="nowrap">
-                      <Text span size="sm">
-                        {row.name}
+                    <Stack gap={0}>
+                      <Group gap={6} wrap="nowrap">
+                        <Text span size="sm">
+                          {row.name}
+                        </Text>
+                        {row.isRookie && <RookieBadge />}
+                        {row.injury && (
+                          <Badge color={injuryColor(row.injury.status)} size="sm" variant="light">
+                            {row.injury.statusShort}
+                          </Badge>
+                        )}
+                      </Group>
+                      <Text size="xs" c="dimmed" truncate>
+                        {row.position && (
+                          <>
+                            <Text span c={positionColorOrDefault(row.position)} inherit>
+                              {row.position}
+                            </Text>
+                            {" - "}
+                          </>
+                        )}
+                        {row.team ?? "—"}
+                        {row.byeWeek !== undefined && ` - Bye ${row.byeWeek}`}
                       </Text>
-                      {row.isRookie && <RookieBadge />}
-                      {row.injury && (
-                        <Badge color={injuryColor(row.injury.status)} size="sm" variant="light">
-                          {row.injury.statusShort}
-                        </Badge>
-                      )}
-                    </Group>
+                    </Stack>
                   ) : (
                     <Text size="sm" c="dimmed">
                       —
@@ -68,15 +87,6 @@ export function TeamRosterTable({ rows }: TeamRosterTableProps) {
                   )}
                 </Group>
               </Table.Td>
-              <Table.Td miw={70}>
-                {row.position && (
-                  <Badge size="sm" color={positionColorOrDefault(row.position)} variant="light">
-                    {row.position}
-                  </Badge>
-                )}
-              </Table.Td>
-              <Table.Td>{row.team ?? "—"}</Table.Td>
-              <Table.Td>{row.byeWeek ?? "—"}</Table.Td>
               <Table.Td>{formatPoints(row.projectedPoints)}</Table.Td>
               <Table.Td>{formatPoints(row.actualPoints)}</Table.Td>
             </Table.Tr>
