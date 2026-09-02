@@ -742,6 +742,22 @@ export default defineSchema({
     .index("by_season", ["seasonId"])
     .index("by_team", ["teamId"]),
 
+  // One row per (season, NFL week) a power-rankings computation has been
+  // run for - just the resulting rank order, not the points themselves
+  // (those are cheap to recompute from live projections, but "what order
+  // were teams in last week" isn't, once this week's projections have
+  // overwritten last week's). Ordered teamIds only, index 0 = rank 1 - see
+  // convex/infinileague/season/powerRankings.ts, which upserts this every
+  // time it runs (so same-week reruns after a trade/waiver just refresh
+  // this week's row) and reads the latest prior week's row to compute each
+  // team's rank delta.
+  powerRankingSnapshots: defineTable({
+    seasonId: v.id("seasons"),
+    week: v.string(),
+    teamIds: v.array(v.id("seasonTeams")),
+    computedAt: v.number(),
+  }).index("by_season_week", ["seasonId", "week"]),
+
   // One row per app user (not per league) - connecting a Yahoo account is a
   // one-time action that then lets that user link any of their Yahoo leagues
   // to any of their infinidraft leagues, mirroring how leagues.ownerId already

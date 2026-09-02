@@ -28,7 +28,7 @@ function linkPropsFor(item: BottomNavItem) {
 // Mobile-only tab bar, fixed to the bottom of the viewport (hidden at the
 // "sm" breakpoint and up, where the top Tabs take over instead) - same
 // floating-pill treatment as infinidraft's own BottomNav.tsx, minus the
-// FAB notch/overflow "More" menu neither of infinileague's two tabs need.
+// FAB notch/overflow "More" menu infinileague's handful of tabs don't need.
 // Pairs with the extra bottom padding PageContainer gets in route.tsx so
 // this doesn't cover the last bit of scrollable content.
 export function BottomNav({ items, activeValue }: BottomNavProps) {

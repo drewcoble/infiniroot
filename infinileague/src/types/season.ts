@@ -45,6 +45,41 @@ export interface PowerRankingRow {
   name: string;
   isSelf: boolean;
   totalProjectedPoints: number;
+  // Rank this week minus rank last snapshotted week - positive means moved
+  // up, negative means moved down. Absent when there's no prior snapshot
+  // yet (first computation for this season).
+  rankChange?: number;
+}
+
+// Mirrors convex/lib/faab.ts's FaabSuggestionRow/FaabSuggestionsResult -
+// consumed via convex/infinileague/season/faabValues.ts's getFaabSuggestions.
+// suggestions is unsorted (ranked per-position by rosValue, not globally) -
+// the Free Agents tab sorts it for display.
+export interface FaabSuggestionRow {
+  fpid: number;
+  name: string;
+  team: string | null;
+  position: "QB" | "RB" | "WR" | "TE" | "DST" | "K";
+  rosValue: number;
+  positionRank: number;
+  replacementValue: number;
+  valueOverReplacement: number;
+  marketValue: number;
+  // needMultiplier/suggestedBid/rationale are only populated when the query
+  // was called with a teamId - null otherwise (see FreeAgentsTab, which
+  // always passes the viewer's own team once known).
+  needMultiplier: number | null;
+  suggestedBid: number | null;
+  rationale: string | null;
+}
+
+export interface FaabSuggestionsResult {
+  // Both null outside the NFL regular season (see convex/lib/faab.ts) - no
+  // free-agent market to suggest bids against pre-season/post-season.
+  week: string | null;
+  season: string | null;
+  remainingWeeks: number;
+  suggestions: FaabSuggestionRow[];
 }
 
 export type SlotLabel =

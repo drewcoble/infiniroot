@@ -27,7 +27,6 @@ import { Route as LeagueLeagueIdMyTeamRouteImport } from './routes/league/$leagu
 import { Route as LeagueLeagueIdPlayersRouteImport } from './routes/league/$leagueId/players'
 import { Route as LeagueLeagueIdSettingsRouteImport } from './routes/league/$leagueId/settings'
 import { Route as SeasonLeagueIdIndexRouteImport } from './routes/season/$leagueId/index'
-import { Route as SeasonLeagueIdFreeAgentsRouteImport } from './routes/season/$leagueId/freeAgents'
 import { Route as SeasonLeagueIdSettingsRouteImport } from './routes/season/$leagueId/settings'
 
 const IndexRoute = IndexRouteImport.update({
@@ -120,12 +119,6 @@ const SeasonLeagueIdIndexRoute = SeasonLeagueIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SeasonLeagueIdRouteRoute,
 } as any)
-const SeasonLeagueIdFreeAgentsRoute =
-  SeasonLeagueIdFreeAgentsRouteImport.update({
-    id: '/freeAgents',
-    path: '/freeAgents',
-    getParentRoute: () => SeasonLeagueIdRouteRoute,
-  } as any)
 const SeasonLeagueIdSettingsRoute = SeasonLeagueIdSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -149,7 +142,6 @@ export interface FileRoutesByFullPath {
   '/league/$leagueId/myTeam': typeof LeagueLeagueIdMyTeamRoute
   '/league/$leagueId/players': typeof LeagueLeagueIdPlayersRoute
   '/league/$leagueId/settings': typeof LeagueLeagueIdSettingsRoute
-  '/season/$leagueId/freeAgents': typeof SeasonLeagueIdFreeAgentsRoute
   '/season/$leagueId/settings': typeof SeasonLeagueIdSettingsRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
   '/season/$leagueId/': typeof SeasonLeagueIdIndexRoute
@@ -169,7 +161,6 @@ export interface FileRoutesByTo {
   '/league/$leagueId/myTeam': typeof LeagueLeagueIdMyTeamRoute
   '/league/$leagueId/players': typeof LeagueLeagueIdPlayersRoute
   '/league/$leagueId/settings': typeof LeagueLeagueIdSettingsRoute
-  '/season/$leagueId/freeAgents': typeof SeasonLeagueIdFreeAgentsRoute
   '/season/$leagueId/settings': typeof SeasonLeagueIdSettingsRoute
   '/league/$leagueId': typeof LeagueLeagueIdIndexRoute
   '/season/$leagueId': typeof SeasonLeagueIdIndexRoute
@@ -192,7 +183,6 @@ export interface FileRoutesById {
   '/league/$leagueId/myTeam': typeof LeagueLeagueIdMyTeamRoute
   '/league/$leagueId/players': typeof LeagueLeagueIdPlayersRoute
   '/league/$leagueId/settings': typeof LeagueLeagueIdSettingsRoute
-  '/season/$leagueId/freeAgents': typeof SeasonLeagueIdFreeAgentsRoute
   '/season/$leagueId/settings': typeof SeasonLeagueIdSettingsRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
   '/season/$leagueId/': typeof SeasonLeagueIdIndexRoute
@@ -216,7 +206,6 @@ export interface FileRouteTypes {
     | '/league/$leagueId/myTeam'
     | '/league/$leagueId/players'
     | '/league/$leagueId/settings'
-    | '/season/$leagueId/freeAgents'
     | '/season/$leagueId/settings'
     | '/league/$leagueId/'
     | '/season/$leagueId/'
@@ -236,7 +225,6 @@ export interface FileRouteTypes {
     | '/league/$leagueId/myTeam'
     | '/league/$leagueId/players'
     | '/league/$leagueId/settings'
-    | '/season/$leagueId/freeAgents'
     | '/season/$leagueId/settings'
     | '/league/$leagueId'
     | '/season/$leagueId'
@@ -258,7 +246,6 @@ export interface FileRouteTypes {
     | '/league/$leagueId/myTeam'
     | '/league/$leagueId/players'
     | '/league/$leagueId/settings'
-    | '/season/$leagueId/freeAgents'
     | '/season/$leagueId/settings'
     | '/league/$leagueId/'
     | '/season/$leagueId/'
@@ -403,13 +390,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SeasonLeagueIdIndexRouteImport
       parentRoute: typeof SeasonLeagueIdRouteRoute
     }
-    '/season/$leagueId/freeAgents': {
-      id: '/season/$leagueId/freeAgents'
-      path: '/freeAgents'
-      fullPath: '/season/$leagueId/freeAgents'
-      preLoaderRoute: typeof SeasonLeagueIdFreeAgentsRouteImport
-      parentRoute: typeof SeasonLeagueIdRouteRoute
-    }
     '/season/$leagueId/settings': {
       id: '/season/$leagueId/settings'
       path: '/settings'
@@ -448,13 +428,11 @@ const LeagueLeagueIdRouteRouteWithChildren =
   LeagueLeagueIdRouteRoute._addFileChildren(LeagueLeagueIdRouteRouteChildren)
 
 interface SeasonLeagueIdRouteRouteChildren {
-  SeasonLeagueIdFreeAgentsRoute: typeof SeasonLeagueIdFreeAgentsRoute
   SeasonLeagueIdSettingsRoute: typeof SeasonLeagueIdSettingsRoute
   SeasonLeagueIdIndexRoute: typeof SeasonLeagueIdIndexRoute
 }
 
 const SeasonLeagueIdRouteRouteChildren: SeasonLeagueIdRouteRouteChildren = {
-  SeasonLeagueIdFreeAgentsRoute: SeasonLeagueIdFreeAgentsRoute,
   SeasonLeagueIdSettingsRoute: SeasonLeagueIdSettingsRoute,
   SeasonLeagueIdIndexRoute: SeasonLeagueIdIndexRoute,
 }

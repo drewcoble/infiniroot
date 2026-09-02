@@ -51,7 +51,6 @@ import type * as infinidraft_draft_tiers from "../infinidraft/draft/tiers.js";
 import type * as infinidraft_gemini_client from "../infinidraft/gemini/client.js";
 import type * as infinidraft_gemini_preDraftInsights from "../infinidraft/gemini/preDraftInsights.js";
 import type * as infinidraft_gemini_reportSummary from "../infinidraft/gemini/reportSummary.js";
-import type * as infinidraft_season_faabValues from "../infinidraft/season/faabValues.js";
 import type * as infinidraft_yahoo_client from "../infinidraft/yahoo/client.js";
 import type * as infinidraft_yahoo_league from "../infinidraft/yahoo/league.js";
 import type * as infinidraft_yahoo_leagueSettingsMapping from "../infinidraft/yahoo/leagueSettingsMapping.js";
@@ -147,7 +146,6 @@ declare const fullApi: ApiFromModules<{
   "infinidraft/gemini/client": typeof infinidraft_gemini_client;
   "infinidraft/gemini/preDraftInsights": typeof infinidraft_gemini_preDraftInsights;
   "infinidraft/gemini/reportSummary": typeof infinidraft_gemini_reportSummary;
-  "infinidraft/season/faabValues": typeof infinidraft_season_faabValues;
   "infinidraft/yahoo/client": typeof infinidraft_yahoo_client;
   "infinidraft/yahoo/league": typeof infinidraft_yahoo_league;
   "infinidraft/yahoo/leagueSettingsMapping": typeof infinidraft_yahoo_leagueSettingsMapping;

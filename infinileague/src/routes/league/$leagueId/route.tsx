@@ -3,7 +3,7 @@ import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-rout
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import type { LucideIcon } from "lucide-react";
-import { CircleUserRound, Trophy } from "lucide-react";
+import { CircleUserRound, Trophy, UserSearch } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "../../../components/BottomNav";
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/league/$leagueId")({
   component: LeagueLayout,
 });
 
-type TabValue = "standings" | "myTeam";
+type TabValue = "standings" | "myTeam" | "freeAgents";
 
 interface TabItem {
   value: TabValue;
@@ -24,10 +24,10 @@ interface TabItem {
   params: Record<string, string>;
 }
 
-// Only two destinations exist today - Standings is always reachable, "My
-// Team" only once the self team is known (it needs a concrete teamId param,
-// unlike infinidraft's flat per-league tabs) so it's appended conditionally
-// below rather than listed here.
+// Standings and Free Agents are always reachable; "My Team" only once the
+// self team is known (it needs a concrete teamId param, unlike infinidraft's
+// flat per-league tabs) so it's appended conditionally below rather than
+// listed here.
 const STANDINGS_VALUE: TabValue = "standings";
 
 // Same "top Tabs on desktop, fixed BottomNav on mobile" shell infinidraft's
@@ -71,6 +71,13 @@ function LeagueLayout() {
           },
         ]
       : []),
+    {
+      value: "freeAgents",
+      label: "Free Agents",
+      icon: UserSearch,
+      to: "/league/$leagueId/freeAgents",
+      params: { leagueId },
+    },
   ];
 
   // Path-based rather than TAB_META's exact route string, since the
@@ -86,7 +93,9 @@ function LeagueLayout() {
       ? "standings"
       : selfTeam && location.pathname === `/league/${leagueId}/teams/${selfTeam.teamId}`
         ? "myTeam"
-        : undefined;
+        : location.pathname === `/league/${leagueId}/freeAgents`
+          ? "freeAgents"
+          : undefined;
 
   return (
     <PageContainer pb={{ base: 100, sm: "xl" }}>

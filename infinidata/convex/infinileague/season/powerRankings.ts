@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { action, ActionCtx } from "../../_generated/server";
+import { action, ActionCtx, internalMutation, internalQuery } from "../../_generated/server";
 import { api, internal } from "../../_generated/api";
-import { Id } from "../../_generated/dataModel";
+import { Doc, Id } from "../../_generated/dataModel";
 import { fetchSleeperJson, sleeperPlayerIdToFpid, type SleeperRoster } from "../../sleeper/league";
 import { optimizeLineup, type LineupPick } from "../../infinidraft/draft/lineupOptimizer";
 
@@ -10,7 +10,62 @@ export interface PowerRankingRow {
   name: string;
   isSelf: boolean;
   totalProjectedPoints: number;
+  // Rank this week minus rank last snapshotted week (positive = moved up,
+  // negative = moved down) - undefined when there's no prior snapshot to
+  // compare against yet (first time power rankings have run for this
+  // season, or every earlier week got skipped).
+  rankChange?: number;
 }
+
+// Latest snapshot strictly before `beforeWeek` - not necessarily
+// beforeWeek - 1, since a season can go a week or more without the
+// dashboard (and so getPowerRankings) ever being opened.
+export const getLatestSnapshotBeforeWeek = internalQuery({
+  args: { seasonId: v.id("seasons"), beforeWeek: v.string() },
+  handler: async (ctx, args): Promise<Doc<"powerRankingSnapshots"> | null> => {
+    const rows = await ctx.db
+      .query("powerRankingSnapshots")
+      .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId))
+      .collect();
+    const before = rows.filter((row) => Number(row.week) < Number(args.beforeWeek));
+    if (before.length === 0) return null;
+    return before.reduce((latest, row) =>
+      Number(row.week) > Number(latest.week) ? row : latest,
+    );
+  },
+});
+
+// Upserted every time getPowerRankings runs for a given week - same-week
+// reruns (a trade/waiver changes the roster, or the page just gets
+// reloaded) refresh that week's row in place rather than piling up
+// duplicates, so "last week's snapshot" always means the last thing this
+// action actually computed for that week, not its first-ever run.
+export const saveSnapshot = internalMutation({
+  args: {
+    seasonId: v.id("seasons"),
+    week: v.string(),
+    teamIds: v.array(v.id("seasonTeams")),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("powerRankingSnapshots")
+      .withIndex("by_season_week", (q) =>
+        q.eq("seasonId", args.seasonId).eq("week", args.week),
+      )
+      .first();
+    const computedAt = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, { teamIds: args.teamIds, computedAt });
+    } else {
+      await ctx.db.insert("powerRankingSnapshots", {
+        seasonId: args.seasonId,
+        week: args.week,
+        teamIds: args.teamIds,
+        computedAt,
+      });
+    }
+  },
+});
 
 // Each team's optimal-lineup total, projected from the current NFL week
 // through week 18, ranked descending - a rest-of-season strength read
@@ -118,14 +173,34 @@ export const getPowerRankings = action({
       totalByTeam.set(team._id, total);
     }
 
-    return teams
+    const ranked = teams
       .filter((team) => totalByTeam.has(team._id))
-      .map((team) => ({
+      .map((team) => ({ team, totalProjectedPoints: totalByTeam.get(team._id) ?? 0 }))
+      .sort((a, b) => b.totalProjectedPoints - a.totalProjectedPoints);
+
+    const currentWeekStr = String(currentWeek);
+    const previousSnapshot = await ctx.runQuery(
+      internal.infinileague.season.powerRankings.getLatestSnapshotBeforeWeek,
+      { seasonId: args.seasonId, beforeWeek: currentWeekStr },
+    );
+    const previousRankByTeam = new Map<Id<"seasonTeams">, number>();
+    previousSnapshot?.teamIds.forEach((teamId, i) => previousRankByTeam.set(teamId, i + 1));
+
+    await ctx.runMutation(internal.infinileague.season.powerRankings.saveSnapshot, {
+      seasonId: args.seasonId,
+      week: currentWeekStr,
+      teamIds: ranked.map(({ team }) => team._id),
+    });
+
+    return ranked.map(({ team, totalProjectedPoints }, index) => {
+      const previousRank = previousRankByTeam.get(team._id);
+      return {
         teamId: team._id,
         name: team.name,
         isSelf: team.isSelf,
-        totalProjectedPoints: totalByTeam.get(team._id) ?? 0,
-      }))
-      .sort((a, b) => b.totalProjectedPoints - a.totalProjectedPoints);
+        totalProjectedPoints,
+        ...(previousRank !== undefined ? { rankChange: previousRank - (index + 1) } : {}),
+      };
+    });
   },
 });

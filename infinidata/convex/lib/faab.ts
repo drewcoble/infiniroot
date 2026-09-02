@@ -235,10 +235,11 @@ function weakestStarterByPosition(
 // derivation. Computed live (no cache table): the free-agent pool is much
 // smaller than the full draft board and this is an on-demand advisory tool,
 // not read on every render during a live draft the way getDraftValues is.
-// Shared by both apps' getFaabSuggestions queries (convex/infinileague/
-// season/faabValues.ts, convex/infinidraft/season/faabValues.ts) - each app
-// owns its own thin query wrapper, but the computation itself lives here so
-// a change to the math can't accidentally diverge between them.
+// Lives here rather than directly in convex/infinileague/season/faabValues.ts
+// (its only consumer, now that infinidraft's own Free Agents tab has moved
+// to infinileague) since it's still generic library logic, not
+// infinileague-specific - kept out of that app's folder the same way
+// convex/lib/rosterSlots.ts is.
 export async function computeFaabSuggestions(
   ctx: QueryCtx,
   args: {
