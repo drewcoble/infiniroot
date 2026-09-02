@@ -36,6 +36,17 @@ export interface StandingsRow {
   waiverPosition?: number;
 }
 
+// Mirrors convex/infinileague/season/powerRankings.ts's PowerRankingRow -
+// already ranked descending by the backend (each team's optimal-lineup
+// total, current week through week 18), so this just renders in the order
+// given, same convention as StandingsRow above.
+export interface PowerRankingRow {
+  teamId: string;
+  name: string;
+  isSelf: boolean;
+  totalProjectedPoints: number;
+}
+
 export type SlotLabel =
   | "QB"
   | "SUPERFLEX"

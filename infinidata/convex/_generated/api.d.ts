@@ -57,6 +57,7 @@ import type * as infinidraft_yahoo_league from "../infinidraft/yahoo/league.js";
 import type * as infinidraft_yahoo_leagueSettingsMapping from "../infinidraft/yahoo/leagueSettingsMapping.js";
 import type * as infinidraft_yahoo_oauth from "../infinidraft/yahoo/oauth.js";
 import type * as infinileague_season_faabValues from "../infinileague/season/faabValues.js";
+import type * as infinileague_season_powerRankings from "../infinileague/season/powerRankings.js";
 import type * as infinileague_season_rosterPlayers from "../infinileague/season/rosterPlayers.js";
 import type * as infinileague_season_standings from "../infinileague/season/standings.js";
 import type * as infinileague_season_teamRoster from "../infinileague/season/teamRoster.js";
@@ -152,6 +153,7 @@ declare const fullApi: ApiFromModules<{
   "infinidraft/yahoo/leagueSettingsMapping": typeof infinidraft_yahoo_leagueSettingsMapping;
   "infinidraft/yahoo/oauth": typeof infinidraft_yahoo_oauth;
   "infinileague/season/faabValues": typeof infinileague_season_faabValues;
+  "infinileague/season/powerRankings": typeof infinileague_season_powerRankings;
   "infinileague/season/rosterPlayers": typeof infinileague_season_rosterPlayers;
   "infinileague/season/standings": typeof infinileague_season_standings;
   "infinileague/season/teamRoster": typeof infinileague_season_teamRoster;

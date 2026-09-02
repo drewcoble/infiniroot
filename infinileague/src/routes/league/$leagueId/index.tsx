@@ -14,9 +14,10 @@ import {
 import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
 import { StandingsTable } from "../../../components/StandingsTable";
+import { PowerRankingsCard } from "../../../components/PowerRankingsCard";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
-import type { LinkedSeason, StandingsRow } from "../../../types/season";
+import type { LinkedSeason, PowerRankingRow, StandingsRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/")({
   component: LeaguePage,
@@ -60,6 +61,33 @@ function LeaguePage() {
     isAuthenticated ? { seasonId } : "skip",
   );
   const syncLeagueRoster = useAction(api.sleeper.league.syncLeagueRoster);
+
+  const getPowerRankings = useAction(
+    api.infinileague.season.powerRankings.getPowerRankings,
+  );
+  const [powerRankings, setPowerRankings] = useState<
+    PowerRankingRow[] | undefined
+  >(undefined);
+  const [powerRankingsError, setPowerRankingsError] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setPowerRankings(undefined);
+    setPowerRankingsError(null);
+    getPowerRankings({ seasonId })
+      .then(setPowerRankings)
+      .catch((err) =>
+        setPowerRankingsError(
+          getErrorMessage(err, "Failed to load power rankings."),
+        ),
+      );
+    // Refetch whenever the league switches - deliberately excludes
+    // getPowerRankings/seasonId itself (derived from leagueId) from deps,
+    // same convention as the auto-sync effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated]);
 
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -138,6 +166,16 @@ function LeaguePage() {
           waiverType={season.waiverType}
         />
       )}
+      {powerRankingsError && (
+        <Alert
+          color="red"
+          withCloseButton
+          onClose={() => setPowerRankingsError(null)}
+        >
+          {powerRankingsError}
+        </Alert>
+      )}
+      <PowerRankingsCard rows={powerRankings} />
       <Text c="dimmed">
         Waiver recommendations, FAAB bid suggestions, and trade analysis land
         here next.
