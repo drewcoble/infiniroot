@@ -7,14 +7,15 @@ import {
   Button,
   Group,
   Loader,
+  SegmentedControl,
   Stack,
   Text,
   Title,
 } from "@mantine/core";
 import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
-import { StandingsTable } from "../../../components/StandingsTable";
-import { PowerRankingsCard } from "../../../components/PowerRankingsCard";
+import { StandingsList } from "../../../components/StandingsList";
+import { PowerRankingsList } from "../../../components/PowerRankingsList";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
 import type { LinkedSeason, PowerRankingRow, StandingsRow } from "../../../types/season";
@@ -45,6 +46,10 @@ function LeaguePage() {
   // as a real type guarantee.
   const seasonId = leagueId as Id<"seasons">;
   const { isAuthenticated } = useConvexAuth();
+
+  const [tableView, setTableView] = useState<"standings" | "power">(
+    "standings",
+  );
 
   const seasonsList: LinkedSeason[] | undefined = useQuery(
     api.leagues.listLinkedSeasons,
@@ -157,25 +162,35 @@ function LeaguePage() {
           {syncError}
         </Alert>
       )}
-      {standings === undefined ? (
-        <Loader />
+      <SegmentedControl
+        value={tableView}
+        onChange={(value) => setTableView(value as "standings" | "power")}
+        data={[
+          { label: "Standings", value: "standings" },
+          { label: "Power rankings", value: "power" },
+        ]}
+        style={{ alignSelf: "flex-start" }}
+      />
+      {tableView === "standings" ? (
+        standings === undefined ? (
+          <Loader />
+        ) : (
+          <StandingsList leagueId={leagueId} rows={standings} />
+        )
       ) : (
-        <StandingsTable
-          leagueId={leagueId}
-          rows={standings}
-          waiverType={season.waiverType}
-        />
+        <>
+          {powerRankingsError && (
+            <Alert
+              color="red"
+              withCloseButton
+              onClose={() => setPowerRankingsError(null)}
+            >
+              {powerRankingsError}
+            </Alert>
+          )}
+          <PowerRankingsList leagueId={leagueId} rows={powerRankings} />
+        </>
       )}
-      {powerRankingsError && (
-        <Alert
-          color="red"
-          withCloseButton
-          onClose={() => setPowerRankingsError(null)}
-        >
-          {powerRankingsError}
-        </Alert>
-      )}
-      <PowerRankingsCard rows={powerRankings} />
       <Text c="dimmed">
         Waiver recommendations, FAAB bid suggestions, and trade analysis land
         here next.
