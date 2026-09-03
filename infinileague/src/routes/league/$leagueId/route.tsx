@@ -3,7 +3,7 @@ import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-rout
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import type { LucideIcon } from "lucide-react";
-import { ArrowLeftRight, CircleUserRound, Trophy, UserSearch, Users } from "lucide-react";
+import { ArrowLeftRight, CircleUserRound, LayoutGrid, Trophy, UserSearch, Users } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "../../../components/BottomNav";
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/league/$leagueId")({
   component: LeagueLayout,
 });
 
-type TabValue = "standings" | "myTeam" | "freeAgents" | "players" | "trade";
+type TabValue = "standings" | "myTeam" | "freeAgents" | "players" | "depthCharts" | "trade";
 
 interface TabItem {
   value: TabValue;
@@ -29,6 +29,14 @@ interface TabItem {
 // infinidraft's flat per-league tabs) so it's appended conditionally below
 // rather than listed here.
 const STANDINGS_VALUE: TabValue = "standings";
+
+// Mobile BottomNav's direct-row cutoff, same "positional rather than a
+// fixed value set" reasoning as infinidraft's own route.tsx - the first 4
+// of whatever's actually in `tabs` fill the direct slots, so if My Team
+// isn't shown (no self team yet) the 5th tab backfills instead of leaving a
+// gap. No FAB here (infinileague has no live-draft nominate action), so
+// unlike infinidraft this count never changes.
+const BOTTOM_NAV_DIRECT_COUNT = 4;
 
 // Same "top Tabs on desktop, fixed BottomNav on mobile" shell infinidraft's
 // own league/$leagueId/route.tsx uses, scaled down to infinileague's two
@@ -86,6 +94,13 @@ function LeagueLayout() {
       params: { leagueId },
     },
     {
+      value: "depthCharts",
+      label: "Depth Charts",
+      icon: LayoutGrid,
+      to: "/league/$leagueId/depthCharts",
+      params: { leagueId },
+    },
+    {
       value: "trade",
       label: "Trade",
       icon: ArrowLeftRight,
@@ -111,9 +126,11 @@ function LeagueLayout() {
           ? "freeAgents"
           : location.pathname === `/league/${leagueId}/players`
             ? "players"
-            : location.pathname === `/league/${leagueId}/trade`
-              ? "trade"
-              : undefined;
+            : location.pathname === `/league/${leagueId}/depthCharts`
+              ? "depthCharts"
+              : location.pathname === `/league/${leagueId}/trade`
+                ? "trade"
+                : undefined;
 
   return (
     <PageContainer pb={{ base: 100, sm: "xl" }}>
@@ -141,7 +158,11 @@ function LeagueLayout() {
         </Box>
         <Outlet />
       </Stack>
-      <BottomNav items={tabs} activeValue={activeValue} />
+      <BottomNav
+        items={tabs.slice(0, BOTTOM_NAV_DIRECT_COUNT)}
+        more={{ label: "More", items: tabs.slice(BOTTOM_NAV_DIRECT_COUNT) }}
+        activeValue={activeValue}
+      />
     </PageContainer>
   );
 }

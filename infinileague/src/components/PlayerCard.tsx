@@ -6,6 +6,12 @@ import type { RosVorRow } from "../types/season";
 interface PlayerCardProps {
   row: RosVorRow;
   isRookie: boolean;
+  // Overrides the left-hand label (row.rosRank by default) - the Depth
+  // Charts tab (src/routes/league/$leagueId/depthCharts.tsx) reuses this
+  // card but wants the team's own depth-chart slot ("RB2") there instead of
+  // this player's overall league-wide rosVOR rank, which isn't relevant
+  // context once you're already looking at one team's roster.
+  leftLabel?: string;
 }
 
 // One row of infinileague's Players tab (src/routes/league/$leagueId/
@@ -16,12 +22,12 @@ interface PlayerCardProps {
 // rows. Fixed height so the virtualizer driving that list can size it
 // exactly (see PLAYER_CARD_HEIGHT there) - if this card's rendered height
 // ever changes, that constant needs to move with it.
-export function PlayerCard({ row, isRookie }: PlayerCardProps) {
+export function PlayerCard({ row, isRookie, leftLabel }: PlayerCardProps) {
   return (
     <Card withBorder padding="xs" radius="md">
       <Group wrap="nowrap" gap="sm">
         <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
-          {row.rosRank}
+          {leftLabel ?? row.rosRank}
         </Text>
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
           <Group gap={6} wrap="nowrap">
