@@ -31,6 +31,22 @@ export const addCustomPlayer = mutation({
       throw new Error("Enter a player name.");
     }
 
+    // The nomination panel's search is scoped to filterRelevantPlayers's
+    // ADP cutoff, so a real tracked player can still come up empty there
+    // even though we already have a row (and real projections, and any
+    // espnId/yahooId) for them - reuse that identity instead of minting a
+    // duplicate synthetic one whenever the typed name matches an existing
+    // player at the same position.
+    const normalizedName = name.toLowerCase();
+    const existingMatch = (await ctx.db.query("players").collect()).find(
+      (player) =>
+        player.position === args.position &&
+        player.name.trim().toLowerCase() === normalizedName,
+    );
+    if (existingMatch) {
+      return existingMatch.fpid;
+    }
+
     // Always negative so this can never collide with a real Sleeper fpid or
     // this app's own DST synthetic ids (90001+, see sleeper/client.ts's
     // DEF_TEAM_FPIDS) - both are always positive. The while loop only ever
