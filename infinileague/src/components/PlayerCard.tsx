@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Box, Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
+import { injuryColor } from "@shared/injuryColor";
 import { RookieBadge } from "@shared/RookieBadge";
 import type { RosVorRow } from "../types/season";
 
@@ -41,6 +42,11 @@ export function PlayerCard({ row, isRookie, leftLabel, footer }: PlayerCardProps
               {row.name}
             </Text>
             {isRookie && <RookieBadge />}
+            {row.injury && (
+              <Badge color={injuryColor(row.injury.status)} size="sm" variant="light">
+                {row.injury.statusShort}
+              </Badge>
+            )}
           </Group>
           <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
             <Badge size="sm" color={positionColorOrDefault(row.position)} variant="light">

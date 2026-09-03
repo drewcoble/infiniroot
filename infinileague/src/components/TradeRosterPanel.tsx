@@ -1,5 +1,6 @@
 import { Badge, Checkbox, Group, Stack, Table, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
+import { injuryColor } from "@shared/injuryColor";
 import type { RosVorRow, TeamRosterRow } from "../types/season";
 import type { TradeValueMetric } from "../lib/tradeAnalyzer";
 
@@ -60,9 +61,16 @@ export function TradeRosterPanel({
                     </Badge>
                   )}
                   <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                    <Text span size="sm" truncate>
-                      {row.name}
-                    </Text>
+                    <Group gap={6} wrap="nowrap">
+                      <Text span size="sm" truncate>
+                        {row.name}
+                      </Text>
+                      {row.injury && (
+                        <Badge color={injuryColor(row.injury.status)} size="sm" variant="light">
+                          {row.injury.statusShort}
+                        </Badge>
+                      )}
+                    </Group>
                     <Text size="xs" c="dimmed" truncate>
                       {row.position && (
                         <>

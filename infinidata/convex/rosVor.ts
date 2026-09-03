@@ -37,6 +37,11 @@ export interface RosVorRow {
   // getRosVorBoard, which joins against rosterPlayers/seasonTeams for
   // this; getPlayerRosVorHistory's raw rows don't have it.
   rosteredByTeamName: string | null;
+  // Absent means not currently injured - same convex/injuries.ts table
+  // (Sleeper-sourced, one row per currently-injured player) teamRoster.ts
+  // already joins for the Trade tab's roster panel. Only populated by
+  // getRosVorBoard, same as rosteredByTeamName above.
+  injury?: { status: string; statusShort: string };
 }
 
 // Recomputes and upserts one week's full rosVorSnapshots board for one
@@ -232,7 +237,7 @@ export const getRosVorBoard = query({
   handler: async (ctx, args): Promise<RosVorRow[]> => {
     await requireSeasonOwner(ctx, args.seasonId);
 
-    const [rows, rosteredRows, teams] = await Promise.all([
+    const [rows, rosteredRows, teams, injuries] = await Promise.all([
       ctx.db
         .query("rosVorSnapshots")
         .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
@@ -245,9 +250,11 @@ export const getRosVorBoard = query({
         .query("seasonTeams")
         .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
         .collect(),
+      ctx.db.query("injuries").collect(),
     ]);
     const teamNameById = new Map(teams.map((team) => [team._id, team.name]));
     const teamNameByFpid = new Map(rosteredRows.map((row) => [row.fpid, teamNameById.get(row.teamId) ?? null]));
+    const injuryByFpid = new Map(injuries.map((row) => [row.fpid, row]));
 
     // Positional rank - grouped from this week's full board (before the
     // optional position filter below), same rosVor ordering rosRank uses
@@ -268,20 +275,24 @@ export const getRosVorBoard = query({
     return rows
       .filter((row) => !args.position || row.position === args.position)
       .sort((a, b) => a.rosRank - b.rosRank)
-      .map((row) => ({
-        fpid: row.fpid,
-        name: row.name,
-        team: row.team,
-        position: row.position,
-        rosVor: row.rosVor,
-        rosRank: row.rosRank,
-        actualVor: row.actualVor,
-        actualRank: row.actualRank,
-        positionRank: positionRankByFpid.get(row.fpid) ?? 0,
-        rosPpg: row.rosPpg ?? 0,
-        actualPpg: row.actualPpg ?? 0,
-        rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
-      }));
+      .map((row) => {
+        const injury = injuryByFpid.get(row.fpid);
+        return {
+          fpid: row.fpid,
+          name: row.name,
+          team: row.team,
+          position: row.position,
+          rosVor: row.rosVor,
+          rosRank: row.rosRank,
+          actualVor: row.actualVor,
+          actualRank: row.actualRank,
+          positionRank: positionRankByFpid.get(row.fpid) ?? 0,
+          rosPpg: row.rosPpg ?? 0,
+          actualPpg: row.actualPpg ?? 0,
+          rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
+          ...(injury ? { injury: { status: injury.status, statusShort: injury.statusShort } } : {}),
+        };
+      });
   },
 });
 
