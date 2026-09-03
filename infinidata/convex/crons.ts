@@ -20,4 +20,18 @@ crons.cron(
   {},
 )
 
+// Tank01's depth charts, once a day - a separate cron entry rather than
+// folded into fetchAllInternal above, so a Tank01-side failure (missing
+// TANK01_API_KEY, rate limit) can never take down the existing Sleeper/ESPN
+// refresh those other actions depend on. Same '0 12 * * *' cadence as
+// fetchAllInternal - one bulk call/day is what the free-tier 1,000/month cap
+// (see TANK01.md) is sized for; do not add per-player or more-frequent
+// Tank01 calls without revisiting that budget.
+crons.cron(
+  'fetch tank01 depth charts',
+  '0 12 * * *',
+  internal.tank01.depthCharts.fetchDepthChartsInternal,
+  {},
+)
+
 export default crons
