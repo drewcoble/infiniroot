@@ -3,7 +3,7 @@ import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-rout
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import type { LucideIcon } from "lucide-react";
-import { CircleUserRound, Trophy, UserSearch, Users } from "lucide-react";
+import { ArrowLeftRight, CircleUserRound, Trophy, UserSearch, Users } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "../../../components/BottomNav";
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/league/$leagueId")({
   component: LeagueLayout,
 });
 
-type TabValue = "standings" | "myTeam" | "freeAgents" | "players";
+type TabValue = "standings" | "myTeam" | "freeAgents" | "players" | "trade";
 
 interface TabItem {
   value: TabValue;
@@ -85,6 +85,13 @@ function LeagueLayout() {
       to: "/league/$leagueId/players",
       params: { leagueId },
     },
+    {
+      value: "trade",
+      label: "Trade",
+      icon: ArrowLeftRight,
+      to: "/league/$leagueId/trade",
+      params: { leagueId },
+    },
   ];
 
   // Path-based rather than TAB_META's exact route string, since the
@@ -104,7 +111,9 @@ function LeagueLayout() {
           ? "freeAgents"
           : location.pathname === `/league/${leagueId}/players`
             ? "players"
-            : undefined;
+            : location.pathname === `/league/${leagueId}/trade`
+              ? "trade"
+              : undefined;
 
   return (
     <PageContainer pb={{ base: 100, sm: "xl" }}>

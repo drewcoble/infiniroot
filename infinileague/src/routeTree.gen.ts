@@ -15,6 +15,7 @@ import { Route as LeagueLeagueIdRouteRouteImport } from './routes/league/$league
 import { Route as LeagueLeagueIdIndexRouteImport } from './routes/league/$leagueId/index'
 import { Route as LeagueLeagueIdFreeAgentsRouteImport } from './routes/league/$leagueId/freeAgents'
 import { Route as LeagueLeagueIdPlayersRouteImport } from './routes/league/$leagueId/players'
+import { Route as LeagueLeagueIdTradeRouteImport } from './routes/league/$leagueId/trade'
 import { Route as LeagueLeagueIdTeamsTeamIdRouteImport } from './routes/league/$leagueId/teams/$teamId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -48,6 +49,11 @@ const LeagueLeagueIdPlayersRoute = LeagueLeagueIdPlayersRouteImport.update({
   path: '/players',
   getParentRoute: () => LeagueLeagueIdRouteRoute,
 } as any)
+const LeagueLeagueIdTradeRoute = LeagueLeagueIdTradeRouteImport.update({
+  id: '/trade',
+  path: '/trade',
+  getParentRoute: () => LeagueLeagueIdRouteRoute,
+} as any)
 const LeagueLeagueIdTeamsTeamIdRoute =
   LeagueLeagueIdTeamsTeamIdRouteImport.update({
     id: '/teams/$teamId',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
   '/league/$leagueId/players': typeof LeagueLeagueIdPlayersRoute
+  '/league/$leagueId/trade': typeof LeagueLeagueIdTradeRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
   '/league/$leagueId/teams/$teamId': typeof LeagueLeagueIdTeamsTeamIdRoute
 }
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/connect-sleeper': typeof ConnectSleeperRoute
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
   '/league/$leagueId/players': typeof LeagueLeagueIdPlayersRoute
+  '/league/$leagueId/trade': typeof LeagueLeagueIdTradeRoute
   '/league/$leagueId': typeof LeagueLeagueIdIndexRoute
   '/league/$leagueId/teams/$teamId': typeof LeagueLeagueIdTeamsTeamIdRoute
 }
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
   '/league/$leagueId/players': typeof LeagueLeagueIdPlayersRoute
+  '/league/$leagueId/trade': typeof LeagueLeagueIdTradeRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
   '/league/$leagueId/teams/$teamId': typeof LeagueLeagueIdTeamsTeamIdRoute
 }
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId'
     | '/league/$leagueId/freeAgents'
     | '/league/$leagueId/players'
+    | '/league/$leagueId/trade'
     | '/league/$leagueId/'
     | '/league/$leagueId/teams/$teamId'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/connect-sleeper'
     | '/league/$leagueId/freeAgents'
     | '/league/$leagueId/players'
+    | '/league/$leagueId/trade'
     | '/league/$leagueId'
     | '/league/$leagueId/teams/$teamId'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId'
     | '/league/$leagueId/freeAgents'
     | '/league/$leagueId/players'
+    | '/league/$leagueId/trade'
     | '/league/$leagueId/'
     | '/league/$leagueId/teams/$teamId'
   fileRoutesById: FileRoutesById
@@ -161,6 +173,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeagueLeagueIdPlayersRouteImport
       parentRoute: typeof LeagueLeagueIdRouteRoute
     }
+    '/league/$leagueId/trade': {
+      id: '/league/$leagueId/trade'
+      path: '/trade'
+      fullPath: '/league/$leagueId/trade'
+      preLoaderRoute: typeof LeagueLeagueIdTradeRouteImport
+      parentRoute: typeof LeagueLeagueIdRouteRoute
+    }
     '/league/$leagueId/teams/$teamId': {
       id: '/league/$leagueId/teams/$teamId'
       path: '/teams/$teamId'
@@ -174,6 +193,7 @@ declare module '@tanstack/react-router' {
 interface LeagueLeagueIdRouteRouteChildren {
   LeagueLeagueIdFreeAgentsRoute: typeof LeagueLeagueIdFreeAgentsRoute
   LeagueLeagueIdPlayersRoute: typeof LeagueLeagueIdPlayersRoute
+  LeagueLeagueIdTradeRoute: typeof LeagueLeagueIdTradeRoute
   LeagueLeagueIdIndexRoute: typeof LeagueLeagueIdIndexRoute
   LeagueLeagueIdTeamsTeamIdRoute: typeof LeagueLeagueIdTeamsTeamIdRoute
 }
@@ -181,6 +201,7 @@ interface LeagueLeagueIdRouteRouteChildren {
 const LeagueLeagueIdRouteRouteChildren: LeagueLeagueIdRouteRouteChildren = {
   LeagueLeagueIdFreeAgentsRoute: LeagueLeagueIdFreeAgentsRoute,
   LeagueLeagueIdPlayersRoute: LeagueLeagueIdPlayersRoute,
+  LeagueLeagueIdTradeRoute: LeagueLeagueIdTradeRoute,
   LeagueLeagueIdIndexRoute: LeagueLeagueIdIndexRoute,
   LeagueLeagueIdTeamsTeamIdRoute: LeagueLeagueIdTeamsTeamIdRoute,
 }
