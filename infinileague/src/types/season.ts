@@ -93,6 +93,23 @@ export interface FaabSuggestionsResult {
   suggestions: FaabSuggestionRow[];
 }
 
+// Mirrors convex/rosVor.ts's RosVorRow - already sorted by the backend
+// (rosRank ascending), so the Players tab just renders in the order given
+// unless the viewer's swapped the sort. rosRank is the UI-facing int (1 =
+// best, global across every position) - raw rosVor/actualVor stay unused
+// here, per the product call that only the rank should ever be shown.
+export interface RosVorRow {
+  fpid: number;
+  name: string;
+  team: string | null;
+  position: "QB" | "RB" | "WR" | "TE" | "DST" | "K";
+  rosVor: number;
+  rosRank: number;
+  actualVor: number;
+  actualRank: number;
+  rosteredByTeamName: string | null;
+}
+
 export type SlotLabel =
   | "QB"
   | "SUPERFLEX"

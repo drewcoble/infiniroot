@@ -813,8 +813,12 @@ export default defineSchema({
     // Injury-boost narrative, when this row's rosValue includes one (see
     // playerValue.ts's findInjuryBoosts) - stored so a cache consumer
     // doesn't have to redo boost detection just to explain a surprising
-    // number. Same optionality reasoning as rosValue above.
-    boostReason: v.optional(v.string()),
+    // number. v.null() rather than v.optional(): this row gets patched in
+    // place week to week (see refreshRosVor's upsert), and a boost that
+    // applied last week can legitimately stop applying this week - patch
+    // only touches keys it's given, so an *absent* key would leave a stale
+    // reason in place forever, while an explicit null always overwrites it.
+    boostReason: v.union(v.string(), v.null()),
     // Backward-looking: this season's actual points scored so far
     // (playerSeasonStats.totalPoints for this league's exact scoring
     // combo) above the same free-agent-pool replacement level, computed

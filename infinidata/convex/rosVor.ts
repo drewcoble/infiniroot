@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
 import { POSITIONS, positionValidator } from "./positions";
 import { scoringConfigFromSeason } from "./scoring";
+import { requireSeasonOwner } from "./lib/access";
 import { computeReplacementLevels, findInjuryBoosts, forwardRate, gatherPlayerForms, type ValuedPlayer } from "./lib/playerValue";
 
 type Position = (typeof POSITIONS)[number];
@@ -19,6 +20,11 @@ export interface RosVorRow {
   rosRank: number;
   actualVor: number;
   actualRank: number;
+  // The fantasy team's own name (not the NFL team abbreviation above) -
+  // null means this player is a free agent. Only populated by
+  // getRosVorBoard, which joins against rosterPlayers/seasonTeams for
+  // this; getPlayerRosVorHistory's raw rows don't have it.
+  rosteredByTeamName: string | null;
 }
 
 // Recomputes and upserts one week's full rosVorSnapshots board for one
@@ -151,7 +157,7 @@ export const refreshRosVor = internalMutation({
         name: form.name,
         team: form.team,
         rosValue,
-        boostReason: boosts.get(form.fpid)?.reason,
+        boostReason: boosts.get(form.fpid)?.reason ?? null,
         rosVor,
         rosRank: rosRankByFpid.get(form.fpid) ?? 0,
         actualVor,
@@ -183,14 +189,32 @@ export const refreshRosVor = internalMutation({
 
 // One season's full board for a given week, ranked best-first - the UI-
 // facing rank fields (rosRank/actualRank), not the raw VOR values, are
-// what should actually be shown (see schema.ts's comment).
+// what should actually be shown (see schema.ts's comment). Includes every
+// rosterable player (rostered or free agent) - rosteredByTeamName is the
+// fantasy team's own name (not the NFL team abbreviation already on
+// `team`), null for a free agent, powering infinileague's Players tab.
 export const getRosVorBoard = query({
   args: { seasonId: v.id("seasons"), week: v.string(), position: v.optional(positionValidator) },
   handler: async (ctx, args): Promise<RosVorRow[]> => {
-    const rows = await ctx.db
-      .query("rosVorSnapshots")
-      .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
-      .collect();
+    await requireSeasonOwner(ctx, args.seasonId);
+
+    const [rows, rosteredRows, teams] = await Promise.all([
+      ctx.db
+        .query("rosVorSnapshots")
+        .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
+        .collect(),
+      ctx.db
+        .query("rosterPlayers")
+        .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+        .collect(),
+      ctx.db
+        .query("seasonTeams")
+        .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+        .collect(),
+    ]);
+    const teamNameById = new Map(teams.map((team) => [team._id, team.name]));
+    const teamNameByFpid = new Map(rosteredRows.map((row) => [row.fpid, teamNameById.get(row.teamId) ?? null]));
+
     return rows
       .filter((row) => !args.position || row.position === args.position)
       .sort((a, b) => a.rosRank - b.rosRank)
@@ -203,6 +227,7 @@ export const getRosVorBoard = query({
         rosRank: row.rosRank,
         actualVor: row.actualVor,
         actualRank: row.actualRank,
+        rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
       }));
   },
 });
@@ -213,6 +238,8 @@ export const getRosVorBoard = query({
 export const getPlayerRosVorHistory = query({
   args: { seasonId: v.id("seasons"), fpid: v.number() },
   handler: async (ctx, args) => {
+    await requireSeasonOwner(ctx, args.seasonId);
+
     const rows = await ctx.db
       .query("rosVorSnapshots")
       .withIndex("by_season_fpid", (q) => q.eq("seasonId", args.seasonId).eq("fpid", args.fpid))
