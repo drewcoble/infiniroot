@@ -1,4 +1,5 @@
-import { Badge, Card, Group, Stack, Text } from "@mantine/core";
+import type { ReactNode } from "react";
+import { Box, Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { RookieBadge } from "@shared/RookieBadge";
 import type { RosVorRow } from "../types/season";
@@ -12,6 +13,11 @@ interface PlayerCardProps {
   // this player's overall league-wide rosVOR rank, which isn't relevant
   // context once you're already looking at one team's roster.
   leftLabel?: string;
+  // Extra row rendered below the existing name/position/PPG content, still
+  // inside the same card border - the Free Agents tab (freeAgents.tsx)
+  // reuses this card but needs its own suggested-bid/rationale line, which
+  // doesn't belong on every other consumer of this card.
+  footer?: ReactNode;
 }
 
 // One row of infinileague's Players tab (src/routes/league/$leagueId/
@@ -22,7 +28,7 @@ interface PlayerCardProps {
 // rows. Fixed height so the virtualizer driving that list can size it
 // exactly (see PLAYER_CARD_HEIGHT there) - if this card's rendered height
 // ever changes, that constant needs to move with it.
-export function PlayerCard({ row, isRookie, leftLabel }: PlayerCardProps) {
+export function PlayerCard({ row, isRookie, leftLabel, footer }: PlayerCardProps) {
   return (
     <Card withBorder padding="xs" radius="md">
       <Group wrap="nowrap" gap="sm">
@@ -66,6 +72,15 @@ export function PlayerCard({ row, isRookie, leftLabel }: PlayerCardProps) {
           </Text>
         </Stack>
       </Group>
+      {footer && (
+        <Box
+          mt={6}
+          pt={6}
+          style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
+        >
+          {footer}
+        </Box>
+      )}
     </Card>
   );
 }
