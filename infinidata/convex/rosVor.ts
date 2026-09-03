@@ -63,14 +63,12 @@ export const refreshRosVor = internalMutation({
     );
     const scoringConfig = scoringConfigFromSeason(settings);
 
-    const [rosteredRows, forms] = await Promise.all([
-      ctx.db
-        .query("rosterPlayers")
-        .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
-        .collect(),
-      gatherPlayerForms(ctx, { activePositions, week: nflState.week, scoringConfig }),
-    ]);
-    const rosteredFpids = new Set(rosteredRows.map((row) => row.fpid));
+    // No rosterPlayers read here (unlike convex/lib/faab.ts) - replacement
+    // level is now computed against the full player pool regardless of
+    // rostered status (see below), and rosVor/rosRank/actualVor/actualRank
+    // are stored for every player either way, so this function has no
+    // remaining use for "who's on which team."
+    const forms = await gatherPlayerForms(ctx, { activePositions, week: nflState.week, scoringConfig });
 
     // Applied to EVERY player (rostered or not), unlike FAAB's own
     // valueOf, which only boosts the free-agent view - a general "how good
@@ -88,20 +86,28 @@ export const refreshRosVor = internalMutation({
       rosValueByFpid.set(form.fpid, value);
     }
 
-    // Forward replacement level - free-agent pool ranked by the momentum-
-    // adjusted rosValue above.
-    const freeAgentsByRosValue = new Map<Position, ValuedPlayer[]>();
+    // Forward replacement level - the FULL pool (rostered + free agent)
+    // ranked by the momentum-adjusted rosValue above, same as the pre-draft
+    // engine's own pool (convex/draftValues.ts). computeReplacementLevels'
+    // demand-offset math (teamCount * rosterSlots[pos]) assumes it's
+    // indexing into an undivided pool - feeding it the free-agent-only
+    // pool would double-count demand already satisfied by the rostered
+    // players excluded from it, pushing "replacement level" absurdly deep
+    // (confirmed live: every QB in a 2-QB league showed replacement=0,
+    // since the offset landed past the end of the free-agent list
+    // entirely).
+    const allPlayersByRosValue = new Map<Position, ValuedPlayer[]>();
     for (const pos of activePositions) {
       const rows = [...forms.values()]
-        .filter((form) => form.position === pos && !rosteredFpids.has(form.fpid))
+        .filter((form) => form.position === pos)
         .map((form) => ({ fpid: form.fpid, name: form.name, team: form.team, position: form.position, rosValue: rosValueByFpid.get(form.fpid) ?? 0 }))
         .sort((a, b) => b.rosValue - a.rosValue);
-      freeAgentsByRosValue.set(pos, rows);
+      allPlayersByRosValue.set(pos, rows);
     }
-    const rosReplacementValues = computeReplacementLevels(settings, activePositions, freeAgentsByRosValue);
+    const rosReplacementValues = computeReplacementLevels(settings, activePositions, allPlayersByRosValue);
 
-    // Backward replacement level - same tiered demand curve, but the pool
-    // is ranked by cumulative actual points scored this season instead of
+    // Backward replacement level - same full-pool reasoning as above, but
+    // ranked by cumulative actual points scored this season instead of
     // rosValue (computeReplacementLevels only cares that its input is
     // sorted by "rosValue" descending, not what that number represents).
     // gamesPlayed rides along for actualPpg below, not used by the
@@ -121,10 +127,10 @@ export const refreshRosVor = internalMutation({
         .collect();
       for (const row of rows) actualStatsByFpid.set(row.fpid, { totalPoints: row.totalPoints, gamesPlayed: row.gamesPlayed });
     }
-    const freeAgentsByActualPoints = new Map<Position, ValuedPlayer[]>();
+    const allPlayersByActualPoints = new Map<Position, ValuedPlayer[]>();
     for (const pos of activePositions) {
       const rows = [...forms.values()]
-        .filter((form) => form.position === pos && !rosteredFpids.has(form.fpid))
+        .filter((form) => form.position === pos)
         .map((form) => ({
           fpid: form.fpid,
           name: form.name,
@@ -133,9 +139,9 @@ export const refreshRosVor = internalMutation({
           rosValue: actualStatsByFpid.get(form.fpid)?.totalPoints ?? 0,
         }))
         .sort((a, b) => b.rosValue - a.rosValue);
-      freeAgentsByActualPoints.set(pos, rows);
+      allPlayersByActualPoints.set(pos, rows);
     }
-    const actualReplacementValues = computeReplacementLevels(settings, activePositions, freeAgentsByActualPoints);
+    const actualReplacementValues = computeReplacementLevels(settings, activePositions, allPlayersByActualPoints);
 
     // Global (not per-position) rank for both metrics - a real "overall"
     // fantasy board mixes positions, ranked purely by how far above

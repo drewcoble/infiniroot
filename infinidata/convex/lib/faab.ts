@@ -118,7 +118,6 @@ async function computeLivePlayerValues(
     week: string;
     scoringConfig: ReturnType<typeof scoringConfigFromSeason>;
     remainingWeeks: number;
-    rosteredFpids: Set<number>;
   },
 ): Promise<Map<number, PlayerValueEntry>> {
   const forms = await gatherPlayerForms(ctx, {
@@ -139,15 +138,19 @@ async function computeLivePlayerValues(
     rosValueByFpid.set(form.fpid, value);
   }
 
-  const freeAgentsByPosition = new Map<Position, ValuedPlayer[]>();
+  // Full pool (rostered + free agent), not free-agent-only - see
+  // convex/rosVor.ts's identical comment on why computeReplacementLevels
+  // needs the undivided pool (its demand-offset math double-counts if fed
+  // a pool that's already had rostered players filtered out).
+  const allPlayersByPosition = new Map<Position, ValuedPlayer[]>();
   for (const pos of args.activePositions) {
     const rows = [...forms.values()]
-      .filter((form) => form.position === pos && !args.rosteredFpids.has(form.fpid))
+      .filter((form) => form.position === pos)
       .map((form) => ({ fpid: form.fpid, name: form.name, team: form.team, position: form.position, rosValue: rosValueByFpid.get(form.fpid) ?? 0 }))
       .sort((a, b) => b.rosValue - a.rosValue);
-    freeAgentsByPosition.set(pos, rows);
+    allPlayersByPosition.set(pos, rows);
   }
-  const replacementValues = computeReplacementLevels(args.settings, args.activePositions, freeAgentsByPosition);
+  const replacementValues = computeReplacementLevels(args.settings, args.activePositions, allPlayersByPosition);
 
   const values = new Map<number, PlayerValueEntry>();
   for (const form of forms.values()) {
@@ -314,7 +317,6 @@ export async function computeFaabSuggestions(
       week: nflState.week,
       scoringConfig,
       remainingWeeks,
-      rosteredFpids,
     }));
 
   // Every team's current starters, valued the same way as free agents -
