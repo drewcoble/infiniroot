@@ -50,11 +50,11 @@ export function DraftTab({ seasonId, teams }: DraftTabProps) {
   const allProjections = useQuery(api.projections.getAllProjections, {
     week: WEEK,
   });
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
-  const playerTags = useQuery(api.draft.tags.listPlayerTags, {
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
+  const playerTags = useQuery(api.infinidraft.draft.tags.listPlayerTags, {
     seasonId,
   });
-  const activeNomination = useQuery(api.draft.picks.getActiveNomination, {
+  const activeNomination = useQuery(api.infinidraft.draft.picks.getActiveNomination, {
     seasonId,
   });
   const allRankings = useQuery(api.rankings.getAllRankings, { week: WEEK });
@@ -71,18 +71,18 @@ export function DraftTab({ seasonId, teams }: DraftTabProps) {
         }
       : "skip",
   );
-  const nominationConfig = useQuery(api.draft.nominationOrder.getNominationConfig, {
+  const nominationConfig = useQuery(api.infinidraft.draft.nominationOrder.getNominationConfig, {
     seasonId,
   });
   const currentNominator = useQuery(
-    api.draft.nominationOrder.getCurrentNominator,
+    api.infinidraft.draft.nominationOrder.getCurrentNominator,
     nominationConfig?.nominationOrder ? { seasonId } : "skip",
   );
   // Same query/args PlayersLeftTab uses - stable for the draft's duration
   // (season settings + projections only), so this is a shared subscription
   // whenever that tab is also mounted, not a second server-side compute.
   const draftBoardResult = useQuery(
-    api.draft.board.getDraftBoard,
+    api.infinidraft.draft.board.getDraftBoard,
     settings
       ? {
           seasonId,
@@ -94,10 +94,10 @@ export function DraftTab({ seasonId, teams }: DraftTabProps) {
   const tieredValues = draftBoardResult?.rows;
   const usingGenericValues = draftBoardResult?.isGeneric ?? false;
 
-  const removePick = useMutation(api.draft.picks.removePick);
-  const reorderShortlist = useMutation(api.draft.tags.reorderShortlist);
-  const clearPlayerTag = useMutation(api.draft.tags.clearPlayerTag);
-  const nominate = useMutation(api.draft.picks.nominate);
+  const removePick = useMutation(api.infinidraft.draft.picks.removePick);
+  const reorderShortlist = useMutation(api.infinidraft.draft.tags.reorderShortlist);
+  const clearPlayerTag = useMutation(api.infinidraft.draft.tags.clearPlayerTag);
+  const nominate = useMutation(api.infinidraft.draft.picks.nominate);
 
   const nameByFpid = useMemo(() => {
     const map = new Map<number, { name: string; team: string | null }>();

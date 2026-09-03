@@ -1,7 +1,7 @@
 export {
   requireSuperAdmin,
   currentSeason,
-} from "../fantasyPros/client";
+} from "../lib/dataFetch";
 
 /**
  * Undocumented Sleeper endpoint (not in https://docs.sleeper.com/, which only

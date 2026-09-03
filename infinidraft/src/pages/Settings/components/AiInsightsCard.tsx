@@ -40,7 +40,7 @@ export function AiInsightsCard({
   scoringConfig,
 }: AiInsightsCardProps) {
   const report = useQuery(
-    api.draft.insights.getPreDraftInsights,
+    api.infinidraft.draft.insights.getPreDraftInsights,
     seasonId ? { seasonId, week, scoringConfig } : "skip",
   );
   // Only needed for the upgrade-prompt copy below (the actual insight
@@ -54,9 +54,9 @@ export function AiInsightsCard({
   const isAuction = (settings?.draftType ?? "auction") === "auction";
 
   const ensureGenerated = useMutation(
-    api.draft.insights.ensureInsightsGenerated,
+    api.infinidraft.draft.insights.ensureInsightsGenerated,
   );
-  const regenerate = useMutation(api.draft.insights.regenerateInsights);
+  const regenerate = useMutation(api.infinidraft.draft.insights.regenerateInsights);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [upgradeModalOpened, setUpgradeModalOpened] = useState(false);
 

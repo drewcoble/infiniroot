@@ -82,15 +82,15 @@ export function MobileSnakeDraft({ seasonId, teams }: MobileSnakeDraftProps) {
   const settings = settingsList?.find((s) => s._id === seasonId);
   const isSuperflex = (settings?.rosterSlots.SUPERFLEX ?? 0) > 0;
   const thisSeason = settings?.year ?? String(new Date().getFullYear());
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
   // Same authoritative on-the-clock/pick-numbering source the TV board and
   // SnakeDraftTab both read, so this sheet can never disagree with either
   // about whose turn it is or which pick number is up (see
   // getSnakeBoardPublic - the turn pointer alone can lag while keepers
   // occupy early rotation slots).
-  const board = useQuery(api.draft.pickSlots.getSnakeBoardPublic, { seasonId });
+  const board = useQuery(api.infinidraft.draft.pickSlots.getSnakeBoardPublic, { seasonId });
   const draftBoardResult = useQuery(
-    api.draft.board.getDraftBoard,
+    api.infinidraft.draft.board.getDraftBoard,
     settings
       ? {
           seasonId,
@@ -104,7 +104,7 @@ export function MobileSnakeDraft({ seasonId, teams }: MobileSnakeDraftProps) {
     season: thisSeason,
   });
 
-  const draftPick = useMutation(api.draft.picks.draftPick);
+  const draftPick = useMutation(api.infinidraft.draft.picks.draftPick);
 
   // Same ordering rationale as SnakeDraftTab's - the chip row should read in
   // the order teams actually pick in (board.teamOrder is drafts.draftOrder
@@ -348,7 +348,7 @@ export function MobileSnakeDraft({ seasonId, teams }: MobileSnakeDraftProps) {
           </Group>
 
           <Table.ScrollContainer minWidth={340}>
-            <Table striped highlightOnHover verticalSpacing={8}>
+            <Table highlightOnHover verticalSpacing={8}>
               <Table.Thead>
                 <Table.Tr>
                   {(["rank"] as const).map((key) => (

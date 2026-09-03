@@ -8,8 +8,8 @@ import { api } from "@infinidata/api";
 // DraftReportCard.tsx uses for the AI recap. Returns undefined while
 // loading, null if Stripe isn't configured in this deployment at all.
 export function useProPricing() {
-  const pricing = useQuery(api.billing.pricing.getProPricing);
-  const ensureCached = useMutation(api.billing.pricing.ensureProPricingCached);
+  const pricing = useQuery(api.infinidraft.billing.pricing.getProPricing);
+  const ensureCached = useMutation(api.infinidraft.billing.pricing.ensureProPricingCached);
   const requestedRef = useRef(false);
 
   useEffect(() => {

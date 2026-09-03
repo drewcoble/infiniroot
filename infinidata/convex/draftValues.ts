@@ -15,8 +15,8 @@ import {
   ScoringConfig,
 } from "./scoring";
 import { Doc, Id } from "./_generated/dataModel";
-import type { RosterSlotCounts } from "./draft/slots";
-import { hasProAccess } from "./billing/entitlements";
+import type { RosterSlotCounts } from "./lib/rosterSlots";
+import { hasProAccess } from "./lib/entitlements";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -392,12 +392,12 @@ async function computeDraftValues(
     throw new Error("Season not found");
   }
 
-  // Keepers are pre-draft picks (convex/draft/picks.ts's addKeeper) that
+  // Keepers are pre-draft picks (convex/infinidraft/draft/picks.ts's addKeeper) that
   // take a player off the board before the auction even starts. Read via
   // the isKeeper-scoped index rather than the general by_draft index so
   // this query's read range only covers keeper rows - regular auction
   // picks (isKeeper absent) fall outside that range and don't invalidate
-  // this computation. That distinction is deliberate: convex/draft/
+  // this computation. That distinction is deliberate: convex/infinidraft/draft/
   // board.ts documents why re-running this whole VBD engine on every
   // single live pick would be too expensive, but keepers are set once
   // during setup and don't change during the live draft, so reacting to
@@ -422,7 +422,7 @@ async function computeDraftValues(
 
   // Sum each team's actual cap (its override, or the league default) rather
   // than assuming every team uses the league default - a team with a custom
-  // salaryCapOverride (convex/draft/teams.ts) changes the total money in the
+  // salaryCapOverride (convex/infinidraft/draft/teams.ts) changes the total money in the
   // room. Teams may not exist yet the first time this runs (createLeague
   // seeds the cache before initializeSeasonTeams has ever run), so fall back
   // to the settings-only formula in that case.
@@ -513,9 +513,9 @@ async function getGenericDraftAndScoring(
 // Real values for one draft, cache-first - shared by getDraftValues' Pro
 // branch below and anything server-side that needs this draft's actual
 // values unconditionally, regardless of who (if anyone) is signed in to
-// the current request. Report Card (convex/draft/reportCard.ts) is the
+// the current request. Report Card (convex/infinidraft/draft/reportCard.ts) is the
 // reason this needs to be its own function rather than inline in
-// getDraftValues: it's reached via convex/draft/status.ts's
+// getDraftValues: it's reached via convex/infinidraft/draft/status.ts's
 // syncDraftStatus scheduling an internalMutation with no signed-in caller
 // at all, or via the public getDraftReportCardPublic query where the
 // *viewer* (who might not be Pro, or signed in at all) is not who the
@@ -551,7 +551,7 @@ export async function getRealDraftValues(
 
 // Public, frontend-facing entry point - takes a seasonId (what every route/
 // component actually has on hand) and resolves it to that season's real
-// draft internally, same lookup convex/draft/auth.ts's requireRealDraft
+// draft internally, same lookup convex/lib/access.ts's requireRealDraft
 // does.
 //
 // Gated on the caller's Pro plan: a free-plan (or signed-out) caller gets
@@ -562,7 +562,7 @@ export async function getRealDraftValues(
 // specific league's exact auction math or its own custom scoring. This is a
 // deliberate, narrow change to this query's contract - previously it had no
 // auth check at all (read-only derived data, cheap to expose by id) - see
-// the monetization plan for why. Report Card (convex/draft/reportCard.ts)
+// the monetization plan for why. Report Card (convex/infinidraft/draft/reportCard.ts)
 // does NOT call this - it calls getRealDraftValues above directly, since
 // its own Pro gate is checked against the drafting league's owner, not
 // whoever (if anyone) is making the request (see getRealDraftValues'
@@ -774,7 +774,7 @@ async function estimateKeeperValues(
 // invalidateDraftValues below (a keeper change or settings edit) so the
 // cache doesn't have to wait for the next day to catch up. Also called
 // directly (not via the mutation wrapper below) at league-creation/
-// next-season time - see convex/leagues.ts/convex/draft/history.ts - so a
+// next-season time - see convex/leagues.ts/convex/infinidraft/draft/history.ts - so a
 // new draft's cache is never in the "empty because the daily cron hasn't run
 // yet" state that forces every getDraftValues subscription onto the
 // expensive live-compute path.
@@ -825,7 +825,7 @@ export const refreshDraftValues = internalMutation({
 // Clears every cached combo (any week/scoring) for one draft - called
 // inline (same transaction, plain ctx.db, not a separate mutation call) by
 // whatever actually changes getDraftValues' inputs off the daily cycle: a
-// keeper added/removed (convex/draft/picks.ts) or season settings edited
+// keeper added/removed (convex/infinidraft/draft/picks.ts) or season settings edited
 // (convex/leagues.ts's updateSeason). Deliberately just deletes rather than
 // recomputing inline - getDraftValues' cache-miss fallback already makes a
 // stale/missing cache correct, and recomputing here would duplicate that

@@ -82,13 +82,13 @@ const keeperRulesValidator = v.object({
   // one slot per round, the second one has to move - this decides which
   // direction: "earlier" (a round closer to 1, i.e. a more expensive slot)
   // or "later" (a round further from 1, cheaper). Absent means "earlier" -
-  // see convex/draft/pickSlots.ts's resolveRoundConflict, which walks in
+  // see convex/infinidraft/draft/pickSlots.ts's resolveRoundConflict, which walks in
   // this direction from the computed round until it finds this team's
   // first open slot.
   roundConflictResolution: v.optional(
     v.union(v.literal("earlier"), v.literal("later")),
   ),
-  // No longer independently user-set - convex/draft/keeperRules.ts's
+  // No longer independently user-set - convex/infinidraft/draft/keeperRules.ts's
   // setKeeperRules derives and overwrites this on every save from whether
   // maxConsecutiveYears above is defined (an undefined/unlimited max means
   // the same thing this toggle being off used to mean), rather than trusting
@@ -117,7 +117,7 @@ export default defineSchema({
 
   // One row per user (upserted, never duplicated) - mirrors yahooOAuthTokens'
   // shape below. Source of truth for Pro plan access; see
-  // convex/billing/entitlements.ts's hasProAccess. Kept separate from
+  // convex/lib/entitlements.ts's hasProAccess. Kept separate from
   // userProfiles (rather than adding fields there) so login-time profile
   // patches (convex/users.ts's ensureCurrentUser) and webhook-driven billing
   // writes never touch the same document - they run on independent
@@ -179,7 +179,7 @@ export default defineSchema({
   // fetch (see convex/sleeper/projections.ts) - Sleeper's player_id is the
   // fpid used everywhere except DST, which has no numeric id upstream (see
   // DEF_TEAM_FPIDS in convex/sleeper/client.ts). The single source of truth
-  // for name/team/position - projections/rankings/news/injuries all
+  // for name/team/position - projections/rankings/injuries all
   // reference players by fpid rather than duplicating identity.
   players: defineTable({
     fpid: v.number(),
@@ -263,6 +263,19 @@ export default defineSchema({
     pointsStd: v.number(),
     pointsPpr: v.number(),
     pointsHalf: v.number(),
+    // One-step lookback, stashed from the prior fetch's pointsX right before
+    // upsertProjections overwrites this row (see that mutation) - lets
+    // convex/lib/faab.ts detect a same-week projection spike (e.g. a
+    // practice-squad promotion the projection system just caught up to)
+    // without needing a full time-series history table. Absent on this
+    // row's very first fetch, or if the row predates this field. previousFetchedAt
+    // is this row's OWN fetchedAt from before that overwrite, so a consumer
+    // can tell a same-day rerun (no real gap) from a genuine day-over-day
+    // jump - both previous* fields are only ever set/read together.
+    previousPointsStd: v.optional(v.number()),
+    previousPointsPpr: v.optional(v.number()),
+    previousPointsHalf: v.optional(v.number()),
+    previousFetchedAt: v.optional(v.number()),
     // Flexible stat map since QB/RB/WR/TE/DST each expose different columns
     // (e.g. "rec_yd", "rush_td", "pass_att"). See convex/sleeper/projections.ts.
     stats: v.record(v.string(), v.number()),
@@ -465,6 +478,41 @@ export default defineSchema({
     // client-side since a week can have more than one row.
     .index("by_fpid_season", ["fpid", "season"]),
 
+  // Tank01's daily-updated depth chart (see convex/tank01/depthCharts.ts) -
+  // explicit RB/WR/TE/QB/K pecking order per team, a signal neither Sleeper
+  // nor ESPN expose (both only carry projected points, not depth-chart
+  // slot). One row per (team, position, depthPosition) role - e.g.
+  // ("BUF", "RB", "RB2") - overwritten in place on each fetch like
+  // standardValues rather than kept as history, since depth-chart *history*
+  // has no consumer yet; add a depthChartSnapshots table alongside this
+  // (mirroring injurySnapshots above) if that changes. DST/LB/DL/DB are
+  // never rows here - Tank01 does return defense despite calling this
+  // endpoint "Offensive Depth Charts", but nothing fantasy-relevant reads
+  // defensive depth order, and DST's synthetic fpids never carry an espnId
+  // to join against Tank01's playerID anyway (see DEF_TEAM_FPIDS in
+  // convex/sleeper/client.ts).
+  depthCharts: defineTable({
+    team: v.string(),
+    position: positionValidator,
+    // Tank01's own ordinal label ("RB1", "RB2", ...) kept verbatim rather
+    // than parsed into a rank number - this app already treats other
+    // providers' native labels as opaque strings (e.g. standardValues'
+    // rankType), and parsing "RB1" -> 1 buys nothing a string sort
+    // wouldn't already give a reader.
+    depthPosition: v.string(),
+    fpid: v.number(),
+    updatedAt: v.number(),
+  })
+    // "This team's current WR order" - the sync's own per-(team, position)
+    // upsert-with-prune (see convex/tank01/depthChartsData.ts).
+    .index("by_team_position", ["team", "position"])
+    // "Every fantasy-relevant position for this team, one query" - the
+    // Depth Charts tab's team-select read (getTeamDepthChart), which wants
+    // QB/RB/WR/TE/K together rather than one query per position.
+    .index("by_team", ["team"])
+    // "Where does this fpid currently sit" - a player detail modal lookup.
+    .index("by_fpid", ["fpid"]),
+
   // Live NFL week/season snapshot, refreshed daily alongside the rest of
   // fetchAllData (see convex/sleeper/state.ts's fetchNflSeasonState and
   // convex/fetchAllData.ts). Exists because queries can't reach Sleeper
@@ -541,7 +589,7 @@ export default defineSchema({
     faabBudget: v.optional(v.number()),
     // Which waiver system this league actually uses - determines whether
     // infinileague's standings page shows remaining FAAB $ or waiver order
-    // (see convex/season/standings.ts). Provider-agnostic values, not raw
+    // (see convex/infinileague/season/standings.ts). Provider-agnostic values, not raw
     // Sleeper's numeric waiver_type - set/refreshed by convex/sleeper/
     // league.ts's syncLeagueRoster on every sync (not just at connect time),
     // so a season connected before this field existed self-heals on its
@@ -555,7 +603,7 @@ export default defineSchema({
     .index("by_league_year", ["leagueId", "year"]),
 
   // A draft within a season - a season can have many (mock drafts) but at
-  // most one with kind "real" (enforced by convex/draft/history.ts's season
+  // most one with kind "real" (enforced by convex/infinidraft/draft/history.ts's season
   // creation, which always creates exactly one "real" draft alongside the
   // season). Auction-session config defaults from the season at creation but
   // can diverge (e.g. a mock testing a different cap) - though today's UI
@@ -583,7 +631,7 @@ export default defineSchema({
     // A real snake/linear draft's round-1 pick order (SNAKE_DRAFT.md §3.1) -
     // the counterpart to nominationOrder above, kept as its own field rather
     // than reusing that one even though the underlying rotation math is
-    // shared (convex/draft/pickOrder.ts's stepPickOrder): nominationOrder is
+    // shared (convex/infinidraft/draft/pickOrder.ts's stepPickOrder): nominationOrder is
     // documented (see nominate() in picks.ts) as only ever a suggestion the
     // host can override anytime, whereas a snake draft's order is meant to
     // be closer to authoritative. "linear" here means a straight round-robin
@@ -604,10 +652,10 @@ export default defineSchema({
       v.literal("in_progress"),
       v.literal("complete"),
     ),
-    // Set once, explicitly, by convex/draft/lifecycle.ts's startDraft (and
+    // Set once, explicitly, by convex/infinidraft/draft/lifecycle.ts's startDraft (and
     // cleared by its reopenPreDraft) - the actual "has this draft been
     // deliberately started" flag. `status` above is still derived (see
-    // convex/draft/status.ts's syncDraftStatus) but now as a function of
+    // convex/infinidraft/draft/status.ts's syncDraftStatus) but now as a function of
     // this field plus roster fullness, NOT of raw pick count - a keeper
     // added before the draft starts must not flip status away from
     // "pre_draft", since keepers are just draftPicks rows with isKeeper: true.
@@ -616,7 +664,7 @@ export default defineSchema({
     // through this app's own live auction - absent means a real in-app
     // draft (or a season with no history at all yet). Set by
     // convex/leagues.ts's importPreviousSeasonHistory ("sleeper"/"yahoo")
-    // and convex/draft/manualHistory.ts's setManualPreviousSeasonResults
+    // and convex/infinidraft/draft/manualHistory.ts's setManualPreviousSeasonResults
     // ("manual"). Distinguishes which historical seasons the manual-entry
     // edit UI is allowed to touch (only "manual" today - see
     // manualHistory.ts) from a real draft's history, which should never be
@@ -699,7 +747,7 @@ export default defineSchema({
     // and the team-mapping step in Settings. Absent means unmapped.
     sleeperRosterId: v.optional(v.string()),
     sleeperOwnerId: v.optional(v.string()),
-    // Yahoo equivalent of sleeperRosterId - see convex/yahoo/league.ts's
+    // Yahoo equivalent of sleeperRosterId - see convex/infinidraft/yahoo/league.ts's
     // syncYahooLeagueRoster.
     yahooTeamKey: v.optional(v.string()),
     // In-season FAAB spent so far, synced from the linked provider roster -
@@ -709,7 +757,7 @@ export default defineSchema({
     faabBudgetOverride: v.optional(v.number()),
     // Current-season standings, synced from the linked provider roster
     // alongside faabSpent above (see convex/sleeper/league.ts's
-    // syncLeagueRoster) - powers convex/season/standings.ts. All absent
+    // syncLeagueRoster) - powers convex/infinileague/season/standings.ts. All absent
     // until the first sync, same as faabSpent. pointsFor/pointsAgainst are
     // real decimal totals (provider APIs commonly split whole/hundredths
     // internally - already combined by the time it lands here).
@@ -725,8 +773,8 @@ export default defineSchema({
 
   // One team's currently-rostered players, synced from whichever provider
   // this season is linked to (convex/sleeper/league.ts's syncLeagueRoster or
-  // convex/yahoo/league.ts's syncYahooLeagueRoster) - provider-agnostic by
-  // design, since the only consumer (convex/season/faabValues.ts) only ever
+  // convex/infinidraft/yahoo/league.ts's syncYahooLeagueRoster) - provider-agnostic by
+  // design, since the only consumer (convex/lib/faab.ts) only ever
   // needs "which fpids does this team currently have," never which provider
   // synced them. Replace-all-on-sync per team: every existing row for a
   // teamId is deleted and reinserted fresh on each sync, the same pattern
@@ -742,15 +790,100 @@ export default defineSchema({
     .index("by_season", ["seasonId"])
     .index("by_team", ["teamId"]),
 
+  // One row per (season, NFL week) a power-rankings computation has been
+  // run for - just the resulting rank order, not the points themselves
+  // (those are cheap to recompute from live projections, but "what order
+  // were teams in last week" isn't, once this week's projections have
+  // overwritten last week's). Ordered teamIds only, index 0 = rank 1 - see
+  // convex/infinileague/season/powerRankings.ts, which upserts this every
+  // time it runs (so same-week reruns after a trade/waiver just refresh
+  // this week's row) and reads the latest prior week's row to compute each
+  // team's rank delta.
+  powerRankingSnapshots: defineTable({
+    seasonId: v.id("seasons"),
+    week: v.string(),
+    teamIds: v.array(v.id("seasonTeams")),
+    computedAt: v.number(),
+  }).index("by_season_week", ["seasonId", "week"]),
+
+  // One row per (season, week, player) - a full weekly history of every
+  // rosterable player's value, rostered or free agent (unlike faabValues,
+  // which only ever surfaces free agents). Upserted daily by convex/rosVor.ts's
+  // refreshRosVor, keyed by week so a same-week rerun refreshes that week's
+  // numbers in place rather than piling up duplicates, and a new row only
+  // appears once the NFL week actually advances - "weekly snapshots" for
+  // free out of a daily cron, same trick powerRankingSnapshots above uses.
+  // Every past week's row stays (never deleted/overwritten across weeks),
+  // so this doubles as the full-season history next season's draft prep
+  // wants, not just a "current" cache the way draftValues is.
+  rosVorSnapshots: defineTable({
+    seasonId: v.id("seasons"),
+    week: v.string(),
+    fpid: v.number(),
+    position: positionValidator,
+    // Snapshotted from players at compute time, same reasoning as
+    // projections.name/team - renders a full weekly board without an extra
+    // lookup per row.
+    name: v.string(),
+    team: v.union(v.string(), v.null()),
+    // Forward-looking: rest-of-season value (recency/volume-adjusted
+    // momentum on top of projections, see convex/lib/playerValue.ts) above
+    // this position's replacement level among the current free-agent pool -
+    // same VOR concept convex/draftValues.ts's pre-draft process uses,
+    // genuinely unclamped (can go negative) for the same reason that field
+    // is. rosRank is the display-facing int derived from it (1 = best,
+    // global across every position) - UI should show rosRank, not raw
+    // rosVor, per the product call on how this should read.
+    rosVor: v.number(),
+    rosRank: v.number(),
+    // Raw rest-of-season value (same momentum-adjusted number rosVor is
+    // computed from, injury boost included) - stored alongside rosVor so a
+    // consumer like convex/lib/faab.ts can read a ready-made per-player
+    // value straight off this cache instead of recomputing convex/lib/
+    // playerValue.ts's momentum/injury-boost machinery on every live query.
+    // Optional since rows written before this field existed predate it -
+    // convex/lib/faab.ts treats a missing value as a cache miss for that
+    // row (see its own comment).
+    rosValue: v.optional(v.number()),
+    // Injury-boost narrative, when this row's rosValue includes one (see
+    // playerValue.ts's findInjuryBoosts) - stored so a cache consumer
+    // doesn't have to redo boost detection just to explain a surprising
+    // number. v.null() rather than v.optional(): this row gets patched in
+    // place week to week (see refreshRosVor's upsert), and a boost that
+    // applied last week can legitimately stop applying this week - patch
+    // only touches keys it's given, so an *absent* key would leave a stale
+    // reason in place forever, while an explicit null always overwrites it.
+    boostReason: v.union(v.string(), v.null()),
+    // Backward-looking: this season's actual points scored so far
+    // (playerSeasonStats.totalPoints for this league's exact scoring
+    // combo) above the same free-agent-pool replacement level, computed
+    // off actual totals instead of rosValue - "who has actually delivered
+    // value this season," independent of projections entirely. Same
+    // display convention as rosVor/rosRank above.
+    actualVor: v.number(),
+    actualRank: v.number(),
+    // Display-facing per-game rates, computed once at write time rather
+    // than derived later from rosValue/actualVor - remainingWeeks and
+    // gamesPlayed are both specific to the week this row was computed for,
+    // so dividing by "the current week's" values would be wrong for every
+    // past week's row once the season moves on. Optional since rows
+    // written before these fields existed predate them.
+    rosPpg: v.optional(v.number()),
+    actualPpg: v.optional(v.number()),
+    computedAt: v.number(),
+  })
+    .index("by_season_week", ["seasonId", "week"])
+    .index("by_season_fpid", ["seasonId", "fpid"]),
+
   // One row per app user (not per league) - connecting a Yahoo account is a
   // one-time action that then lets that user link any of their Yahoo leagues
   // to any of their infinidraft leagues, mirroring how leagues.ownerId already
-  // scopes everything else per-user. See convex/yahoo/oauth.ts.
+  // scopes everything else per-user. See convex/infinidraft/yahoo/oauth.ts.
   yahooOAuthTokens: defineTable({
     userId: v.id("users"),
     accessToken: v.string(),
     refreshToken: v.string(),
-    // Epoch ms - convex/yahoo/oauth.ts's withYahooToken refreshes proactively
+    // Epoch ms - convex/infinidraft/yahoo/oauth.ts's withYahooToken refreshes proactively
     // a few minutes before this, rather than waiting for a 401.
     expiresAt: v.number(),
     updatedAt: v.number(),
@@ -761,7 +894,7 @@ export default defineSchema({
   // "which app user, and optionally which season's Settings page, started
   // this." Generated by startYahooAuth right before redirecting to Yahoo,
   // consumed (looked up and deleted) exactly once by the /yahoo/callback
-  // HTTP route in convex/http.ts. See convex/yahoo/oauth.ts.
+  // HTTP route in convex/http.ts. See convex/infinidraft/yahoo/oauth.ts.
   yahooOAuthState: defineTable({
     state: v.string(),
     userId: v.id("users"),
@@ -801,20 +934,20 @@ export default defineSchema({
     // Which budget-plan slot this fills, e.g. "RB2" - only ever set (and only
     // ever read) for the self team, at pick time, to reconcile the live
     // auction price against that slot's pre-draft $ plan (see
-    // convex/draft/budgetAutoAdjust.ts). Purely a budget bucket tag now, not
+    // convex/infinidraft/draft/budgetAutoAdjust.ts). Purely a budget bucket tag now, not
     // a lineup/starter assignment - which roster slot a player is actually
     // starting in is always computed fresh from current points (see
     // src/lib/slotAssignment.ts's optimalAssignPicksToSlots), for every team,
     // with no manual override.
     planSlotKey: v.optional(v.string()),
-    // True for a pre-draft keeper assignment (see convex/draft/picks.ts's
+    // True for a pre-draft keeper assignment (see convex/infinidraft/draft/picks.ts's
     // addKeeper), absent/false for a normal auction result. Optional rather
     // than required so existing rows need no backfill - `eq("isKeeper",
     // true)` never matches a row where the field is absent either way.
     isKeeper: v.optional(v.boolean()),
     // Consecutive seasons (including this one) this player has been kept,
     // by any team - only meaningful when isKeeper is true. Auto-suggested
-    // by addKeeper's computeKeeperStreak (see convex/draft/picks.ts) from
+    // by addKeeper's computeKeeperStreak (see convex/infinidraft/draft/picks.ts) from
     // the immediately-prior season's value when this fpid was also a
     // keeper then, and always overridable afterward via setKeeperStreak
     // (e.g. to backfill real-world keeper history from before this app
@@ -824,12 +957,12 @@ export default defineSchema({
     keeperStreak: v.optional(v.number()),
     // True when `teamId` is known to be correct as of end of season, not
     // just wherever this player was drafted/imported to - only ever set by
-    // convex/draft/manualHistory.ts's setManualPreviousSeasonResults, where
+    // convex/infinidraft/draft/manualHistory.ts's setManualPreviousSeasonResults, where
     // the user is directly asserting current team. A pick imported from a
     // provider's draft-day data (see importPreviousSeasonHistory) leaves
     // this absent, since trades/waiver moves after the draft mean the
     // drafting team isn't reliably who ended up with the player - see
-    // convex/draft/history.ts's getPlayerPriceHistory, which only surfaces
+    // convex/infinidraft/draft/history.ts's getPlayerPriceHistory, which only surfaces
     // a team name to callers (e.g. Recommended Keepers) when this is true.
     teamAssignmentConfirmed: v.optional(v.boolean()),
     createdAt: v.number(),
@@ -915,7 +1048,7 @@ export default defineSchema({
   // edit to the pre-draft plan after the draft has started still flows
   // through for any slot nobody has touched yet. The effective live amount
   // for a slot is `overrides[key] ?? draftBudgetPlans.amounts[key] ?? 0` -
-  // see convex/draft/plan.ts's getLiveBudgetPlan, which computes that merge
+  // see convex/infinidraft/draft/plan.ts's getLiveBudgetPlan, which computes that merge
   // server-side so every consumer (matchPlanSlot, useTeamBudget, MyTeamTab)
   // reads one already-merged shape instead of re-deriving it. One row per
   // draft, absence means "fully mirroring the pre-draft plan, nothing
@@ -941,7 +1074,7 @@ export default defineSchema({
     tag: v.union(v.literal("target"), v.literal("avoid")),
     // Dense 0..n-1 rank among this draft's "target" rows only - the
     // Shortlist tab's display/drag order (see reorderShortlist in
-    // convex/draft/tags.ts). Assigned when a player is first tagged target
+    // convex/infinidraft/draft/tags.ts). Assigned when a player is first tagged target
     // (appended to the end) and rewritten across the whole list on reorder;
     // meaningless/unset for "avoid" rows, which have no ordering UI.
     order: v.optional(v.number()),
@@ -962,7 +1095,7 @@ export default defineSchema({
   // nominator before the regular rotation begins) - distinct from no row
   // existing yet, which just means the order was configured but the cycle
   // hasn't been started. direction only matters in "snake" mode (see
-  // convex/draft/pickOrder.ts's stepPickOrder) - it's what lets the team at
+  // convex/infinidraft/draft/pickOrder.ts's stepPickOrder) - it's what lets the team at
   // each end of the order take two consecutive turns before reversing,
   // matching a standard snake draft's round-boundary behavior.
   draftNominationTurns: defineTable({
@@ -1027,7 +1160,7 @@ export default defineSchema({
   // own scoring format - see fetchAllData.ts), and eagerly invalidated
   // whenever something that actually changes the computation happens off the
   // daily cycle (a keeper added/removed, or season settings edited - see
-  // invalidateDraftValues, called from convex/draft/picks.ts and
+  // invalidateDraftValues, called from convex/infinidraft/draft/picks.ts and
   // convex/leagues.ts). getDraftValues reads this table first and only falls
   // back to a live recompute on a cache miss (a combo the daily refresh
   // hasn't covered yet, or one just invalidated).
@@ -1062,15 +1195,15 @@ export default defineSchema({
   ]),
 
   // AI-written (Gemini) narrative recap for one completed real draft's
-  // Report Card - see convex/gemini/reportSummary.ts's generateReportSummary
-  // action, scheduled once by convex/draft/status.ts's syncDraftStatus the
+  // Report Card - see convex/infinidraft/gemini/reportSummary.ts's generateReportSummary
+  // action, scheduled once by convex/infinidraft/draft/status.ts's syncDraftStatus the
   // moment a real draft transitions into status "complete". Generate-once,
   // best-effort, and is never regenerated even if picks are corrected
   // after the draft is marked complete (same known gap as
   // draftReportCardSnapshots below - see its comment). Generated from -
   // and only ever consistent with - the frozen draftReportCardSnapshots row
   // for the same (draftId, week, scoring), not whatever draftValues would
-  // compute live today. convex/draft/reportCard.ts's getDraftReportCardPublic
+  // compute live today. convex/infinidraft/draft/reportCard.ts's getDraftReportCardPublic
   // reads this table and falls back to a free templated recap
   // (src/lib/reportCardSummary.ts) when no row exists yet.
   draftReportSummaries: defineTable({
@@ -1089,7 +1222,7 @@ export default defineSchema({
     generatedAt: v.number(),
   }).index("by_draft_week_scoring", ["draftId", "week", "scoring"]),
 
-  // Freezes convex/draft/reportCard.ts's computeReportCardData output the
+  // Freezes convex/infinidraft/draft/reportCard.ts's computeReportCardData output the
   // first time it's computed for a (draftId, week, scoring) - see that
   // file's ensureReportCardSnapshot. Exists because every number on the
   // Report Card (dollar value, surplus, VOR, grade, every rank) is derived
@@ -1120,7 +1253,7 @@ export default defineSchema({
   }).index("by_draft_week_scoring", ["draftId", "week", "scoring"]),
 
   // AI-written pre-draft strategy takeaways (Pro feature) - see convex/
-  // gemini/preDraftInsights.ts's generatePreDraftInsights and convex/draft/
+  // gemini/preDraftInsights.ts's generatePreDraftInsights and convex/infinidraft/draft/
   // insights.ts's getPreDraftInsights. Keyed on seasonId rather than
   // draftId (unlike draftReportSummaries above): this runs before a draft
   // exists to grade, off the season's live pre-draft state instead of a

@@ -91,7 +91,7 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
     settings?.draftStatus === "pre_draft",
   );
   const thisSeason = settings?.year ?? String(new Date().getFullYear());
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
   // Same authoritative on-the-clock resolution the TV board uses
   // (findNextOpenSlot, keeper-aware) - draftNominationTurns' turn pointer
   // only self-corrects once the first real pick has been made (see
@@ -99,14 +99,14 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
   // reality while keepers alone occupy the early rotation slots. Reading the
   // same query the board reads guarantees this tab can never show a
   // different "on the clock" team than the TV board does.
-  const board = useQuery(api.draft.pickSlots.getSnakeBoardPublic, {
+  const board = useQuery(api.infinidraft.draft.pickSlots.getSnakeBoardPublic, {
     seasonId,
   });
-  const draftOrderConfig = useQuery(api.draft.draftOrder.getDraftOrderConfig, {
+  const draftOrderConfig = useQuery(api.infinidraft.draft.draftOrder.getDraftOrderConfig, {
     seasonId,
   });
   const draftBoardResult = useQuery(
-    api.draft.board.getDraftBoard,
+    api.infinidraft.draft.board.getDraftBoard,
     settings
       ? {
           seasonId,
@@ -120,8 +120,8 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
     season: thisSeason,
   });
 
-  const draftPick = useMutation(api.draft.picks.draftPick);
-  const undoLastPick = useMutation(api.draft.picks.undoLastPick);
+  const draftPick = useMutation(api.infinidraft.draft.picks.draftPick);
+  const undoLastPick = useMutation(api.infinidraft.draft.picks.undoLastPick);
 
   const teamNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -410,7 +410,7 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
               ))}
             </Group>
             <Table.ScrollContainer minWidth={360} mah={480}>
-              <Table striped highlightOnHover verticalSpacing={4}>
+              <Table highlightOnHover verticalSpacing={4}>
                 <Table.Thead>
                   <Table.Tr>
                     {renderSortableTh("Rank", "rank")}
@@ -507,7 +507,7 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
               </Text>
             ) : (
               <Table.ScrollContainer minWidth={360}>
-                <Table striped highlightOnHover verticalSpacing={4}>
+                <Table highlightOnHover verticalSpacing={4}>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Pick</Table.Th>

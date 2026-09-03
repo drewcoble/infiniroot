@@ -12,10 +12,21 @@ import type { DraftType } from "../draftType";
 // projections/stats endpoints in ./client.ts. No auth required.
 const LEAGUE_API_BASE_URL = "https://api.sleeper.app/v1";
 
-interface SleeperRoster {
+export interface SleeperRoster {
   roster_id: number;
   owner_id: string | null;
   players: string[] | null;
+  // Player ids on this roster's taxi squad (a subset of `players`, verified
+  // live - not reflected in roster_positions/settings.rosterSlots at all,
+  // that's governed separately by the league's own settings.taxi_slots).
+  // Absent/null means the league doesn't use a taxi squad, or this roster
+  // has none assigned yet.
+  taxi?: string[] | null;
+  // Player ids on injured reserve - same shape/verification as `taxi`
+  // above, a subset of `players` that also isn't reflected in
+  // roster_positions (governed by settings.reserve_slots instead). Needed
+  // so an IR'd player isn't miscounted as an open bench slot.
+  reserve?: string[] | null;
   // Player ids this roster has designated as keepers for the upcoming
   // draft - set by the commissioner/owner in Sleeper's own UI, independent
   // of whether that draft has actually run yet (unlike draftPicks.is_keeper
@@ -104,7 +115,7 @@ export const syncLeagueRoster = action({
   args: { seasonId: v.id("seasons") },
   handler: async (ctx: ActionCtx, args): Promise<{ syncedTeams: number }> => {
     const { season } = await ctx.runQuery(
-      internal.season.rosterPlayers.requireOwnedSeasonForSync,
+      internal.rosterSync.requireOwnedSeasonForSync,
       { seasonId: args.seasonId },
     );
     if (!season.sleeperLeagueId) {
@@ -122,7 +133,7 @@ export const syncLeagueRoster = action({
     // Re-read every sync, not just at connect time - self-heals a season
     // connected before this field existed, and keeps up with a mid-season
     // commissioner change to waiver settings instead of going stale.
-    await ctx.runMutation(internal.season.rosterPlayers.updateSeasonWaiverSettings, {
+    await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
       seasonId: args.seasonId,
       waiverType: mapWaiverType(leagueSettings.settings?.waiver_type),
       ...(leagueSettings.settings?.waiver_budget !== undefined
@@ -131,7 +142,7 @@ export const syncLeagueRoster = action({
     });
 
     const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
-      internal.draft.teams.listSeasonTeamsInternal,
+      internal.seasonTeams.listSeasonTeamsInternal,
       { seasonId: args.seasonId },
     );
 
@@ -141,7 +152,7 @@ export const syncLeagueRoster = action({
       const roster = rosterById.get(team.sleeperRosterId);
       if (!roster) continue;
 
-      await ctx.runMutation(internal.season.rosterPlayers.replaceRosterForTeam, {
+      await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
         seasonId: args.seasonId,
         teamId: team._id as Id<"seasonTeams">,
         fpids: toFpids(roster.players),
@@ -176,7 +187,7 @@ export interface SleeperKeeperSuggestion {
 // doesn't write anything itself - Sleeper only tells us WHO was kept, not
 // at what price, so this just hands the frontend a list of (team, fpid)
 // candidates to confirm a cost for and add via the normal addKeeper
-// mutation (convex/draft/picks.ts), same as any other keeper. Re-run on
+// mutation (convex/infinidraft/draft/picks.ts), same as any other keeper. Re-run on
 // demand (not auto-synced) since keeper selections can keep changing right
 // up to the commissioner's deadline.
 export const listSleeperKeeperSuggestions = action({
@@ -186,7 +197,7 @@ export const listSleeperKeeperSuggestions = action({
     args,
   ): Promise<SleeperKeeperSuggestion[]> => {
     const { season } = await ctx.runQuery(
-      internal.season.rosterPlayers.requireOwnedSeasonForSync,
+      internal.rosterSync.requireOwnedSeasonForSync,
       { seasonId: args.seasonId },
     );
     if (!season.sleeperLeagueId) {
@@ -202,7 +213,7 @@ export const listSleeperKeeperSuggestions = action({
     );
 
     const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
-      internal.draft.teams.listSeasonTeamsInternal,
+      internal.seasonTeams.listSeasonTeamsInternal,
       { seasonId: args.seasonId },
     );
 
@@ -353,6 +364,10 @@ interface SleeperLeagueSettings {
   settings?: {
     waiver_type?: number;
     waiver_budget?: number;
+    // Configured taxi squad size - verified live (Shadynasty's: 2) -
+    // independent of roster_positions, which never lists "TAXI" itself.
+    // Absent means the league doesn't use a taxi squad at all.
+    taxi_slots?: number;
   };
 }
 

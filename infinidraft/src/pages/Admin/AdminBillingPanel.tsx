@@ -29,10 +29,10 @@ export function AdminBillingPanel() {
   const [email, setEmail] = useState("");
   const [searchedEmail, setSearchedEmail] = useState<string | null>(null);
   const found = useQuery(
-    api.billing.queries.findUserForComp,
+    api.infinidraft.billing.queries.findUserForComp,
     searchedEmail ? { email: searchedEmail } : "skip",
   );
-  const setCompAccess = useMutation(api.billing.mutations.setCompAccess);
+  const setCompAccess = useMutation(api.infinidraft.billing.mutations.setCompAccess);
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -6,7 +6,7 @@ import {
   useLocation,
 } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { Settings2, UserSearch } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { api } from "@infinidata/api";
 import type { Id } from "@infinidata/dataModel";
 import { AppHeader } from "../../../components/AppHeader";
@@ -19,12 +19,6 @@ export const Route = createFileRoute("/season/$leagueId")({
 });
 
 const TABS = [
-  {
-    value: "freeAgents",
-    label: "Free Agents",
-    icon: UserSearch,
-    to: "/season/$leagueId/freeAgents",
-  },
   {
     value: "settings",
     label: "Settings",

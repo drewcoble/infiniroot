@@ -23,17 +23,17 @@ import {
   requireSeasonOwner,
   requireRealDraft,
   requireDraftNotStarted,
-} from "./draft/auth";
-import { insertSeasonTeams } from "./draft/teams";
+} from "./lib/access";
+import { insertSeasonTeams } from "./lib/seasonTeams";
 import {
   countFreeLeagueGrantsForYear,
   FREE_LEAGUES_PER_YEAR,
   hasProAccess,
-} from "./billing/entitlements";
+} from "./lib/entitlements";
 
 // Mirrors src/constants/general.ts's WEEK - the single season-long
 // draft-prep dataset every Draft Room query reads (not a real NFL week). See
-// convex/draft/tiers.ts for why convex/ duplicates rather than imports
+// convex/infinidraft/draft/tiers.ts for why convex/ duplicates rather than imports
 // frontend constants.
 const DRAFT_PREP_WEEK = "0";
 
@@ -51,7 +51,7 @@ const rosterSlotsValidator = v.object({
 
 export interface SeasonWithLeagueName extends Doc<"seasons"> {
   name: string;
-  // The season's one real draft's status (see convex/draft/status.ts's
+  // The season's one real draft's status (see convex/infinidraft/draft/status.ts's
   // syncDraftStatus, which keeps this in sync with actual pick count).
   // Defaults to "pre_draft" in the never-expected case a season's real
   // draft is missing, rather than throwing - this powers the dashboard
@@ -259,7 +259,7 @@ export const createLeague = mutation({
     // linking step Part 3 built for leagues that started out unlinked.
     sleeperLeagueId: v.optional(v.string()),
     // Yahoo equivalent, set by the "Import from Yahoo" wizard (see
-    // convex/yahoo/league.ts's previewYahooImport).
+    // convex/infinidraft/yahoo/league.ts's previewYahooImport).
     yahooLeagueKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -390,7 +390,7 @@ export const updateSeason = mutation({
     const { season, league } = await requireSeasonOwner(ctx, id);
     const draft = await requireRealDraft(ctx, id);
 
-    // Once teams exist, teamCount can only change via convex/draft/teams.ts's
+    // Once teams exist, teamCount can only change via convex/infinidraft/draft/teams.ts's
     // removeSeasonTeam (or a future add-team mutation), both of which keep
     // this field in lockstep with the actual seasonTeams rows - editing it
     // straight from League Settings used to silently desync the two (e.g.
@@ -446,7 +446,7 @@ export const updateSeason = mutation({
 
 // Builds a synthetic prior-season entry for a just-created league from an
 // imported Sleeper or Yahoo league's previous-season roster/auction results
-// (see convex/sleeper/league.ts's previewSleeperImport and convex/yahoo/
+// (see convex/sleeper/league.ts's previewSleeperImport and convex/infinidraft/yahoo/
 // league.ts's previewYahooImport), inserted as an earlier season of the SAME
 // league - seasons.by_league_year naturally orders it before the new season,
 // no separate lineage-chain field needed the way draftSettings.clonedFromId
@@ -542,7 +542,7 @@ export const importPreviousSeasonHistory = mutation({
     // already reflects any in-season trades/waivers, so it's a confirmed
     // end-of-season assignment, not a draft-day snapshot (schema.ts's
     // teamAssignmentConfirmed comment). Yahoo's equivalent instead comes
-    // from actual draft results (convex/yahoo/league.ts's
+    // from actual draft results (convex/infinidraft/yahoo/league.ts's
     // fetchYahooDraftResults), which CAN go stale after a trade, so it
     // stays unconfirmed.
     const teamAssignmentConfirmed = args.sleeperLeagueId !== undefined;

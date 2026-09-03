@@ -85,17 +85,17 @@ export function DraftBoard({ seasonId }: DraftBoardProps) {
   // at all (it's the projector, not the host's own device) - see that
   // query's own comment for why it can't just reuse getDraftValues.
   const settings = useQuery(api.leagues.getSeasonPublic, { seasonId });
-  const teams = useQuery(api.draft.teams.listSeasonTeamsPublic, { seasonId });
-  const picks = useQuery(api.draft.picks.listDraftPicksPublic, { seasonId });
-  const activeNomination = useQuery(api.draft.picks.getActiveNominationPublic, {
+  const teams = useQuery(api.infinidraft.draft.teams.listSeasonTeamsPublic, { seasonId });
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicksPublic, { seasonId });
+  const activeNomination = useQuery(api.infinidraft.draft.picks.getActiveNominationPublic, {
     seasonId,
   });
   const nominationConfig = useQuery(
-    api.draft.nominationOrder.getNominationConfigPublic,
+    api.infinidraft.draft.nominationOrder.getNominationConfigPublic,
     { seasonId },
   );
   const currentNominator = useQuery(
-    api.draft.nominationOrder.getCurrentNominatorPublic,
+    api.infinidraft.draft.nominationOrder.getCurrentNominatorPublic,
     nominationConfig?.nominationOrder ? { seasonId } : "skip",
   );
   const allProjections = useQuery(api.projections.getAllProjections, {

@@ -97,7 +97,7 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
     api.leagues.listSeasons,
     isAuthenticated ? {} : "skip",
   );
-  const entitlement = useQuery(api.billing.queries.getMyEntitlement);
+  const entitlement = useQuery(api.infinidraft.billing.queries.getMyEntitlement);
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   const inLeagueView = location.pathname.startsWith("/league");
@@ -203,7 +203,7 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
       left={0}
       right={0}
       px={{ base: "md", sm: 0 }}
-      py={{ base: "sm", sm: "xs" }}
+      py={{ base: 6, sm: "xs" }}
       h={{ base: MOBILE_HEADER_HEIGHT, sm: "auto" }}
       style={{
         // Above the Keepers route's non-dismissible free-plan upgrade Modal
@@ -218,6 +218,7 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
         zIndex: 195,
         display: "flex",
         alignItems: "center",
+        overflow: "hidden",
         // Translucent + blurred rather than a flat cutout - same frosted-
         // glass treatment as BottomNav.tsx, so content scrolling underneath
         // the fixed mobile header still shows through softly instead of
@@ -237,11 +238,7 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
         style={{ flex: 1, minWidth: 0 }}
       >
         <Link to="/" style={{ flexShrink: 0, textDecoration: "none" }}>
-          {/* Hidden below "sm" by default - the league picker and
-              mode-switch button need the room on mobile. hideLeagueControls
-              callers (e.g. the dashboard) have room to spare, so the
-              wordmark stays visible there instead. */}
-          <AppLogo wordmark="draft" wordmarkAlwaysVisible={hideLeagueControls} />
+          <AppLogo wordmark="draft" />
         </Link>
         <Group gap="xs" wrap="nowrap" align="center" style={{ flexShrink: 0 }}>
           {!hideLeagueControls && (

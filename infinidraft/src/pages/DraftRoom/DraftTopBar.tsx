@@ -48,9 +48,9 @@ export function DraftTopBar({ seasonId, selfTeamId }: DraftTopBarProps) {
   const [selectedFpid, setSelectedFpid] = useState<number | null>(null);
 
   const settingsList = useQuery(api.leagues.listSeasons, {});
-  const teams = useQuery(api.draft.teams.listSeasonTeams, { seasonId });
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
-  const activeNomination = useQuery(api.draft.picks.getActiveNomination, {
+  const teams = useQuery(api.infinidraft.draft.teams.listSeasonTeams, { seasonId });
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
+  const activeNomination = useQuery(api.infinidraft.draft.picks.getActiveNomination, {
     seasonId,
   });
 
@@ -58,11 +58,11 @@ export function DraftTopBar({ seasonId, selfTeamId }: DraftTopBarProps) {
   const thisSeason = settings?.year ?? String(new Date().getFullYear());
 
   const nominationConfig = useQuery(
-    api.draft.nominationOrder.getNominationConfig,
+    api.infinidraft.draft.nominationOrder.getNominationConfig,
     { seasonId },
   );
   const currentNominator = useQuery(
-    api.draft.nominationOrder.getCurrentNominator,
+    api.infinidraft.draft.nominationOrder.getCurrentNominator,
     nominationConfig?.nominationOrder ? { seasonId } : "skip",
   );
   const planSlots = usePlanSlots(seasonId, selfTeamId);
@@ -91,7 +91,7 @@ export function DraftTopBar({ seasonId, selfTeamId }: DraftTopBarProps) {
   // query-then-map pattern PlayersLeftTab.tsx uses, surfaced here only for
   // MobileNomination's search results/active-nomination rows (desktop's
   // NominationPanel card has no room for them and never reads these maps).
-  const playerTags = useQuery(api.draft.tags.listPlayerTags, { seasonId });
+  const playerTags = useQuery(api.infinidraft.draft.tags.listPlayerTags, { seasonId });
   const valueGaps = useQuery(
     api.valueGaps.getAllValueGaps,
     settings
@@ -112,17 +112,17 @@ export function DraftTopBar({ seasonId, selfTeamId }: DraftTopBarProps) {
       : "skip",
   );
 
-  const nominate = useMutation(api.draft.picks.nominate);
-  const addCustomPlayer = useMutation(api.draft.customPlayers.addCustomPlayer);
-  const bumpNominationBid = useMutation(api.draft.picks.bumpNominationBid);
-  const setNominationBid = useMutation(api.draft.picks.setNominationBid);
-  const resolvePick = useMutation(api.draft.picks.resolvePick);
-  const passNomination = useMutation(api.draft.picks.passNomination);
-  const undoNomination = useMutation(api.draft.picks.undoNomination);
+  const nominate = useMutation(api.infinidraft.draft.picks.nominate);
+  const addCustomPlayer = useMutation(api.infinidraft.draft.customPlayers.addCustomPlayer);
+  const bumpNominationBid = useMutation(api.infinidraft.draft.picks.bumpNominationBid);
+  const setNominationBid = useMutation(api.infinidraft.draft.picks.setNominationBid);
+  const resolvePick = useMutation(api.infinidraft.draft.picks.resolvePick);
+  const passNomination = useMutation(api.infinidraft.draft.picks.passNomination);
+  const undoNomination = useMutation(api.infinidraft.draft.picks.undoNomination);
   const setCurrentNominator = useMutation(
-    api.draft.nominationOrder.setCurrentNominator,
+    api.infinidraft.draft.nominationOrder.setCurrentNominator,
   );
-  const cyclePlayerTag = useMutation(api.draft.tags.cyclePlayerTag);
+  const cyclePlayerTag = useMutation(api.infinidraft.draft.tags.cyclePlayerTag);
 
   // Who gets credited on the nomination that's about to be made - mirrors
   // the turn selector's current turn exactly, including the "no one"

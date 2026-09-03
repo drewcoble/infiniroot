@@ -13,7 +13,7 @@ export function useSelfTeam(
   seasonId: Id<"seasons"> | undefined,
 ): SelfTeamResult | undefined {
   const teams = useQuery(
-    api.draft.teams.listSeasonTeams,
+    api.infinidraft.draft.teams.listSeasonTeams,
     seasonId ? { seasonId } : "skip",
   );
   if (!teams) return undefined;

@@ -28,7 +28,7 @@ function KeepersRoute() {
   const navigate = useNavigate();
   const settingsList = useQuery(api.leagues.listSeasons, {});
   const settings = settingsList?.find((league) => league._id === leagueId);
-  const entitlement = useQuery(api.billing.queries.getMyEntitlement);
+  const entitlement = useQuery(api.infinidraft.billing.queries.getMyEntitlement);
   const phase = useDraftPhase(
     leagueId === "new" ? undefined : (leagueId as Id<"seasons">),
   );

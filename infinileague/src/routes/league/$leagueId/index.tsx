@@ -13,12 +13,11 @@ import {
 } from "@mantine/core";
 import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
-import { AppHeader } from "../../../components/AppHeader";
-import { PageContainer } from "@shared/PageContainer";
 import { StandingsTable } from "../../../components/StandingsTable";
+import { PowerRankingsCard } from "../../../components/PowerRankingsCard";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
-import type { LinkedSeason, StandingsRow } from "../../../types/season";
+import type { LinkedSeason, PowerRankingRow, StandingsRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/")({
   component: LeaguePage,
@@ -54,14 +53,41 @@ function LeaguePage() {
   const season = seasonsList?.find((s) => s._id === leagueId);
 
   const syncStatus: RosterSyncStatusRow[] | undefined = useQuery(
-    api.season.rosterPlayers.getRosterSyncStatus,
+    api.infinileague.season.rosterPlayers.getRosterSyncStatus,
     isAuthenticated ? { seasonId } : "skip",
   );
   const standings: StandingsRow[] | undefined = useQuery(
-    api.season.standings.getStandings,
+    api.infinileague.season.standings.getStandings,
     isAuthenticated ? { seasonId } : "skip",
   );
   const syncLeagueRoster = useAction(api.sleeper.league.syncLeagueRoster);
+
+  const getPowerRankings = useAction(
+    api.infinileague.season.powerRankings.getPowerRankings,
+  );
+  const [powerRankings, setPowerRankings] = useState<
+    PowerRankingRow[] | undefined
+  >(undefined);
+  const [powerRankingsError, setPowerRankingsError] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setPowerRankings(undefined);
+    setPowerRankingsError(null);
+    getPowerRankings({ seasonId })
+      .then(setPowerRankings)
+      .catch((err) =>
+        setPowerRankingsError(
+          getErrorMessage(err, "Failed to load power rankings."),
+        ),
+      );
+    // Refetch whenever the league switches - deliberately excludes
+    // getPowerRankings/seasonId itself (derived from leagueId) from deps,
+    // same convention as the auto-sync effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated]);
 
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -101,54 +127,59 @@ function LeaguePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, syncStatus]);
 
+  if (season === undefined) {
+    return <Loader />;
+  }
+
   return (
-    <PageContainer>
-      <Stack gap="lg">
-        <AppHeader />
-        {season === undefined ? (
-          <Loader />
-        ) : (
-          <Stack gap="md">
-            <Title order={2}>{season.name}</Title>
-            <Group gap="xs">
-              <Text size="sm" c="dimmed">
-                {syncing
-                  ? "Syncing…"
-                  : lastSyncedAt !== undefined
-                    ? `Last synced ${formatRelativeTime(lastSyncedAt)}`
-                    : "Rosters haven't synced yet."}
-              </Text>
-              <Button
-                size="xs"
-                variant="default"
-                leftSection={<RefreshCw size={14} />}
-                onClick={() => void runSync()}
-                loading={syncing}
-              >
-                Sync now
-              </Button>
-            </Group>
-            {syncError && (
-              <Alert color="red" withCloseButton onClose={() => setSyncError(null)}>
-                {syncError}
-              </Alert>
-            )}
-            {standings === undefined ? (
-              <Loader />
-            ) : (
-              <StandingsTable
-                leagueId={leagueId}
-                rows={standings}
-                waiverType={season.waiverType}
-              />
-            )}
-            <Text c="dimmed">
-              Waiver recommendations, FAAB bid suggestions, and trade
-              analysis land here next.
-            </Text>
-          </Stack>
-        )}
-      </Stack>
-    </PageContainer>
+    <Stack gap="md">
+      <Title order={2}>{season.name}</Title>
+      <Group gap="xs">
+        <Text size="sm" c="dimmed">
+          {syncing
+            ? "Syncing…"
+            : lastSyncedAt !== undefined
+              ? `Last synced ${formatRelativeTime(lastSyncedAt)}`
+              : "Rosters haven't synced yet."}
+        </Text>
+        <Button
+          size="xs"
+          variant="default"
+          leftSection={<RefreshCw size={14} />}
+          onClick={() => void runSync()}
+          loading={syncing}
+        >
+          Sync now
+        </Button>
+      </Group>
+      {syncError && (
+        <Alert color="red" withCloseButton onClose={() => setSyncError(null)}>
+          {syncError}
+        </Alert>
+      )}
+      {standings === undefined ? (
+        <Loader />
+      ) : (
+        <StandingsTable
+          leagueId={leagueId}
+          rows={standings}
+          waiverType={season.waiverType}
+        />
+      )}
+      {powerRankingsError && (
+        <Alert
+          color="red"
+          withCloseButton
+          onClose={() => setPowerRankingsError(null)}
+        >
+          {powerRankingsError}
+        </Alert>
+      )}
+      <PowerRankingsCard rows={powerRankings} />
+      <Text c="dimmed">
+        Waiver recommendations, FAAB bid suggestions, and trade analysis land
+        here next.
+      </Text>
+    </Stack>
   );
 }

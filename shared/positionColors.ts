@@ -1,7 +1,8 @@
 // Plain inline union rather than importing infinidraft's own src/types.ts
 // (a much bigger, draft-specific file) - this is the one piece of it that's
-// genuinely generic across both apps.
-type Position = "QB" | "RB" | "WR" | "TE" | "DST" | "K";
+// genuinely generic across both apps. Exported so other shared modules
+// (PositionFilterBar.tsx) can use the same type instead of redeclaring it.
+export type Position = "QB" | "RB" | "WR" | "TE" | "DST" | "K";
 
 // Single source of truth for position -> Mantine theme color, consumed by
 // the position filter chips/badges (PlayersTable), budget progress bars

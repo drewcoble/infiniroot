@@ -42,15 +42,15 @@ export function useTeamBudget(
 ): TeamBudgetStats | undefined {
   const seasonsList = useQuery(api.leagues.listSeasons, {});
   const picks = useQuery(
-    api.draft.picks.listDraftPicks,
+    api.infinidraft.draft.picks.listDraftPicks,
     seasonId ? { seasonId } : "skip",
   );
   const teams = useQuery(
-    api.draft.teams.listSeasonTeams,
+    api.infinidraft.draft.teams.listSeasonTeams,
     seasonId ? { seasonId } : "skip",
   );
   const plan = useQuery(
-    api.draft.plan.getLiveBudgetPlan,
+    api.infinidraft.draft.plan.getLiveBudgetPlan,
     seasonId ? { seasonId } : "skip",
   );
 

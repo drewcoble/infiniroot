@@ -40,15 +40,11 @@ import { buildStandardValueByFpid } from "../../lib/standardValues";
 import { compareSortValues, type SortDir } from "../../lib/tableSort";
 import { buildBlendedAdpByFpid, buildOurRankByFpid } from "../../lib/valueRank";
 import { SortArrow } from "../../components/SortArrow";
-import {
-  MOBILE_STATS_ROW_HEIGHT,
-  POSITION_FILTER_BAR_HEIGHT,
-  WEEK,
-} from "../../constants/general";
-import { MOBILE_HEADER_HEIGHT } from "@shared/constants";
+import { MOBILE_STATS_ROW_HEIGHT, WEEK } from "../../constants/general";
+import { MOBILE_HEADER_HEIGHT, POSITION_FILTER_BAR_HEIGHT } from "@shared/constants";
 import { BUDGET_MATCH_WINDOW } from "../../constants/playersLeft";
 import { PlayerDetailModal } from "../../components/PlayerDetailModal";
-import { PositionFilterBar } from "../../components/PositionFilterBar";
+import { PositionFilterBar } from "@shared/PositionFilterBar";
 import { GenericValuesNotice } from "../../components/GenericValuesNotice";
 import {
   computeConsistencyThresholds,
@@ -174,7 +170,7 @@ export function PlayersLeftTab({ seasonId, selfTeamId }: PlayersLeftTabProps) {
   // time a pick happens elsewhere in the draft. Live drafted-status is
   // joined in client-side from `picks` instead (see `board` below).
   const draftBoardResult = useQuery(
-    api.draft.board.getDraftBoard,
+    api.infinidraft.draft.board.getDraftBoard,
     settings
       ? {
           seasonId,
@@ -185,23 +181,23 @@ export function PlayersLeftTab({ seasonId, selfTeamId }: PlayersLeftTabProps) {
   ) as { isGeneric: boolean; rows: DraftTierRow[] } | undefined;
   const tieredValues = draftBoardResult?.rows;
   const usingGenericValues = draftBoardResult?.isGeneric ?? false;
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
-  const activeNomination = useQuery(api.draft.picks.getActiveNomination, {
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
+  const activeNomination = useQuery(api.infinidraft.draft.picks.getActiveNomination, {
     seasonId,
   });
   const allRankings = useQuery(api.rankings.getAllRankings, { week: WEEK });
   const injuries = useQuery(api.injuries.getInjuries, {});
-  const playerTags = useQuery(api.draft.tags.listPlayerTags, {
+  const playerTags = useQuery(api.infinidraft.draft.tags.listPlayerTags, {
     seasonId,
   });
   const nominationConfig = useQuery(
-    api.draft.nominationOrder.getNominationConfig,
+    api.infinidraft.draft.nominationOrder.getNominationConfig,
     { seasonId },
   );
   // Only fetched when a nomination order is configured - same "who gets
   // credited" logic as DraftTopBar's nominatingTeamId below.
   const currentNominator = useQuery(
-    api.draft.nominationOrder.getCurrentNominator,
+    api.infinidraft.draft.nominationOrder.getCurrentNominator,
     nominationConfig?.nominationOrder ? { seasonId } : "skip",
   );
   // Snake/linear only - who's actually on the clock right now, same
@@ -210,7 +206,7 @@ export function PlayersLeftTab({ seasonId, selfTeamId }: PlayersLeftTabProps) {
   // league - meaningless for auction (see getSnakeBoardPublic's own
   // `mode === "auction" ? null` short-circuit).
   const snakeBoard = useQuery(
-    api.draft.pickSlots.getSnakeBoardPublic,
+    api.infinidraft.draft.pickSlots.getSnakeBoardPublic,
     isAuction ? "skip" : { seasonId },
   );
   // Same "stable for the live draft" reasoning as tieredValues/allRankings
@@ -218,7 +214,7 @@ export function PlayersLeftTab({ seasonId, selfTeamId }: PlayersLeftTabProps) {
   // mid-draft, so this is its own subscription rather than folded into
   // getDraftBoard. `season` is only set on leagues advanced through
   // cloneDraftSettings, so leagues created directly fall back to the
-  // system clock's year - the same thing convex/fantasyPros/client.ts's
+  // system clock's year - the same thing convex/lib/dataFetch.ts's
   // currentSeason() does server-side (fine here since this is frontend
   // code, not a Convex query - queries can't read the wall clock, but
   // components aren't restricted that way).
@@ -247,9 +243,9 @@ export function PlayersLeftTab({ seasonId, selfTeamId }: PlayersLeftTabProps) {
         }
       : "skip",
   );
-  const setPlayerTag = useMutation(api.draft.tags.setPlayerTag);
-  const nominate = useMutation(api.draft.picks.nominate);
-  const draftPick = useMutation(api.draft.picks.draftPick);
+  const setPlayerTag = useMutation(api.infinidraft.draft.tags.setPlayerTag);
+  const nominate = useMutation(api.infinidraft.draft.picks.nominate);
+  const draftPick = useMutation(api.infinidraft.draft.picks.draftPick);
   const stats = useTeamBudget(seasonId, selfTeamId);
   const planSlots = usePlanSlots(seasonId, selfTeamId);
 

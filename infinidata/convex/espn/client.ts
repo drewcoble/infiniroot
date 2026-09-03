@@ -1,4 +1,4 @@
-export { requireSuperAdmin, currentSeason } from "../fantasyPros/client";
+export { requireSuperAdmin, currentSeason } from "../lib/dataFetch";
 
 /**
  * ESPN's fantasy football player API (undocumented, no API key needed for

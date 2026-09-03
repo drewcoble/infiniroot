@@ -40,14 +40,14 @@ type Provider = "sleeper" | "yahoo";
 export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
   const settingsList = useQuery(api.leagues.listSeasons, {});
   const settings = settingsList?.find((s) => s._id === seasonId);
-  const teams = useQuery(api.draft.teams.listSeasonTeams, { seasonId });
-  const yahooStatus = useQuery(api.yahoo.oauth.getConnectionStatus, {});
+  const teams = useQuery(api.infinidraft.draft.teams.listSeasonTeams, { seasonId });
+  const yahooStatus = useQuery(api.infinidraft.yahoo.oauth.getConnectionStatus, {});
 
   const setSleeperLeagueId = useMutation(api.leagues.setSleeperLeagueId);
   const setYahooLeagueKey = useMutation(api.leagues.setYahooLeagueKey);
   const setFaabBudget = useMutation(api.leagues.setFaabBudget);
-  const setTeamSleeperLink = useMutation(api.draft.teams.setTeamSleeperLink);
-  const setTeamYahooLink = useMutation(api.draft.teams.setTeamYahooLink);
+  const setTeamSleeperLink = useMutation(api.infinidraft.draft.teams.setTeamSleeperLink);
+  const setTeamYahooLink = useMutation(api.infinidraft.draft.teams.setTeamYahooLink);
   const fetchSleeperLeagueTeams = useAction(
     api.sleeper.league.fetchSleeperLeagueTeams,
   );
@@ -55,10 +55,10 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
     api.sleeper.league.listSleeperLeaguesForUsername,
   );
   const syncLeagueRoster = useAction(api.sleeper.league.syncLeagueRoster);
-  const startYahooAuth = useAction(api.yahoo.oauth.startYahooAuth);
-  const listMyYahooLeagues = useAction(api.yahoo.league.listMyYahooLeagues);
-  const fetchYahooLeagueTeams = useAction(api.yahoo.league.fetchYahooLeagueTeams);
-  const syncYahooLeagueRoster = useAction(api.yahoo.league.syncYahooLeagueRoster);
+  const startYahooAuth = useAction(api.infinidraft.yahoo.oauth.startYahooAuth);
+  const listMyYahooLeagues = useAction(api.infinidraft.yahoo.league.listMyYahooLeagues);
+  const fetchYahooLeagueTeams = useAction(api.infinidraft.yahoo.league.fetchYahooLeagueTeams);
+  const syncYahooLeagueRoster = useAction(api.infinidraft.yahoo.league.syncYahooLeagueRoster);
 
   const [provider, setProvider] = useState<Provider>("sleeper");
   const [sleeperUsernameInput, setSleeperUsernameInput] = useState("");

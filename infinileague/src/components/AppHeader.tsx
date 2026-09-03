@@ -74,12 +74,13 @@ export function AppHeader() {
       left={0}
       right={0}
       px={{ base: "md", sm: 0 }}
-      py={{ base: "sm", sm: "xs" }}
+      py={{ base: 6, sm: "xs" }}
       h={{ base: MOBILE_HEADER_HEIGHT, sm: "auto" }}
       style={{
         zIndex: 195,
         display: "flex",
         alignItems: "center",
+        overflow: "hidden",
         background:
           "color-mix(in srgb, var(--mantine-color-body) 75%, transparent)",
         backdropFilter: "blur(16px)",

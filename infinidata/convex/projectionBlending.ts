@@ -3,7 +3,7 @@ import { action, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { BLENDED_POSITIONS, positionValidator } from "./positions";
 import { computeProjectedPoints } from "./scoring";
-import { requireSuperAdmin, currentSeason } from "./fantasyPros/client";
+import { requireSuperAdmin, currentSeason } from "./lib/dataFetch";
 
 function average(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length;

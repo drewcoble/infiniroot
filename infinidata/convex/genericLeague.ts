@@ -1,7 +1,7 @@
 import { internalMutation, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { POSITIONS } from "./positions";
-import type { RosterSlotCounts } from "./draft/slots";
+import type { RosterSlotCounts } from "./lib/rosterSlots";
 
 type Position = (typeof POSITIONS)[number];
 

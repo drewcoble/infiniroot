@@ -95,24 +95,24 @@ interface BudgetTabProps {
 
 export function BudgetTab({ seasonId, mode }: BudgetTabProps) {
   const settingsList = useQuery(api.leagues.listSeasons, {});
-  const teams = useQuery(api.draft.teams.listSeasonTeams, { seasonId });
+  const teams = useQuery(api.infinidraft.draft.teams.listSeasonTeams, { seasonId });
   // Keepers are draftPicks rows too (see convex/draft/picks.ts's addKeeper),
   // so this is populated even in "predraft" mode, before the live draft
   // starts - a self-team keeper already spoken for a slot, and that's worth
   // surfacing on the pre-draft plan same as an in-draft pick.
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
-  const predraftPlan = useQuery(api.draft.plan.getBudgetPlan, {
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
+  const predraftPlan = useQuery(api.infinidraft.draft.plan.getBudgetPlan, {
     seasonId,
   });
   const livePlan = useQuery(
-    api.draft.plan.getLiveBudgetPlan,
+    api.infinidraft.draft.plan.getLiveBudgetPlan,
     mode === "live" ? { seasonId } : "skip",
   );
-  const upsertBudgetPlan = useMutation(api.draft.plan.upsertBudgetPlan);
+  const upsertBudgetPlan = useMutation(api.infinidraft.draft.plan.upsertBudgetPlan);
   const upsertLiveBudgetOverrides = useMutation(
-    api.draft.plan.upsertLiveBudgetOverrides,
+    api.infinidraft.draft.plan.upsertLiveBudgetOverrides,
   );
-  const resetLiveBudgetPlan = useMutation(api.draft.plan.resetLiveBudgetPlan);
+  const resetLiveBudgetPlan = useMutation(api.infinidraft.draft.plan.resetLiveBudgetPlan);
 
   const settings = settingsList?.find((s) => s._id === seasonId);
   const selfTeam = teams?.find((t) => t.isSelf);

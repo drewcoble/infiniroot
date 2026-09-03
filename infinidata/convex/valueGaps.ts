@@ -23,7 +23,7 @@ type Position = (typeof POSITIONS)[number];
 const VALUE_GAP_POSITIONS: Position[] = ["QB", "RB", "WR", "TE"];
 
 // Mirrors src/lib/relevantPlayers.ts's RELEVANT_ADP_CEILING (see
-// convex/draft/tiers.ts for why convex/ duplicates rather than imports it -
+// convex/infinidraft/draft/tiers.ts for why convex/ duplicates rather than imports it -
 // convex/ never depends on src/). A real rank ceiling rather than Sleeper's
 // own "no real ADP" 999 sentinel - top 350 overall is roughly the depth of
 // even a large/deep redraft league; 999 lets through a long tail of

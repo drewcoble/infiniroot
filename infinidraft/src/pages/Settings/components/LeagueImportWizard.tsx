@@ -48,7 +48,7 @@ export function LeagueImportWizard({
   );
   const createSettings = useMutation(api.leagues.createLeague);
   const initializeDraftTeams = useMutation(
-    api.draft.teams.initializeSeasonTeams,
+    api.infinidraft.draft.teams.initializeSeasonTeams,
   );
   const importHistory = useMutation(api.leagues.importPreviousSeasonHistory);
 

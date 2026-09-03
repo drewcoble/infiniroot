@@ -62,39 +62,39 @@ export function LeagueDetails({
   onLeagueDeleted,
 }: LeagueDetailsProps) {
   const settingsList = useQuery(api.leagues.listSeasons, {});
-  const entitlement = useQuery(api.billing.queries.getMyEntitlement);
+  const entitlement = useQuery(api.infinidraft.billing.queries.getMyEntitlement);
   const createSettings = useMutation(api.leagues.createLeague);
   const updateSettings = useMutation(api.leagues.updateSeason);
   const draftTeams = useQuery(
-    api.draft.teams.listSeasonTeams,
+    api.infinidraft.draft.teams.listSeasonTeams,
     selectedLeagueId ? { seasonId: selectedLeagueId } : "skip",
   );
   const initializeDraftTeams = useMutation(
-    api.draft.teams.initializeSeasonTeams,
+    api.infinidraft.draft.teams.initializeSeasonTeams,
   );
-  const renameDraftTeam = useMutation(api.draft.teams.renameSeasonTeam);
-  const setTeamSalaryCap = useMutation(api.draft.teams.setTeamSalaryCap);
-  const addDraftTeam = useMutation(api.draft.teams.addSeasonTeam);
-  const removeDraftTeam = useMutation(api.draft.teams.removeSeasonTeam);
+  const renameDraftTeam = useMutation(api.infinidraft.draft.teams.renameSeasonTeam);
+  const setTeamSalaryCap = useMutation(api.infinidraft.draft.teams.setTeamSalaryCap);
+  const addDraftTeam = useMutation(api.infinidraft.draft.teams.addSeasonTeam);
+  const removeDraftTeam = useMutation(api.infinidraft.draft.teams.removeSeasonTeam);
   const setUseKeepers = useMutation(api.leagues.setUseKeepers);
   const setDraftType = useMutation(api.leagues.setDraftType);
   const deleteDraftSettings = useMutation(api.leagues.deleteLeague);
   const phase = useDraftPhase(selectedLeagueId);
   const isStarted = phase?.isStarted ?? false;
-  const startDraft = useMutation(api.draft.lifecycle.startDraft);
-  const reopenPreDraft = useMutation(api.draft.lifecycle.reopenPreDraft);
+  const startDraft = useMutation(api.infinidraft.draft.lifecycle.startDraft);
+  const reopenPreDraft = useMutation(api.infinidraft.draft.lifecycle.reopenPreDraft);
   const linkSleeperDraft = useAction(api.sleeper.draftSync.linkSleeperDraft);
   const disableLiveSync = useMutation(api.sleeper.draftSync.disableLiveSync);
   const seasonLineage = useQuery(
-    api.draft.history.listSeasonLineage,
+    api.infinidraft.draft.history.listSeasonLineage,
     selectedLeagueId ? { seasonId: selectedLeagueId } : "skip",
   );
   const nominationConfig = useQuery(
-    api.draft.nominationOrder.getNominationConfig,
+    api.infinidraft.draft.nominationOrder.getNominationConfig,
     selectedLeagueId ? { seasonId: selectedLeagueId } : "skip",
   );
   const draftOrderConfig = useQuery(
-    api.draft.draftOrder.getDraftOrderConfig,
+    api.infinidraft.draft.draftOrder.getDraftOrderConfig,
     selectedLeagueId ? { seasonId: selectedLeagueId } : "skip",
   );
 

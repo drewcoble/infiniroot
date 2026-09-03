@@ -43,13 +43,13 @@ export function YahooLeagueImportWizard({
   onImported,
   onCancel,
 }: YahooLeagueImportWizardProps) {
-  const yahooStatus = useQuery(api.yahoo.oauth.getConnectionStatus, {});
-  const startYahooAuth = useAction(api.yahoo.oauth.startYahooAuth);
-  const listMyYahooLeagues = useAction(api.yahoo.league.listMyYahooLeagues);
-  const previewYahooImport = useAction(api.yahoo.league.previewYahooImport);
+  const yahooStatus = useQuery(api.infinidraft.yahoo.oauth.getConnectionStatus, {});
+  const startYahooAuth = useAction(api.infinidraft.yahoo.oauth.startYahooAuth);
+  const listMyYahooLeagues = useAction(api.infinidraft.yahoo.league.listMyYahooLeagues);
+  const previewYahooImport = useAction(api.infinidraft.yahoo.league.previewYahooImport);
   const createLeague = useMutation(api.leagues.createLeague);
   const initializeSeasonTeams = useMutation(
-    api.draft.teams.initializeSeasonTeams,
+    api.infinidraft.draft.teams.initializeSeasonTeams,
   );
   const importHistory = useMutation(api.leagues.importPreviousSeasonHistory);
 

@@ -173,15 +173,15 @@ export function TeamsPanel({
   }, [(reversalRounds ?? []).join(",")]);
 
   const setNominationOrder = useMutation(
-    api.draft.nominationOrder.setNominationOrder,
+    api.infinidraft.draft.nominationOrder.setNominationOrder,
   );
   const clearNominationOrder = useMutation(
-    api.draft.nominationOrder.clearNominationOrder,
+    api.infinidraft.draft.nominationOrder.clearNominationOrder,
   );
-  const setDraftOrder = useMutation(api.draft.draftOrder.setDraftOrder);
-  const clearDraftOrder = useMutation(api.draft.draftOrder.clearDraftOrder);
+  const setDraftOrder = useMutation(api.infinidraft.draft.draftOrder.setDraftOrder);
+  const clearDraftOrder = useMutation(api.infinidraft.draft.draftOrder.clearDraftOrder);
   const setReversalRoundsMutation = useMutation(
-    api.draft.draftOrder.setReversalRounds,
+    api.infinidraft.draft.draftOrder.setReversalRounds,
   );
 
   const handleDragEnd = (event: DragEndEvent) => {

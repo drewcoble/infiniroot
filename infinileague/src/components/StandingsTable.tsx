@@ -1,4 +1,4 @@
-import { Anchor, Table, Text } from "@mantine/core";
+import { Anchor, Table } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 import type { StandingsRow } from "../types/season";
 
@@ -18,7 +18,7 @@ export function StandingsTable({ leagueId, rows, waiverType }: StandingsTablePro
   const waiverColumnLabel = waiverType === "faab" ? "FAAB $" : "Waiver #";
 
   return (
-    <Table striped highlightOnHover>
+    <Table highlightOnHover>
       <Table.Thead>
         <Table.Tr>
           <Table.Th>#</Table.Th>
@@ -39,15 +39,8 @@ export function StandingsTable({ leagueId, rows, waiverType }: StandingsTablePro
                 params={{ leagueId, teamId: row.teamId }}
                 style={{ textDecoration: "none" }}
               >
-                <Anchor component="span" fw={row.isSelf ? 700 : 400}>
-                  {row.name}
-                </Anchor>
+                <Anchor component="span">{row.name}</Anchor>
               </Link>
-              {row.isSelf && (
-                <Text c="dimmed" size="xs" span ml={6}>
-                  (You)
-                </Text>
-              )}
             </Table.Td>
             <Table.Td>
               {row.wins}-{row.losses}-{row.ties}

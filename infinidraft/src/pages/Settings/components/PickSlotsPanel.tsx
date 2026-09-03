@@ -38,10 +38,10 @@ export function PickSlotsPanel({
   maxRounds,
   isDraftStarted,
 }: PickSlotsPanelProps) {
-  const slots = useQuery(api.draft.pickSlots.listPickSlots, { seasonId });
-  const tradePickSlot = useMutation(api.draft.pickSlots.tradePickSlot);
-  const forfeitPickSlot = useMutation(api.draft.pickSlots.forfeitPickSlot);
-  const restorePickSlot = useMutation(api.draft.pickSlots.restorePickSlot);
+  const slots = useQuery(api.infinidraft.draft.pickSlots.listPickSlots, { seasonId });
+  const tradePickSlot = useMutation(api.infinidraft.draft.pickSlots.tradePickSlot);
+  const forfeitPickSlot = useMutation(api.infinidraft.draft.pickSlots.forfeitPickSlot);
+  const restorePickSlot = useMutation(api.infinidraft.draft.pickSlots.restorePickSlot);
 
   const teamById = useMemo(
     () => new Map(teams.map((t) => [t._id, t])),

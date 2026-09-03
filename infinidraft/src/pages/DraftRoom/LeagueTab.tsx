@@ -59,7 +59,7 @@ export function LeagueTab({ seasonId, teams, selfTeamId }: LeagueTabProps) {
   // and a per-team progress bar driven by $ remaining/spent instead of
   // actual roster fill (user report, 2026-08-30).
   const isAuction = (settings?.draftType ?? "auction") === "auction";
-  const picks = useQuery(api.draft.picks.listDraftPicks, { seasonId });
+  const picks = useQuery(api.infinidraft.draft.picks.listDraftPicks, { seasonId });
   const allProjections = useQuery(api.projections.getAllProjections, {
     week: WEEK,
   });
@@ -67,7 +67,7 @@ export function LeagueTab({ seasonId, teams, selfTeamId }: LeagueTabProps) {
     new Set(),
   );
   const [selectedFpid, setSelectedFpid] = useState<number | null>(null);
-  const removePick = useMutation(api.draft.picks.removePick);
+  const removePick = useMutation(api.infinidraft.draft.picks.removePick);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   const handleRemove = async (pickId: Id<"draftPicks">) => {

@@ -84,7 +84,7 @@ export function ConnectSleeperLeague({
   );
   const previewSleeperImport = useAction(api.sleeper.league.previewSleeperImport);
   const createLeague = useMutation(api.leagues.createLeague);
-  const initializeSeasonTeams = useMutation(api.draft.teams.initializeSeasonTeams);
+  const initializeSeasonTeams = useMutation(api.infinileague.season.teams.initializeSeasonTeams);
   const syncLeagueRoster = useAction(api.sleeper.league.syncLeagueRoster);
 
   const [usernameInput, setUsernameInput] = useState("");

@@ -261,9 +261,9 @@ export function KeeperRulesPanel({ settings }: KeeperRulesPanelProps) {
   // unused there.
   const [mobileOpened, { toggle: toggleMobileOpened }] = useDisclosure(false);
 
-  const setKeeperRules = useMutation(api.draft.keeperRules.setKeeperRules);
+  const setKeeperRules = useMutation(api.infinidraft.draft.keeperRules.setKeeperRules);
   const setKeeperTierPlayers = useMutation(
-    api.draft.keeperRules.setKeeperTierPlayers,
+    api.infinidraft.draft.keeperRules.setKeeperTierPlayers,
   );
 
   // Self-contained player search, same data sources KeepersTab uses, so the

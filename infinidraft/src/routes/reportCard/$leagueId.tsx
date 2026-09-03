@@ -26,7 +26,7 @@ function ReportCardRoute() {
     <PageContainer pt="xl">
       <Stack gap="lg">
         <Link to="/" style={{ textDecoration: "none" }}>
-          <AppLogo wordmark="draft" wordmarkAlwaysVisible />
+          <AppLogo wordmark="draft" />
         </Link>
         <DraftReportCard seasonId={leagueId as Id<"seasons">} />
       </Stack>

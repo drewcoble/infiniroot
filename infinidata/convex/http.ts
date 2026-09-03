@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
-import { exchangeYahooCode, requireAppBaseUrl } from "./yahoo/client";
+import { exchangeYahooCode, requireAppBaseUrl } from "./infinidraft/yahoo/client";
 
 const http = httpRouter();
 
@@ -18,7 +18,7 @@ function yahooRedirectTarget(
 }
 
 // Yahoo redirects the bare browser here after the user approves (or denies)
-// access on Yahoo's own consent screen - see convex/yahoo/oauth.ts's
+// access on Yahoo's own consent screen - see convex/infinidraft/yahoo/oauth.ts's
 // startYahooAuth (which generates the `state` this route validates) and
 // YAHOO.md at the project root for the redirect-URI registration this
 // depends on. Not authenticated by necessity (a top-level browser navigation
@@ -41,7 +41,7 @@ http.route({
     }
 
     const stateRow = await ctx.runMutation(
-      internal.yahoo.oauth.consumeOAuthState,
+      internal.infinidraft.yahoo.oauth.consumeOAuthState,
       { state },
     );
     if (!stateRow) {
@@ -54,7 +54,7 @@ http.route({
     const target = yahooRedirectTarget(appBaseUrl, stateRow.seasonId);
     try {
       const tokens = await exchangeYahooCode(code);
-      await ctx.runMutation(internal.yahoo.oauth.saveTokens, {
+      await ctx.runMutation(internal.infinidraft.yahoo.oauth.saveTokens, {
         userId: stateRow.userId,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
@@ -73,7 +73,7 @@ http.route({
 });
 
 // Stripe's server-to-server notification of subscription lifecycle events
-// (see convex/billing/webhookHandler.ts) - necessarily unauthenticated (no
+// (see convex/infinidraft/billing/webhookHandler.ts) - necessarily unauthenticated (no
 // Convex session), so the Stripe-Signature header + STRIPE_WEBHOOK_SECRET is
 // what proves this request actually came from Stripe. Reads the raw body via
 // request.text() - the signature is computed over those exact bytes, so it
@@ -88,7 +88,7 @@ http.route({
     }
     const rawBody = await request.text();
     try {
-      await ctx.runAction(internal.billing.webhookHandler.processStripeWebhookEvent, {
+      await ctx.runAction(internal.infinidraft.billing.webhookHandler.processStripeWebhookEvent, {
         rawBody,
         signature,
       });

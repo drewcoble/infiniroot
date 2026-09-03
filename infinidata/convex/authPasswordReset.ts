@@ -1,5 +1,5 @@
 import { Email } from "@convex-dev/auth/providers/Email";
-import { sendEmail } from "./email/resendClient";
+import { sendEmail } from "./lib/email";
 
 // 8-digit numeric OTP via Web Crypto - available in Convex's default
 // runtime (no "use node" needed, matching convex/auth.ts staying in the
@@ -16,7 +16,7 @@ function generateOtp(): string {
 // "reset-verification" flows (send a code / verify code + set new
 // password) once a `reset` email provider is supplied; this is that
 // provider. See RESEND.md for how to configure a Resend API key - this
-// throws (via convex/email/resendClient.ts's requireResendApiKey) if one
+// throws (via convex/lib/email.ts's requireResendApiKey) if one
 // isn't set, so an unconfigured deployment fails loudly on first request
 // rather than silently not sending anything.
 export const PasswordResetEmail = Email({
