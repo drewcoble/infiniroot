@@ -33,8 +33,21 @@ export function buildTradePool(
   return pool;
 }
 
+// Floors each player at 0 before summing, rather than adding their raw
+// (possibly negative) VOR - a below-replacement player's worst case is
+// "cut him for a free agent" (0 VOR, by definition of replacement level),
+// never a negative contribution. Without the floor, a -100 VOR throw-in
+// packaged with a +100 VOR star sums to 0, reading as "no value here" when
+// what's actually on the table is one genuinely valuable player and one
+// asset worth nothing - and the same bug runs the other way too: a bad
+// player thrown into what YOU send out would otherwise subtract from your
+// own total, understating what you're actually giving up. Deliberately
+// scoped to this raw-sum display only - optimalLineupValue below keeps the
+// signed value, since a team forced to start a below-replacement player
+// (no better option at that slot) really is worse off, and hiding that
+// would defeat the whole point of simulating the lineup.
 function sumValue(entries: LineupPoolEntry[]): number {
-  return entries.reduce((total, entry) => total + entry.value, 0);
+  return entries.reduce((total, entry) => total + Math.max(entry.value, 0), 0);
 }
 
 // Total value of just the players fillOptimalLineup actually assigns to a
@@ -65,9 +78,12 @@ export interface TradeSideResult {
   beforeOptimalValue: number;
   afterOptimalValue: number;
   lineupImpact: number;
-  // Plain sum of value sent/received, no lineup simulation - the simpler
-  // "who got more value" number, shown alongside lineupImpact rather than
-  // instead of it.
+  // Sum of value sent/received, each player floored at 0 (see sumValue) -
+  // the simpler "who got more value" number, shown alongside lineupImpact
+  // rather than instead of it. No lineup simulation here, so this can still
+  // say a trade looks good even when lineupImpact says otherwise (a very
+  // available WR4 might sum well here but never crack an already-deep WR
+  // room) - that gap is the whole reason lineupImpact exists.
   rawSent: number;
   rawReceived: number;
 }

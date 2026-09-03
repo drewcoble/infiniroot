@@ -114,13 +114,16 @@ function TradeSideSummary({ teamName, side, hasLineupData }: TradeSideSummaryPro
 }
 
 // Trade analyzer: pick players off your own team and a second team, and see
-// how the swap affects each side. "Raw rosVOR" is a plain sum of value sent
-// vs. received; "Starting lineup impact" simulates each team's best-possible
-// starting lineup before vs. after the trade (via the same tiered-greedy
-// fill src/lib/lineupSuggestions.ts's buildLineupSuggestions uses for "My
-// Team" start/sit advice, generalized in src/lib/tradeAnalyzer.ts) - it's
-// the more decision-relevant number, since two bench-bound players moving
-// the raw sum doesn't mean they actually crack the lineup.
+// how the swap affects each side. "Raw rosVOR" sums value sent vs. received
+// with each player floored at 0 (see tradeAnalyzer.ts's sumValue) so a
+// below-replacement throw-in can't cancel out a genuinely valuable player
+// in the same package; "Starting lineup impact" simulates each team's
+// best-possible starting lineup before vs. after the trade (via the same
+// tiered-greedy fill src/lib/lineupSuggestions.ts's buildLineupSuggestions
+// uses for "My Team" start/sit advice, generalized in
+// src/lib/tradeAnalyzer.ts) - it's the more decision-relevant number, since
+// two bench-bound players moving the raw sum doesn't mean they actually
+// crack the lineup.
 function TradePage() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
