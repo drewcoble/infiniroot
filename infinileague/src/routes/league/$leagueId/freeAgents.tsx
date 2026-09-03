@@ -124,8 +124,13 @@ function FreeAgentsPage() {
           // No rosVOR row for this fpid - a minimal stand-in RosVorRow
           // (PPG/rank fields zeroed) rather than a second bespoke card
           // layout, so the bid footer still renders through the same
-          // component. positionRank comes from FaabSuggestionRow itself
-          // (faab.ts computes its own), so that badge still reads real.
+          // component. positionRank is deliberately 0 (PlayerCard's "don't
+          // show a rank" sentinel), NOT row.positionRank -
+          // FaabSuggestionRow's own positionRank is this player's rank
+          // among free agents only (see faab.ts's freeAgentsByPosition),
+          // not the all-players rank the badge shows everywhere else in the
+          // app - showing it here would silently mean something different
+          // depending on which branch rendered the card.
           return (
             <PlayerCard
               key={row.fpid}
@@ -138,7 +143,7 @@ function FreeAgentsPage() {
                 rosRank: 0,
                 actualVor: 0,
                 actualRank: 0,
-                positionRank: row.positionRank,
+                positionRank: 0,
                 rosPpg: 0,
                 actualPpg: 0,
                 rosteredByTeamName: null,

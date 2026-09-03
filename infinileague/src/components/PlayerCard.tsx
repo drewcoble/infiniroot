@@ -45,7 +45,10 @@ export function PlayerCard({ row, isRookie, leftLabel, footer }: PlayerCardProps
           <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
             <Badge size="sm" color={positionColorOrDefault(row.position)} variant="light">
               {row.position}
-              {row.positionRank}
+              {/* 0 is a "rank unknown, don't fabricate one" sentinel (see
+                  freeAgents.tsx's no-rosVOR-match fallback) - every real
+                  rank starts at 1, so this never hides a genuine #0. */}
+              {row.positionRank > 0 ? row.positionRank : ""}
             </Badge>
             {row.team && (
               <Text c="dimmed" size="xs">
