@@ -179,7 +179,7 @@ export default defineSchema({
   // fetch (see convex/sleeper/projections.ts) - Sleeper's player_id is the
   // fpid used everywhere except DST, which has no numeric id upstream (see
   // DEF_TEAM_FPIDS in convex/sleeper/client.ts). The single source of truth
-  // for name/team/position - projections/rankings/news/injuries all
+  // for name/team/position - projections/rankings/injuries all
   // reference players by fpid rather than duplicating identity.
   players: defineTable({
     fpid: v.number(),
@@ -477,6 +477,41 @@ export default defineSchema({
     // read (src/components/PlayerSeasonGameLog.tsx), grouped by week
     // client-side since a week can have more than one row.
     .index("by_fpid_season", ["fpid", "season"]),
+
+  // Tank01's daily-updated depth chart (see convex/tank01/depthCharts.ts) -
+  // explicit RB/WR/TE/QB/K pecking order per team, a signal neither Sleeper
+  // nor ESPN expose (both only carry projected points, not depth-chart
+  // slot). One row per (team, position, depthPosition) role - e.g.
+  // ("BUF", "RB", "RB2") - overwritten in place on each fetch like
+  // standardValues rather than kept as history, since depth-chart *history*
+  // has no consumer yet; add a depthChartSnapshots table alongside this
+  // (mirroring injurySnapshots above) if that changes. DST/LB/DL/DB are
+  // never rows here - Tank01 does return defense despite calling this
+  // endpoint "Offensive Depth Charts", but nothing fantasy-relevant reads
+  // defensive depth order, and DST's synthetic fpids never carry an espnId
+  // to join against Tank01's playerID anyway (see DEF_TEAM_FPIDS in
+  // convex/sleeper/client.ts).
+  depthCharts: defineTable({
+    team: v.string(),
+    position: positionValidator,
+    // Tank01's own ordinal label ("RB1", "RB2", ...) kept verbatim rather
+    // than parsed into a rank number - this app already treats other
+    // providers' native labels as opaque strings (e.g. standardValues'
+    // rankType), and parsing "RB1" -> 1 buys nothing a string sort
+    // wouldn't already give a reader.
+    depthPosition: v.string(),
+    fpid: v.number(),
+    updatedAt: v.number(),
+  })
+    // "This team's current WR order" - the sync's own per-(team, position)
+    // upsert-with-prune (see convex/tank01/depthChartsData.ts).
+    .index("by_team_position", ["team", "position"])
+    // "Every fantasy-relevant position for this team, one query" - the
+    // Depth Charts tab's team-select read (getTeamDepthChart), which wants
+    // QB/RB/WR/TE/K together rather than one query per position.
+    .index("by_team", ["team"])
+    // "Where does this fpid currently sit" - a player detail modal lookup.
+    .index("by_fpid", ["fpid"]),
 
   // Live NFL week/season snapshot, refreshed daily alongside the rest of
   // fetchAllData (see convex/sleeper/state.ts's fetchNflSeasonState and
