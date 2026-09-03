@@ -40,15 +40,11 @@ import { buildStandardValueByFpid } from "../../lib/standardValues";
 import { compareSortValues, type SortDir } from "../../lib/tableSort";
 import { buildBlendedAdpByFpid, buildOurRankByFpid } from "../../lib/valueRank";
 import { SortArrow } from "../../components/SortArrow";
-import {
-  MOBILE_STATS_ROW_HEIGHT,
-  POSITION_FILTER_BAR_HEIGHT,
-  WEEK,
-} from "../../constants/general";
-import { MOBILE_HEADER_HEIGHT } from "@shared/constants";
+import { MOBILE_STATS_ROW_HEIGHT, WEEK } from "../../constants/general";
+import { MOBILE_HEADER_HEIGHT, POSITION_FILTER_BAR_HEIGHT } from "@shared/constants";
 import { BUDGET_MATCH_WINDOW } from "../../constants/playersLeft";
 import { PlayerDetailModal } from "../../components/PlayerDetailModal";
-import { PositionFilterBar } from "../../components/PositionFilterBar";
+import { PositionFilterBar } from "@shared/PositionFilterBar";
 import { GenericValuesNotice } from "../../components/GenericValuesNotice";
 import {
   computeConsistencyThresholds,

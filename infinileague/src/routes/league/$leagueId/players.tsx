@@ -1,10 +1,13 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { Box, Group, Loader, Stack, Text, Title } from "@mantine/core";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { api } from "@infinidata/api";
+import { PositionFilterBar } from "@shared/PositionFilterBar";
+import { MOBILE_HEADER_HEIGHT, POSITION_FILTER_BAR_HEIGHT } from "@shared/constants";
+import type { Position } from "@shared/positionColors";
 import { PlayerCard } from "../../../components/PlayerCard";
 import type { RosVorRow } from "../../../types/season";
 
@@ -17,6 +20,8 @@ interface NflState {
   week: string;
   seasonType: "pre" | "regular" | "post";
 }
+
+const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 
 // Card height (~62px for the 2-row layout, measured live) + the gap below
 // it (8px) - has to match PlayerCard's actual rendered height for the
@@ -52,9 +57,12 @@ function PlayersPage() {
     isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
   );
 
+  const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
+  const filteredRows = (rows ?? []).filter((row) => selectedPositions.includes(row.position));
+
   const listRef = useRef<HTMLDivElement>(null);
   const virtualizer = useWindowVirtualizer({
-    count: rows?.length ?? 0,
+    count: filteredRows.length,
     estimateSize: () => PLAYER_CARD_HEIGHT,
     overscan: 10,
     scrollMargin: listRef.current?.offsetTop ?? 0,
@@ -95,15 +103,26 @@ function PlayersPage() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" wrap="wrap">
+      {/* Reserves space for PositionFilterBar's fixed mobile bar below,
+          which is pulled out of document flow - see
+          POSITION_FILTER_BAR_HEIGHT's comment for why this is a real
+          spacer element rather than a `pt` prop on this Stack. */}
+      <Box hiddenFrom="sm" h={POSITION_FILTER_BAR_HEIGHT} />
+      <Group justify="space-between" wrap="wrap" align="center">
         <Title order={3}>Players — Week {nflState.week}</Title>
         <Text c="dimmed" size="sm">
-          {rows.length} players
+          {filteredRows.length} of {rows.length} players
         </Text>
       </Group>
+      <PositionFilterBar
+        positions={ALL_POSITIONS}
+        selected={selectedPositions}
+        onChange={setSelectedPositions}
+        top={MOBILE_HEADER_HEIGHT}
+      />
       <div ref={listRef} style={{ position: "relative", height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((item) => {
-          const row = rows[item.index];
+          const row = filteredRows[item.index];
           if (!row) return null;
           return (
             <div

@@ -26,9 +26,9 @@ import {
   scoringConfigFromSeason,
 } from "../../lib/relevantPlayers";
 import { PlayerDetailModal } from "../../components/PlayerDetailModal";
-import { PositionFilterBar } from "../../components/PositionFilterBar";
+import { PositionFilterBar } from "@shared/PositionFilterBar";
 import { RookieBadge } from "@shared/RookieBadge";
-import { POSITION_FILTER_BAR_HEIGHT } from "../../constants/general";
+import { POSITION_FILTER_BAR_HEIGHT } from "@shared/constants";
 import { useRookieFpids } from "../../hooks/useRookieFpids";
 
 interface InjuryReportProps {

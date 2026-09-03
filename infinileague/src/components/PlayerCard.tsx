@@ -33,6 +33,7 @@ export function PlayerCard({ row, isRookie }: PlayerCardProps) {
           <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
             <Badge size="sm" color={positionColorOrDefault(row.position)} variant="light">
               {row.position}
+              {row.positionRank}
             </Badge>
             {row.team && (
               <Text c="dimmed" size="xs">

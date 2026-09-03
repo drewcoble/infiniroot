@@ -107,6 +107,10 @@ export interface RosVorRow {
   rosRank: number;
   actualVor: number;
   actualRank: number;
+  // This player's rank among just their own position (1 = the best RB,
+  // best WR, etc.) - "RB1"/"TE16" style labels, same rosVor ordering
+  // rosRank uses globally.
+  positionRank: number;
   // Display-facing per-game rates - rosPpg is the momentum-adjusted
   // rest-of-season rate (rosValue / remaining weeks), actualPpg is this
   // season's real average so far.

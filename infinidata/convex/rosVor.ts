@@ -20,6 +20,12 @@ export interface RosVorRow {
   rosRank: number;
   actualVor: number;
   actualRank: number;
+  // This player's rank among just their own position (1 = the best RB,
+  // best WR, etc.), by the same rosVor ordering rosRank uses globally -
+  // "RB1", "TE16" style labels. Derived at read time in getRosVorBoard
+  // (cheap - the row's own rosVor already tells us the order, no need to
+  // store this alongside rosRank/actualRank the way those are).
+  positionRank: number;
   // Display-facing per-game rates - see schema.ts's comment on why these
   // are computed once at write time rather than derived here from rosValue/
   // remainingWeeks (which only reflect the CURRENT week, wrong for a past
@@ -243,6 +249,22 @@ export const getRosVorBoard = query({
     const teamNameById = new Map(teams.map((team) => [team._id, team.name]));
     const teamNameByFpid = new Map(rosteredRows.map((row) => [row.fpid, teamNameById.get(row.teamId) ?? null]));
 
+    // Positional rank - grouped from this week's full board (before the
+    // optional position filter below), same rosVor ordering rosRank uses
+    // globally, just scoped to one position at a time.
+    const byPosition = new Map<Position, typeof rows>();
+    for (const row of rows) {
+      const list = byPosition.get(row.position) ?? [];
+      list.push(row);
+      byPosition.set(row.position, list);
+    }
+    const positionRankByFpid = new Map<number, number>();
+    for (const list of byPosition.values()) {
+      [...list]
+        .sort((a, b) => b.rosVor - a.rosVor)
+        .forEach((row, index) => positionRankByFpid.set(row.fpid, index + 1));
+    }
+
     return rows
       .filter((row) => !args.position || row.position === args.position)
       .sort((a, b) => a.rosRank - b.rosRank)
@@ -255,6 +277,7 @@ export const getRosVorBoard = query({
         rosRank: row.rosRank,
         actualVor: row.actualVor,
         actualRank: row.actualRank,
+        positionRank: positionRankByFpid.get(row.fpid) ?? 0,
         rosPpg: row.rosPpg ?? 0,
         actualPpg: row.actualPpg ?? 0,
         rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,

@@ -18,10 +18,9 @@ import { api } from "@infinidata/api";
 import type { Doc, Id } from "@infinidata/dataModel";
 import { GenericValuesNotice } from "../../components/GenericValuesNotice";
 import { PlayerDetailModal } from "../../components/PlayerDetailModal";
-import { PositionFilterBar } from "../../components/PositionFilterBar";
 import { SortArrow } from "../../components/SortArrow";
-import { POSITION_FILTER_BAR_HEIGHT } from "../../constants/general";
-import { MOBILE_HEADER_HEIGHT } from "@shared/constants";
+import { MOBILE_HEADER_HEIGHT, POSITION_FILTER_BAR_HEIGHT } from "@shared/constants";
+import { PositionFilterBar } from "@shared/PositionFilterBar";
 import { useRookieFpids } from "../../hooks/useRookieFpids";
 import {
   computeConsistencyThresholds,

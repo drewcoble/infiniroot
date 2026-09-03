@@ -5,31 +5,14 @@
 // (see playerPoints/playerSeasonStats).
 export const WEEK = "0";
 
-// APP_CONTENT_MAX_WIDTH and MOBILE_HEADER_HEIGHT moved to @shared/constants
-// (both apps need them) - import from there now.
+// APP_CONTENT_MAX_WIDTH, MOBILE_HEADER_HEIGHT, and POSITION_FILTER_BAR_HEIGHT
+// moved to @shared/constants (both apps need them) - import from there now.
 
 // Height of the condensed budget-stats row the Draft Room layout docks
 // directly under the fixed AppHeader on mobile (see DraftTopBar.tsx /
 // MobileNomination.tsx) - added on top of MOBILE_HEADER_HEIGHT when
 // reserving top padding on that route specifically.
 export const MOBILE_STATS_ROW_HEIGHT = 40;
-
-// Height of PositionFilterBar's fixed mobile bar (40px circles + 8px
-// vertical padding each side + 1px border). Every mobile caller fixes this
-// bar below whatever's already docked at the top (MOBILE_HEADER_HEIGHT,
-// plus MOBILE_STATS_ROW_HEIGHT in the Draft Room) and must reserve this much
-// space below it as a real spacer element - `<Box hiddenFrom="sm" h={...} />`
-// right before the page's content, same as BudgetTab.tsx does for
-// BUDGET_UNALLOCATED_BAR_HEIGHT below - NOT as a `pt` style prop on a
-// Stack/Box that also sets `py`. Mantine's Box destructures style props in a
-// fixed internal order (`py` before `pt` - see extractStyleProps in
-// @mantine/core), so `py`'s paddingBlock silently wins over an explicit `pt`
-// on the same element regardless of which was written last in JSX; the
-// element ends up with far less top padding than intended, and page content
-// renders underneath the fixed bar instead of below it. This bit
-// InjuryReport.tsx and PlayersTable.tsx (both used `<Stack py="sm" pt={...}>`
-// before switching to the spacer-element pattern).
-export const POSITION_FILTER_BAR_HEIGHT = 57;
 
 // Height of the "$X unallocated" bar the Setup app's pre-draft Budget tab
 // docks directly under the fixed AppHeader on mobile (see

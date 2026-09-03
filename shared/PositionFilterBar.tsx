@@ -1,36 +1,37 @@
 import { Badge, Box, Button, Group, UnstyledButton } from "@mantine/core";
-import type { Position } from "../types";
-import { positionColorVar } from "@shared/positionColors";
-import { POSITION_FILTER_BAR_HEIGHT } from "../constants/general";
+import { positionColorVar, type Position } from "./positionColors";
+import { POSITION_FILTER_BAR_HEIGHT } from "./constants";
 
 interface PositionFilterBarProps {
   positions: readonly Position[];
   selected: Position[];
   onChange: (positions: Position[]) => void;
   // Mobile-only fixed offset (px) from the top of the viewport - below
-  // whatever's already docked there (MOBILE_HEADER_HEIGHT, plus
-  // MOBILE_STATS_ROW_HEIGHT in the Draft Room). See each call site for its
-  // value, and POSITION_FILTER_BAR_HEIGHT's comment for why callers need to
-  // reserve space for this bar themselves.
+  // whatever's already docked there (MOBILE_HEADER_HEIGHT, plus each app's
+  // own additional docked bars, e.g. infinidraft's MOBILE_STATS_ROW_HEIGHT
+  // in the Draft Room). See each call site for its value, and
+  // POSITION_FILTER_BAR_HEIGHT's comment for why callers need to reserve
+  // space for this bar themselves.
   top: number;
 }
 
-// Position filter used above the Players/Injuries/Draft-board tables - one
+// Position filter used above player list/table views in both apps - one
 // 40px circle per position (colored via POSITION_COLORS, filled when
-// selected) instead of the small Chip pills this replaced. Each circle
-// carries a tiny "only" badge sitting in normal flow right after it,
-// vertically centered against the circle and pulled left (negative margin)
-// so its left edge tucks behind the circle's lower z-index silhouette - a
-// lower-emphasis affordance for "just this one" that doesn't compete with
-// the circle itself as the primary tap target. Flow layout (not absolute
-// positioning) on purpose: an absolutely-positioned badge could get clipped
-// by an ancestor's overflow, which is exactly what cut its text off before.
+// selected) instead of small Chip pills. Each circle carries a tiny "only"
+// badge sitting in normal flow right after it, vertically centered against
+// the circle and pulled left (negative margin) so its left edge tucks
+// behind the circle's lower z-index silhouette - a lower-emphasis
+// affordance for "just this one" that doesn't compete with the circle
+// itself as the primary tap target. Flow layout (not absolute positioning)
+// on purpose: an absolutely-positioned badge could get clipped by an
+// ancestor's overflow, which is exactly what cut its text off before.
 //
 // Below "sm", this docks fixed under the header (native-app-style, same
-// pattern as MobileStatsRow) and scrolls horizontally instead of wrapping -
-// wrapping to a second row was eating too much vertical space on a phone.
-// At "sm" and up there's normally enough width that it never wrapped
-// anyway, so that breakpoint keeps the plain static, wrapping layout.
+// pattern as infinidraft's own MobileStatsRow) and scrolls horizontally
+// instead of wrapping - wrapping to a second row was eating too much
+// vertical space on a phone. At "sm" and up there's normally enough width
+// that it never wrapped anyway, so that breakpoint keeps the plain static,
+// wrapping layout.
 export function PositionFilterBar({
   positions,
   selected,
@@ -129,9 +130,9 @@ export function PositionFilterBar({
         px="md"
         py={8}
         style={{
-          // Below AppHeader/MobileStatsRow (see AppHeader.tsx's own zIndex
-          // comment for why it sits under BottomNav now too) - this docks
-          // directly under whichever of those is above it.
+          // Below AppHeader/whatever else is docked (see each app's own
+          // AppHeader.tsx for its zIndex comment) - this docks directly
+          // under whichever of those is above it.
           zIndex: 180,
           minHeight: POSITION_FILTER_BAR_HEIGHT,
           overflowX: "auto",

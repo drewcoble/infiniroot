@@ -27,3 +27,20 @@ export const APP_CONTENT_MAX_WIDTH = 1600;
 // specifically so it can't silently drift past this value again and get
 // tucked under by anything docked below it.
 export const MOBILE_HEADER_HEIGHT = 53;
+
+// Height of PositionFilterBar's fixed mobile bar (40px circles + 8px
+// vertical padding each side + 1px border). Every mobile caller fixes this
+// bar below whatever's already docked at the top (MOBILE_HEADER_HEIGHT,
+// plus whatever else - e.g. infinidraft's MOBILE_STATS_ROW_HEIGHT in the
+// Draft Room) and must reserve this much space below it as a real spacer
+// element - `<Box hiddenFrom="sm" h={...} />` right before the page's
+// content, NOT as a `pt` style prop on a Stack/Box that also sets `py`.
+// Mantine's Box destructures style props in a fixed internal order (`py`
+// before `pt` - see extractStyleProps in @mantine/core), so `py`'s
+// paddingBlock silently wins over an explicit `pt` on the same element
+// regardless of which was written last in JSX; the element ends up with
+// far less top padding than intended, and page content renders underneath
+// the fixed bar instead of below it. This bit infinidraft's own
+// InjuryReport.tsx and PlayersTable.tsx (both used `<Stack py="sm"
+// pt={...}>` before switching to the spacer-element pattern).
+export const POSITION_FILTER_BAR_HEIGHT = 57;
