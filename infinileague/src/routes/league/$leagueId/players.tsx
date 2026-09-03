@@ -74,6 +74,24 @@ function PlayersPage() {
     );
   }
 
+  // getRosVorBoard only ever reads the cache convex/rosVor.ts's daily cron
+  // writes - unlike FAAB, it has no live-compute fallback (recomputing the
+  // full league-wide board on every reactive query re-run would be far more
+  // expensive than FAAB's one-shot fallback). An empty board here almost
+  // always means the cron hasn't run for this league/week yet, not that
+  // there are genuinely zero players - worth saying so explicitly rather
+  // than silently rendering nothing under a "0 players" header.
+  if (rows.length === 0) {
+    return (
+      <Stack align="center" py="xl" gap={4}>
+        <Text c="dimmed">Player rankings haven&apos;t been computed for this week yet.</Text>
+        <Text c="dimmed" size="sm">
+          Check back after the next daily refresh.
+        </Text>
+      </Stack>
+    );
+  }
+
   return (
     <Stack gap="md">
       <Group justify="space-between" wrap="wrap">
