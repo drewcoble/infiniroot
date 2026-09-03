@@ -214,7 +214,7 @@ export function PlayersLeftTab({ seasonId, selfTeamId }: PlayersLeftTabProps) {
   // mid-draft, so this is its own subscription rather than folded into
   // getDraftBoard. `season` is only set on leagues advanced through
   // cloneDraftSettings, so leagues created directly fall back to the
-  // system clock's year - the same thing convex/fantasyPros/client.ts's
+  // system clock's year - the same thing convex/lib/dataFetch.ts's
   // currentSeason() does server-side (fine here since this is frontend
   // code, not a Convex query - queries can't read the wall clock, but
   // components aren't restricted that way).

@@ -1,4 +1,4 @@
-import { processEnv } from "../../fantasyPros/client";
+import { processEnv } from "../../lib/env";
 
 /**
  * Google AI Studio / Gemini API (https://ai.google.dev/gemini-api/docs).
@@ -36,8 +36,8 @@ interface GenerateContentResponse {
 // generateContent is the classic, still-fully-supported Gemini REST
 // endpoint (there's also a newer "Interactions API", but generateContent's
 // wire format is simpler to hand-roll and matches every other integration
-// in this codebase's plain-fetch convention - see fetchFantasyPros/
-// fetchSleeper/fetchYahooApi). maxOutputTokens bounds cost/length; this
+// in this codebase's plain-fetch convention - see fetchSleeper/
+// fetchYahooApi). maxOutputTokens bounds cost/length; this
 // isn't a chat, just a single free-form recap.
 export async function generateGeminiText(
   prompt: string,

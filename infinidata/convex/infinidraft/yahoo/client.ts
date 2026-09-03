@@ -1,4 +1,4 @@
-import { processEnv } from "../../fantasyPros/client";
+import { processEnv } from "../../lib/env";
 
 /**
  * Yahoo Fantasy Sports API (https://developer.yahoo.com/fantasysports/guide/).

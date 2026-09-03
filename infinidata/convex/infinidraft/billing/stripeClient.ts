@@ -1,10 +1,10 @@
-import { processEnv } from "../../fantasyPros/client";
+import { processEnv } from "../../lib/env";
 
 /**
  * Stripe REST API (https://docs.stripe.com/api). Plain fetch, matching this
- * codebase's other third-party clients (convex/infinidraft/yahoo/client.ts,
- * convex/fantasyPros/client.ts) rather than pulling in the full Stripe SDK
- * for basic REST calls - the `stripe` npm package is used elsewhere (see
+ * codebase's other third-party clients (convex/infinidraft/yahoo/client.ts)
+ * rather than pulling in the full Stripe SDK for basic REST calls - the
+ * `stripe` npm package is used elsewhere (see
  * convex/infinidraft/billing/webhookHandler.ts) only for webhook signature verification,
  * which is genuinely hard to hand-roll safely.
  */

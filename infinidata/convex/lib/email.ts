@@ -1,4 +1,4 @@
-import { processEnv } from "../fantasyPros/client";
+import { processEnv } from "./env";
 
 /**
  * Resend (https://resend.com) - used only by convex/auth/passwordReset.ts to
