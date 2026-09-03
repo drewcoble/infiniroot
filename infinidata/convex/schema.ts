@@ -771,6 +771,49 @@ export default defineSchema({
     computedAt: v.number(),
   }).index("by_season_week", ["seasonId", "week"]),
 
+  // One row per (season, week, player) - a full weekly history of every
+  // rosterable player's value, rostered or free agent (unlike faabValues,
+  // which only ever surfaces free agents). Upserted daily by convex/rosVor.ts's
+  // refreshRosVor, keyed by week so a same-week rerun refreshes that week's
+  // numbers in place rather than piling up duplicates, and a new row only
+  // appears once the NFL week actually advances - "weekly snapshots" for
+  // free out of a daily cron, same trick powerRankingSnapshots above uses.
+  // Every past week's row stays (never deleted/overwritten across weeks),
+  // so this doubles as the full-season history next season's draft prep
+  // wants, not just a "current" cache the way draftValues is.
+  rosVorSnapshots: defineTable({
+    seasonId: v.id("seasons"),
+    week: v.string(),
+    fpid: v.number(),
+    position: positionValidator,
+    // Snapshotted from players at compute time, same reasoning as
+    // projections.name/team - renders a full weekly board without an extra
+    // lookup per row.
+    name: v.string(),
+    team: v.union(v.string(), v.null()),
+    // Forward-looking: rest-of-season value (recency/volume-adjusted
+    // momentum on top of projections, see convex/lib/playerValue.ts) above
+    // this position's replacement level among the current free-agent pool -
+    // same VOR concept convex/draftValues.ts's pre-draft process uses,
+    // genuinely unclamped (can go negative) for the same reason that field
+    // is. rosRank is the display-facing int derived from it (1 = best,
+    // global across every position) - UI should show rosRank, not raw
+    // rosVor, per the product call on how this should read.
+    rosVor: v.number(),
+    rosRank: v.number(),
+    // Backward-looking: this season's actual points scored so far
+    // (playerSeasonStats.totalPoints for this league's exact scoring
+    // combo) above the same free-agent-pool replacement level, computed
+    // off actual totals instead of rosValue - "who has actually delivered
+    // value this season," independent of projections entirely. Same
+    // display convention as rosVor/rosRank above.
+    actualVor: v.number(),
+    actualRank: v.number(),
+    computedAt: v.number(),
+  })
+    .index("by_season_week", ["seasonId", "week"])
+    .index("by_season_fpid", ["seasonId", "fpid"]),
+
   // One row per app user (not per league) - connecting a Yahoo account is a
   // one-time action that then lets that user link any of their Yahoo leagues
   // to any of their infinidraft leagues, mirroring how leagues.ownerId already

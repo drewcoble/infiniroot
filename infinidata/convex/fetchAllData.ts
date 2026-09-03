@@ -68,6 +68,11 @@ async function refreshCachedComputations(
   // and refreshes its one (fixed) scoring combo here with no special-casing.
   const seasons = await ctx.runQuery(internal.leagues.listAllSeasons, {});
   for (const season of seasons) {
+    // No draftId dependency (unlike draftValues below) - rosVor only needs
+    // the season's own roster/scoring settings, and no-ops on its own if
+    // it's not currently an NFL regular season week (see rosVor.ts).
+    await ctx.runMutation(internal.rosVor.refreshRosVor, { seasonId: season._id });
+
     const draft = await ctx.runQuery(internal.infinidraft.draft.fetchHelpers.getRealDraftInternal, {
       seasonId: season._id,
     });
