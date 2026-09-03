@@ -123,6 +123,7 @@ export const refreshRosVor = internalMutation({
     // comparable cross-position scale.
     const valued = [...forms.values()].map((form) => ({
       form,
+      rosValue: rosValueByFpid.get(form.fpid) ?? 0,
       rosVor: (rosValueByFpid.get(form.fpid) ?? 0) - rosReplacementValues[form.position],
       actualVor: (actualPointsByFpid.get(form.fpid) ?? 0) - actualReplacementValues[form.position],
     }));
@@ -143,12 +144,14 @@ export const refreshRosVor = internalMutation({
     const now = Date.now();
     const seen = new Set<number>();
 
-    for (const { form, rosVor, actualVor } of valued) {
+    for (const { form, rosValue, rosVor, actualVor } of valued) {
       seen.add(form.fpid);
       const fields = {
         position: form.position,
         name: form.name,
         team: form.team,
+        rosValue,
+        boostReason: boosts.get(form.fpid)?.reason,
         rosVor,
         rosRank: rosRankByFpid.get(form.fpid) ?? 0,
         actualVor,

@@ -56,6 +56,115 @@ export interface FaabSuggestionsResult {
   suggestions: FaabSuggestionRow[];
 }
 
+// ---- Per-player value: cache-first, live-compute fallback ----
+
+interface PlayerValueEntry {
+  fpid: number;
+  name: string;
+  team: string | null;
+  position: Position;
+  rosValue: number;
+  valueOverReplacement: number;
+  boostReason: string | null;
+}
+
+// Prefers convex/rosVor.ts's daily-cron cache - it computes this exact same
+// momentum/injury-boost value for every rosterable player already, so
+// reading it here avoids redoing convex/lib/playerValue.ts's live
+// gather-forms/injury-boost work (the expensive O(positions * weeks) reads)
+// on every single FAAB query. Returns null on a genuine cache miss (empty
+// for this season/week - a brand-new league before the next cron cycle) so
+// the caller can fall back to computing live, same convention convex/
+// draftValues.ts's getRealDraftValues already uses for its own cache.
+async function loadCachedPlayerValues(
+  ctx: QueryCtx,
+  args: { seasonId: Id<"seasons">; week: string },
+): Promise<Map<number, PlayerValueEntry> | null> {
+  const rows = await ctx.db
+    .query("rosVorSnapshots")
+    .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
+    .collect();
+  if (rows.length === 0) return null;
+
+  const values = new Map<number, PlayerValueEntry>();
+  for (const row of rows) {
+    // rosValue predates some rows (written before that field existed) -
+    // treated as absent for that one player rather than invalidating the
+    // whole cache, since every row going forward always has it.
+    if (row.rosValue === undefined) continue;
+    values.set(row.fpid, {
+      fpid: row.fpid,
+      name: row.name,
+      team: row.team,
+      position: row.position,
+      rosValue: row.rosValue,
+      valueOverReplacement: row.rosVor,
+      boostReason: row.boostReason ?? null,
+    });
+  }
+  return values.size > 0 ? values : null;
+}
+
+// Same computation convex/rosVor.ts's own refresh does for its "forward"
+// side (momentum-adjusted rosValue, injury boost, free-agent-pool
+// replacement level) - kept here rather than imported from that file since
+// rosVor.ts is a cron-triggered mutation, not designed for reuse, and this
+// only needs the "ros" half (not actualVor, which FAAB has no use for).
+async function computeLivePlayerValues(
+  ctx: QueryCtx,
+  args: {
+    settings: Doc<"seasons">;
+    activePositions: Position[];
+    week: string;
+    scoringConfig: ReturnType<typeof scoringConfigFromSeason>;
+    remainingWeeks: number;
+    rosteredFpids: Set<number>;
+  },
+): Promise<Map<number, PlayerValueEntry>> {
+  const forms = await gatherPlayerForms(ctx, {
+    activePositions: args.activePositions,
+    week: args.week,
+    scoringConfig: args.scoringConfig,
+  });
+  const boosts = await findInjuryBoosts(ctx, { forms });
+
+  const rosValueByFpid = new Map<number, number>();
+  for (const form of forms.values()) {
+    let value = forwardRate(form) * args.remainingWeeks;
+    const boost = boosts.get(form.fpid);
+    if (boost) {
+      const boostedWeeks = Math.min(boost.boostedWeeks, args.remainingWeeks);
+      value += Math.max(boost.boostedRate - forwardRate(form), 0) * boostedWeeks;
+    }
+    rosValueByFpid.set(form.fpid, value);
+  }
+
+  const freeAgentsByPosition = new Map<Position, ValuedPlayer[]>();
+  for (const pos of args.activePositions) {
+    const rows = [...forms.values()]
+      .filter((form) => form.position === pos && !args.rosteredFpids.has(form.fpid))
+      .map((form) => ({ fpid: form.fpid, name: form.name, team: form.team, position: form.position, rosValue: rosValueByFpid.get(form.fpid) ?? 0 }))
+      .sort((a, b) => b.rosValue - a.rosValue);
+    freeAgentsByPosition.set(pos, rows);
+  }
+  const replacementValues = computeReplacementLevels(args.settings, args.activePositions, freeAgentsByPosition);
+
+  const values = new Map<number, PlayerValueEntry>();
+  for (const form of forms.values()) {
+    const rosValue = rosValueByFpid.get(form.fpid) ?? 0;
+    values.set(form.fpid, {
+      fpid: form.fpid,
+      name: form.name,
+      team: form.team,
+      position: form.position,
+      rosValue,
+      valueOverReplacement: rosValue - replacementValues[form.position],
+      boostReason: boosts.get(form.fpid)?.reason ?? null,
+    });
+  }
+  return values;
+}
+
 // ---- Demand against every team's real rosters ----
 
 // Greedy best-players-start slot assignment: highest rest-of-season value
@@ -140,12 +249,14 @@ const BID_CEILING_BY_POSITION: Partial<Record<Position, number>> = {
 // priced against THAT team's own remaining budget - never a share of the
 // league's combined FAAB. This version instead: (1) values each player off
 // a recency/volume-aware momentum read on top of their forward projection
-// rather than a flat season-to-date average (see playerValue.ts), (2) adds
-// a time-boxed value bump for a free agent plausibly inheriting a
-// just-injured teammate's workload, (3) computes demand by comparing that
-// value against every team's own actual current weakest starter, and (4)
-// prices a suggested bid off the requesting team's own value and budget,
-// scaled by how much competing demand exists elsewhere in the league.
+// rather than a flat season-to-date average - normally read straight from
+// convex/rosVor.ts's daily cache rather than recomputed live (see
+// loadCachedPlayerValues) - (2) includes a time-boxed value bump for a free
+// agent plausibly inheriting a just-injured teammate's workload, (3)
+// computes demand by comparing that value against every team's own actual
+// current weakest starter, and (4) prices a suggested bid off the
+// requesting team's own value and budget, scaled by how much competing
+// demand exists elsewhere in the league.
 //
 // Lives here rather than directly in convex/infinileague/season/faabValues.ts
 // (its only consumer, now that infinidraft's own Free Agents tab has moved
@@ -176,7 +287,7 @@ export async function computeFaabSuggestions(
   );
   const scoringConfig = scoringConfigFromSeason(settings);
 
-  const [rosteredRows, teams, forms] = await Promise.all([
+  const [rosteredRows, teams] = await Promise.all([
     ctx.db
       .query("rosterPlayers")
       .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
@@ -185,7 +296,6 @@ export async function computeFaabSuggestions(
       .query("seasonTeams")
       .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
       .collect(),
-    gatherPlayerForms(ctx, { activePositions, week: nflState.week, scoringConfig }),
   ]);
   const rosteredFpidsByTeam = new Map<Id<"seasonTeams">, Set<number>>();
   const rosteredFpids = new Set<number>();
@@ -196,45 +306,34 @@ export async function computeFaabSuggestions(
     rosteredFpidsByTeam.set(row.teamId, set);
   }
 
-  const boosts = await findInjuryBoosts(ctx, { forms });
+  const playerValues =
+    (await loadCachedPlayerValues(ctx, { seasonId: args.seasonId, week: nflState.week })) ??
+    (await computeLivePlayerValues(ctx, {
+      settings,
+      activePositions,
+      week: nflState.week,
+      scoringConfig,
+      remainingWeeks,
+      rosteredFpids,
+    }));
 
-  function valueOf(fpid: number, applyBoost: boolean): ValuedPlayer | null {
-    const form = forms.get(fpid);
-    if (!form) return null;
-    let rosValue = forwardRate(form) * remainingWeeks;
-    if (applyBoost) {
-      const boost = boosts.get(fpid);
-      if (boost) {
-        const boostedWeeks = Math.min(boost.boostedWeeks, remainingWeeks);
-        const ownRate = forwardRate(form);
-        rosValue += Math.max(boost.boostedRate - ownRate, 0) * boostedWeeks;
-      }
-    }
-    return { fpid: form.fpid, name: form.name, team: form.team, position: form.position, rosValue };
-  }
-
-  // Every team's current starters, valued the same way as free agents
-  // (minus the injury boost, which only makes sense for a player a team
-  // doesn't have yet) - this is what demand gets computed against below.
+  // Every team's current starters, valued the same way as free agents -
+  // this is what demand gets computed against below.
   const weakestStarterByTeam = new Map<Id<"seasonTeams">, Partial<Record<Position, number>>>();
   for (const team of teams) {
     const roster = [...(rosteredFpidsByTeam.get(team._id) ?? [])]
-      .map((fpid) => valueOf(fpid, false))
-      .filter((v): v is ValuedPlayer => v !== null);
+      .map((fpid) => playerValues.get(fpid))
+      .filter((v): v is PlayerValueEntry => v !== undefined);
     weakestStarterByTeam.set(team._id, weakestStarterByPosition(assignRosterSlots(roster, settings)));
   }
 
-  const freeAgentsByPosition = new Map<Position, ValuedPlayer[]>();
+  const freeAgentsByPosition = new Map<Position, PlayerValueEntry[]>();
   for (const pos of activePositions) {
-    const rows = [...forms.values()]
-      .filter((form) => form.position === pos && !rosteredFpids.has(form.fpid))
-      .map((form) => valueOf(form.fpid, true))
-      .filter((v): v is ValuedPlayer => v !== null)
+    const rows = [...playerValues.values()]
+      .filter((v) => v.position === pos && !rosteredFpids.has(v.fpid))
       .sort((a, b) => b.rosValue - a.rosValue);
     freeAgentsByPosition.set(pos, rows);
   }
-
-  const replacementValues = computeReplacementLevels(settings, activePositions, freeAgentsByPosition);
 
   const requestingTeam = args.teamId ? teams.find((team) => team._id === args.teamId) : undefined;
   const remainingFaabForTeam = requestingTeam
@@ -275,9 +374,8 @@ export async function computeFaabSuggestions(
         }
       }
 
-      const boost = boosts.get(row.fpid);
-      if (boost) {
-        rationale = rationale ? `${rationale} - ${boost.reason}` : boost.reason;
+      if (row.boostReason) {
+        rationale = rationale ? `${rationale} - ${row.boostReason}` : row.boostReason;
       }
 
       suggestions.push({
@@ -287,13 +385,13 @@ export async function computeFaabSuggestions(
         position: pos,
         rosValue: row.rosValue,
         positionRank: index + 1,
-        valueOverReplacement: row.rosValue - replacementValues[pos],
+        valueOverReplacement: row.valueOverReplacement,
         demandCount,
         topDemandValue,
         myValue,
         suggestedBid,
         rationale,
-        boostReason: boost?.reason ?? null,
+        boostReason: row.boostReason,
       });
     });
   }

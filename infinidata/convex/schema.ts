@@ -801,6 +801,20 @@ export default defineSchema({
     // rosVor, per the product call on how this should read.
     rosVor: v.number(),
     rosRank: v.number(),
+    // Raw rest-of-season value (same momentum-adjusted number rosVor is
+    // computed from, injury boost included) - stored alongside rosVor so a
+    // consumer like convex/lib/faab.ts can read a ready-made per-player
+    // value straight off this cache instead of recomputing convex/lib/
+    // playerValue.ts's momentum/injury-boost machinery on every live query.
+    // Optional since rows written before this field existed predate it -
+    // convex/lib/faab.ts treats a missing value as a cache miss for that
+    // row (see its own comment).
+    rosValue: v.optional(v.number()),
+    // Injury-boost narrative, when this row's rosValue includes one (see
+    // playerValue.ts's findInjuryBoosts) - stored so a cache consumer
+    // doesn't have to redo boost detection just to explain a surprising
+    // number. Same optionality reasoning as rosValue above.
+    boostReason: v.optional(v.string()),
     // Backward-looking: this season's actual points scored so far
     // (playerSeasonStats.totalPoints for this league's exact scoring
     // combo) above the same free-agent-pool replacement level, computed
