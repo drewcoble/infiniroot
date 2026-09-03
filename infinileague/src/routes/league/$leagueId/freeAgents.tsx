@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
@@ -5,11 +6,44 @@ import { Badge, Card, Group, Loader, Stack, Table, Text, Title } from "@mantine/
 import { api } from "@infinidata/api";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { RookieBadge } from "@shared/RookieBadge";
-import type { FaabSuggestionsResult, StandingsRow } from "../../../types/season";
+import { SortArrow } from "../../../components/SortArrow";
+import { compareSortValues, type SortDir } from "../../../lib/tableSort";
+import type { FaabSuggestionRow, FaabSuggestionsResult, StandingsRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/freeAgents")({
   component: FreeAgentsPage,
 });
+
+type SortKey = "player" | "position" | "rosValue" | "demand" | "myValue" | "suggestedBid";
+
+// Suggested Bid/Value to You default to descending (highest first); Player/
+// Pos default A-Z. Applied when a header's clicked for the first time -
+// clicking the same header again just flips direction (see handleSort).
+const DEFAULT_SORT_DIR: Record<SortKey, SortDir> = {
+  player: "asc",
+  position: "asc",
+  rosValue: "desc",
+  demand: "desc",
+  myValue: "desc",
+  suggestedBid: "desc",
+};
+
+function sortValueFor(row: FaabSuggestionRow, key: SortKey): number | string | undefined {
+  switch (key) {
+    case "player":
+      return row.name;
+    case "position":
+      return row.position;
+    case "rosValue":
+      return row.rosValue;
+    case "demand":
+      return row.demandCount;
+    case "myValue":
+      return row.myValue ?? undefined;
+    case "suggestedBid":
+      return row.suggestedBid ?? undefined;
+  }
+}
 
 // Migrated from infinidraft's src/pages/Season/FreeAgentsTab.tsx (now
 // removed there) - same advisory FAAB bid calculator, backed by the same
@@ -45,6 +79,30 @@ function FreeAgentsPage() {
       : "skip",
   );
 
+  // null until a column header's clicked - the table keeps its default
+  // suggested-bid-first order (see sortedRows below) until then.
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(DEFAULT_SORT_DIR[key]);
+    }
+  };
+
+  const renderSortableTh = (label: string, key: SortKey) => (
+    <Table.Th onClick={() => handleSort(key)} style={{ cursor: "pointer" }}>
+      <Group gap={4} wrap="nowrap">
+        <Text size="sm" fw={sortKey === key ? 700 : undefined}>
+          {label}
+        </Text>
+        {sortKey === key && <SortArrow dir={sortDir} />}
+      </Group>
+    </Table.Th>
+  );
+
   if (result === undefined) {
     return <Loader />;
   }
@@ -60,9 +118,22 @@ function FreeAgentsPage() {
     );
   }
 
-  const rows = [...result.suggestions].sort(
-    (a, b) => (b.suggestedBid ?? b.topDemandValue) - (a.suggestedBid ?? a.topDemandValue),
-  );
+  // Defaults to Suggested Bid (highest first) - the single number most
+  // directly answers "who should I actually bid on" - tiebroken by
+  // topDemandValue (this player's biggest value-over-replacement gap
+  // league-wide, the closest analog to a VOR ranking now that value is
+  // computed per-team rather than off one static replacement level - see
+  // convex/lib/faab.ts), then name for full determinism. A clicked column
+  // uses the same tiebreak chain, not just raw array order.
+  const key: SortKey = sortKey ?? "suggestedBid";
+  const dir: SortDir = sortKey ? sortDir : "desc";
+  const rows = [...result.suggestions].sort((a, b) => {
+    const primary = compareSortValues(sortValueFor(a, key), sortValueFor(b, key), dir);
+    if (primary !== 0) return primary;
+    const secondary = compareSortValues(a.topDemandValue, b.topDemandValue, "desc");
+    if (secondary !== 0) return secondary;
+    return compareSortValues(a.name, b.name, "asc");
+  });
 
   return (
     <Stack gap="md">
@@ -77,12 +148,12 @@ function FreeAgentsPage() {
           <Table highlightOnHover verticalSpacing={4}>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Player</Table.Th>
-                <Table.Th>Pos</Table.Th>
-                <Table.Th>ROS Pts</Table.Th>
-                <Table.Th>Demand</Table.Th>
-                <Table.Th>Value to You</Table.Th>
-                <Table.Th>Suggested Bid</Table.Th>
+                {renderSortableTh("Player", "player")}
+                {renderSortableTh("Pos", "position")}
+                {renderSortableTh("ROS Pts", "rosValue")}
+                {renderSortableTh("Demand", "demand")}
+                {renderSortableTh("Value to You", "myValue")}
+                {renderSortableTh("Suggested Bid", "suggestedBid")}
                 <Table.Th>Why</Table.Th>
               </Table.Tr>
             </Table.Thead>
