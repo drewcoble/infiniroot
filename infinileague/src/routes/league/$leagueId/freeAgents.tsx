@@ -14,7 +14,7 @@ export const Route = createFileRoute("/league/$leagueId/freeAgents")({
   component: FreeAgentsPage,
 });
 
-type SortKey = "player" | "position" | "rosValue" | "demand" | "myValue" | "suggestedBid";
+type SortKey = "player" | "position" | "rosValue" | "vor" | "demand" | "myValue" | "suggestedBid";
 
 // Suggested Bid/Value to You default to descending (highest first); Player/
 // Pos default A-Z. Applied when a header's clicked for the first time -
@@ -23,6 +23,7 @@ const DEFAULT_SORT_DIR: Record<SortKey, SortDir> = {
   player: "asc",
   position: "asc",
   rosValue: "desc",
+  vor: "desc",
   demand: "desc",
   myValue: "desc",
   suggestedBid: "desc",
@@ -36,6 +37,8 @@ function sortValueFor(row: FaabSuggestionRow, key: SortKey): number | string | u
       return row.position;
     case "rosValue":
       return row.rosValue;
+    case "vor":
+      return row.valueOverReplacement;
     case "demand":
       return row.demandCount;
     case "myValue":
@@ -151,6 +154,7 @@ function FreeAgentsPage() {
                 {renderSortableTh("Player", "player")}
                 {renderSortableTh("Pos", "position")}
                 {renderSortableTh("ROS Pts", "rosValue")}
+                {renderSortableTh("VOR", "vor")}
                 {renderSortableTh("Demand", "demand")}
                 {renderSortableTh("Value to You", "myValue")}
                 {renderSortableTh("Suggested Bid", "suggestedBid")}
@@ -179,6 +183,7 @@ function FreeAgentsPage() {
                     </Badge>
                   </Table.Td>
                   <Table.Td>{row.rosValue.toFixed(1)}</Table.Td>
+                  <Table.Td>{row.valueOverReplacement.toFixed(1)}</Table.Td>
                   <Table.Td>
                     {row.demandCount > 0 ? (
                       <Text size="sm">
