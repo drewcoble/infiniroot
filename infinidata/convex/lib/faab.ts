@@ -13,6 +13,13 @@ export interface FaabSuggestionRow {
   position: Position;
   rosValue: number;
   positionRank: number;
+  // Same VOR concept the pre-draft value process uses (convex/draftValues.ts's
+  // valueOverReplacement) - rosValue above this position's replacement level
+  // among currently-available free agents (see computeReplacementLevels).
+  // Genuinely unclamped (can go negative for a below-replacement player),
+  // same reason draftValues.ts's own field is - it's a ranking/tiebreak
+  // signal, not a dollar amount.
+  valueOverReplacement: number;
   // Demand across the whole league, not just the requester - how many teams
   // have a real roster gap this player would fill, and the single largest
   // gap among them (a rough "what would the winning bid look like" read).
@@ -390,6 +397,65 @@ function weakestStarterByPosition(assignedSlots: Map<string, ValuedPlayer>): Par
   return weakest;
 }
 
+// Replacement level among currently-available free agents - same tiered
+// demand curve (non-flex starter demand, then a pooled FLEX tier, then a
+// pooled SUPERFLEX tier) convex/draftValues.ts's computeDraftValuesForSettings
+// uses to find the "still on the board" replacement level pre-draft, just
+// fed the free-agent-only pool ranked by rosValue instead of the whole
+// draftable pool ranked by season points - the closest FAAB-side analog to
+// "the next player up if this slot opens." Used only as a ranking/tiebreak
+// signal (valueOverReplacement below), not to price the suggested bid - see
+// this file's header comment for why the $ side is priced off real
+// per-team demand instead.
+function computeReplacementLevels(
+  settings: Doc<"seasons">,
+  activePositions: Position[],
+  freeAgentsByPosition: Map<Position, ValuedPlayer[]>,
+): Record<Position, number> {
+  const nonFlexDemand = {} as Record<Position, number>;
+  for (const pos of activePositions) {
+    nonFlexDemand[pos] = Math.max(settings.teamCount * settings.rosterSlots[pos], 0);
+  }
+
+  const flexCandidates: Array<{ position: Position; value: number }> = [];
+  for (const pos of settings.flexPositions) {
+    const sorted = freeAgentsByPosition.get(pos) ?? [];
+    for (const row of sorted.slice(nonFlexDemand[pos] ?? 0)) {
+      flexCandidates.push({ position: pos, value: row.rosValue });
+    }
+  }
+  flexCandidates.sort((a, b) => b.value - a.value);
+  const flexDemand = settings.teamCount * settings.rosterSlots.FLEX;
+  const flexWonCount = new Map<Position, number>();
+  for (const candidate of flexCandidates.slice(0, flexDemand)) {
+    flexWonCount.set(candidate.position, (flexWonCount.get(candidate.position) ?? 0) + 1);
+  }
+
+  const superflexCandidates: Array<{ position: Position; value: number }> = [];
+  for (const pos of settings.superflexPositions) {
+    const sorted = freeAgentsByPosition.get(pos) ?? [];
+    const alreadyClaimed = (nonFlexDemand[pos] ?? 0) + (flexWonCount.get(pos) ?? 0);
+    for (const row of sorted.slice(alreadyClaimed)) {
+      superflexCandidates.push({ position: pos, value: row.rosValue });
+    }
+  }
+  superflexCandidates.sort((a, b) => b.value - a.value);
+  const superflexDemand = settings.teamCount * settings.rosterSlots.SUPERFLEX;
+  const superflexWonCount = new Map<Position, number>();
+  for (const candidate of superflexCandidates.slice(0, superflexDemand)) {
+    superflexWonCount.set(candidate.position, (superflexWonCount.get(candidate.position) ?? 0) + 1);
+  }
+
+  const replacement = {} as Record<Position, number>;
+  for (const pos of activePositions) {
+    const sorted = freeAgentsByPosition.get(pos) ?? [];
+    const rank = (nonFlexDemand[pos] ?? 0) + (flexWonCount.get(pos) ?? 0) + (superflexWonCount.get(pos) ?? 0) + 1;
+    const row = sorted[rank - 1] ?? sorted[sorted.length - 1];
+    replacement[pos] = row?.rosValue ?? 0;
+  }
+  return replacement;
+}
+
 // How much of MY OWN value to actually offer, scaled by competitive
 // pressure from other teams that also have a gap here - no competing team
 // means I can lowball far below my own valuation; a rival valuing this
@@ -532,6 +598,8 @@ export async function computeFaabSuggestions(
     freeAgentsByPosition.set(pos, rows);
   }
 
+  const replacementValues = computeReplacementLevels(settings, activePositions, freeAgentsByPosition);
+
   const requestingTeam = args.teamId ? teams.find((team) => team._id === args.teamId) : undefined;
   const remainingFaabForTeam = requestingTeam
     ? Math.max((requestingTeam.faabBudgetOverride ?? settings.faabBudget ?? 0) - (requestingTeam.faabSpent ?? 0), 0)
@@ -583,6 +651,7 @@ export async function computeFaabSuggestions(
         position: pos,
         rosValue: row.rosValue,
         positionRank: index + 1,
+        valueOverReplacement: row.rosValue - replacementValues[pos],
         demandCount,
         topDemandValue,
         myValue,

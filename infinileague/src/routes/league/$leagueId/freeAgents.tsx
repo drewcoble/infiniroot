@@ -120,17 +120,17 @@ function FreeAgentsPage() {
 
   // Defaults to Suggested Bid (highest first) - the single number most
   // directly answers "who should I actually bid on" - tiebroken by
-  // topDemandValue (this player's biggest value-over-replacement gap
-  // league-wide, the closest analog to a VOR ranking now that value is
-  // computed per-team rather than off one static replacement level - see
-  // convex/lib/faab.ts), then name for full determinism. A clicked column
-  // uses the same tiebreak chain, not just raw array order.
+  // valueOverReplacement, the same VOR the pre-draft value process ranks by
+  // (convex/draftValues.ts), not the demand-based fields (those are
+  // per-team and situational, a worse tiebreak than a stable value
+  // ranking) - then name for full determinism. A clicked column uses the
+  // same tiebreak chain, not just raw array order.
   const key: SortKey = sortKey ?? "suggestedBid";
   const dir: SortDir = sortKey ? sortDir : "desc";
   const rows = [...result.suggestions].sort((a, b) => {
     const primary = compareSortValues(sortValueFor(a, key), sortValueFor(b, key), dir);
     if (primary !== 0) return primary;
-    const secondary = compareSortValues(a.topDemandValue, b.topDemandValue, "desc");
+    const secondary = compareSortValues(a.valueOverReplacement, b.valueOverReplacement, "desc");
     if (secondary !== 0) return secondary;
     return compareSortValues(a.name, b.name, "asc");
   });

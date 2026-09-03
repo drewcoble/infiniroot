@@ -62,6 +62,11 @@ export interface FaabSuggestionRow {
   position: "QB" | "RB" | "WR" | "TE" | "DST" | "K";
   rosValue: number;
   positionRank: number;
+  // Same VOR concept the pre-draft value process uses - rosValue above this
+  // position's replacement level among currently-available free agents.
+  // Genuinely unclamped (can go negative) - a ranking/tiebreak signal, not
+  // a dollar amount.
+  valueOverReplacement: number;
   // Demand across the whole league, not just the viewer - how many teams
   // have a real roster gap this player would fill, and the single largest
   // gap among them. 0/0 means nobody actually needs this player right now.
