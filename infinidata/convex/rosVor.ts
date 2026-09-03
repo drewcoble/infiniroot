@@ -20,6 +20,12 @@ export interface RosVorRow {
   rosRank: number;
   actualVor: number;
   actualRank: number;
+  // Display-facing per-game rates - see schema.ts's comment on why these
+  // are computed once at write time rather than derived here from rosValue/
+  // remainingWeeks (which only reflect the CURRENT week, wrong for a past
+  // week's row).
+  rosPpg: number;
+  actualPpg: number;
   // The fantasy team's own name (not the NFL team abbreviation above) -
   // null means this player is a free agent. Only populated by
   // getRosVorBoard, which joins against rosterPlayers/seasonTeams for
@@ -98,7 +104,9 @@ export const refreshRosVor = internalMutation({
     // is ranked by cumulative actual points scored this season instead of
     // rosValue (computeReplacementLevels only cares that its input is
     // sorted by "rosValue" descending, not what that number represents).
-    const actualPointsByFpid = new Map<number, number>();
+    // gamesPlayed rides along for actualPpg below, not used by the
+    // replacement-level math itself.
+    const actualStatsByFpid = new Map<number, { totalPoints: number; gamesPlayed: number }>();
     for (const pos of activePositions) {
       const rows = await ctx.db
         .query("playerSeasonStats")
@@ -111,13 +119,19 @@ export const refreshRosVor = internalMutation({
             .eq("sixPointPassTds", scoringConfig.sixPointPassTds),
         )
         .collect();
-      for (const row of rows) actualPointsByFpid.set(row.fpid, row.totalPoints);
+      for (const row of rows) actualStatsByFpid.set(row.fpid, { totalPoints: row.totalPoints, gamesPlayed: row.gamesPlayed });
     }
     const freeAgentsByActualPoints = new Map<Position, ValuedPlayer[]>();
     for (const pos of activePositions) {
       const rows = [...forms.values()]
         .filter((form) => form.position === pos && !rosteredFpids.has(form.fpid))
-        .map((form) => ({ fpid: form.fpid, name: form.name, team: form.team, position: form.position, rosValue: actualPointsByFpid.get(form.fpid) ?? 0 }))
+        .map((form) => ({
+          fpid: form.fpid,
+          name: form.name,
+          team: form.team,
+          position: form.position,
+          rosValue: actualStatsByFpid.get(form.fpid)?.totalPoints ?? 0,
+        }))
         .sort((a, b) => b.rosValue - a.rosValue);
       freeAgentsByActualPoints.set(pos, rows);
     }
@@ -127,12 +141,18 @@ export const refreshRosVor = internalMutation({
     // fantasy board mixes positions, ranked purely by how far above
     // replacement each player is, which is exactly what VOR puts on a
     // comparable cross-position scale.
-    const valued = [...forms.values()].map((form) => ({
-      form,
-      rosValue: rosValueByFpid.get(form.fpid) ?? 0,
-      rosVor: (rosValueByFpid.get(form.fpid) ?? 0) - rosReplacementValues[form.position],
-      actualVor: (actualPointsByFpid.get(form.fpid) ?? 0) - actualReplacementValues[form.position],
-    }));
+    const valued = [...forms.values()].map((form) => {
+      const rosValue = rosValueByFpid.get(form.fpid) ?? 0;
+      const actualStats = actualStatsByFpid.get(form.fpid);
+      return {
+        form,
+        rosValue,
+        rosVor: rosValue - rosReplacementValues[form.position],
+        actualVor: (actualStats?.totalPoints ?? 0) - actualReplacementValues[form.position],
+        rosPpg: remainingWeeks > 0 ? rosValue / remainingWeeks : 0,
+        actualPpg: actualStats && actualStats.gamesPlayed > 0 ? actualStats.totalPoints / actualStats.gamesPlayed : 0,
+      };
+    });
     const rosRankByFpid = new Map<number, number>();
     [...valued]
       .sort((a, b) => b.rosVor - a.rosVor)
@@ -150,13 +170,15 @@ export const refreshRosVor = internalMutation({
     const now = Date.now();
     const seen = new Set<number>();
 
-    for (const { form, rosValue, rosVor, actualVor } of valued) {
+    for (const { form, rosValue, rosVor, actualVor, rosPpg, actualPpg } of valued) {
       seen.add(form.fpid);
       const fields = {
         position: form.position,
         name: form.name,
         team: form.team,
         rosValue,
+        rosPpg,
+        actualPpg,
         boostReason: boosts.get(form.fpid)?.reason ?? null,
         rosVor,
         rosRank: rosRankByFpid.get(form.fpid) ?? 0,
@@ -227,6 +249,8 @@ export const getRosVorBoard = query({
         rosRank: row.rosRank,
         actualVor: row.actualVor,
         actualRank: row.actualRank,
+        rosPpg: row.rosPpg ?? 0,
+        actualPpg: row.actualPpg ?? 0,
         rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
       }));
   },

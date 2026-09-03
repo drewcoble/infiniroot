@@ -827,6 +827,14 @@ export default defineSchema({
     // display convention as rosVor/rosRank above.
     actualVor: v.number(),
     actualRank: v.number(),
+    // Display-facing per-game rates, computed once at write time rather
+    // than derived later from rosValue/actualVor - remainingWeeks and
+    // gamesPlayed are both specific to the week this row was computed for,
+    // so dividing by "the current week's" values would be wrong for every
+    // past week's row once the season moves on. Optional since rows
+    // written before these fields existed predate them.
+    rosPpg: v.optional(v.number()),
+    actualPpg: v.optional(v.number()),
     computedAt: v.number(),
   })
     .index("by_season_week", ["seasonId", "week"])

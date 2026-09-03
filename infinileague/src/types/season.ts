@@ -107,6 +107,11 @@ export interface RosVorRow {
   rosRank: number;
   actualVor: number;
   actualRank: number;
+  // Display-facing per-game rates - rosPpg is the momentum-adjusted
+  // rest-of-season rate (rosValue / remaining weeks), actualPpg is this
+  // season's real average so far.
+  rosPpg: number;
+  actualPpg: number;
   rosteredByTeamName: string | null;
 }
 

@@ -18,11 +18,12 @@ interface NflState {
   seasonType: "pre" | "regular" | "post";
 }
 
-// Card height (52px) + the gap below it (8px) - has to match PlayerCard's
-// actual rendered height for the virtualizer's offsets to line up; there's
-// no ResizeObserver measuring it live since every card is the same fixed
-// shape (see PlayerCard's own comment).
-const PLAYER_CARD_HEIGHT = 60;
+// Card height (~62px for the 2-row layout, measured live) + the gap below
+// it (8px) - has to match PlayerCard's actual rendered height for the
+// virtualizer's offsets to line up; there's no ResizeObserver measuring it
+// live since every card is the same fixed shape (see PlayerCard's own
+// comment).
+const PLAYER_CARD_HEIGHT = 71;
 
 // Every rosterable player in the league (rostered or free agent), ranked by
 // rosVOR - the full board convex/rosVor.ts computes, not just the free
