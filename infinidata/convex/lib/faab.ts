@@ -406,6 +406,27 @@ function competitionFraction(myValue: number, rivalDemandValues: number[]): numb
   return Math.min(0.15 + 0.7 * pressure + rivalCountBump, 0.9);
 }
 
+// K/DST get a hard discount the VOR-over-replacement math above would never
+// find on its own - real FAAB managers don't chase these regardless of the
+// raw point gap, because week-to-week output is mostly matchup noise (low
+// trust in the signal persisting) and there's always ample streamable
+// replacement supply on waivers (no real scarcity to bid up). This is a
+// market-convention fact, not a stats-derived one, so it's applied as an
+// explicit dampener + hard ceiling on the DOLLAR amount only - rosValue/
+// demandCount/myValue upstream stay undamped, since "this DST has a great
+// matchup" is still real, useful signal for the rationale/demand columns,
+// it just shouldn't translate into real budget. Tuned to roughly: K almost
+// always $0-1, DST streaming $1-2 with a rare standout up around $5-6 -
+// starting numbers, not calibrated against real bid outcomes yet.
+const BID_DAMPENER_BY_POSITION: Partial<Record<Position, number>> = {
+  K: 0.03,
+  DST: 0.2,
+};
+const BID_CEILING_BY_POSITION: Partial<Record<Position, number>> = {
+  K: 1,
+  DST: 6,
+};
+
 // Advisory FAAB bid suggestions for every current free agent.
 //
 // Replaces an earlier version of this formula that was a near-copy of the
@@ -534,7 +555,11 @@ export async function computeFaabSuggestions(
       if (requestingTeam) {
         myValue = demandValuesByTeam.find((d) => d.teamId === requestingTeam._id)?.value ?? 0;
         const rivalDemands = demandValuesByTeam.filter((d) => d.teamId !== requestingTeam._id).map((d) => d.value);
-        suggestedBid = Math.round(Math.min(myValue * competitionFraction(myValue, rivalDemands), remainingFaabForTeam));
+        const dampener = BID_DAMPENER_BY_POSITION[pos] ?? 1;
+        const ceiling = BID_CEILING_BY_POSITION[pos] ?? Infinity;
+        suggestedBid = Math.round(
+          Math.min(myValue * competitionFraction(myValue, rivalDemands) * dampener, ceiling, remainingFaabForTeam),
+        );
 
         const weakest = weakestStarterByTeam.get(requestingTeam._id)?.[pos];
         if (myValue <= 0) {
