@@ -61,7 +61,7 @@ function FreeAgentsPage() {
   }
 
   const rows = [...result.suggestions].sort(
-    (a, b) => (b.suggestedBid ?? b.marketValue) - (a.suggestedBid ?? a.marketValue),
+    (a, b) => (b.suggestedBid ?? b.topDemandValue) - (a.suggestedBid ?? a.topDemandValue),
   );
 
   return (
@@ -80,7 +80,8 @@ function FreeAgentsPage() {
                 <Table.Th>Player</Table.Th>
                 <Table.Th>Pos</Table.Th>
                 <Table.Th>ROS Pts</Table.Th>
-                <Table.Th>Market $</Table.Th>
+                <Table.Th>Demand</Table.Th>
+                <Table.Th>Value to You</Table.Th>
                 <Table.Th>Suggested Bid</Table.Th>
                 <Table.Th>Why</Table.Th>
               </Table.Tr>
@@ -107,7 +108,18 @@ function FreeAgentsPage() {
                     </Badge>
                   </Table.Td>
                   <Table.Td>{row.rosValue.toFixed(1)}</Table.Td>
-                  <Table.Td>${row.marketValue.toFixed(0)}</Table.Td>
+                  <Table.Td>
+                    {row.demandCount > 0 ? (
+                      <Text size="sm">
+                        {row.demandCount} team{row.demandCount === 1 ? "" : "s"}
+                      </Text>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        None
+                      </Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td>{row.myValue !== null ? `$${row.myValue.toFixed(0)}` : "—"}</Table.Td>
                   <Table.Td fw={700}>
                     {row.suggestedBid !== null ? `$${row.suggestedBid}` : "—"}
                   </Table.Td>

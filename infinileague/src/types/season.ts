@@ -62,15 +62,21 @@ export interface FaabSuggestionRow {
   position: "QB" | "RB" | "WR" | "TE" | "DST" | "K";
   rosValue: number;
   positionRank: number;
-  replacementValue: number;
-  valueOverReplacement: number;
-  marketValue: number;
-  // needMultiplier/suggestedBid/rationale are only populated when the query
-  // was called with a teamId - null otherwise (see FreeAgentsTab, which
-  // always passes the viewer's own team once known).
-  needMultiplier: number | null;
+  // Demand across the whole league, not just the viewer - how many teams
+  // have a real roster gap this player would fill, and the single largest
+  // gap among them. 0/0 means nobody actually needs this player right now.
+  demandCount: number;
+  topDemandValue: number;
+  // myValue/suggestedBid/rationale are only populated when the query was
+  // called with a teamId - null otherwise (see FreeAgentsTab, which always
+  // passes the viewer's own team once known). Priced against THAT team's
+  // own value/budget, never a share of the league's combined FAAB.
+  myValue: number | null;
   suggestedBid: number | null;
   rationale: string | null;
+  // Set when this player's value includes a time-boxed bump from plausibly
+  // inheriting a just-injured teammate's workload.
+  boostReason: string | null;
 }
 
 export interface FaabSuggestionsResult {

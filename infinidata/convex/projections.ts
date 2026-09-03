@@ -76,6 +76,13 @@ export const upsertProjections = mutation({
           pointsStd: row.pointsStd,
           pointsPpr: row.pointsPpr,
           pointsHalf: row.pointsHalf,
+          // Stashed from this row's outgoing values, not looked up
+          // separately - see schema.ts's previousPointsStd/Ppr/Half comment
+          // for why this is a one-step lookback rather than full history.
+          previousPointsStd: match.pointsStd,
+          previousPointsPpr: match.pointsPpr,
+          previousPointsHalf: match.pointsHalf,
+          previousFetchedAt: match.fetchedAt,
           stats: row.stats,
           fetchedAt: now,
         });

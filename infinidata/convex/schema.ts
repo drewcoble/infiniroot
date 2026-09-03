@@ -263,6 +263,19 @@ export default defineSchema({
     pointsStd: v.number(),
     pointsPpr: v.number(),
     pointsHalf: v.number(),
+    // One-step lookback, stashed from the prior fetch's pointsX right before
+    // upsertProjections overwrites this row (see that mutation) - lets
+    // convex/lib/faab.ts detect a same-week projection spike (e.g. a
+    // practice-squad promotion the projection system just caught up to)
+    // without needing a full time-series history table. Absent on this
+    // row's very first fetch, or if the row predates this field. previousFetchedAt
+    // is this row's OWN fetchedAt from before that overwrite, so a consumer
+    // can tell a same-day rerun (no real gap) from a genuine day-over-day
+    // jump - both previous* fields are only ever set/read together.
+    previousPointsStd: v.optional(v.number()),
+    previousPointsPpr: v.optional(v.number()),
+    previousPointsHalf: v.optional(v.number()),
+    previousFetchedAt: v.optional(v.number()),
     // Flexible stat map since QB/RB/WR/TE/DST each expose different columns
     // (e.g. "rec_yd", "rush_td", "pass_att"). See convex/sleeper/projections.ts.
     stats: v.record(v.string(), v.number()),
