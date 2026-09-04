@@ -50,13 +50,21 @@ function toFallbackRow(row: TeamRosterRow, fpid: number): RosVorRow {
   };
 }
 
-// Same footprint as a real PlayerCard (see that component's own comment on
-// why its height is fixed) - `empty` (no dash, nothing) stands in for a
-// whole team that isn't known yet; the dash marks a genuinely-unfilled slot
-// on a team whose roster IS known.
+// Matches the real PlayerCard next to it by stretching to the row's full
+// height (see the Group's align="stretch" below) rather than guessing a
+// pixel value - `empty` (no dash, nothing) stands in for a whole team that
+// isn't known yet; the dash marks a genuinely-unfilled slot on a team whose
+// roster IS known. The minHeight is only a floor for the rare row where
+// BOTH sides are placeholders (both teams empty in the same slot), so it
+// doesn't collapse to just its own padding.
 function PlaceholderCard({ empty }: { empty?: boolean }) {
   return (
-    <Card withBorder padding="xs" radius="md" style={{ flex: 1, minWidth: 0, minHeight: 96 }}>
+    <Card
+      withBorder
+      padding="xs"
+      radius="md"
+      style={{ flex: 1, minWidth: 0, minHeight: 44 }}
+    >
       {!empty && (
         <Text size="sm" c="dimmed">
           —
@@ -79,8 +87,12 @@ function PlayerCell({ row, vorByFpid, selected, onToggle }: PlayerCellProps) {
   }
   const fpid = row.fpid;
   const vorRow = vorByFpid.get(fpid);
+  // display: "grid" (rather than flex) so the single PlayerCard child
+  // stretches to fill both axes of this cell by default - a flex container
+  // would only auto-stretch the cross axis (height), leaving the card's
+  // width up to its own content.
   return (
-    <Box style={{ flex: 1, minWidth: 0 }}>
+    <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
       <PlayerCard
         row={vorRow ?? toFallbackRow(row, fpid)}
         isRookie={row.isRookie ?? false}
@@ -131,13 +143,13 @@ export function TradeRosterMatchup({
         const bRow = bRows?.[index];
         const slot = aRow?.slot ?? bRow?.slot;
         return (
-          <Group key={index} wrap="nowrap" gap="xs" align="center">
+          <Group key={index} wrap="nowrap" gap="xs" align="stretch">
             <PlayerCell row={aRow} vorByFpid={vorByFpid} selected={selectedA} onToggle={onToggleA} />
             <Badge
               size="sm"
               variant="light"
               color={positionColorOrDefault(slot ?? "")}
-              style={{ flexShrink: 0, minWidth: 50 }}
+              style={{ flexShrink: 0, minWidth: 50, alignSelf: "center" }}
             >
               {slotLabel(slot)}
             </Badge>
