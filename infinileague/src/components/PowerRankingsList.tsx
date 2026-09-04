@@ -10,8 +10,10 @@ interface PowerRankingsListProps {
 
 // Same up/down convention as LineupSuggestionsCard's start/sit arrows -
 // green up, red down - plus a dash for "unchanged" and nothing at all when
-// there's no prior week to compare against (rankChange absent).
-function RankChangeIndicator({ rankChange }: { rankChange: number | undefined }) {
+// there's no prior week to compare against (rankChange absent). Exported for
+// TradePowerRankingsList.tsx, which reuses it for trade-induced rank
+// movement instead of this list's week-over-week snapshot movement.
+export function RankChangeIndicator({ rankChange }: { rankChange: number | undefined }) {
   if (rankChange === undefined) return null;
   if (rankChange === 0) {
     return <Minus size={14} color="var(--mantine-color-dimmed)" />;

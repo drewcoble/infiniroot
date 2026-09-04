@@ -4,6 +4,9 @@ import { api, internal } from "../../_generated/api";
 import { Doc, Id } from "../../_generated/dataModel";
 import { fetchSleeperJson, sleeperPlayerIdToFpid, type SleeperRoster } from "../../sleeper/league";
 import { optimizeLineup, type LineupPick } from "../../infinidraft/draft/lineupOptimizer";
+import { POSITIONS } from "../../positions";
+
+type Position = (typeof POSITIONS)[number];
 
 export interface PowerRankingRow {
   teamId: Id<"seasonTeams">;
@@ -67,6 +70,138 @@ export const saveSnapshot = internalMutation({
   },
 });
 
+interface PowerRankingsInputs {
+  season: Doc<"seasons">;
+  currentWeek: number;
+  teams: Doc<"seasonTeams">[];
+  // Every rostered player except taxi/IR - same eligible-pool rule as
+  // src/lib/lineupSuggestions.ts's buildLineupSuggestions, a legitimate
+  // optimal-lineup candidate regardless of who's actually starting today.
+  eligibleFpidsByTeam: Map<Id<"seasonTeams">, number[]>;
+  positionByFpid: Map<number, Position>;
+  // One map per remaining week (current week through 18), each already
+  // covering every position in one shot - shared across every team's
+  // computeTeamTotal call rather than refetched per team.
+  projectionMapsByWeek: Map<number, Doc<"projections">>[];
+}
+
+// Shared setup both getPowerRankings and getPowerRankingsWithTrade need:
+// live Sleeper rosters (for each team's real current player pool) plus
+// every remaining week's projections (for computeTeamTotal below). Fetched
+// once per action call regardless of how many teams' totals end up
+// computed from it - a trade only ever touches two teams, so the
+// hypothetical run reuses this same gathered data rather than refetching.
+async function gatherPowerRankingsInputs(
+  ctx: ActionCtx,
+  seasonId: Id<"seasons">,
+): Promise<PowerRankingsInputs> {
+  const { season } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
+    seasonId,
+  });
+  if (!season.sleeperLeagueId) {
+    throw new Error("This league isn't linked to a Sleeper league yet.");
+  }
+
+  const nflState = await ctx.runQuery(api.nflState.getNflState, {});
+  // Clamped the same way the team page's own week picker defaults (see
+  // routes/league/$leagueId/teams/$teamId.tsx) - pre-season (week "0")
+  // isn't a real week to project from, so start at week 1.
+  const currentWeek = nflState ? Math.max(Number(nflState.week), 1) : 1;
+  const weeks = Array.from({ length: 18 - currentWeek + 1 }, (_, i) =>
+    String(currentWeek + i),
+  );
+
+  const [teams, rosters] = await Promise.all([
+    ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, { seasonId }),
+    fetchSleeperJson<SleeperRoster[]>(`/league/${season.sleeperLeagueId}/rosters`),
+  ]);
+  const rosterBySleeperRosterId = new Map(
+    rosters.map((roster) => [String(roster.roster_id), roster]),
+  );
+
+  const eligibleFpidsByTeam = new Map<Id<"seasonTeams">, number[]>();
+  const allFpids = new Set<number>();
+  for (const team of teams) {
+    if (!team.sleeperRosterId) continue;
+    const roster = rosterBySleeperRosterId.get(team.sleeperRosterId);
+    if (!roster) continue;
+    const taxiIds = new Set(roster.taxi ?? []);
+    const reserveIds = new Set(roster.reserve ?? []);
+    const fpids = (roster.players ?? [])
+      .filter((playerId) => !taxiIds.has(playerId) && !reserveIds.has(playerId))
+      .map(sleeperPlayerIdToFpid)
+      .filter((fpid): fpid is number => fpid !== null);
+    eligibleFpidsByTeam.set(team._id, fpids);
+    for (const fpid of fpids) allFpids.add(fpid);
+  }
+
+  const players = await ctx.runQuery(api.players.getPlayersByFpids, {
+    fpids: [...allFpids],
+  });
+  const positionByFpid = new Map(players.map((player) => [player.fpid, player.position]));
+
+  // One getAllProjections call per remaining week, shared across every
+  // team - each call already returns every position's projections for that
+  // week in one shot, so this is O(weeks) rather than O(teams * weeks).
+  const projectionsByWeek = await Promise.all(
+    weeks.map((week) => ctx.runQuery(api.projections.getAllProjections, { week })),
+  );
+  const projectionMapsByWeek = projectionsByWeek.map(
+    (rows) => new Map(rows.map((row) => [row.fpid, row])),
+  );
+
+  return { season, currentWeek, teams, eligibleFpidsByTeam, positionByFpid, projectionMapsByWeek };
+}
+
+// One team's optimal-lineup total, summed across every week in
+// projectionMapsByWeek - the same per-week optimizeLineup call
+// getPowerRankings always ran, just factored out so a hypothetical
+// (post-trade) fpid list can be scored the exact same way as every real
+// team's current roster.
+function computeTeamTotal(
+  fpids: number[],
+  { season, positionByFpid, projectionMapsByWeek }: PowerRankingsInputs,
+): number {
+  let total = 0;
+  for (const projectionByFpid of projectionMapsByWeek) {
+    const teamPicks: LineupPick[] = [];
+    fpids.forEach((fpid, i) => {
+      const position = positionByFpid.get(fpid);
+      if (!position) return;
+      const projection = projectionByFpid.get(fpid);
+      const points = projection
+        ? season.scoring === "PPR"
+          ? projection.pointsPpr
+          : season.scoring === "HALF"
+            ? projection.pointsHalf
+            : projection.pointsStd
+        : 0;
+      teamPicks.push({ fpid, position, points, sequence: i });
+    });
+
+    total += optimizeLineup(
+      teamPicks,
+      season.rosterSlots,
+      season.flexPositions,
+      season.superflexPositions,
+    ).optimalPoints;
+  }
+  return total;
+}
+
+// Ranks every team with a known total, descending - shared by
+// getPowerRankings' real-roster totals and getPowerRankingsWithTrade's
+// before/after totals alike.
+function rankTeams(
+  teams: Doc<"seasonTeams">[],
+  totalByTeam: Map<Id<"seasonTeams">, number>,
+): { team: Doc<"seasonTeams">; totalProjectedPoints: number }[] {
+  return teams
+    .filter((team) => totalByTeam.has(team._id))
+    .map((team) => ({ team, totalProjectedPoints: totalByTeam.get(team._id) ?? 0 }))
+    .sort((a, b) => b.totalProjectedPoints - a.totalProjectedPoints);
+}
+
 // Each team's optimal-lineup total, projected from the current NFL week
 // through week 18, ranked descending - a rest-of-season strength read
 // (roster construction + matchup schedule via bye weeks already baked into
@@ -79,106 +214,19 @@ export const saveSnapshot = internalMutation({
 export const getPowerRankings = action({
   args: { seasonId: v.id("seasons") },
   handler: async (ctx: ActionCtx, args): Promise<PowerRankingRow[]> => {
-    const { season } = await ctx.runQuery(
-      internal.rosterSync.requireOwnedSeasonForSync,
-      { seasonId: args.seasonId },
-    );
-    if (!season.sleeperLeagueId) {
-      throw new Error("This league isn't linked to a Sleeper league yet.");
-    }
-
-    const nflState = await ctx.runQuery(api.nflState.getNflState, {});
-    // Clamped the same way the team page's own week picker defaults (see
-    // routes/league/$leagueId/teams/$teamId.tsx) - pre-season (week "0")
-    // isn't a real week to project from, so start at week 1.
-    const currentWeek = nflState ? Math.max(Number(nflState.week), 1) : 1;
-    const weeks = Array.from({ length: 18 - currentWeek + 1 }, (_, i) =>
-      String(currentWeek + i),
-    );
-
-    const [teams, rosters] = await Promise.all([
-      ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, {
-        seasonId: args.seasonId,
-      }),
-      fetchSleeperJson<SleeperRoster[]>(`/league/${season.sleeperLeagueId}/rosters`),
-    ]);
-    const rosterBySleeperRosterId = new Map(
-      rosters.map((roster) => [String(roster.roster_id), roster]),
-    );
-
-    // Same eligible-pool rule as src/lib/lineupSuggestions.ts's
-    // buildLineupSuggestions: every rostered player except taxi/IR is a
-    // legitimate optimal-lineup candidate, regardless of who's actually
-    // starting today.
-    const eligibleFpidsByTeam = new Map<Id<"seasonTeams">, number[]>();
-    const allFpids = new Set<number>();
-    for (const team of teams) {
-      if (!team.sleeperRosterId) continue;
-      const roster = rosterBySleeperRosterId.get(team.sleeperRosterId);
-      if (!roster) continue;
-      const taxiIds = new Set(roster.taxi ?? []);
-      const reserveIds = new Set(roster.reserve ?? []);
-      const fpids = (roster.players ?? [])
-        .filter((playerId) => !taxiIds.has(playerId) && !reserveIds.has(playerId))
-        .map(sleeperPlayerIdToFpid)
-        .filter((fpid): fpid is number => fpid !== null);
-      eligibleFpidsByTeam.set(team._id, fpids);
-      for (const fpid of fpids) allFpids.add(fpid);
-    }
-
-    const players = await ctx.runQuery(api.players.getPlayersByFpids, {
-      fpids: [...allFpids],
-    });
-    const positionByFpid = new Map(players.map((player) => [player.fpid, player.position]));
-
-    // One getAllProjections call per remaining week, shared across every
-    // team - each call already returns every position's projections for
-    // that week in one shot, so this is O(weeks) rather than O(teams * weeks).
-    const projectionsByWeek = await Promise.all(
-      weeks.map((week) => ctx.runQuery(api.projections.getAllProjections, { week })),
-    );
-    const projectionMapsByWeek = projectionsByWeek.map(
-      (rows) => new Map(rows.map((row) => [row.fpid, row])),
-    );
+    const inputs = await gatherPowerRankingsInputs(ctx, args.seasonId);
+    const { teams, eligibleFpidsByTeam } = inputs;
 
     const totalByTeam = new Map<Id<"seasonTeams">, number>();
     for (const team of teams) {
       const fpids = eligibleFpidsByTeam.get(team._id);
       if (!fpids) continue;
-
-      let total = 0;
-      for (const projectionByFpid of projectionMapsByWeek) {
-        const teamPicks: LineupPick[] = [];
-        fpids.forEach((fpid, i) => {
-          const position = positionByFpid.get(fpid);
-          if (!position) return;
-          const projection = projectionByFpid.get(fpid);
-          const points = projection
-            ? season.scoring === "PPR"
-              ? projection.pointsPpr
-              : season.scoring === "HALF"
-                ? projection.pointsHalf
-                : projection.pointsStd
-            : 0;
-          teamPicks.push({ fpid, position, points, sequence: i });
-        });
-
-        total += optimizeLineup(
-          teamPicks,
-          season.rosterSlots,
-          season.flexPositions,
-          season.superflexPositions,
-        ).optimalPoints;
-      }
-      totalByTeam.set(team._id, total);
+      totalByTeam.set(team._id, computeTeamTotal(fpids, inputs));
     }
 
-    const ranked = teams
-      .filter((team) => totalByTeam.has(team._id))
-      .map((team) => ({ team, totalProjectedPoints: totalByTeam.get(team._id) ?? 0 }))
-      .sort((a, b) => b.totalProjectedPoints - a.totalProjectedPoints);
+    const ranked = rankTeams(teams, totalByTeam);
 
-    const currentWeekStr = String(currentWeek);
+    const currentWeekStr = String(inputs.currentWeek);
     const previousSnapshot = await ctx.runQuery(
       internal.infinileague.season.powerRankings.getLatestSnapshotBeforeWeek,
       { seasonId: args.seasonId, beforeWeek: currentWeekStr },
@@ -202,5 +250,58 @@ export const getPowerRankings = action({
         ...(previousRank !== undefined ? { rankChange: previousRank - (index + 1) } : {}),
       };
     });
+  },
+});
+
+// Same rest-of-season power rankings as getPowerRankings, computed twice:
+// once for every team's real current roster ("before"), once with
+// outgoingFromA/outgoingFromB swapped between teamAId/teamBId ("after") -
+// every other team's total is untouched by a two-team trade, but their RANK
+// can still move if teamA or teamB crosses past them, so both full lists
+// are returned rather than just the two traded teams' numbers. Doesn't save
+// a snapshot (see saveSnapshot) - this is a hypothetical, not a real
+// week's result, so it must never feed rankChange's week-over-week history.
+export const getPowerRankingsWithTrade = action({
+  args: {
+    seasonId: v.id("seasons"),
+    teamAId: v.id("seasonTeams"),
+    teamBId: v.id("seasonTeams"),
+    outgoingFromA: v.array(v.number()),
+    outgoingFromB: v.array(v.number()),
+  },
+  handler: async (ctx: ActionCtx, args): Promise<{ before: PowerRankingRow[]; after: PowerRankingRow[] }> => {
+    const inputs = await gatherPowerRankingsInputs(ctx, args.seasonId);
+    const { teams, eligibleFpidsByTeam } = inputs;
+
+    const totalByTeam = new Map<Id<"seasonTeams">, number>();
+    for (const team of teams) {
+      const fpids = eligibleFpidsByTeam.get(team._id);
+      if (!fpids) continue;
+      totalByTeam.set(team._id, computeTeamTotal(fpids, inputs));
+    }
+
+    const outgoingASet = new Set(args.outgoingFromA);
+    const outgoingBSet = new Set(args.outgoingFromB);
+    const aFpids = eligibleFpidsByTeam.get(args.teamAId) ?? [];
+    const bFpids = eligibleFpidsByTeam.get(args.teamBId) ?? [];
+    const newAFpids = [...aFpids.filter((fpid) => !outgoingASet.has(fpid)), ...args.outgoingFromB];
+    const newBFpids = [...bFpids.filter((fpid) => !outgoingBSet.has(fpid)), ...args.outgoingFromA];
+
+    const hypotheticalTotalByTeam = new Map(totalByTeam);
+    hypotheticalTotalByTeam.set(args.teamAId, computeTeamTotal(newAFpids, inputs));
+    hypotheticalTotalByTeam.set(args.teamBId, computeTeamTotal(newBFpids, inputs));
+
+    const toRows = (ranked: { team: Doc<"seasonTeams">; totalProjectedPoints: number }[]): PowerRankingRow[] =>
+      ranked.map(({ team, totalProjectedPoints }) => ({
+        teamId: team._id,
+        name: team.name,
+        isSelf: team.isSelf,
+        totalProjectedPoints,
+      }));
+
+    return {
+      before: toRows(rankTeams(teams, totalByTeam)),
+      after: toRows(rankTeams(teams, hypotheticalTotalByTeam)),
+    };
   },
 });

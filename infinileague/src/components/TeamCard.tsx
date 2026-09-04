@@ -2,6 +2,12 @@ import type { ReactNode } from "react";
 import { Anchor, Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 
+// Same highlight convention PlayerCard's `selectable` uses for a card
+// that's part of the active operation - here, one of the two teams in a
+// trade being previewed (see TradePowerRankingsList.tsx).
+const HIGHLIGHT_BACKGROUND = "rgba(139, 69, 19, 0.15)";
+const HIGHLIGHT_BORDER = "saddlebrown";
+
 interface TeamCardProps {
   leagueId: string;
   teamId: string;
@@ -21,6 +27,10 @@ interface TeamCardProps {
   // only owns the shared name/rank/link chrome, same division of concerns as
   // PlayerCard's row-specific stat stack.
   stats: ReactNode;
+  // Saddlebrown background/border - TradePowerRankingsList uses this to
+  // call out the two teams actually involved in the trade being previewed
+  // among the full league list.
+  highlighted?: boolean;
 }
 
 // Shared shell for infinileague's Standings and Power Rankings lists (see
@@ -35,9 +45,19 @@ export function TeamCard({
   leftLabel,
   nameSuffix,
   stats,
+  highlighted,
 }: TeamCardProps) {
   return (
-    <Card withBorder padding="xs" radius="md">
+    <Card
+      withBorder
+      padding="xs"
+      radius="md"
+      style={
+        highlighted
+          ? { backgroundColor: HIGHLIGHT_BACKGROUND, borderColor: HIGHLIGHT_BORDER }
+          : undefined
+      }
+    >
       <Group wrap="nowrap" gap="sm">
         <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
           {leftLabel}
