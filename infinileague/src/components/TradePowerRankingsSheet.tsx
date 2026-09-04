@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { Box, Drawer, Group, Stack, Text, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { ChevronUp } from "lucide-react";
 import { RankChangeIndicator } from "./PowerRankingsList";
 import { TradePowerRankingsList } from "./TradePowerRankingsList";
 import { BOTTOM_NAV_BOTTOM_OFFSET, BOTTOM_NAV_HEIGHT } from "../constants/general";
@@ -23,6 +25,46 @@ const DRAWER_CONTENT_BOTTOM_PADDING = `calc(var(--mantine-spacing-md) + ${BOTTOM
 // card (fixed/portaled, outside document flow) doesn't cover the last bit
 // of real page content when scrolled to the bottom on mobile.
 export const TRADE_PEEK_CARD_HEIGHT = 92;
+
+// How far down the drag handle has to travel before release counts as a
+// swipe-to-dismiss rather than a tap or an aborted drag.
+const DRAG_DISMISS_THRESHOLD = 80;
+
+// Ported from infinidraft's DraftRoom/components/mobileDraftSheet.tsx (see
+// its own comment) - lets the small handle bar at the top of the Drawer
+// double as a swipe-down-to-dismiss target, the native bottom-sheet
+// convention. `dragY` tracks the pointer 1:1 (for the content below to
+// visually follow the finger) and past DRAG_DISMISS_THRESHOLD on release,
+// `onDismiss` fires - same as tapping the scrim or pressing Escape.
+function useSwipeToDismiss(onDismiss: () => void) {
+  const [dragY, setDragY] = useState(0);
+  const draggingRef = useRef(false);
+  const startYRef = useRef(0);
+
+  const endDrag = () => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    if (dragY > DRAG_DISMISS_THRESHOLD) onDismiss();
+    setDragY(0);
+  };
+
+  return {
+    dragY,
+    dragHandleProps: {
+      onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
+        draggingRef.current = true;
+        startYRef.current = event.clientY;
+        event.currentTarget.setPointerCapture(event.pointerId);
+      },
+      onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => {
+        if (!draggingRef.current) return;
+        setDragY(Math.max(0, event.clientY - startYRef.current));
+      },
+      onPointerUp: endDrag,
+      onPointerCancel: endDrag,
+    },
+  };
+}
 
 interface TradePowerRankingsSheetProps {
   leagueId: string;
@@ -48,11 +90,9 @@ interface TradePowerRankingsSheetProps {
 // MobileNomination.tsx and mobileDraftSheet.tsx use for the draft room's
 // nomination sheet, minus the FAB (infinileague has no live-draft nominate
 // action to hang one off of - the peek card alone is the only entry point
-// here) and minus swipe-to-dismiss (a read-only preview doesn't need a drag
-// gesture, just tap to open, tap the scrim/press Escape to close). Desktop
-// keeps the plain inline Card in trade.tsx instead (visibleFrom="sm"
-// there) - scrolling to it isn't the problem this solves, only mobile's
-// much taller stacked layout pushing it below the fold is.
+// here). Desktop keeps the plain inline Card in trade.tsx instead
+// (visibleFrom="sm" there) - scrolling to it isn't the problem this solves,
+// only mobile's much taller stacked layout pushing it below the fold is.
 export function TradePowerRankingsSheet({
   leagueId,
   rows,
@@ -69,6 +109,7 @@ export function TradePowerRankingsSheet({
   // CSS-only, so without this the Drawer's body-scroll-lock/focus-trap
   // would still fire on desktop whenever `open` happens to be true.
   const isDesktop = useMediaQuery("(min-width: 48em)");
+  const { dragY, dragHandleProps } = useSwipeToDismiss(() => setOpen(false));
 
   const afterByTeam = new Map(
     rows.map((row, index) => [row.teamId, { rank: index + 1, points: row.totalProjectedPoints }]),
@@ -115,42 +156,48 @@ export function TradePowerRankingsSheet({
             cursor: "pointer",
           }}
         >
-          <Stack gap={2}>
-            {peekTeams.map(({ teamId, name }) => {
-              const beforeRank = beforeRankByTeam.get(teamId);
-              const beforePoints = beforePointsByTeam.get(teamId);
-              const after = afterByTeam.get(teamId);
-              const rankChange =
-                beforeRank !== undefined && after !== undefined
-                  ? beforeRank - after.rank
-                  : undefined;
-              const pointsDiff =
-                beforePoints !== undefined && after !== undefined
-                  ? after.points - beforePoints
-                  : undefined;
-              return (
-                <Group key={teamId} gap={6} wrap="nowrap" justify="space-between">
-                  <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-                    <RankChangeIndicator rankChange={rankChange} />
-                    <Text size="sm" fw={500} truncate>
-                      {name}
-                    </Text>
+          <Group gap={8} wrap="nowrap" align="center">
+            <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+              {peekTeams.map(({ teamId, name }) => {
+                const beforeRank = beforeRankByTeam.get(teamId);
+                const beforePoints = beforePointsByTeam.get(teamId);
+                const after = afterByTeam.get(teamId);
+                const rankChange =
+                  beforeRank !== undefined && after !== undefined
+                    ? beforeRank - after.rank
+                    : undefined;
+                const pointsDiff =
+                  beforePoints !== undefined && after !== undefined
+                    ? after.points - beforePoints
+                    : undefined;
+                return (
+                  <Group key={teamId} gap={6} wrap="nowrap" justify="space-between">
+                    <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                      <RankChangeIndicator rankChange={rankChange} />
+                      <Text size="sm" fw={500} truncate>
+                        {name}
+                      </Text>
+                    </Group>
+                    {pointsDiff !== undefined && (
+                      <Text
+                        size="sm"
+                        fw={500}
+                        c={pointsDiff > 0 ? "green" : pointsDiff < 0 ? "red" : "dimmed"}
+                        style={{ flexShrink: 0 }}
+                      >
+                        {pointsDiff >= 0 ? "+" : ""}
+                        {pointsDiff.toFixed(1)} pts
+                      </Text>
+                    )}
                   </Group>
-                  {pointsDiff !== undefined && (
-                    <Text
-                      size="sm"
-                      fw={500}
-                      c={pointsDiff > 0 ? "green" : pointsDiff < 0 ? "red" : "dimmed"}
-                      style={{ flexShrink: 0 }}
-                    >
-                      {pointsDiff >= 0 ? "+" : ""}
-                      {pointsDiff.toFixed(1)} pts
-                    </Text>
-                  )}
-                </Group>
-              );
-            })}
-          </Stack>
+                );
+              })}
+            </Stack>
+            {/* Same trailing chevron infinidraft's SearchPeekCard/
+                AssignPeekCard use - the visual cue that tapping this card
+                expands it upward into the full drawer. */}
+            <ChevronUp size={16} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
+          </Group>
         </Box>,
         document.body,
       )}
@@ -190,15 +237,20 @@ export function TradePowerRankingsSheet({
               "light-dark(color-mix(in srgb, var(--mantine-color-body) 85%, transparent), color-mix(in srgb, var(--mantine-color-dark-6) 85%, transparent))",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
+            transform: `translateY(${dragY}px)`,
+            transition: dragY === 0 ? "transform 200ms ease" : "none",
           }}
         >
           <div
+            {...dragHandleProps}
             aria-hidden
             style={{
               display: "flex",
               justifyContent: "center",
               padding: "10px 0 6px",
               flexShrink: 0,
+              touchAction: "none",
+              cursor: "grab",
             }}
           >
             <div
@@ -225,6 +277,7 @@ export function TradePowerRankingsSheet({
               leagueId={leagueId}
               rows={rows}
               beforeRankByTeam={beforeRankByTeam}
+              beforePointsByTeam={beforePointsByTeam}
               highlightedTeamIds={new Set([teamAId, teamBId])}
             />
           </div>

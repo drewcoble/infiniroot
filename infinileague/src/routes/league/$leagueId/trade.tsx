@@ -278,6 +278,7 @@ function TradePage() {
               leagueId={leagueId}
               rows={tradeImpact.after}
               beforeRankByTeam={beforeRankByTeam}
+              beforePointsByTeam={beforePointsByTeam}
               highlightedTeamIds={new Set([teamAId, teamBId])}
             />
           </Card>

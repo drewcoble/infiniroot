@@ -15,6 +15,11 @@ interface TradePowerRankingsListProps {
   // absent for any team not in the map is treated as "no change" rather
   // than fabricating a delta.
   beforeRankByTeam: Map<string, number>;
+  // This team's real, current (pre-trade) totalProjectedPoints - diffed
+  // against its post-trade value below for the two highlighted teams' own
+  // extra "+/- pts" line, same number the peek card shows (see
+  // TradePowerRankingsSheet.tsx).
+  beforePointsByTeam: Map<string, number>;
   // The two teams actually in the trade - everyone else renders plain (see
   // this component's own header comment on why only these two get a rank-
   // change indicator).
@@ -33,6 +38,7 @@ export function TradePowerRankingsList({
   leagueId,
   rows,
   beforeRankByTeam,
+  beforePointsByTeam,
   highlightedTeamIds,
 }: TradePowerRankingsListProps) {
   return (
@@ -41,8 +47,13 @@ export function TradePowerRankingsList({
         const afterRank = index + 1;
         const isHighlighted = highlightedTeamIds.has(row.teamId);
         const beforeRank = beforeRankByTeam.get(row.teamId);
+        const beforePoints = beforePointsByTeam.get(row.teamId);
         const rankChange =
           isHighlighted && beforeRank !== undefined ? beforeRank - afterRank : undefined;
+        const pointsDiff =
+          isHighlighted && beforePoints !== undefined
+            ? row.totalProjectedPoints - beforePoints
+            : undefined;
         return (
           <TeamCard
             key={row.teamId}
@@ -54,9 +65,21 @@ export function TradePowerRankingsList({
             highlighted={isHighlighted}
             nameSuffix={isHighlighted ? <RankChangeIndicator rankChange={rankChange} /> : null}
             stats={
-              <Text size="sm" fw={500}>
-                {row.totalProjectedPoints.toFixed(1)} pts
-              </Text>
+              <>
+                <Text size="sm" fw={500}>
+                  {row.totalProjectedPoints.toFixed(1)} pts
+                </Text>
+                {pointsDiff !== undefined && (
+                  <Text
+                    size="xs"
+                    fw={500}
+                    c={pointsDiff > 0 ? "green" : pointsDiff < 0 ? "red" : "dimmed"}
+                  >
+                    {pointsDiff >= 0 ? "+" : ""}
+                    {pointsDiff.toFixed(1)} pts
+                  </Text>
+                )}
+              </>
             }
           />
         );
