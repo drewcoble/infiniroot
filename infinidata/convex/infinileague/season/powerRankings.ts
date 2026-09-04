@@ -14,14 +14,14 @@ type Position = (typeof POSITIONS)[number];
 
 export interface TeamPositionRanks {
   teamId: Id<"seasonTeams">;
-  // Percentile (0-100) of this team's overall rest-of-season optimal-lineup
-  // total among the league - the same underlying number getPowerRankings'
-  // totalProjectedPoints ranks by, just percentile-normalized instead of
-  // left as a raw point total, mirroring convex/infinidraft/draft/
-  // reportCard.ts's gradeScore (see percentileRank below) but with a single
-  // input rather than a 3-way surplus/VOR/lineup-efficiency blend, since
-  // infinileague has no draft-day surplus/VOR concept to blend in - this
-  // literally IS the power ranking, just rescaled to 0-100.
+  // This team's overall rest-of-season optimal-lineup total as a percentage
+  // of the BEST team's total in the league (see bestTeamRatioScore below) -
+  // the same underlying number getPowerRankings' totalProjectedPoints ranks
+  // by, just rescaled so the #1 team always reads as exactly 100 and every
+  // other team's score is "how close to the best team" they are, rather
+  // than a percentile-of-the-field like convex/infinidraft/draft/
+  // reportCard.ts's gradeScore uses (infinileague has no draft-day surplus/
+  // VOR concept to percentile-blend in anyway - this is a single input).
   gradeScore: number;
   // One entry per roster-slot category the league actually starts (see
   // CATEGORY_ORDER/activeCategories below) - each team's 1-indexed rank
@@ -35,20 +35,18 @@ export interface TeamPositionRanks {
 // Same order convex/infinidraft/draft/reportCard.ts's CATEGORY_ORDER uses.
 const CATEGORY_ORDER: StarterCategory[] = ["QB", "RB", "WR", "TE", "FLEX", "DST", "K"];
 
-// Standard percentile rank: share of the field strictly below `value`, plus
-// half credit for ties (including the value's own row) - range (0, 100].
-// Ported verbatim from reportCard.ts's identical helper (see its own
-// comment) so infinileague's gradeScore reads on the same scale as
-// infinidraft's, even though the inputs behind it differ.
-function percentileRank(value: number, all: number[]): number {
-  if (all.length <= 1) return 50;
-  let below = 0;
-  let equal = 0;
-  for (const v of all) {
-    if (v < value) below++;
-    else if (v === value) equal++;
-  }
-  return ((below + equal / 2) / all.length) * 100;
+// This team's total as a percentage of the best team's total (100 = you
+// ARE the best team, 93 = you're 93% as good as the best team) - a ratio-
+// to-the-top read rather than a percentile-of-the-field, so the score
+// directly answers "how far off the league's best roster am I" instead of
+// "what fraction of teams am I better than." maxTotal <= 0 is a degenerate
+// case (nobody in the league projects any points at all) with no
+// meaningful ratio to report - defaults every team to 100 rather than
+// dividing by zero.
+function bestTeamRatioScore(total: number, allTotals: number[]): number {
+  const maxTotal = Math.max(...allTotals);
+  if (maxTotal <= 0) return 100;
+  return (total / maxTotal) * 100;
 }
 
 export interface PowerRankingRow {
@@ -444,7 +442,7 @@ export const getTeamPositionRanks = action({
         const total = overallTotalByTeam.get(team._id) ?? 0;
         return {
           teamId: team._id,
-          gradeScore: Math.round(percentileRank(total, allTotals)),
+          gradeScore: Math.round(bestTeamRatioScore(total, allTotals)),
           positionalRanks: activeCategories.map((category) => ({
             category,
             rank: categoryRankByTeam.get(category)?.get(team._id) ?? 1,
