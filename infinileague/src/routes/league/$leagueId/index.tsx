@@ -18,7 +18,12 @@ import { StandingsList } from "../../../components/StandingsList";
 import { PowerRankingsList } from "../../../components/PowerRankingsList";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
-import type { LinkedSeason, PowerRankingRow, StandingsRow } from "../../../types/season";
+import type {
+  LinkedSeason,
+  PowerRankingRow,
+  StandingsRow,
+  TeamPositionRanks,
+} from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/")({
   component: LeaguePage,
@@ -94,6 +99,49 @@ function LeaguePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, isAuthenticated]);
 
+  // Backs every team card's click-to-expand position radar chart (see
+  // StandingsList/PowerRankingsList) - fetched once per league visit
+  // rather than per-card-expand, since ranking any one team's positions
+  // needs every team's roster gathered anyway (see getTeamPositionRanks).
+  // A Set (not a single expanded id) so more than one card can be open at
+  // once, same convention infinidraft's DraftReportCard.tsx uses.
+  const [expandedTeamIds, setExpandedTeamIds] = useState<Set<string>>(new Set());
+  const toggleExpanded = (teamId: string) => {
+    setExpandedTeamIds((current) => {
+      const next = new Set(current);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      return next;
+    });
+  };
+
+  const getTeamPositionRanks = useAction(
+    api.infinileague.season.powerRankings.getTeamPositionRanks,
+  );
+  const [positionRanks, setPositionRanks] = useState<
+    TeamPositionRanks[] | undefined
+  >(undefined);
+  const [positionRanksError, setPositionRanksError] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setPositionRanks(undefined);
+    setPositionRanksError(null);
+    getTeamPositionRanks({ seasonId })
+      .then(setPositionRanks)
+      .catch((err) =>
+        setPositionRanksError(
+          getErrorMessage(err, "Failed to load position rankings."),
+        ),
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated]);
+  const positionRanksByTeam = new Map(
+    (positionRanks ?? []).map((row) => [row.teamId, row]),
+  );
+
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   // Guards the auto-sync effect below to firing at most once per mount/
@@ -162,6 +210,15 @@ function LeaguePage() {
           {syncError}
         </Alert>
       )}
+      {positionRanksError && (
+        <Alert
+          color="red"
+          withCloseButton
+          onClose={() => setPositionRanksError(null)}
+        >
+          {positionRanksError}
+        </Alert>
+      )}
       <SegmentedControl
         value={tableView}
         onChange={(value) => setTableView(value as "standings" | "power")}
@@ -175,7 +232,13 @@ function LeaguePage() {
         standings === undefined ? (
           <Loader />
         ) : (
-          <StandingsList leagueId={leagueId} rows={standings} />
+          <StandingsList
+            leagueId={leagueId}
+            rows={standings}
+            expandedTeamIds={expandedTeamIds}
+            onToggleExpand={toggleExpanded}
+            positionRanksByTeam={positionRanksByTeam}
+          />
         )
       ) : (
         <>
@@ -188,7 +251,13 @@ function LeaguePage() {
               {powerRankingsError}
             </Alert>
           )}
-          <PowerRankingsList leagueId={leagueId} rows={powerRankings} />
+          <PowerRankingsList
+            leagueId={leagueId}
+            rows={powerRankings}
+            expandedTeamIds={expandedTeamIds}
+            onToggleExpand={toggleExpanded}
+            positionRanksByTeam={positionRanksByTeam}
+          />
         </>
       )}
       <Text c="dimmed">

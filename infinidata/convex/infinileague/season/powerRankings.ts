@@ -3,10 +3,53 @@ import { action, ActionCtx, internalMutation, internalQuery } from "../../_gener
 import { api, internal } from "../../_generated/api";
 import { Doc, Id } from "../../_generated/dataModel";
 import { fetchSleeperJson, sleeperPlayerIdToFpid, type SleeperRoster } from "../../sleeper/league";
-import { optimizeLineup, type LineupPick } from "../../infinidraft/draft/lineupOptimizer";
+import {
+  optimizeLineup,
+  type LineupPick,
+  type StarterCategory,
+} from "../../infinidraft/draft/lineupOptimizer";
 import { POSITIONS } from "../../positions";
 
 type Position = (typeof POSITIONS)[number];
+
+export interface TeamPositionRanks {
+  teamId: Id<"seasonTeams">;
+  // Percentile (0-100) of this team's overall rest-of-season optimal-lineup
+  // total among the league - the same underlying number getPowerRankings'
+  // totalProjectedPoints ranks by, just percentile-normalized instead of
+  // left as a raw point total, mirroring convex/infinidraft/draft/
+  // reportCard.ts's gradeScore (see percentileRank below) but with a single
+  // input rather than a 3-way surplus/VOR/lineup-efficiency blend, since
+  // infinileague has no draft-day surplus/VOR concept to blend in - this
+  // literally IS the power ranking, just rescaled to 0-100.
+  gradeScore: number;
+  // One entry per roster-slot category the league actually starts (see
+  // CATEGORY_ORDER/activeCategories below) - each team's 1-indexed rank
+  // within that category's summed optimal-lineup points, league-wide.
+  // Mirrors reportCard.ts's identical positionalRanks field/radar chart.
+  positionalRanks: { category: StarterCategory; rank: number }[];
+}
+
+// Display/rank order for the position radar chart - QB folds in SUPERFLEX,
+// FLEX sits with the skill positions it pools from rather than at the end.
+// Same order convex/infinidraft/draft/reportCard.ts's CATEGORY_ORDER uses.
+const CATEGORY_ORDER: StarterCategory[] = ["QB", "RB", "WR", "TE", "FLEX", "DST", "K"];
+
+// Standard percentile rank: share of the field strictly below `value`, plus
+// half credit for ties (including the value's own row) - range (0, 100].
+// Ported verbatim from reportCard.ts's identical helper (see its own
+// comment) so infinileague's gradeScore reads on the same scale as
+// infinidraft's, even though the inputs behind it differ.
+function percentileRank(value: number, all: number[]): number {
+  if (all.length <= 1) return 50;
+  let below = 0;
+  let equal = 0;
+  for (const v of all) {
+    if (v < value) below++;
+    else if (v === value) equal++;
+  }
+  return ((below + equal / 2) / all.length) * 100;
+}
 
 export interface PowerRankingRow {
   teamId: Id<"seasonTeams">;
@@ -153,40 +196,75 @@ async function gatherPowerRankingsInputs(
   return { season, currentWeek, teams, eligibleFpidsByTeam, positionByFpid, projectionMapsByWeek };
 }
 
+// One week's LineupPick list for a given fpid list - shared by
+// computeTeamTotal and computeTeamCategoryTotals below, which otherwise
+// only differ in which part of optimizeLineup's result they keep.
+function buildWeekPicks(
+  fpids: number[],
+  projectionByFpid: Map<number, Doc<"projections">>,
+  { season, positionByFpid }: PowerRankingsInputs,
+): LineupPick[] {
+  const picks: LineupPick[] = [];
+  fpids.forEach((fpid, i) => {
+    const position = positionByFpid.get(fpid);
+    if (!position) return;
+    const projection = projectionByFpid.get(fpid);
+    const points = projection
+      ? season.scoring === "PPR"
+        ? projection.pointsPpr
+        : season.scoring === "HALF"
+          ? projection.pointsHalf
+          : projection.pointsStd
+      : 0;
+    picks.push({ fpid, position, points, sequence: i });
+  });
+  return picks;
+}
+
 // One team's optimal-lineup total, summed across every week in
 // projectionMapsByWeek - the same per-week optimizeLineup call
 // getPowerRankings always ran, just factored out so a hypothetical
 // (post-trade) fpid list can be scored the exact same way as every real
 // team's current roster.
-function computeTeamTotal(
-  fpids: number[],
-  { season, positionByFpid, projectionMapsByWeek }: PowerRankingsInputs,
-): number {
+function computeTeamTotal(fpids: number[], inputs: PowerRankingsInputs): number {
   let total = 0;
-  for (const projectionByFpid of projectionMapsByWeek) {
-    const teamPicks: LineupPick[] = [];
-    fpids.forEach((fpid, i) => {
-      const position = positionByFpid.get(fpid);
-      if (!position) return;
-      const projection = projectionByFpid.get(fpid);
-      const points = projection
-        ? season.scoring === "PPR"
-          ? projection.pointsPpr
-          : season.scoring === "HALF"
-            ? projection.pointsHalf
-            : projection.pointsStd
-        : 0;
-      teamPicks.push({ fpid, position, points, sequence: i });
-    });
-
+  for (const projectionByFpid of inputs.projectionMapsByWeek) {
+    const picks = buildWeekPicks(fpids, projectionByFpid, inputs);
     total += optimizeLineup(
-      teamPicks,
-      season.rosterSlots,
-      season.flexPositions,
-      season.superflexPositions,
+      picks,
+      inputs.season.rosterSlots,
+      inputs.season.flexPositions,
+      inputs.season.superflexPositions,
     ).optimalPoints;
   }
   return total;
+}
+
+// Same total as computeTeamTotal, broken down by StarterCategory instead of
+// collapsed to one scalar - optimizeLineup already computes this breakdown
+// every call (see LineupResult.optimalPointsByCategory), getPowerRankings
+// just never kept it; this is that same per-week loop, summing each
+// category across the rest of the season instead of discarding them.
+function computeTeamCategoryTotals(
+  fpids: number[],
+  inputs: PowerRankingsInputs,
+): Record<StarterCategory, number> {
+  const totals = Object.fromEntries(
+    [...POSITIONS, "FLEX"].map((category) => [category, 0]),
+  ) as Record<StarterCategory, number>;
+  for (const projectionByFpid of inputs.projectionMapsByWeek) {
+    const picks = buildWeekPicks(fpids, projectionByFpid, inputs);
+    const result = optimizeLineup(
+      picks,
+      inputs.season.rosterSlots,
+      inputs.season.flexPositions,
+      inputs.season.superflexPositions,
+    );
+    for (const category of Object.keys(totals) as StarterCategory[]) {
+      totals[category] += result.optimalPointsByCategory[category];
+    }
+  }
+  return totals;
 }
 
 // Ranks every team with a known total, descending - shared by
@@ -303,5 +381,75 @@ export const getPowerRankingsWithTrade = action({
       before: toRows(rankTeams(teams, totalByTeam)),
       after: toRows(rankTeams(teams, hypotheticalTotalByTeam)),
     };
+  },
+});
+
+// Per-team positional strength for the dashboard's expandable team cards'
+// radar chart (see infinileague/src/components/PositionRadarChart.tsx) -
+// same computation and shape as convex/infinidraft/draft/reportCard.ts's
+// positionalRanks/gradeScore, just built from this season's real current
+// rosters (via gatherPowerRankingsInputs) instead of draft picks, since
+// infinileague has no draft to grade.
+export const getTeamPositionRanks = action({
+  args: { seasonId: v.id("seasons") },
+  handler: async (ctx: ActionCtx, args): Promise<TeamPositionRanks[]> => {
+    const inputs = await gatherPowerRankingsInputs(ctx, args.seasonId);
+    const { season, teams, eligibleFpidsByTeam } = inputs;
+
+    // Categories the league's roster shape actually uses - a league with no
+    // K/DST or no FLEX shouldn't show a flatlined rank-1-for-everyone wedge
+    // on the radar chart for a slot nobody starts. Same filter reportCard.ts
+    // uses.
+    const activeCategories = CATEGORY_ORDER.filter((category) => {
+      if (category === "FLEX") return season.rosterSlots.FLEX > 0;
+      if (category === "QB") {
+        return season.rosterSlots.QB > 0 || season.rosterSlots.SUPERFLEX > 0;
+      }
+      return season.rosterSlots[category] > 0;
+    });
+
+    const categoryTotalsByTeam = new Map<Id<"seasonTeams">, Record<StarterCategory, number>>();
+    for (const team of teams) {
+      const fpids = eligibleFpidsByTeam.get(team._id);
+      if (!fpids) continue;
+      categoryTotalsByTeam.set(team._id, computeTeamCategoryTotals(fpids, inputs));
+    }
+
+    const categoryRankByTeam = new Map<StarterCategory, Map<Id<"seasonTeams">, number>>();
+    for (const category of activeCategories) {
+      const ranked = [...categoryTotalsByTeam.entries()].sort(
+        (a, b) => b[1][category] - a[1][category],
+      );
+      categoryRankByTeam.set(
+        category,
+        new Map(ranked.map(([teamId], index) => [teamId, index + 1])),
+      );
+    }
+
+    // Overall total is just every category's total added back together -
+    // the same optimalPoints figure getPowerRankings ranks by, decomposed
+    // rather than recomputed (optimizeLineup's optimalPointsByCategory
+    // values already sum to its own optimalPoints).
+    const overallTotalByTeam = new Map(
+      [...categoryTotalsByTeam.entries()].map(([teamId, totals]) => [
+        teamId,
+        Object.values(totals).reduce((sum, value) => sum + value, 0),
+      ]),
+    );
+    const allTotals = [...overallTotalByTeam.values()];
+
+    return teams
+      .filter((team) => categoryTotalsByTeam.has(team._id))
+      .map((team) => {
+        const total = overallTotalByTeam.get(team._id) ?? 0;
+        return {
+          teamId: team._id,
+          gradeScore: Math.round(percentileRank(total, allTotals)),
+          positionalRanks: activeCategories.map((category) => ({
+            category,
+            rank: categoryRankByTeam.get(category)?.get(team._id) ?? 1,
+          })),
+        };
+      });
   },
 });

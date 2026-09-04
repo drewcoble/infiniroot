@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Anchor, Badge, Card, Group, Stack, Text } from "@mantine/core";
+import { Anchor, Badge, Box, Card, Group, Stack, Text } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 
 // Same highlight convention PlayerCard's `selectable` uses for a card
@@ -31,6 +31,15 @@ interface TeamCardProps {
   // call out the two teams actually involved in the trade being previewed
   // among the full league list.
   highlighted?: boolean;
+  // Makes the whole card clickable and renders expandedContent below the
+  // existing row when true - the league dashboard's Standings/Power
+  // Rankings lists use this for each team's position radar chart (see
+  // PositionRadarChart.tsx). Omitting onToggleExpand entirely (the default
+  // for any other consumer) leaves the card exactly as before this existed:
+  // no click handler, no expanded panel.
+  expanded?: boolean;
+  onToggleExpand?: () => void;
+  expandedContent?: ReactNode;
 }
 
 // Shared shell for infinileague's Standings and Power Rankings lists (see
@@ -46,17 +55,22 @@ export function TeamCard({
   nameSuffix,
   stats,
   highlighted,
+  expanded,
+  onToggleExpand,
+  expandedContent,
 }: TeamCardProps) {
   return (
     <Card
       withBorder
       padding="xs"
       radius="md"
-      style={
-        highlighted
+      onClick={onToggleExpand}
+      style={{
+        ...(onToggleExpand ? { cursor: "pointer" } : {}),
+        ...(highlighted
           ? { backgroundColor: HIGHLIGHT_BACKGROUND, borderColor: HIGHLIGHT_BORDER }
-          : undefined
-      }
+          : {}),
+      }}
     >
       <Group wrap="nowrap" gap="sm">
         <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
@@ -68,6 +82,9 @@ export function TeamCard({
               to="/league/$leagueId/teams/$teamId"
               params={{ leagueId, teamId }}
               style={{ textDecoration: "none" }}
+              // Navigating to the team page shouldn't also toggle this
+              // card's expand state on the way out.
+              onClick={(event) => event.stopPropagation()}
             >
               <Anchor component="span" size="sm" fw={500} truncate>
                 {name}
@@ -85,6 +102,16 @@ export function TeamCard({
           {stats}
         </Stack>
       </Group>
+      {expanded && expandedContent && (
+        <Box
+          mt={8}
+          pt={8}
+          style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {expandedContent}
+        </Box>
+      )}
     </Card>
   );
 }

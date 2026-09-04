@@ -51,6 +51,22 @@ export interface PowerRankingRow {
   rankChange?: number;
 }
 
+// Roster-slot categories the position radar chart ranks by - mirrors
+// convex/infinidraft/draft/lineupOptimizer.ts's StarterCategory (SUPERFLEX
+// folds into QB there, FLEX is its own axis - see that file's own comment).
+export type StarterCategory = "QB" | "RB" | "WR" | "TE" | "DST" | "K" | "FLEX";
+
+// Mirrors convex/infinileague/season/powerRankings.ts's TeamPositionRanks -
+// powers the dashboard's expandable team cards' position radar chart (see
+// components/PositionRadarChart.tsx). positionalRanks only includes
+// categories this league actually starts (see that query's activeCategories
+// filter) - a league with no K/DST/FLEX just omits that axis.
+export interface TeamPositionRanks {
+  teamId: string;
+  gradeScore: number;
+  positionalRanks: { category: StarterCategory; rank: number }[];
+}
+
 // Mirrors convex/lib/faab.ts's FaabSuggestionRow/FaabSuggestionsResult -
 // consumed via convex/infinileague/season/faabValues.ts's getFaabSuggestions.
 // suggestions is unsorted (ranked per-position by rosValue, not globally) -
