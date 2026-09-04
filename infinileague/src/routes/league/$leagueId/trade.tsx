@@ -4,6 +4,7 @@ import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import {
   Alert,
+  Box,
   Card,
   Loader,
   Select,
@@ -16,6 +17,10 @@ import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { TradeRosterMatchup } from "../../../components/TradeRosterMatchup";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
+import {
+  TradePowerRankingsSheet,
+  TRADE_PEEK_CARD_HEIGHT,
+} from "../../../components/TradePowerRankingsSheet";
 import type { PowerRankingRow, RosVorRow, StandingsRow, TeamRosterRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/trade")({
@@ -199,6 +204,7 @@ function TradePage() {
   const teamBOptions = standings
     .filter((row) => row.teamId !== teamAId)
     .map((row) => ({ value: row.teamId, label: row.name }));
+  const teamBName = standings.find((row) => row.teamId === teamBId)?.name ?? "Team";
 
   const beforeRankByTeam = new Map(
     (tradeImpact?.before ?? []).map((row, index) => [row.teamId, index + 1]),
@@ -236,7 +242,7 @@ function TradePage() {
         />
       </Stack>
 
-      {teamBId !== null && (
+      {teamBId !== null && tradeImpact === undefined && (
         <Card withBorder padding="md">
           <Title order={5} mb="xs">
             Power rankings if this trade happened
@@ -249,17 +255,44 @@ function TradePage() {
             <Alert color="red" withCloseButton onClose={() => setTradeImpactError(null)}>
               {tradeImpactError}
             </Alert>
-          ) : tradeImpact === undefined ? (
-            <Loader size="sm" />
           ) : (
+            <Loader size="sm" />
+          )}
+        </Card>
+      )}
+
+      {/* Desktop keeps the plain scrollable card - mobile gets a peek card
+          pinned above BottomNav instead (see TradePowerRankingsSheet's own
+          comment on why), so the two only ever render one at a time via
+          visibleFrom/hiddenFrom, never both. */}
+      {teamBId !== null && tradeImpact !== undefined && (
+        <>
+          <Card withBorder padding="md" visibleFrom="sm">
+            <Title order={5} mb="xs">
+              Power rankings if this trade happened
+            </Title>
             <TradePowerRankingsList
               leagueId={leagueId}
               rows={tradeImpact.after}
               beforeRankByTeam={beforeRankByTeam}
               highlightedTeamIds={new Set([teamAId, teamBId])}
             />
-          )}
-        </Card>
+          </Card>
+          <TradePowerRankingsSheet
+            leagueId={leagueId}
+            rows={tradeImpact.after}
+            beforeRankByTeam={beforeRankByTeam}
+            teamAId={teamAId}
+            teamBId={teamBId}
+            teamAName={selfTeamName ?? "Your team"}
+            teamBName={teamBName}
+          />
+          {/* Reserves room below the page's own content so the fixed/
+              portaled peek card above doesn't cover it once scrolled to the
+              bottom on mobile - a no-op on desktop, where the peek card
+              never renders. */}
+          <Box hiddenFrom="sm" h={TRADE_PEEK_CARD_HEIGHT} />
+        </>
       )}
     </Stack>
   );
