@@ -42,10 +42,11 @@ interface PlayerCardProps {
   footer?: ReactNode;
   // Overrides the right-aligned PPG/ROS PPG stack - My Team shows this
   // week's Proj/Actual points instead (row.actualPpg/rosPpg are season-long
-  // rates, not a single matchup's numbers) and Trade shows this player's
-  // actualVOR/rosVOR (the trade math's actual currency, see
-  // src/lib/tradeAnalyzer.ts).
-  rightStats?: ReactNode;
+  // rates, not a single matchup's numbers). null hides the column entirely
+  // rather than falling back to the default PPG stack - Trade's cards are
+  // already half-width, so actualVOR/rosVOR move into footer instead (see
+  // TradeRosterMatchup.tsx) to leave the name room instead of truncating it.
+  rightStats?: ReactNode | null;
   // Makes the whole card clickable and highlights it (saddlebrown
   // background + border) when selected - only Trade's roster panels need
   // player selection. No separate checkbox - the entire card is the click
@@ -138,18 +139,20 @@ export function PlayerCard({
               ))}
           </Group>
         </Stack>
-        <Stack gap={2} align="flex-end">
-          {rightStats ?? (
-            <>
-              <Text size="xs" c="dimmed">
-                {row.actualPpg.toFixed(1)} PPG
-              </Text>
-              <Text size="xs" c="dimmed">
-                {row.rosPpg.toFixed(1)} ROS PPG
-              </Text>
-            </>
-          )}
-        </Stack>
+        {rightStats !== null && (
+          <Stack gap={2} align="flex-end">
+            {rightStats ?? (
+              <>
+                <Text size="xs" c="dimmed">
+                  {row.actualPpg.toFixed(1)} PPG
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {row.rosPpg.toFixed(1)} ROS PPG
+                </Text>
+              </>
+            )}
+          </Stack>
+        )}
       </Group>
       {footer && (
         <Box

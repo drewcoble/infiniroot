@@ -56,7 +56,7 @@ function toFallbackRow(row: TeamRosterRow, fpid: number): RosVorRow {
 // on a team whose roster IS known.
 function PlaceholderCard({ empty }: { empty?: boolean }) {
   return (
-    <Card withBorder padding="xs" radius="md" style={{ flex: 1, minWidth: 0, minHeight: 64 }}>
+    <Card withBorder padding="xs" radius="md" style={{ flex: 1, minWidth: 0, minHeight: 96 }}>
       {!empty && (
         <Text size="sm" c="dimmed">
           —
@@ -87,15 +87,16 @@ function PlayerCell({ row, vorByFpid, selected, onToggle }: PlayerCellProps) {
         showRosteredBy={false}
         showLeftLabel={false}
         selectable={{ selected: selected.has(fpid), onToggle: () => onToggle(fpid) }}
-        rightStats={
-          <>
+        rightStats={null}
+        footer={
+          <Group gap={12} wrap="nowrap">
             <Text size="xs" c="dimmed">
               {(vorRow?.actualVor ?? 0).toFixed(1)} VOR
             </Text>
             <Text size="xs" c="dimmed">
               {(vorRow?.rosVor ?? 0).toFixed(1)} ROS VOR
             </Text>
-          </>
+          </Group>
         }
       />
     </Box>
