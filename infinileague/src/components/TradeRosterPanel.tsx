@@ -1,4 +1,5 @@
 import { Stack, Text } from "@mantine/core";
+import { positionColorOrDefault } from "@shared/positionColors";
 import { PlayerCard } from "./PlayerCard";
 import type { RosVorRow, TeamRosterRow } from "../types/season";
 import type { TradeValueMetric } from "../lib/tradeAnalyzer";
@@ -75,7 +76,7 @@ export function TradeRosterPanel({
             key={fpid}
             row={vorRow ?? toFallbackRow(row, fpid, teamName)}
             isRookie={row.isRookie ?? false}
-            leftLabel={slotLabel(row.slot)}
+            leftBadge={{ label: slotLabel(row.slot), color: positionColorOrDefault(row.slot ?? "") }}
             checkbox={{ checked: selected.has(fpid), onChange: () => onToggle(fpid) }}
             rightStats={
               <Text size="xs" c="dimmed">

@@ -12,10 +12,15 @@ interface PlayerCardProps {
   // Charts tab (src/routes/league/$leagueId/depthCharts.tsx) reuses this
   // card but wants the team's own depth-chart slot ("RB2") there instead of
   // this player's overall league-wide rosVOR rank, which isn't relevant
-  // context once you're already looking at one team's roster. My Team
-  // (TeamRosterList.tsx) and Trade (TradeRosterPanel.tsx) reuse it the same
-  // way for this player's roster slot ("QB", "BN", ...).
+  // context once you're already looking at one team's roster.
   leftLabel?: string;
+  // Renders the left-hand label as a colored Badge instead of leftLabel's
+  // plain dimmed text - My Team (TeamRosterList.tsx) and Trade
+  // (TradeRosterPanel.tsx) use this for the player's roster slot ("QB",
+  // "BN", ...), colored the same way the slot badges elsewhere in the app
+  // are (positionColorOrDefault). Takes priority over leftLabel/row.rosRank
+  // when set.
+  leftBadge?: { label: string; color: string };
   // Extra row rendered below the existing name/position/PPG content, still
   // inside the same card border - the Free Agents tab (freeAgents.tsx)
   // reuses this card but needs its own suggested-bid/rationale line, which
@@ -45,6 +50,7 @@ export function PlayerCard({
   row,
   isRookie,
   leftLabel,
+  leftBadge,
   footer,
   rightStats,
   checkbox,
@@ -65,9 +71,15 @@ export function PlayerCard({
             onClick={(event) => event.stopPropagation()}
           />
         )}
-        <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
-          {leftLabel ?? row.rosRank}
-        </Text>
+        {leftBadge ? (
+          <Badge size="sm" variant="light" color={leftBadge.color}>
+            {leftBadge.label}
+          </Badge>
+        ) : (
+          <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
+            {leftLabel ?? row.rosRank}
+          </Text>
+        )}
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
           <Group gap={6} wrap="nowrap">
             <Text size="sm" fw={500} truncate>

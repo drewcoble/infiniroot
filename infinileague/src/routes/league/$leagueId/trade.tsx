@@ -267,10 +267,8 @@ function TradePage() {
       {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-        <Card withBorder padding="md">
-          <Title order={5} mb="xs">
-            {selfTeamName ?? "Your team"}
-          </Title>
+        <Stack gap="xs">
+          <Title order={5}>{selfTeamName ?? "Your team"}</Title>
           <TradeRosterPanel
             rows={teamARoster.rows}
             vorByFpid={vorByFpid}
@@ -279,11 +277,9 @@ function TradePage() {
             onToggle={toggleA}
             teamName={selfTeamName ?? "Your team"}
           />
-        </Card>
-        <Card withBorder padding="md">
-          <Title order={5} mb="xs">
-            {teamBName}
-          </Title>
+        </Stack>
+        <Stack gap="xs">
+          <Title order={5}>{teamBName}</Title>
           {teamBRoster.rows === undefined ? (
             <Loader />
           ) : (
@@ -296,7 +292,7 @@ function TradePage() {
               teamName={teamBName}
             />
           )}
-        </Card>
+        </Stack>
       </SimpleGrid>
 
       <Card withBorder padding="md">

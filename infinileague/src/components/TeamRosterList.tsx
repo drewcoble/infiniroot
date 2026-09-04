@@ -1,4 +1,5 @@
-import { Card, Group, Stack, Text } from "@mantine/core";
+import { Badge, Card, Group, Stack, Text } from "@mantine/core";
+import { positionColorOrDefault } from "@shared/positionColors";
 import { PlayerCard } from "./PlayerCard";
 import type { RosVorRow, SlotLabel, TeamRosterRow } from "../types/season";
 
@@ -64,7 +65,7 @@ export function TeamRosterList({ rows, teamName }: TeamRosterListProps) {
             key={row.fpid}
             row={toRosVorRow(row, teamName)}
             isRookie={row.isRookie ?? false}
-            leftLabel={slotLabel(row.slot)}
+            leftBadge={{ label: slotLabel(row.slot), color: positionColorOrDefault(row.slot ?? "") }}
             rightStats={
               <>
                 <Text size="xs" c="dimmed">
@@ -79,9 +80,9 @@ export function TeamRosterList({ rows, teamName }: TeamRosterListProps) {
         ) : (
           <Card key={`empty-${row.slot}-${index}`} withBorder padding="xs" radius="md">
             <Group wrap="nowrap" gap="sm">
-              <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
+              <Badge size="sm" variant="light" color={positionColorOrDefault(row.slot ?? "")}>
                 {slotLabel(row.slot)}
-              </Text>
+              </Badge>
               <Text size="sm" c="dimmed">
                 —
               </Text>
