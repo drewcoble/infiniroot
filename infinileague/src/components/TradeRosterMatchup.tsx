@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Badge, Box, Card, Group, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { PlayerCard } from "./PlayerCard";
@@ -50,21 +51,28 @@ function toFallbackRow(row: TeamRosterRow, fpid: number): RosVorRow {
   };
 }
 
-// Matches the real PlayerCard next to it by stretching to the row's full
-// height (see the Group's align="stretch" below) rather than guessing a
-// pixel value - `empty` (no dash, nothing) stands in for a whole team that
-// isn't known yet; the dash marks a genuinely-unfilled slot on a team whose
-// roster IS known. The minHeight is only a floor for the rare row where
-// BOTH sides are placeholders (both teams empty in the same slot), so it
-// doesn't collapse to just its own padding.
+// Wrapper every row cell (a real PlayerCard or a PlaceholderCard) renders
+// into, identically - flex: 1/minWidth: 0 for an even width split of the
+// row, display: "grid" so the single child stretches to fill both axes
+// (unlike flex, grid stretches width too, not just height). Sharing this
+// one wrapper for every case, rather than each case styling its own root
+// element, is what keeps a placeholder and the real card that later
+// replaces it pixel-identical in width - a per-case style previously let
+// them drift a hair apart, which read as the layout "jumping" the moment a
+// team was picked.
+function Cell({ children }: { children: ReactNode }) {
+  return <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>{children}</Box>;
+}
+
+// `empty` (no dash, nothing) stands in for a whole team that isn't known
+// yet; the dash marks a genuinely-unfilled slot on a team whose roster IS
+// known. Height comes from Cell's grid stretch (matching whichever card in
+// the row is tallest) - minHeight here is only a floor for the rare row
+// where both sides are placeholders, so it doesn't collapse to just its own
+// padding.
 function PlaceholderCard({ empty }: { empty?: boolean }) {
   return (
-    <Card
-      withBorder
-      padding="xs"
-      radius="md"
-      style={{ flex: 1, minWidth: 0, minHeight: 44 }}
-    >
+    <Card withBorder padding="xs" radius="md" style={{ minHeight: 44 }}>
       {!empty && (
         <Text size="sm" c="dimmed">
           —
@@ -83,16 +91,16 @@ interface PlayerCellProps {
 
 function PlayerCell({ row, vorByFpid, selected, onToggle }: PlayerCellProps) {
   if (row === undefined || row.fpid === undefined) {
-    return <PlaceholderCard empty={row === undefined} />;
+    return (
+      <Cell>
+        <PlaceholderCard empty={row === undefined} />
+      </Cell>
+    );
   }
   const fpid = row.fpid;
   const vorRow = vorByFpid.get(fpid);
-  // display: "grid" (rather than flex) so the single PlayerCard child
-  // stretches to fill both axes of this cell by default - a flex container
-  // would only auto-stretch the cross axis (height), leaving the card's
-  // width up to its own content.
   return (
-    <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
+    <Cell>
       <PlayerCard
         row={vorRow ?? toFallbackRow(row, fpid)}
         isRookie={row.isRookie ?? false}
@@ -111,7 +119,7 @@ function PlayerCell({ row, vorByFpid, selected, onToggle }: PlayerCellProps) {
           </Group>
         }
       />
-    </Box>
+    </Cell>
   );
 }
 
@@ -156,7 +164,9 @@ export function TradeRosterMatchup({
             {bRows ? (
               <PlayerCell row={bRow} vorByFpid={vorByFpid} selected={selectedB} onToggle={onToggleB} />
             ) : (
-              <PlaceholderCard empty />
+              <Cell>
+                <PlaceholderCard empty />
+              </Cell>
             )}
           </Group>
         );
