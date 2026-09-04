@@ -4,9 +4,8 @@ import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import {
   Alert,
-  Badge,
+  Box,
   Card,
-  Group,
   Loader,
   Select,
   SimpleGrid,
@@ -16,10 +15,13 @@ import {
 } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
-import { TradeRosterPanel } from "../../../components/TradeRosterPanel";
-import { extractSlotCounts } from "../../../lib/lineupSuggestions";
-import { buildTradePool, simulateTrade, type TradeSideResult } from "../../../lib/tradeAnalyzer";
-import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
+import { TradeRosterMatchup } from "../../../components/TradeRosterMatchup";
+import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
+import {
+  TradePowerRankingsSheet,
+  TRADE_PEEK_CARD_HEIGHT,
+} from "../../../components/TradePowerRankingsSheet";
+import type { PowerRankingRow, RosVorRow, StandingsRow, TeamRosterRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/trade")({
   component: TradePage,
@@ -31,12 +33,10 @@ interface NflState {
   seasonType: "pre" | "regular" | "post";
 }
 
-// rosVOR is the trade math's currency throughout - rest-of-season,
-// momentum-adjusted, the forward-looking number a trade decision actually
-// needs (vs. actualVOR's season-to-date backward view). No toggle for
-// actualVOR yet - can be added to tradeAnalyzer's call sites later without
-// touching its API, which already takes the metric as a parameter.
-const METRIC = "rosVor" as const;
+interface TradeImpact {
+  before: PowerRankingRow[];
+  after: PowerRankingRow[];
+}
 
 // Thin wrapper around the teamRoster action (same one teams/$teamId.tsx
 // calls) - re-fetches whenever teamId/week change, null-safe so callers can
@@ -60,70 +60,16 @@ function useTeamRoster(teamId: string | null, week: string | null) {
   return { rows, error };
 }
 
-function verdict(lineupImpact: number): { label: string; color: string } {
-  if (lineupImpact > 0.05) return { label: "Gains", color: "green" };
-  if (lineupImpact < -0.05) return { label: "Weaker", color: "red" };
-  return { label: "Even", color: "gray" };
-}
-
-interface TradeSideSummaryProps {
-  teamName: string;
-  side: TradeSideResult;
-  hasLineupData: boolean;
-}
-
-function TradeSideSummary({ teamName, side, hasLineupData }: TradeSideSummaryProps) {
-  const { label, color } = verdict(side.lineupImpact);
-  const rawDelta = side.rawReceived - side.rawSent;
-  return (
-    <Stack gap={6}>
-      <Group justify="space-between">
-        <Text fw={600}>{teamName}</Text>
-        {hasLineupData && (
-          <Badge color={color} variant="light">
-            {label}
-          </Badge>
-        )}
-      </Group>
-      <Group justify="space-between">
-        <Text size="sm" c="dimmed">
-          Raw rosVOR
-        </Text>
-        <Text size="sm">
-          +{side.rawReceived.toFixed(1)} / -{side.rawSent.toFixed(1)} ({rawDelta >= 0 ? "+" : ""}
-          {rawDelta.toFixed(1)})
-        </Text>
-      </Group>
-      <Group justify="space-between">
-        <Text size="sm" c="dimmed">
-          Starting lineup impact
-        </Text>
-        <Text size="sm" fw={700}>
-          {hasLineupData
-            ? `${side.lineupImpact >= 0 ? "+" : ""}${side.lineupImpact.toFixed(1)}`
-            : "—"}
-        </Text>
-      </Group>
-      {!hasLineupData && (
-        <Text size="xs" c="dimmed">
-          No starting-lineup data for this team (not Sleeper-linked).
-        </Text>
-      )}
-    </Stack>
-  );
-}
-
 // Trade analyzer: pick players off your own team and a second team, and see
-// how the swap affects each side. "Raw rosVOR" sums value sent vs. received
-// with each player floored at 0 (see tradeAnalyzer.ts's sumValue) so a
-// below-replacement throw-in can't cancel out a genuinely valuable player
-// in the same package; "Starting lineup impact" simulates each team's
-// best-possible starting lineup before vs. after the trade (via the same
-// tiered-greedy fill src/lib/lineupSuggestions.ts's buildLineupSuggestions
-// uses for "My Team" start/sit advice, generalized in
-// src/lib/tradeAnalyzer.ts) - it's the more decision-relevant number, since
-// two bench-bound players moving the raw sum doesn't mean they actually
-// crack the lineup.
+// how the swap plays out. Each side's roster renders as paired cards (see
+// TradeRosterMatchup.tsx), each card already showing that player's own
+// actualVOR/rosVOR; the summary below simulates the league's full power
+// rankings (convex/infinileague/season/powerRankings.ts's rest-of-season
+// optimal-lineup total, same computation the league dashboard's Power
+// Rankings tab shows) with the selected players swapped between the two
+// rosters, so the payoff reads as "where would this actually land us" -
+// not just a raw value delta, but the real decision-relevant number: does
+// this trade move us up the standings-that-matter.
 function TradePage() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
@@ -152,12 +98,10 @@ function TradePage() {
     if (self) setTeamAId(self.teamId);
   }, [standings, teamAId]);
 
+  // No auto-pick here (unlike teamAId above) - column 2 starts on the
+  // selector's own placeholder until the user actually chooses who they're
+  // trading with, rather than silently defaulting to some other team.
   const [teamBId, setTeamBId] = useState<string | null>(null);
-  useEffect(() => {
-    if (teamBId !== null || !standings || teamAId === null) return;
-    const other = standings.find((row) => row.teamId !== teamAId);
-    if (other) setTeamBId(other.teamId);
-  }, [standings, teamAId, teamBId]);
 
   const week = nflState?.week ?? null;
   const teamARoster = useTeamRoster(teamAId, week);
@@ -189,6 +133,41 @@ function TradePage() {
       }
       return next;
     });
+
+  const getPowerRankingsWithTrade = useAction(
+    api.infinileague.season.powerRankings.getPowerRankingsWithTrade,
+  );
+  const [tradeImpact, setTradeImpact] = useState<TradeImpact | undefined>(undefined);
+  const [tradeImpactError, setTradeImpactError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (teamAId === null || teamBId === null || selectedA.size === 0 || selectedB.size === 0) {
+      setTradeImpact(undefined);
+      setTradeImpactError(null);
+      return;
+    }
+    // Debounced rather than firing on every single checkbox click - this
+    // call re-fetches live Sleeper rosters and every remaining week's
+    // projections server-side (see getPowerRankingsWithTrade), genuinely
+    // too expensive to run on each toggle while someone's still building
+    // out a package.
+    const outgoingFromA = [...selectedA];
+    const outgoingFromB = [...selectedB];
+    const timeout = setTimeout(() => {
+      getPowerRankingsWithTrade({
+        seasonId,
+        teamAId: teamAId as Id<"seasonTeams">,
+        teamBId: teamBId as Id<"seasonTeams">,
+        outgoingFromA,
+        outgoingFromB,
+      })
+        .then(setTradeImpact)
+        .catch((err) =>
+          setTradeImpactError(getErrorMessage(err, "Failed to compute trade impact.")),
+        );
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [seasonId, teamAId, teamBId, selectedA, selectedB, getPowerRankingsWithTrade]);
 
   if (nflState === undefined || standings === undefined || vorRows === undefined) {
     return <Loader />;
@@ -222,99 +201,104 @@ function TradePage() {
     return <Loader />;
   }
 
-  const teamAPool = buildTradePool(teamARoster.rows, vorByFpid, METRIC);
-  const teamASlotCounts = extractSlotCounts(teamARoster.rows);
-
   const teamBOptions = standings
     .filter((row) => row.teamId !== teamAId)
     .map((row) => ({ value: row.teamId, label: row.name }));
   const teamBName = standings.find((row) => row.teamId === teamBId)?.name ?? "Team";
 
-  const teamBRows = teamBRoster.rows;
-  const teamBReady = teamBId !== null && teamBRows !== undefined;
-  const teamBPool = teamBRows ? buildTradePool(teamBRows, vorByFpid, METRIC) : [];
-  const teamBSlotCounts = teamBRows ? extractSlotCounts(teamBRows) : new Map<SlotLabel, number>();
-
-  const outgoingFromA = teamAPool.filter((entry) => selectedA.has(entry.fpid));
-  const outgoingFromB = teamBPool.filter((entry) => selectedB.has(entry.fpid));
-
-  const result = teamBReady
-    ? simulateTrade({
-        teamAPool,
-        teamASlotCounts,
-        teamBPool,
-        teamBSlotCounts,
-        outgoingFromA,
-        outgoingFromB,
-      })
-    : null;
+  const beforeRankByTeam = new Map(
+    (tradeImpact?.before ?? []).map((row, index) => [row.teamId, index + 1]),
+  );
+  const beforePointsByTeam = new Map(
+    (tradeImpact?.before ?? []).map((row) => [row.teamId, row.totalProjectedPoints]),
+  );
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" wrap="wrap" align="center">
-        <Title order={3}>Trade Analyzer</Title>
-        <Select
-          label="Trading with"
-          data={teamBOptions}
-          value={teamBId}
-          onChange={setTeamBId}
-          allowDeselect={false}
-          w={220}
-        />
-      </Group>
+      <Title order={3}>Trade Analyzer</Title>
 
       {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
       {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-        <Card withBorder padding="md">
-          <Title order={5} mb="xs">
-            {selfTeamName ?? "Your team"}
-          </Title>
-          <TradeRosterPanel
-            rows={teamARoster.rows}
-            vorByFpid={vorByFpid}
-            metric={METRIC}
-            selected={selectedA}
-            onToggle={toggleA}
-          />
-        </Card>
-        <Card withBorder padding="md">
-          <Title order={5} mb="xs">
-            {teamBName}
-          </Title>
-          {teamBRoster.rows === undefined ? (
-            <Loader />
-          ) : (
-            <TradeRosterPanel
-              rows={teamBRoster.rows}
-              vorByFpid={vorByFpid}
-              metric={METRIC}
-              selected={selectedB}
-              onToggle={toggleB}
-            />
-          )}
-        </Card>
+        <Title order={5}>{selfTeamName ?? "Your team"}</Title>
+        <Select
+          label="Trading with"
+          placeholder="Select a team"
+          data={teamBOptions}
+          value={teamBId}
+          onChange={setTeamBId}
+          clearable
+          w={{ base: "100%", sm: 220 }}
+        />
       </SimpleGrid>
 
-      <Card withBorder padding="md">
-        {result === null ? (
-          <Loader />
-        ) : (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-            <TradeSideSummary
-              teamName={selfTeamName ?? "Your team"}
-              side={result.teamA}
-              hasLineupData={teamASlotCounts.size > 0}
+      <Stack gap={8}>
+        <TradeRosterMatchup
+          teamARows={teamARoster.rows}
+          teamBRows={teamBRoster.rows}
+          vorByFpid={vorByFpid}
+          selectedA={selectedA}
+          selectedB={selectedB}
+          onToggleA={toggleA}
+          onToggleB={toggleB}
+        />
+      </Stack>
+
+      {teamBId !== null && tradeImpact === undefined && (
+        <Card withBorder padding="md">
+          <Title order={5} mb="xs">
+            Post-trade power rankings
+          </Title>
+          {selectedA.size === 0 || selectedB.size === 0 ? (
+            <Text c="dimmed" size="sm">
+              Select players from both teams to preview this trade&apos;s power-ranking impact.
+            </Text>
+          ) : tradeImpactError ? (
+            <Alert color="red" withCloseButton onClose={() => setTradeImpactError(null)}>
+              {tradeImpactError}
+            </Alert>
+          ) : (
+            <Loader size="sm" />
+          )}
+        </Card>
+      )}
+
+      {/* Desktop keeps the plain scrollable card - mobile gets a peek card
+          pinned above BottomNav instead (see TradePowerRankingsSheet's own
+          comment on why), so the two only ever render one at a time via
+          visibleFrom/hiddenFrom, never both. */}
+      {teamBId !== null && tradeImpact !== undefined && (
+        <>
+          <Card withBorder padding="md" visibleFrom="sm">
+            <Title order={5} mb="xs">
+              Post-trade power rankings
+            </Title>
+            <TradePowerRankingsList
+              leagueId={leagueId}
+              rows={tradeImpact.after}
+              beforeRankByTeam={beforeRankByTeam}
+              beforePointsByTeam={beforePointsByTeam}
+              highlightedTeamIds={new Set([teamAId, teamBId])}
             />
-            <TradeSideSummary
-              teamName={teamBName}
-              side={result.teamB}
-              hasLineupData={teamBSlotCounts.size > 0}
-            />
-          </SimpleGrid>
-        )}
-      </Card>
+          </Card>
+          <TradePowerRankingsSheet
+            leagueId={leagueId}
+            rows={tradeImpact.after}
+            beforeRankByTeam={beforeRankByTeam}
+            beforePointsByTeam={beforePointsByTeam}
+            teamAId={teamAId}
+            teamBId={teamBId}
+            teamAName={selfTeamName ?? "Your team"}
+            teamBName={teamBName}
+          />
+          {/* Reserves room below the page's own content so the fixed/
+              portaled peek card above doesn't cover it once scrolled to the
+              bottom on mobile - a no-op on desktop, where the peek card
+              never renders. */}
+          <Box hiddenFrom="sm" h={TRADE_PEEK_CARD_HEIGHT} />
+        </>
+      )}
     </Stack>
   );
 }

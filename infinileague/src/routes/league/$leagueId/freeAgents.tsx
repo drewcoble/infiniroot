@@ -1,58 +1,26 @@
-import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Badge, Card, Group, Loader, Stack, Table, Text, Title } from "@mantine/core";
+import { Group, Loader, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
-import { positionColorOrDefault } from "@shared/positionColors";
-import { RookieBadge } from "@shared/RookieBadge";
-import { SortArrow } from "../../../components/SortArrow";
-import { compareSortValues, type SortDir } from "../../../lib/tableSort";
-import type { FaabSuggestionRow, FaabSuggestionsResult, StandingsRow } from "../../../types/season";
+import { PlayerCard } from "../../../components/PlayerCard";
+import { compareSortValues } from "../../../lib/tableSort";
+import type { FaabSuggestionRow, FaabSuggestionsResult, RosVorRow, StandingsRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/freeAgents")({
   component: FreeAgentsPage,
 });
 
-type SortKey = "player" | "position" | "rosValue" | "vor" | "demand" | "myValue" | "suggestedBid";
-
-// Suggested Bid/Value to You default to descending (highest first); Player/
-// Pos default A-Z. Applied when a header's clicked for the first time -
-// clicking the same header again just flips direction (see handleSort).
-const DEFAULT_SORT_DIR: Record<SortKey, SortDir> = {
-  player: "asc",
-  position: "asc",
-  rosValue: "desc",
-  vor: "desc",
-  demand: "desc",
-  myValue: "desc",
-  suggestedBid: "desc",
-};
-
-function sortValueFor(row: FaabSuggestionRow, key: SortKey): number | string | undefined {
-  switch (key) {
-    case "player":
-      return row.name;
-    case "position":
-      return row.position;
-    case "rosValue":
-      return row.rosValue;
-    case "vor":
-      return row.valueOverReplacement;
-    case "demand":
-      return row.demandCount;
-    case "myValue":
-      return row.myValue ?? undefined;
-    case "suggestedBid":
-      return row.suggestedBid ?? undefined;
-  }
+function sortValueFor(row: FaabSuggestionRow): number | undefined {
+  return row.suggestedBid ?? undefined;
 }
 
 // Migrated from infinidraft's src/pages/Season/FreeAgentsTab.tsx (now
 // removed there) - same advisory FAAB bid calculator, backed by the same
-// shared convex/lib/faab.ts computation, just infinileague's own thinner UI
-// (no PositionFilterBar/PlayerDetailModal - those are draft-specific
-// components that don't exist here).
+// shared convex/lib/faab.ts computation. Re-shelled from a sortable table
+// into the same PlayerCard the Players/Depth Charts tabs use (with an added
+// bid/rationale footer row) rather than its own bespoke row layout, so a
+// player reads identically everywhere in the app.
 function FreeAgentsPage() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
@@ -82,29 +50,16 @@ function FreeAgentsPage() {
       : "skip",
   );
 
-  // null until a column header's clicked - the table keeps its default
-  // suggested-bid-first order (see sortedRows below) until then.
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir(DEFAULT_SORT_DIR[key]);
-    }
-  };
-
-  const renderSortableTh = (label: string, key: SortKey) => (
-    <Table.Th onClick={() => handleSort(key)} style={{ cursor: "pointer" }}>
-      <Group gap={4} wrap="nowrap">
-        <Text size="sm" fw={sortKey === key ? 700 : undefined}>
-          {label}
-        </Text>
-        {sortKey === key && <SortArrow dir={sortDir} />}
-      </Group>
-    </Table.Th>
+  // Same league-wide board the Players/Depth Charts tabs read, joined by
+  // fpid for the PPG/positionRank/rosRank fields PlayerCard needs that
+  // FaabSuggestionRow doesn't carry - see that query's own comment. Not
+  // every free agent necessarily has a row here (faab.ts and rosVor.ts don't
+  // share one hard-coded cutoff), handled per-row below.
+  const rosVorRows: RosVorRow[] | undefined = useQuery(
+    api.rosVor.getRosVorBoard,
+    isAuthenticated && result?.week ? { seasonId, week: result.week } : "skip",
   );
+  const rosVorByFpid = new Map((rosVorRows ?? []).map((row) => [row.fpid, row]));
 
   if (result === undefined) {
     return <Loader />;
@@ -121,17 +76,12 @@ function FreeAgentsPage() {
     );
   }
 
-  // Defaults to Suggested Bid (highest first) - the single number most
-  // directly answers "who should I actually bid on" - tiebroken by
-  // valueOverReplacement, the same VOR the pre-draft value process ranks by
-  // (convex/draftValues.ts), not the demand-based fields (those are
-  // per-team and situational, a worse tiebreak than a stable value
-  // ranking) - then name for full determinism. A clicked column uses the
-  // same tiebreak chain, not just raw array order.
-  const key: SortKey = sortKey ?? "suggestedBid";
-  const dir: SortDir = sortKey ? sortDir : "desc";
+  // Highest suggested bid first - the single number most directly answers
+  // "who should I actually bid on" - tiebroken by valueOverReplacement, the
+  // same VOR the pre-draft value process ranks by (convex/draftValues.ts),
+  // then name for full determinism.
   const rows = [...result.suggestions].sort((a, b) => {
-    const primary = compareSortValues(sortValueFor(a, key), sortValueFor(b, key), dir);
+    const primary = compareSortValues(sortValueFor(a), sortValueFor(b), "desc");
     if (primary !== 0) return primary;
     const secondary = compareSortValues(a.valueOverReplacement, b.valueOverReplacement, "desc");
     if (secondary !== 0) return secondary;
@@ -146,70 +96,65 @@ function FreeAgentsPage() {
           {result.remainingWeeks} weeks remaining this season
         </Text>
       </Group>
-      <Card withBorder padding="md">
-        <Table.ScrollContainer minWidth={640}>
-          <Table highlightOnHover verticalSpacing={4}>
-            <Table.Thead>
-              <Table.Tr>
-                {renderSortableTh("Player", "player")}
-                {renderSortableTh("Pos", "position")}
-                {renderSortableTh("ROS Pts", "rosValue")}
-                {renderSortableTh("VOR", "vor")}
-                {renderSortableTh("Demand", "demand")}
-                {renderSortableTh("Value to You", "myValue")}
-                {renderSortableTh("Suggested Bid", "suggestedBid")}
-                <Table.Th>Why</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {rows.map((row) => (
-                <Table.Tr key={row.fpid}>
-                  <Table.Td>
-                    <Group gap={6} wrap="nowrap">
-                      <Text size="sm" fw={500}>
-                        {row.name}
-                      </Text>
-                      {rookieFpidSet.has(row.fpid) && <RookieBadge />}
-                      {row.team && (
-                        <Text c="dimmed" size="sm">
-                          {row.team}
-                        </Text>
-                      )}
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge size="sm" color={positionColorOrDefault(row.position)} variant="light">
-                      {row.position}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>{row.rosValue.toFixed(1)}</Table.Td>
-                  <Table.Td>{row.valueOverReplacement.toFixed(1)}</Table.Td>
-                  <Table.Td>
-                    {row.demandCount > 0 ? (
-                      <Text size="sm">
-                        {row.demandCount} team{row.demandCount === 1 ? "" : "s"}
-                      </Text>
-                    ) : (
-                      <Text size="sm" c="dimmed">
-                        None
-                      </Text>
-                    )}
-                  </Table.Td>
-                  <Table.Td>{row.myValue !== null ? `$${row.myValue.toFixed(0)}` : "—"}</Table.Td>
-                  <Table.Td fw={700}>
-                    {row.suggestedBid !== null ? `$${row.suggestedBid}` : "—"}
-                  </Table.Td>
-                  <Table.Td>
-                    <Text c="dimmed" size="sm">
-                      {row.rationale ?? "—"}
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </Card>
+      <Stack gap={8}>
+        {rows.map((row) => {
+          const bidFooter = (
+            <Group gap={8} wrap="nowrap">
+              <Text size="sm" fw={700}>
+                {row.suggestedBid !== null ? `$${row.suggestedBid}` : "—"}
+              </Text>
+              <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
+                {row.rationale ?? "No suggestion available"}
+              </Text>
+            </Group>
+          );
+
+          const rosVorRow = rosVorByFpid.get(row.fpid);
+          if (rosVorRow) {
+            return (
+              <PlayerCard
+                key={row.fpid}
+                row={rosVorRow}
+                isRookie={rookieFpidSet.has(row.fpid)}
+                footer={bidFooter}
+              />
+            );
+          }
+
+          // No rosVOR row for this fpid - a minimal stand-in RosVorRow
+          // (PPG/rank fields zeroed) rather than a second bespoke card
+          // layout, so the bid footer still renders through the same
+          // component. positionRank is deliberately 0 (PlayerCard's "don't
+          // show a rank" sentinel), NOT row.positionRank -
+          // FaabSuggestionRow's own positionRank is this player's rank
+          // among free agents only (see faab.ts's freeAgentsByPosition),
+          // not the all-players rank the badge shows everywhere else in the
+          // app - showing it here would silently mean something different
+          // depending on which branch rendered the card.
+          return (
+            <PlayerCard
+              key={row.fpid}
+              row={{
+                fpid: row.fpid,
+                name: row.name,
+                team: row.team,
+                position: row.position,
+                rosVor: row.rosValue,
+                rosRank: 0,
+                actualVor: 0,
+                actualRank: 0,
+                positionRank: 0,
+                rosPpg: 0,
+                actualPpg: 0,
+                rosteredByTeamName: null,
+              }}
+              isRookie={rookieFpidSet.has(row.fpid)}
+              leftLabel="—"
+              footer={bidFooter}
+            />
+          );
+        })}
+      </Stack>
     </Stack>
   );
 }

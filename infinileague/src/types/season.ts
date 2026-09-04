@@ -117,6 +117,9 @@ export interface RosVorRow {
   rosPpg: number;
   actualPpg: number;
   rosteredByTeamName: string | null;
+  // Absent means not currently injured - mirrors TeamRosterRow's injury
+  // field below, same convex/injuries.ts source (Sleeper-derived).
+  injury?: { status: string; statusShort: string };
 }
 
 export type SlotLabel =

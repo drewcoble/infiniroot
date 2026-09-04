@@ -9,10 +9,8 @@ const STARTING_SLOTS: SlotLabel[] = [...DEDICATED_POSITIONS, "FLEX", "SUPERFLEX"
 
 // Generic pool entry fillOptimalLineup assigns into starting slots - just
 // enough to run the tiered greedy fill (position + a single comparable
-// value), independent of what that value actually measures. buildLineupSuggestions
-// below uses weekly projectedPoints; src/lib/tradeAnalyzer.ts's trade
-// simulation uses rest-of-season rosVOR instead - same fill algorithm
-// either way.
+// value), independent of what that value actually measures.
+// buildLineupSuggestions below uses weekly projectedPoints.
 export interface LineupPoolEntry {
   fpid: number;
   position: DedicatedPosition;
