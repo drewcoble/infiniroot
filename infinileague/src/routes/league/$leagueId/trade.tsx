@@ -277,6 +277,7 @@ function TradePage() {
             metric={METRIC}
             selected={selectedA}
             onToggle={toggleA}
+            teamName={selfTeamName ?? "Your team"}
           />
         </Card>
         <Card withBorder padding="md">
@@ -292,6 +293,7 @@ function TradePage() {
               metric={METRIC}
               selected={selectedB}
               onToggle={toggleB}
+              teamName={teamBName}
             />
           )}
         </Card>

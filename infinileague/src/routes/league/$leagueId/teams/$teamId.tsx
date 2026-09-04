@@ -13,7 +13,7 @@ import {
   Title,
 } from "@mantine/core";
 import { api } from "@infinidata/api";
-import { TeamRosterTable } from "../../../../components/TeamRosterTable";
+import { TeamRosterList } from "../../../../components/TeamRosterList";
 import { LineupSuggestionsCard } from "../../../../components/LineupSuggestionsCard";
 import { getErrorMessage } from "@shared/errors";
 import type { SlotLabel, StandingsRow, TeamRosterRow } from "../../../../types/season";
@@ -173,7 +173,7 @@ function TeamPage() {
         {loading || roster === undefined ? (
           <Loader />
         ) : (
-          <TeamRosterTable rows={roster} />
+          <TeamRosterList rows={roster} teamName={team.name} />
         )}
       </Stack>
     </Stack>

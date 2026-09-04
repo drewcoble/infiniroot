@@ -1,6 +1,5 @@
-import { Badge, Checkbox, Group, Stack, Table, Text } from "@mantine/core";
-import { positionColorOrDefault } from "@shared/positionColors";
-import { injuryColor } from "@shared/injuryColor";
+import { Stack, Text } from "@mantine/core";
+import { PlayerCard } from "./PlayerCard";
 import type { RosVorRow, TeamRosterRow } from "../types/season";
 import type { TradeValueMetric } from "../lib/tradeAnalyzer";
 
@@ -10,13 +9,46 @@ interface TradeRosterPanelProps {
   metric: TradeValueMetric;
   selected: Set<number>;
   onToggle: (fpid: number) => void;
+  // Shown as this player's "rostered by" line when there's no vorByFpid
+  // match (see toFallbackRow below) - the real RosVorRow already carries its
+  // own correct rosteredByTeamName in the common case.
+  teamName: string;
 }
 
-// One team's checkbox-selectable roster for the Trade tab - same row shape
-// as TeamRosterTable (slot badge + name/position/team), swapping Proj/
-// Actual for this player's own rosVOR/actualVOR (the trade math's actual
-// currency, see src/lib/tradeAnalyzer.ts) and a leading checkbox for
-// picking which players move. Unfilled slots and IR/TAXI players aren't
+function slotLabel(slot: TeamRosterRow["slot"]): string {
+  if (slot === undefined) return "";
+  if (slot === "BENCH") return "BN";
+  if (slot === "SUPERFLEX") return "SFLEX";
+  return slot;
+}
+
+// A player just off the rosVOR board's cutoff (rare - see freeAgents.tsx's
+// identical fallback) still needs a row PlayerCard can render - zeroed
+// value fields rather than a second bespoke layout.
+function toFallbackRow(row: TeamRosterRow, fpid: number, teamName: string): RosVorRow {
+  return {
+    fpid,
+    name: row.name ?? "",
+    team: row.team ?? null,
+    position: row.position ?? "QB",
+    rosVor: 0,
+    rosRank: 0,
+    actualVor: 0,
+    actualRank: 0,
+    positionRank: 0,
+    rosPpg: 0,
+    actualPpg: 0,
+    rosteredByTeamName: teamName,
+    ...(row.injury ? { injury: row.injury } : {}),
+  };
+}
+
+// One team's checkbox-selectable roster for the Trade tab - same PlayerCard
+// every other player list in the app uses (see PlayerCard.tsx's own
+// comment), swapping its default PPG stat for this player's own rosVOR/
+// actualVOR (the trade math's actual currency, see src/lib/tradeAnalyzer.ts)
+// via rightStats, and a leading checkbox (via PlayerCard's checkbox prop)
+// for picking which players move. Unfilled slots and IR/TAXI players aren't
 // tradeable pieces, so they're left out entirely rather than rendered
 // disabled - same eligibility buildTradePool uses.
 export function TradeRosterPanel({
@@ -25,71 +57,34 @@ export function TradeRosterPanel({
   metric,
   selected,
   onToggle,
+  teamName,
 }: TradeRosterPanelProps) {
   const tradeableRows = rows.filter(
     (row) => row.fpid !== undefined && row.slot !== "IR" && row.slot !== "TAXI",
   );
+  const metricLabel = metric === "rosVor" ? "ROS VOR" : "VOR";
 
   return (
-    <Table highlightOnHover verticalSpacing={4} layout="fixed" w="100%" withRowBorders={false}>
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th w={32} />
-          <Table.Th>Player</Table.Th>
-          <Table.Th w={64}>{metric === "rosVor" ? "ROS VOR" : "VOR"}</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {tradeableRows.map((row) => {
-          const fpid = row.fpid as number;
-          const value = vorByFpid.get(fpid)?.[metric] ?? 0;
-          const isSelected = selected.has(fpid);
-          return (
-            <Table.Tr key={fpid} onClick={() => onToggle(fpid)} style={{ cursor: "pointer" }}>
-              <Table.Td onClick={(event) => event.stopPropagation()}>
-                <Checkbox checked={isSelected} onChange={() => onToggle(fpid)} />
-              </Table.Td>
-              <Table.Td>
-                <Group gap={6} wrap="nowrap" align="center">
-                  {row.slot !== undefined && (
-                    <Badge size="sm" variant="light" color={positionColorOrDefault(row.slot)}>
-                      {row.slot === "BENCH"
-                        ? "BN"
-                        : row.slot === "SUPERFLEX"
-                          ? "SFLEX"
-                          : row.slot}
-                    </Badge>
-                  )}
-                  <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                    <Group gap={6} wrap="nowrap">
-                      <Text span size="sm" truncate>
-                        {row.name}
-                      </Text>
-                      {row.injury && (
-                        <Badge color={injuryColor(row.injury.status)} size="sm" variant="light">
-                          {row.injury.statusShort}
-                        </Badge>
-                      )}
-                    </Group>
-                    <Text size="xs" c="dimmed" truncate>
-                      {row.position && (
-                        <>
-                          <Text span c={positionColorOrDefault(row.position)} inherit>
-                            {row.position}
-                          </Text>
-                          {" - "}
-                        </>
-                      )}
-                      {row.team ?? "—"}
-                    </Text>
-                  </Stack>
-                </Group>
-              </Table.Td>
-              <Table.Td>{value.toFixed(1)}</Table.Td>
-            </Table.Tr>
-          );
-        })}
-      </Table.Tbody>
-    </Table>
+    <Stack gap={8}>
+      {tradeableRows.map((row) => {
+        const fpid = row.fpid as number;
+        const vorRow = vorByFpid.get(fpid);
+        const value = vorRow?.[metric] ?? 0;
+        return (
+          <PlayerCard
+            key={fpid}
+            row={vorRow ?? toFallbackRow(row, fpid, teamName)}
+            isRookie={row.isRookie ?? false}
+            leftLabel={slotLabel(row.slot)}
+            checkbox={{ checked: selected.has(fpid), onChange: () => onToggle(fpid) }}
+            rightStats={
+              <Text size="xs" c="dimmed">
+                {value.toFixed(1)} {metricLabel}
+              </Text>
+            }
+          />
+        );
+      })}
+    </Stack>
   );
 }
