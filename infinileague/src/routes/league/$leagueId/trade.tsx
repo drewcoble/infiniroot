@@ -209,6 +209,9 @@ function TradePage() {
   const beforeRankByTeam = new Map(
     (tradeImpact?.before ?? []).map((row, index) => [row.teamId, index + 1]),
   );
+  const beforePointsByTeam = new Map(
+    (tradeImpact?.before ?? []).map((row) => [row.teamId, row.totalProjectedPoints]),
+  );
 
   return (
     <Stack gap="md">
@@ -245,7 +248,7 @@ function TradePage() {
       {teamBId !== null && tradeImpact === undefined && (
         <Card withBorder padding="md">
           <Title order={5} mb="xs">
-            Power rankings if this trade happened
+            Post-trade power rankings
           </Title>
           {selectedA.size === 0 || selectedB.size === 0 ? (
             <Text c="dimmed" size="sm">
@@ -269,7 +272,7 @@ function TradePage() {
         <>
           <Card withBorder padding="md" visibleFrom="sm">
             <Title order={5} mb="xs">
-              Power rankings if this trade happened
+              Post-trade power rankings
             </Title>
             <TradePowerRankingsList
               leagueId={leagueId}
@@ -282,6 +285,7 @@ function TradePage() {
             leagueId={leagueId}
             rows={tradeImpact.after}
             beforeRankByTeam={beforeRankByTeam}
+            beforePointsByTeam={beforePointsByTeam}
             teamAId={teamAId}
             teamBId={teamBId}
             teamAName={selfTeamName ?? "Your team"}

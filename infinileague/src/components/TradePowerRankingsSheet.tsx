@@ -30,6 +30,13 @@ interface TradePowerRankingsSheetProps {
   // props comment.
   rows: PowerRankingRow[];
   beforeRankByTeam: Map<string, number>;
+  // This team's real, current (pre-trade) totalProjectedPoints - diffed
+  // against its post-trade value below for the peek card's own "+/- pts"
+  // line, which TradePowerRankingsList's full-list view doesn't show (rank
+  // movement already covers that view; the peek card's whole point is
+  // fitting the two most decision-relevant numbers into two lines without
+  // opening the drawer).
+  beforePointsByTeam: Map<string, number>;
   teamAId: string;
   teamBId: string;
   teamAName: string;
@@ -50,6 +57,7 @@ export function TradePowerRankingsSheet({
   leagueId,
   rows,
   beforeRankByTeam,
+  beforePointsByTeam,
   teamAId,
   teamBId,
   teamAName,
@@ -62,7 +70,9 @@ export function TradePowerRankingsSheet({
   // would still fire on desktop whenever `open` happens to be true.
   const isDesktop = useMediaQuery("(min-width: 48em)");
 
-  const afterRankByTeam = new Map(rows.map((row, index) => [row.teamId, index + 1]));
+  const afterByTeam = new Map(
+    rows.map((row, index) => [row.teamId, { rank: index + 1, points: row.totalProjectedPoints }]),
+  );
   const peekTeams = [
     { teamId: teamAId, name: teamAName },
     { teamId: teamBId, name: teamBName },
@@ -108,17 +118,35 @@ export function TradePowerRankingsSheet({
           <Stack gap={2}>
             {peekTeams.map(({ teamId, name }) => {
               const beforeRank = beforeRankByTeam.get(teamId);
-              const afterRank = afterRankByTeam.get(teamId);
+              const beforePoints = beforePointsByTeam.get(teamId);
+              const after = afterByTeam.get(teamId);
               const rankChange =
-                beforeRank !== undefined && afterRank !== undefined
-                  ? beforeRank - afterRank
+                beforeRank !== undefined && after !== undefined
+                  ? beforeRank - after.rank
+                  : undefined;
+              const pointsDiff =
+                beforePoints !== undefined && after !== undefined
+                  ? after.points - beforePoints
                   : undefined;
               return (
-                <Group key={teamId} gap={6} wrap="nowrap">
-                  <RankChangeIndicator rankChange={rankChange} />
-                  <Text size="sm" fw={500} truncate style={{ flex: 1, minWidth: 0 }}>
-                    {name}
-                  </Text>
+                <Group key={teamId} gap={6} wrap="nowrap" justify="space-between">
+                  <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                    <RankChangeIndicator rankChange={rankChange} />
+                    <Text size="sm" fw={500} truncate>
+                      {name}
+                    </Text>
+                  </Group>
+                  {pointsDiff !== undefined && (
+                    <Text
+                      size="sm"
+                      fw={500}
+                      c={pointsDiff > 0 ? "green" : pointsDiff < 0 ? "red" : "dimmed"}
+                      style={{ flexShrink: 0 }}
+                    >
+                      {pointsDiff >= 0 ? "+" : ""}
+                      {pointsDiff.toFixed(1)} pts
+                    </Text>
+                  )}
                 </Group>
               );
             })}
@@ -191,7 +219,7 @@ export function TradePowerRankingsSheet({
             }}
           >
             <Title order={5} mb="xs">
-              Power rankings if this trade happened
+              Post-trade power rankings
             </Title>
             <TradePowerRankingsList
               leagueId={leagueId}
