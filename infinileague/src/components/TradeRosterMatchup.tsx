@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Badge, Box, Card, Group, Text } from "@mantine/core";
+import { Badge, Box, Card, Group, Stack, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { PlayerCard } from "./PlayerCard";
 import type { RosVorRow, TeamRosterRow } from "../types/season";
@@ -109,14 +109,14 @@ function PlayerCell({ row, vorByFpid, selected, onToggle }: PlayerCellProps) {
         selectable={{ selected: selected.has(fpid), onToggle: () => onToggle(fpid) }}
         rightStats={null}
         footer={
-          <Group gap={12} wrap="nowrap">
+          <Stack gap={0}>
             <Text size="xs" c="dimmed">
               {(vorRow?.actualVor ?? 0).toFixed(1)} VOR
             </Text>
             <Text size="xs" c="dimmed">
               {(vorRow?.rosVor ?? 0).toFixed(1)} ROS VOR
             </Text>
-          </Group>
+          </Stack>
         }
       />
     </Cell>
