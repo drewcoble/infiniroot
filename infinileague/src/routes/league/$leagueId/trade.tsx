@@ -16,7 +16,6 @@ import {
 } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
-import { TradeRosterPanel } from "../../../components/TradeRosterPanel";
 import { TradeRosterMatchup } from "../../../components/TradeRosterMatchup";
 import { extractSlotCounts } from "../../../lib/lineupSuggestions";
 import { buildTradePool, simulateTrade, type TradeSideResult } from "../../../lib/tradeAnalyzer";
@@ -268,37 +267,17 @@ function TradePage() {
         />
       </SimpleGrid>
 
-      {teamBId !== null && teamBRoster.rows !== undefined ? (
-        <Stack gap={8}>
-          <TradeRosterMatchup
-            teamARows={teamARoster.rows}
-            teamBRows={teamBRoster.rows}
-            vorByFpid={vorByFpid}
-            metric={METRIC}
-            selectedA={selectedA}
-            selectedB={selectedB}
-            onToggleA={toggleA}
-            onToggleB={toggleB}
-          />
-        </Stack>
-      ) : (
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-          <TradeRosterPanel
-            rows={teamARoster.rows}
-            vorByFpid={vorByFpid}
-            metric={METRIC}
-            selected={selectedA}
-            onToggle={toggleA}
-          />
-          <Stack align="center" py="xl" gap={4}>
-            {teamBId === null ? (
-              <Text c="dimmed">Select a team to see their roster.</Text>
-            ) : (
-              <Loader />
-            )}
-          </Stack>
-        </SimpleGrid>
-      )}
+      <Stack gap={8}>
+        <TradeRosterMatchup
+          teamARows={teamARoster.rows}
+          teamBRows={teamBRoster.rows}
+          vorByFpid={vorByFpid}
+          selectedA={selectedA}
+          selectedB={selectedB}
+          onToggleA={toggleA}
+          onToggleB={toggleB}
+        />
+      </Stack>
 
       {teamBId !== null && (
         <Card withBorder padding="md">

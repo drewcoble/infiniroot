@@ -1,9 +1,17 @@
 import type { ReactNode } from "react";
-import { Box, Badge, Card, Checkbox, Group, Stack, Text } from "@mantine/core";
+import { Box, Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { injuryColor } from "@shared/injuryColor";
 import { RookieBadge } from "@shared/RookieBadge";
 import type { RosVorRow } from "../types/season";
+
+// Selected-card highlight color for the Trade tab's clickable cards (see
+// selectable below) - a warm, unclaimed color (not red/orange/yellow/gray,
+// already injuryColor's; not grape, RookieBadge's) picked directly rather
+// than a Mantine theme color, since this is a one-off highlight, not a
+// reusable semantic color like positionColors.ts's set.
+const SELECTED_BACKGROUND = "rgba(139, 69, 19, 0.15)";
+const SELECTED_BORDER = "saddlebrown";
 
 interface PlayerCardProps {
   row: RosVorRow;
@@ -15,12 +23,18 @@ interface PlayerCardProps {
   // context once you're already looking at one team's roster.
   leftLabel?: string;
   // Renders the left-hand label as a colored Badge instead of leftLabel's
-  // plain dimmed text - My Team (TeamRosterList.tsx) and Trade
-  // (TradeRosterPanel.tsx) use this for the player's roster slot ("QB",
-  // "BN", ...), colored the same way the slot badges elsewhere in the app
-  // are (positionColorOrDefault). Takes priority over leftLabel/row.rosRank
-  // when set.
+  // plain dimmed text - My Team (TeamRosterList.tsx) uses this for the
+  // player's roster slot ("QB", "BN", ...), colored the same way the slot
+  // badges elsewhere in the app are (positionColorOrDefault). Takes priority
+  // over leftLabel/row.rosRank when set.
   leftBadge?: { label: string; color: string };
+  // Hides the entire left-hand label area (leftBadge/leftLabel/row.rosRank
+  // all ignored) - Trade's matchup rows already show the slot between the
+  // two teams' cards (see TradeRosterMatchup.tsx), and the overall
+  // league-wide rosVOR rank that'd otherwise show by default isn't
+  // meaningful context there, just wasted width in an already-condensed
+  // two-column view.
+  showLeftLabel?: boolean;
   // Extra row rendered below the existing name/position/PPG content, still
   // inside the same card border - the Free Agents tab (freeAgents.tsx)
   // reuses this card but needs its own suggested-bid/rationale line, which
@@ -28,14 +42,15 @@ interface PlayerCardProps {
   footer?: ReactNode;
   // Overrides the right-aligned PPG/ROS PPG stack - My Team shows this
   // week's Proj/Actual points instead (row.actualPpg/rosPpg are season-long
-  // rates, not a single matchup's numbers) and Trade shows this player's VOR
-  // value (the trade math's actual currency, see src/lib/tradeAnalyzer.ts).
+  // rates, not a single matchup's numbers) and Trade shows this player's
+  // actualVOR/rosVOR (the trade math's actual currency, see
+  // src/lib/tradeAnalyzer.ts).
   rightStats?: ReactNode;
-  // Renders a checkbox before leftLabel and makes the whole card clickable -
-  // only Trade's roster panels need player selection. onClick stops
-  // propagation on the checkbox itself so clicking it doesn't toggle twice
-  // (once from the checkbox's own onChange, once from the card's onClick).
-  checkbox?: { checked: boolean; onChange: () => void };
+  // Makes the whole card clickable and highlights it (saddlebrown
+  // background + border) when selected - only Trade's roster panels need
+  // player selection. No separate checkbox - the entire card is the click
+  // target, so the highlight is the only affordance.
+  selectable?: { selected: boolean; onToggle: () => void };
   // Hides the rostered-by-team text (and its "FA" fallback badge) - Trade's
   // matchup rows already group cards by team, so repeating the team name (or
   // showing a nonsensical "FA" badge for an already-rostered player) is just
@@ -56,9 +71,10 @@ export function PlayerCard({
   isRookie,
   leftLabel,
   leftBadge,
+  showLeftLabel = true,
   footer,
   rightStats,
-  checkbox,
+  selectable,
   showRosteredBy = true,
 }: PlayerCardProps) {
   return (
@@ -66,26 +82,25 @@ export function PlayerCard({
       withBorder
       padding="xs"
       radius="md"
-      onClick={checkbox?.onChange}
-      style={checkbox ? { cursor: "pointer" } : undefined}
+      onClick={selectable?.onToggle}
+      style={{
+        ...(selectable ? { cursor: "pointer" } : {}),
+        ...(selectable?.selected
+          ? { backgroundColor: SELECTED_BACKGROUND, borderColor: SELECTED_BORDER }
+          : {}),
+      }}
     >
       <Group wrap="nowrap" gap="sm">
-        {checkbox && (
-          <Checkbox
-            checked={checkbox.checked}
-            onChange={checkbox.onChange}
-            onClick={(event) => event.stopPropagation()}
-          />
-        )}
-        {leftBadge ? (
-          <Badge size="sm" variant="light" color={leftBadge.color}>
-            {leftBadge.label}
-          </Badge>
-        ) : (
-          <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
-            {leftLabel ?? row.rosRank}
-          </Text>
-        )}
+        {showLeftLabel &&
+          (leftBadge ? (
+            <Badge size="sm" variant="light" color={leftBadge.color}>
+              {leftBadge.label}
+            </Badge>
+          ) : (
+            <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
+              {leftLabel ?? row.rosRank}
+            </Text>
+          ))}
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
           <Group gap={6} wrap="nowrap">
             <Text size="sm" fw={500} truncate>

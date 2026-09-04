@@ -2,13 +2,15 @@ import { Badge, Box, Card, Group, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { PlayerCard } from "./PlayerCard";
 import type { RosVorRow, TeamRosterRow } from "../types/season";
-import type { TradeValueMetric } from "../lib/tradeAnalyzer";
 
 interface TradeRosterMatchupProps {
   teamARows: TeamRosterRow[];
-  teamBRows: TeamRosterRow[];
+  // undefined covers both "no opponent picked yet" and "their roster is
+  // still loading" - either way every row on the right falls back to a
+  // blank placeholder card (see PlaceholderCard's `empty`) rather than the
+  // caller needing to distinguish the two.
+  teamBRows: TeamRosterRow[] | undefined;
   vorByFpid: Map<number, RosVorRow>;
-  metric: TradeValueMetric;
   selectedA: Set<number>;
   selectedB: Set<number>;
   onToggleA: (fpid: number) => void;
@@ -22,10 +24,10 @@ function slotLabel(slot: TeamRosterRow["slot"]): string {
   return slot;
 }
 
-// Same "not a tradeable piece" exclusion TradeRosterPanel's solo list uses,
-// but keeps unfilled slots (unlike that list) - an empty bench spot on one
-// side still needs a row here so the two teams' slots stay lined up
-// alongside each other index-for-index.
+// Excludes IR/TAXI (not tradeable pieces, same eligibility buildTradePool
+// uses) but keeps unfilled slots (unlike a plain roster list would) - an
+// empty bench spot on one side still needs a row here so the two teams'
+// slots stay lined up alongside each other index-for-index.
 function alignableRows(rows: TeamRosterRow[]): TeamRosterRow[] {
   return rows.filter((row) => row.slot !== undefined && row.slot !== "IR" && row.slot !== "TAXI");
 }
@@ -48,85 +50,88 @@ function toFallbackRow(row: TeamRosterRow, fpid: number): RosVorRow {
   };
 }
 
+// Same footprint as a real PlayerCard (see that component's own comment on
+// why its height is fixed) - `empty` (no dash, nothing) stands in for a
+// whole team that isn't known yet; the dash marks a genuinely-unfilled slot
+// on a team whose roster IS known.
+function PlaceholderCard({ empty }: { empty?: boolean }) {
+  return (
+    <Card withBorder padding="xs" radius="md" style={{ flex: 1, minWidth: 0, minHeight: 64 }}>
+      {!empty && (
+        <Text size="sm" c="dimmed">
+          —
+        </Text>
+      )}
+    </Card>
+  );
+}
+
 interface PlayerCellProps {
   row: TeamRosterRow | undefined;
   vorByFpid: Map<number, RosVorRow>;
-  metric: TradeValueMetric;
-  metricLabel: string;
   selected: Set<number>;
   onToggle: (fpid: number) => void;
 }
 
-function PlayerCell({ row, vorByFpid, metric, metricLabel, selected, onToggle }: PlayerCellProps) {
-  if (row === undefined) {
-    return <Box style={{ flex: 1, minWidth: 0 }} />;
-  }
-  if (row.fpid === undefined) {
-    return (
-      <Card withBorder padding="xs" radius="md" style={{ flex: 1, minWidth: 0 }}>
-        <Text size="sm" c="dimmed">
-          —
-        </Text>
-      </Card>
-    );
+function PlayerCell({ row, vorByFpid, selected, onToggle }: PlayerCellProps) {
+  if (row === undefined || row.fpid === undefined) {
+    return <PlaceholderCard empty={row === undefined} />;
   }
   const fpid = row.fpid;
   const vorRow = vorByFpid.get(fpid);
-  const value = vorRow?.[metric] ?? 0;
   return (
     <Box style={{ flex: 1, minWidth: 0 }}>
       <PlayerCard
         row={vorRow ?? toFallbackRow(row, fpid)}
         isRookie={row.isRookie ?? false}
         showRosteredBy={false}
-        checkbox={{ checked: selected.has(fpid), onChange: () => onToggle(fpid) }}
+        showLeftLabel={false}
+        selectable={{ selected: selected.has(fpid), onToggle: () => onToggle(fpid) }}
         rightStats={
-          <Text size="xs" c="dimmed">
-            {value.toFixed(1)} {metricLabel}
-          </Text>
+          <>
+            <Text size="xs" c="dimmed">
+              {(vorRow?.actualVor ?? 0).toFixed(1)} VOR
+            </Text>
+            <Text size="xs" c="dimmed">
+              {(vorRow?.rosVor ?? 0).toFixed(1)} ROS VOR
+            </Text>
+          </>
         }
       />
     </Box>
   );
 }
 
-// Both teams' rosters lined up by roster slot once an opponent's picked -
-// replaces trade.tsx's earlier side-by-side TradeRosterPanel pair, putting
-// the slot label between the two teams' cards instead of on each card (a
-// league's slot structure - QB, RB, ..., BENCH - is shared by every team in
-// it, so team A's and team B's Nth alignable row are always the same slot;
-// zipping by index rather than re-deriving a canonical slot list).
+// Both teams' rosters lined up by roster slot, with the slot badge between
+// the two teams' cards instead of on each card - a league's slot structure
+// (QB, RB, ..., BENCH) is shared by every team in it, so team A's and team
+// B's Nth alignable row are always the same slot; zipping by index rather
+// than re-deriving a canonical slot list. Team A always renders (your own
+// roster loads as soon as the page does); team B renders as blank
+// placeholder cards until an opponent's actually picked and loaded, so the
+// two-column shape never jumps around as that happens.
 export function TradeRosterMatchup({
   teamARows,
   teamBRows,
   vorByFpid,
-  metric,
   selectedA,
   selectedB,
   onToggleA,
   onToggleB,
 }: TradeRosterMatchupProps) {
   const aRows = alignableRows(teamARows);
-  const bRows = alignableRows(teamBRows);
-  const rowCount = Math.max(aRows.length, bRows.length);
-  const metricLabel = metric === "rosVor" ? "ROS VOR" : "VOR";
+  const bRows = teamBRows ? alignableRows(teamBRows) : undefined;
+  const rowCount = Math.max(aRows.length, bRows?.length ?? 0);
 
   return (
     <>
       {Array.from({ length: rowCount }, (_, index) => {
         const aRow = aRows[index];
-        const bRow = bRows[index];
+        const bRow = bRows?.[index];
         const slot = aRow?.slot ?? bRow?.slot;
         return (
           <Group key={index} wrap="nowrap" gap="xs" align="center">
-            <PlayerCell
-              row={aRow}
-              vorByFpid={vorByFpid}
-              metric={metric}
-              metricLabel={metricLabel}
-              selected={selectedA}
-              onToggle={onToggleA}
-            />
+            <PlayerCell row={aRow} vorByFpid={vorByFpid} selected={selectedA} onToggle={onToggleA} />
             <Badge
               size="sm"
               variant="light"
@@ -135,14 +140,11 @@ export function TradeRosterMatchup({
             >
               {slotLabel(slot)}
             </Badge>
-            <PlayerCell
-              row={bRow}
-              vorByFpid={vorByFpid}
-              metric={metric}
-              metricLabel={metricLabel}
-              selected={selectedB}
-              onToggle={onToggleB}
-            />
+            {bRows ? (
+              <PlayerCell row={bRow} vorByFpid={vorByFpid} selected={selectedB} onToggle={onToggleB} />
+            ) : (
+              <PlaceholderCard empty />
+            )}
           </Group>
         );
       })}
