@@ -17,6 +17,7 @@ import {
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { TradeRosterPanel } from "../../../components/TradeRosterPanel";
+import { TradeRosterMatchup } from "../../../components/TradeRosterMatchup";
 import { extractSlotCounts } from "../../../lib/lineupSuggestions";
 import { buildTradePool, simulateTrade, type TradeSideResult } from "../../../lib/tradeAnalyzer";
 import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
@@ -152,12 +153,10 @@ function TradePage() {
     if (self) setTeamAId(self.teamId);
   }, [standings, teamAId]);
 
+  // No auto-pick here (unlike teamAId above) - column 2 starts on the
+  // selector's own placeholder until the user actually chooses who they're
+  // trading with, rather than silently defaulting to some other team.
   const [teamBId, setTeamBId] = useState<string | null>(null);
-  useEffect(() => {
-    if (teamBId !== null || !standings || teamAId === null) return;
-    const other = standings.find((row) => row.teamId !== teamAId);
-    if (other) setTeamBId(other.teamId);
-  }, [standings, teamAId, teamBId]);
 
   const week = nflState?.week ?? null;
   const teamARoster = useTeamRoster(teamAId, week);
@@ -251,68 +250,76 @@ function TradePage() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" wrap="wrap" align="center">
-        <Title order={3}>Trade Analyzer</Title>
-        <Select
-          label="Trading with"
-          data={teamBOptions}
-          value={teamBId}
-          onChange={setTeamBId}
-          allowDeselect={false}
-          w={220}
-        />
-      </Group>
+      <Title order={3}>Trade Analyzer</Title>
 
       {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
       {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-        <Stack gap="xs">
-          <Title order={5}>{selfTeamName ?? "Your team"}</Title>
+        <Title order={5}>{selfTeamName ?? "Your team"}</Title>
+        <Select
+          label="Trading with"
+          placeholder="Select a team"
+          data={teamBOptions}
+          value={teamBId}
+          onChange={setTeamBId}
+          clearable
+          w={{ base: "100%", sm: 220 }}
+        />
+      </SimpleGrid>
+
+      {teamBId !== null && teamBRoster.rows !== undefined ? (
+        <Stack gap={8}>
+          <TradeRosterMatchup
+            teamARows={teamARoster.rows}
+            teamBRows={teamBRoster.rows}
+            vorByFpid={vorByFpid}
+            metric={METRIC}
+            selectedA={selectedA}
+            selectedB={selectedB}
+            onToggleA={toggleA}
+            onToggleB={toggleB}
+          />
+        </Stack>
+      ) : (
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
           <TradeRosterPanel
             rows={teamARoster.rows}
             vorByFpid={vorByFpid}
             metric={METRIC}
             selected={selectedA}
             onToggle={toggleA}
-            teamName={selfTeamName ?? "Your team"}
           />
-        </Stack>
-        <Stack gap="xs">
-          <Title order={5}>{teamBName}</Title>
-          {teamBRoster.rows === undefined ? (
+          <Stack align="center" py="xl" gap={4}>
+            {teamBId === null ? (
+              <Text c="dimmed">Select a team to see their roster.</Text>
+            ) : (
+              <Loader />
+            )}
+          </Stack>
+        </SimpleGrid>
+      )}
+
+      {teamBId !== null && (
+        <Card withBorder padding="md">
+          {result === null ? (
             <Loader />
           ) : (
-            <TradeRosterPanel
-              rows={teamBRoster.rows}
-              vorByFpid={vorByFpid}
-              metric={METRIC}
-              selected={selectedB}
-              onToggle={toggleB}
-              teamName={teamBName}
-            />
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+              <TradeSideSummary
+                teamName={selfTeamName ?? "Your team"}
+                side={result.teamA}
+                hasLineupData={teamASlotCounts.size > 0}
+              />
+              <TradeSideSummary
+                teamName={teamBName}
+                side={result.teamB}
+                hasLineupData={teamBSlotCounts.size > 0}
+              />
+            </SimpleGrid>
           )}
-        </Stack>
-      </SimpleGrid>
-
-      <Card withBorder padding="md">
-        {result === null ? (
-          <Loader />
-        ) : (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-            <TradeSideSummary
-              teamName={selfTeamName ?? "Your team"}
-              side={result.teamA}
-              hasLineupData={teamASlotCounts.size > 0}
-            />
-            <TradeSideSummary
-              teamName={teamBName}
-              side={result.teamB}
-              hasLineupData={teamBSlotCounts.size > 0}
-            />
-          </SimpleGrid>
-        )}
-      </Card>
+        </Card>
+      )}
     </Stack>
   );
 }

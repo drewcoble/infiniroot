@@ -36,6 +36,11 @@ interface PlayerCardProps {
   // propagation on the checkbox itself so clicking it doesn't toggle twice
   // (once from the checkbox's own onChange, once from the card's onClick).
   checkbox?: { checked: boolean; onChange: () => void };
+  // Hides the rostered-by-team text (and its "FA" fallback badge) - Trade's
+  // matchup rows already group cards by team, so repeating the team name (or
+  // showing a nonsensical "FA" badge for an already-rostered player) is just
+  // noise there.
+  showRosteredBy?: boolean;
 }
 
 // One row of infinileague's Players tab (src/routes/league/$leagueId/
@@ -54,6 +59,7 @@ export function PlayerCard({
   footer,
   rightStats,
   checkbox,
+  showRosteredBy = true,
 }: PlayerCardProps) {
   return (
     <Card
@@ -105,15 +111,16 @@ export function PlayerCard({
                 {row.team}
               </Text>
             )}
-            {row.rosteredByTeamName ? (
-              <Text c="dimmed" size="xs" truncate>
-                {row.rosteredByTeamName}
-              </Text>
-            ) : (
-              <Badge size="sm" variant="outline" color="gray">
-                FA
-              </Badge>
-            )}
+            {showRosteredBy &&
+              (row.rosteredByTeamName ? (
+                <Text c="dimmed" size="xs" truncate>
+                  {row.rosteredByTeamName}
+                </Text>
+              ) : (
+                <Badge size="sm" variant="outline" color="gray">
+                  FA
+                </Badge>
+              ))}
           </Group>
         </Stack>
         <Stack gap={2} align="flex-end">
