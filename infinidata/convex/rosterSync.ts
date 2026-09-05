@@ -101,11 +101,30 @@ export const updateSeasonWaiverSettings = internalMutation({
     seasonId: v.id("seasons"),
     waiverType: v.union(v.literal("faab"), v.literal("priority")),
     faabBudget: v.optional(v.number()),
+    // Sleeper-only waiver-clearing config (see schema.ts's seasons.
+    // waiverDayOfWeek comment) - absent when called from a non-Sleeper
+    // sync, which just leaves these fields as whatever they were.
+    waiverDayOfWeek: v.optional(v.number()),
+    waiverClearDays: v.optional(v.number()),
+    dailyWaivers: v.optional(v.boolean()),
+    dailyWaiversHour: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.seasonId, {
       waiverType: args.waiverType,
       ...(args.faabBudget !== undefined ? { faabBudget: args.faabBudget } : {}),
+      ...(args.waiverDayOfWeek !== undefined
+        ? { waiverDayOfWeek: args.waiverDayOfWeek }
+        : {}),
+      ...(args.waiverClearDays !== undefined
+        ? { waiverClearDays: args.waiverClearDays }
+        : {}),
+      ...(args.dailyWaivers !== undefined
+        ? { dailyWaivers: args.dailyWaivers }
+        : {}),
+      ...(args.dailyWaiversHour !== undefined
+        ? { dailyWaiversHour: args.dailyWaiversHour }
+        : {}),
     });
   },
 });

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Stack } from "@mantine/core";
 import { AppHeader } from "../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
-import { ConnectSleeperLeague } from "../components/ConnectSleeperLeague";
+import { ConnectSleeperLeague } from "@shared/ConnectSleeperLeague";
 
 export const Route = createFileRoute("/connect-sleeper")({
   component: ConnectSleeperPage,

@@ -40,7 +40,7 @@ import { POSITION_COLORS } from "@shared/positionColors";
 import { playerTagStyle } from "../../../lib/playerTagStyle";
 import { formatSignedDollar, keeperValueColor } from "../../../lib/keeperValue";
 import { GenericValueBadge } from "../../../components/GenericValueBadge";
-import { useHoldRepeat } from "../../../hooks/useHoldRepeat";
+import { useHoldRepeat } from "@shared/useHoldRepeat";
 
 export interface SearchResult {
   fpid: number;

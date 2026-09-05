@@ -139,6 +139,18 @@ export const syncLeagueRoster = action({
       ...(leagueSettings.settings?.waiver_budget !== undefined
         ? { faabBudget: leagueSettings.settings.waiver_budget }
         : {}),
+      ...(leagueSettings.settings?.waiver_day_of_week !== undefined
+        ? { waiverDayOfWeek: leagueSettings.settings.waiver_day_of_week }
+        : {}),
+      ...(leagueSettings.settings?.waiver_clear_days !== undefined
+        ? { waiverClearDays: leagueSettings.settings.waiver_clear_days }
+        : {}),
+      ...(leagueSettings.settings?.daily_waivers !== undefined
+        ? { dailyWaivers: leagueSettings.settings.daily_waivers === 1 }
+        : {}),
+      ...(leagueSettings.settings?.daily_waivers_hour !== undefined
+        ? { dailyWaiversHour: leagueSettings.settings.daily_waivers_hour }
+        : {}),
     });
 
     const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
@@ -364,6 +376,17 @@ interface SleeperLeagueSettings {
   settings?: {
     waiver_type?: number;
     waiver_budget?: number;
+    // Waiver-clearing config, verified live against a real Sleeper league's
+    // settings payload (api.sleeper.app/v1/league/{id}) - see schema.ts's
+    // seasons.waiverDayOfWeek comment for what these drive.
+    // waiver_day_of_week: 0=Sun..6=Sat. waiver_clear_days: days after drop
+    // before eligible to clear. daily_waivers: 0/1 toggle for "Custom Daily
+    // Waivers" mode instead of "After Games" mode. daily_waivers_hour: 0-23,
+    // only meaningful when daily_waivers is 1.
+    waiver_day_of_week?: number;
+    waiver_clear_days?: number;
+    daily_waivers?: number;
+    daily_waivers_hour?: number;
     // Configured taxi squad size - verified live (Shadynasty's: 2) -
     // independent of roster_positions, which never lists "TAXI" itself.
     // Absent means the league doesn't use a taxi squad at all.

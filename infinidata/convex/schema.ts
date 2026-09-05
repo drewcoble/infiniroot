@@ -595,6 +595,20 @@ export default defineSchema({
     // so a season connected before this field existed self-heals on its
     // next sync, and a mid-season commissioner change doesn't go stale.
     waiverType: v.optional(v.union(v.literal("faab"), v.literal("priority"))),
+    // Sleeper's own waiver-clearing config (verified live against
+    // api.sleeper.app/v1/league/{id} - see convex/sleeper/transactions.ts's
+    // header comment for the full clear-time algorithm these feed).
+    // "After Games" mode (dailyWaivers false/absent) clears at the later of
+    // (drop time + waiverClearDays) and the next waiverDayOfWeek occurrence
+    // after the dropped player's own game ends; "Custom Daily" mode
+    // (dailyWaivers true) instead resets every 24h at dailyWaiversHour.
+    // Absent for a season that's never synced this (pre-feature) or isn't
+    // Sleeper-linked at all - same self-heals-on-next-sync convention as
+    // waiverType above.
+    waiverDayOfWeek: v.optional(v.number()),
+    waiverClearDays: v.optional(v.number()),
+    dailyWaivers: v.optional(v.boolean()),
+    dailyWaiversHour: v.optional(v.number()),
     useKeepers: v.optional(v.boolean()),
     keeperRules: v.optional(keeperRulesValidator),
     createdAt: v.number(),
@@ -789,6 +803,163 @@ export default defineSchema({
   })
     .index("by_season", ["seasonId"])
     .index("by_team", ["teamId"]),
+
+  // A shareable link the commissioner hands to the real person who runs a
+  // seasonTeam - infinifaab's whole onboarding mechanism (see convex/
+  // infinileague/auction/invites.ts). Reusable (no maxUses): more than one
+  // person can redeem the same link as co-owners of a team (see
+  // leagueTeamMembers below). Regenerating an invite revokes the old row
+  // (sets revokedAt) and inserts a fresh one rather than mutating token in
+  // place, so an already-shared old link visibly stops working instead of
+  // silently starting to point somewhere new.
+  leagueTeamInvites: defineTable({
+    seasonId: v.id("seasons"),
+    teamId: v.id("seasonTeams"),
+    token: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_token", ["token"])
+    .index("by_team", ["teamId"]),
+
+  // One row per (real person, team) - the membership table that lets a
+  // non-commissioner user access infinifaab at all. A team can have more
+  // than one row (co-owners). seasonId is denormalized from teamId's own
+  // seasonTeams row so requireSeasonParticipant (convex/lib/access.ts) can
+  // look up "does this user belong to any team in this season" with a
+  // single indexed query instead of joining through seasonTeams for every
+  // row - same "duplicate a stable field for a cheap lookup" tradeoff
+  // seasonTeams.sleeperOwnerId already makes.
+  leagueTeamMembers: defineTable({
+    seasonId: v.id("seasons"),
+    teamId: v.id("seasonTeams"),
+    userId: v.id("users"),
+    joinedAt: v.number(),
+  })
+    .index("by_team_user", ["teamId", "userId"])
+    .index("by_season_user", ["seasonId", "userId"])
+    .index("by_user", ["userId"]),
+
+  // One row per real-world NFL game per week, synced from Tank01's weekly
+  // schedule (convex/tank01/schedule.ts) - the one piece of "when does this
+  // player's own game happen" context nothing else in this app tracked
+  // before infinifaab needed it for Sleeper's "After Games" waiver-clear
+  // rule (see seasons.waiverDayOfWeek's comment). estimatedEndAt is kickoff
+  // + a fixed ~3.5h game-length approximation - Tank01's schedule endpoint
+  // gives kickoff only, not a real final-whistle timestamp, and an
+  // approximation here only ever affects when a player *might* clear
+  // waivers a few minutes early/late, never who wins an auction (see
+  // convex/sleeper/transactions.ts, which re-checks eligibility at cycle
+  // close regardless). Replace-all-on-sync per (season, week), same
+  // pattern rosterPlayers uses.
+  nflGames: defineTable({
+    season: v.string(),
+    week: v.string(),
+    homeTeam: v.string(),
+    awayTeam: v.string(),
+    kickoffAt: v.number(),
+    estimatedEndAt: v.number(),
+  }).index("by_season_week", ["season", "week"]),
+
+  // The eligibility source of truth for infinifaab's whole Players board -
+  // a row exists only while a player is still on waivers (not a true free
+  // agent, which anyone could add instantly on the real platform - see
+  // AUCTION_PLAN's "Waiver-eligibility data" section for why that
+  // distinction matters). clearsAt is a real computed timestamp for a
+  // Sleeper-linked season (convex/sleeper/transactions.ts); absent for a
+  // Yahoo-linked season (convex/infinidraft/yahoo/waivers.ts just polls
+  // Yahoo's own status=W filter directly, which has no exposed clear-time
+  // field to give us - "still returned by the most recent poll" IS the
+  // eligibility signal there). Refreshed on its own frequent cron (see
+  // convex/crons.ts) - much tighter than rosterPlayers' manual/daily
+  // cadence, since a stale read here risks declaring an auction winner for
+  // a player someone already grabbed for real.
+  waiverPlayers: defineTable({
+    seasonId: v.id("seasons"),
+    fpid: v.number(),
+    clearsAt: v.optional(v.number()),
+    syncedAt: v.number(),
+  })
+    .index("by_season", ["seasonId"])
+    .index("by_season_fpid", ["seasonId", "fpid"]),
+
+  // Per-season auction configuration, set by the commissioner in
+  // infinifaab's Settings tab (convex/infinileague/auction/*) - absent
+  // entirely means the feature has never been turned on for this season.
+  // tieBreakMode is the commissioner's explicit choice (no silent default)
+  // between earliest-bid-wins and waiver-order-wins, the two conventions
+  // real fantasy platforms use - see convex/infinileague/auction/bids.ts.
+  faAuctionSettings: defineTable({
+    seasonId: v.id("seasons"),
+    enabled: v.boolean(),
+    closeWeekday: v.number(),
+    closeHour: v.number(),
+    closeMinute: v.number(),
+    timeZone: v.string(),
+    minIncrement: v.number(),
+    startingBid: v.number(),
+    antiSnipeMinutes: v.number(),
+    tieBreakMode: v.union(v.literal("earliest"), v.literal("waiverOrder")),
+  }).index("by_season", ["seasonId"]),
+
+  // One weekly bidding window per season - convex/infinileague/auction/
+  // cycles.ts's ensureAuctionCycles creates the next one whenever a season
+  // with faAuctionSettings.enabled has no open, non-expired cycle.
+  // closeJobId is the convex/scheduler id for the precise close call
+  // (internal.infinileague.auction.cycles.closeCycle) - stored so an
+  // anti-snipe extension (convex/infinileague/auction/bids.ts's placeBid)
+  // can cancel and reschedule it at the new closesAt.
+  faAuctionCycles: defineTable({
+    seasonId: v.id("seasons"),
+    opensAt: v.number(),
+    closesAt: v.number(),
+    status: v.union(v.literal("open"), v.literal("closed")),
+    closeJobId: v.optional(v.id("_scheduled_functions")),
+  })
+    .index("by_season", ["seasonId"])
+    .index("by_season_status", ["seasonId", "status"]),
+
+  // A team's standing proxy ("max") bid on one player in one cycle - the
+  // private half of the eBay analogy. Raise-only (see placeBid): a team's
+  // maxBid for a given (cycle, fpid) only ever goes up. **Never read by any
+  // query exposed to another team** - the only public-facing numbers are
+  // faAuctionState's currentPrice/leadingTeamId below.
+  faAuctionBids: defineTable({
+    cycleId: v.id("faAuctionCycles"),
+    seasonId: v.id("seasons"),
+    fpid: v.number(),
+    teamId: v.id("seasonTeams"),
+    bidderUserId: v.id("users"),
+    maxBid: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_cycle_fpid_team", ["cycleId", "fpid", "teamId"])
+    .index("by_cycle_team", ["cycleId", "teamId"])
+    .index("by_cycle_fpid", ["cycleId", "fpid"]),
+
+  // The public board for one player in one cycle - recomputed transactionally
+  // inside placeBid every time a bid changes. currentPrice is the eBay-style
+  // second-price (or startingBid with only one bidder), never a team's real
+  // max. resolved* fields are written once by closeCycle and never change
+  // again; absent resolvedWinnerTeamId (with resolvedAt set) means this
+  // player's result was voided at close time because it cleared waivers
+  // before the cycle actually closed (see cycles.ts's closeCycle).
+  faAuctionState: defineTable({
+    cycleId: v.id("faAuctionCycles"),
+    seasonId: v.id("seasons"),
+    fpid: v.number(),
+    currentPrice: v.number(),
+    leadingTeamId: v.optional(v.id("seasonTeams")),
+    bidCount: v.number(),
+    updatedAt: v.number(),
+    resolvedWinnerTeamId: v.optional(v.id("seasonTeams")),
+    resolvedPrice: v.optional(v.number()),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_cycle", ["cycleId"])
+    .index("by_cycle_fpid", ["cycleId", "fpid"]),
 
   // One row per (season, NFL week) a power-rankings computation has been
   // run for - just the resulting rank order, not the points themselves

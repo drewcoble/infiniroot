@@ -45,7 +45,7 @@ import {
   BOTTOM_NAV_BOTTOM_OFFSET,
   BOTTOM_NAV_HEIGHT,
 } from "../../../constants/general";
-import { useHoldRepeat } from "../../../hooks/useHoldRepeat";
+import { useHoldRepeat } from "@shared/useHoldRepeat";
 import { SearchBody, type SearchResult } from "./NominationPanel";
 import { BottomSheet, DraftFab, TeamChipRow } from "./mobileDraftSheet";
 

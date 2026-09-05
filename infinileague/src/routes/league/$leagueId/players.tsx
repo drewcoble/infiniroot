@@ -8,7 +8,7 @@ import { api } from "@infinidata/api";
 import { PositionFilterBar } from "@shared/PositionFilterBar";
 import { MOBILE_HEADER_HEIGHT, POSITION_FILTER_BAR_HEIGHT } from "@shared/constants";
 import type { Position } from "@shared/positionColors";
-import { PlayerCard } from "../../../components/PlayerCard";
+import { PlayerCard } from "@shared/PlayerCard";
 import type { RosVorRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/players")({

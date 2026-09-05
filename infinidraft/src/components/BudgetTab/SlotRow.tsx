@@ -15,7 +15,7 @@ import type { SlotDescriptor } from "../../lib/rosterSlots";
 import { categoryForSlot } from "../../lib/budgetCategories";
 import { CATEGORY_COLORS } from "../../constants/budget";
 import { POSITION_COLORS } from "@shared/positionColors";
-import { useHoldRepeat } from "../../hooks/useHoldRepeat";
+import { useHoldRepeat } from "@shared/useHoldRepeat";
 import { useRookieFpids } from "../../hooks/useRookieFpids";
 import { RookieBadge } from "@shared/RookieBadge";
 import type { DraftValueRow, Position } from "../../types";

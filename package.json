@@ -4,6 +4,7 @@
   "workspaces": [
     "infinidraft",
     "infinileague",
-    "infinidata"
+    "infinidata",
+    "infinifaab"
   ]
 }
