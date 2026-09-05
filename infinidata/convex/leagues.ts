@@ -4,6 +4,7 @@ import {
   query,
   internalQuery,
   type MutationCtx,
+  type QueryCtx,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id, Doc } from "./_generated/dataModel";
@@ -181,6 +182,91 @@ export const listLinkedSeasons = query({
         });
       }
     }
+    return result;
+  },
+});
+
+async function seasonWithLeagueName(
+  ctx: QueryCtx,
+  season: Doc<"seasons">,
+  league: Doc<"leagues">,
+): Promise<SeasonWithLeagueName> {
+  const draft = await ctx.db
+    .query("drafts")
+    .withIndex("by_season_kind", (q) =>
+      q.eq("seasonId", season._id).eq("kind", "real"),
+    )
+    .first();
+  return {
+    ...season,
+    name: league.name,
+    draftStatus: draft?.status ?? "pre_draft",
+    ...(draft?.sleeperDraftId !== undefined
+      ? { sleeperDraftId: draft.sleeperDraftId }
+      : {}),
+    ...(draft?.sleeperDraftScheduledAt !== undefined
+      ? { sleeperDraftScheduledAt: draft.sleeperDraftScheduledAt }
+      : {}),
+    ...(draft?.sleeperSyncEnabled !== undefined
+      ? { sleeperSyncEnabled: draft.sleeperSyncEnabled }
+      : {}),
+  };
+}
+
+// infinifaab's dashboard/league-switcher query - same provider-linked
+// filter as listLinkedSeasons (free agency needs synced rosters), but a
+// broader access check: a season qualifies if the caller owns its league
+// OR has been invited onto one of its teams (leagueTeamMembers - see
+// convex/infinileague/auction/invites.ts's redeemTeamInvite). Deliberately
+// its own function rather than a listLinkedSeasons parameter, since the two
+// will keep diverging (this one needs to join through leagueTeamMembers,
+// which listLinkedSeasons/infinileague never will).
+export const listMyAuctionSeasons = query({
+  args: {},
+  handler: async (ctx): Promise<SeasonWithLeagueName[]> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in.");
+    }
+
+    const result: SeasonWithLeagueName[] = [];
+    const seenSeasonIds = new Set<Doc<"seasons">["_id"]>();
+
+    const ownedLeagues = await ctx.db
+      .query("leagues")
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .collect();
+    for (const league of ownedLeagues) {
+      const seasons = await ctx.db
+        .query("seasons")
+        .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+        .collect();
+      for (const season of seasons) {
+        if (
+          season.sleeperLeagueId === undefined &&
+          season.yahooLeagueKey === undefined
+        ) {
+          continue;
+        }
+        seenSeasonIds.add(season._id);
+        result.push(await seasonWithLeagueName(ctx, season, league));
+      }
+    }
+
+    const memberships = await ctx.db
+      .query("leagueTeamMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const membership of memberships) {
+      if (seenSeasonIds.has(membership.seasonId)) continue;
+      seenSeasonIds.add(membership.seasonId);
+      const season = await ctx.db.get(membership.seasonId);
+      if (!season) continue;
+      const league = await ctx.db.get(season.leagueId);
+      if (!league) continue;
+      result.push(await seasonWithLeagueName(ctx, season, league));
+    }
+
     return result;
   },
 });

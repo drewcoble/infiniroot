@@ -22,7 +22,7 @@ import { LockedNotice } from "../../../components/LockedNotice";
 import {
   CountStepper,
   EditableNumberStepper,
-} from "../../../components/NumberStepper";
+} from "@shared/NumberStepper";
 import { SNAKE_DRAFT_ENABLED } from "../../../lib/featureFlags";
 import {
   POSITIONS,

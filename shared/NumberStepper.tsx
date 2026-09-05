@@ -1,7 +1,11 @@
 import { useState, type KeyboardEvent } from "react";
 import { ActionIcon, Group, NumberInput, Text } from "@mantine/core";
-import { STEPPER_BUTTON_SIZE } from "../constants/general";
-import { useHoldRepeat } from "../hooks/useHoldRepeat";
+import { useHoldRepeat } from "./useHoldRepeat";
+
+// Matches infinidraft's own constants/general.ts's STEPPER_BUTTON_SIZE
+// (kept as a local literal here rather than importing that file, which
+// carries many app-specific constants unrelated to this component).
+const STEPPER_BUTTON_SIZE = 40;
 
 interface StepperButtonProps {
   label?: string | undefined;

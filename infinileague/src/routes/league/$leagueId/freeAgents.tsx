@@ -3,7 +3,7 @@ import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { Group, Loader, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
-import { PlayerCard } from "../../../components/PlayerCard";
+import { PlayerCard } from "@shared/PlayerCard";
 import { compareSortValues } from "../../../lib/tableSort";
 import type { FaabSuggestionRow, FaabSuggestionsResult, RosVorRow, StandingsRow } from "../../../types/season";
 
@@ -121,7 +121,7 @@ function FreeAgentsPage() {
             );
           }
 
-          // No rosVOR row for this fpid - a minimal stand-in RosVorRow
+          // No rosVOR row for this fpid - a minimal stand-in PlayerCardRow
           // (PPG/rank fields zeroed) rather than a second bespoke card
           // layout, so the bid footer still renders through the same
           // component. positionRank is deliberately 0 (PlayerCard's "don't
@@ -135,14 +135,10 @@ function FreeAgentsPage() {
             <PlayerCard
               key={row.fpid}
               row={{
-                fpid: row.fpid,
                 name: row.name,
                 team: row.team,
                 position: row.position,
-                rosVor: row.rosValue,
                 rosRank: 0,
-                actualVor: 0,
-                actualRank: 0,
                 positionRank: 0,
                 rosPpg: 0,
                 actualPpg: 0,

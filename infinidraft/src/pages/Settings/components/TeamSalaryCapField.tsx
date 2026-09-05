@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ActionIcon, Group, Text, Tooltip } from "@mantine/core";
 import { Check } from "lucide-react";
 import type { Doc } from "@infinidata/dataModel";
-import { EditableNumberStepper } from "../../../components/NumberStepper";
+import { EditableNumberStepper } from "@shared/NumberStepper";
 
 interface TeamSalaryCapFieldProps {
   team: Doc<"seasonTeams">;

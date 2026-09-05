@@ -1,7 +1,7 @@
 import { Group } from "@mantine/core";
 import { Check } from "lucide-react";
 import type { Doc, Id } from "@infinidata/dataModel";
-import { CountStepper } from "../../../components/NumberStepper";
+import { CountStepper } from "@shared/NumberStepper";
 import { useSaveFlash } from "../../../hooks/useSaveFlash";
 
 interface KeeperStreakCellProps {

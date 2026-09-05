@@ -23,7 +23,7 @@ import type { Doc } from "@infinidata/dataModel";
 import {
   CountStepper,
   EditableNumberStepper,
-} from "../../../components/NumberStepper";
+} from "@shared/NumberStepper";
 import { POSITIONS, type Position } from "../../../types";
 import { POSITION_COLORS } from "@shared/positionColors";
 import {

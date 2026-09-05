@@ -15,7 +15,7 @@ import {
   useCombobox,
 } from "@mantine/core";
 import type { Doc, Id } from "@infinidata/dataModel";
-import { EditableNumberStepper } from "../../../components/NumberStepper";
+import { EditableNumberStepper } from "@shared/NumberStepper";
 import { RookieBadge } from "@shared/RookieBadge";
 import type { Position } from "../../../types";
 import { POSITION_COLORS } from "@shared/positionColors";

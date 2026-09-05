@@ -3,7 +3,24 @@ import { Box, Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { injuryColor } from "@shared/injuryColor";
 import { RookieBadge } from "@shared/RookieBadge";
-import type { RosVorRow } from "../types/season";
+
+// Minimal row shape this card actually reads - originally infinileague's
+// own RosVorRow (convex/rosVor.ts), duplicated here structurally rather
+// than imported so this component has no dependency on either app's own
+// types/season.ts. Both infinileague's RosVorRow and infinifaab's own
+// waiver-board row type satisfy this by having a superset of these fields -
+// no explicit implements/extends needed, just pass the richer type in.
+export interface PlayerCardRow {
+  name: string;
+  team: string | null;
+  position: "QB" | "RB" | "WR" | "TE" | "DST" | "K";
+  rosRank: number;
+  positionRank: number;
+  rosPpg: number;
+  actualPpg: number;
+  rosteredByTeamName: string | null;
+  injury?: { status: string; statusShort: string };
+}
 
 // Selected-card highlight color for the Trade tab's clickable cards (see
 // selectable below) - a warm, unclaimed color (not red/orange/yellow/gray,
@@ -14,7 +31,7 @@ const SELECTED_BACKGROUND = "rgba(139, 69, 19, 0.15)";
 const SELECTED_BORDER = "saddlebrown";
 
 interface PlayerCardProps {
-  row: RosVorRow;
+  row: PlayerCardRow;
   isRookie: boolean;
   // Overrides the left-hand label (row.rosRank by default) - the Depth
   // Charts tab (src/routes/league/$leagueId/depthCharts.tsx) reuses this

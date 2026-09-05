@@ -1,7 +1,7 @@
 import { Group, Select } from "@mantine/core";
 import { Check } from "lucide-react";
 import type { Doc, Id } from "@infinidata/dataModel";
-import { EditableNumberStepper } from "../../../components/NumberStepper";
+import { EditableNumberStepper } from "@shared/NumberStepper";
 import { useSaveFlash } from "../../../hooks/useSaveFlash";
 
 interface KeeperPriceCellProps {

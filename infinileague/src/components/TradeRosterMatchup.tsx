@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge, Box, Card, Group, Stack, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
-import { PlayerCard } from "./PlayerCard";
+import { PlayerCard } from "@shared/PlayerCard";
 import type { RosVorRow, TeamRosterRow } from "../types/season";
 
 interface TradeRosterMatchupProps {

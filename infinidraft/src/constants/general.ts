@@ -40,10 +40,11 @@ export const BOTTOM_NAV_HEIGHT = 58;
 // The +/- tap target size used by the Budget tab's per-slot $ stepper
 // (SlotRow.tsx) and the Draft Room's live bid stepper
 // (MobileNomination.tsx's AssignDrawerBody) - both hand-picked this
-// exact ActionIcon size already. components/NumberStepper.tsx's shared
-// CountStepper/EditableNumberStepper now use this too instead of their own
-// much smaller default, so every +/- control in the app (roster slot
-// counts, keeper years, etc.) gets the same comfortable tap target on
-// mobile, not just the Budget/nomination ones that happened to be tuned by
-// hand already.
+// exact ActionIcon size already. @shared/NumberStepper.tsx's
+// CountStepper/EditableNumberStepper (moved there so infinifaab could reuse
+// them - it has its own local copy of this same 40 literal, see that file's
+// comment) use this too instead of their own much smaller default, so every
+// +/- control in the app (roster slot counts, keeper years, etc.) gets the
+// same comfortable tap target on mobile, not just the Budget/nomination
+// ones that happened to be tuned by hand already.
 export const STEPPER_BUTTON_SIZE = 40;

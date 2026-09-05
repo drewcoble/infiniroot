@@ -7,7 +7,7 @@ import { api } from "@infinidata/api";
 import { positionColorOrDefault } from "@shared/positionColors";
 import type { Position } from "@shared/positionColors";
 import { RookieBadge } from "@shared/RookieBadge";
-import { PlayerCard } from "../../../components/PlayerCard";
+import { PlayerCard } from "@shared/PlayerCard";
 import type { RosVorRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/depthCharts")({

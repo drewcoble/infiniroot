@@ -176,7 +176,11 @@ export const resolvePlayerKeysToFpids = internalQuery({
   },
 });
 
-function extractRosterPlayers(
+// Exported for convex/infinidraft/yahoo/waivers.ts's reuse - same
+// name+position extraction from a Yahoo player node, needed by anything
+// that has to resolve a Yahoo player list to our own fpids (see
+// resolveFpidsByName below).
+export function extractRosterPlayers(
   playerNodes: unknown[],
 ): Array<{ name: string; position: string }> {
   return playerNodes
