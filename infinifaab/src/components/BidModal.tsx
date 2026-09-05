@@ -65,15 +65,6 @@ export function BidModal({ seasonId, target, onClose, teams }: BidModalProps) {
       opened={target !== null}
       onClose={onClose}
       title={target ? `Bid on ${target.name}` : ""}
-      // Mantine's default scroll lock (react-remove-scroll) manipulates
-      // position/transform on <body> while a modal is open to block
-      // background scrolling - on mobile Safari this can fail to fully
-      // clean up afterward, leaving <body> in a state that breaks every
-      // position:fixed element's containing block for the rest of the
-      // session (reported: the app's fixed BottomNav stops tracking the
-      // real viewport after opening this modal). Not worth the tradeoff
-      // for a small dialog like this one.
-      lockScroll={false}
     >
       <Stack gap="sm">
         {teams.length > 1 && (
@@ -85,14 +76,7 @@ export function BidModal({ seasonId, target, onClose, teams }: BidModalProps) {
             // Both this dropdown and the Modal itself portal to
             // document.body, so they stack by z-index, not DOM nesting -
             // bump this one above the Modal's own z-index (200) so it
-            // renders on top. Tried `withinPortal: false` (rendering the
-            // dropdown inline inside the Modal's own subtree) first, but
-            // that broke the app's fixed BottomNav elsewhere on the page -
-            // Mantine's Modal scroll-lock (react-remove-scroll) apparently
-            // doesn't expect a Combobox mounted inside its own DOM subtree
-            // instead of body-level, and got left in a bad state. A plain
-            // z-index bump keeps both portals independent, avoiding that
-            // interaction entirely.
+            // renders on top.
             comboboxProps={{ zIndex: 1000 }}
           />
         )}

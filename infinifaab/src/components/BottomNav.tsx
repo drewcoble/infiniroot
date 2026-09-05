@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { MoreHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BOTTOM_NAV_BOTTOM_OFFSET, BOTTOM_NAV_HEIGHT } from "../constants/general";
-import { useVisualViewportBottomGap } from "../hooks/useVisualViewportBottomGap";
 
 export type BottomNavItem = {
   value: string;
@@ -43,12 +42,6 @@ function linkPropsFor(item: BottomNavItem) {
 // this doesn't cover the last bit of scrollable content.
 export function BottomNav({ items, activeValue, more }: BottomNavProps) {
   const moreActive = more?.items.some((item) => item.value === activeValue);
-  // See useVisualViewportBottomGap's own comment - compensates for iOS
-  // Safari's layout-vs-visual-viewport mismatch as its toolbar collapses on
-  // scroll, confirmed via a frame-by-frame screen recording (this nav
-  // otherwise "sticks" partway up the page once the toolbar collapses,
-  // instead of tracking down to the real, now-larger visible area).
-  const viewportBottomGap = useVisualViewportBottomGap();
 
   function renderItem(item: BottomNavItem) {
     const Icon = item.icon;
@@ -76,7 +69,7 @@ export function BottomNav({ items, activeValue, more }: BottomNavProps) {
       left={12}
       right={12}
       style={{
-        bottom: `calc(${BOTTOM_NAV_BOTTOM_OFFSET}px + env(safe-area-inset-bottom) + ${viewportBottomGap}px)`,
+        bottom: `calc(${BOTTOM_NAV_BOTTOM_OFFSET}px + env(safe-area-inset-bottom))`,
         height: BOTTOM_NAV_HEIGHT,
         zIndex: 200,
         display: "flex",
