@@ -113,6 +113,13 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
     () => groupSeasonsByLeague(seasonsList ?? []),
     [seasonsList],
   );
+  // Split owned leagues from ones shared via a co-manager invite (see
+  // leagues.listSeasons' isOwner field) so the picker never leaves it
+  // ambiguous whose league you're looking at - a group's isOwner is the
+  // same for every season in it (it's really a per-league fact), so
+  // `latest.isOwner` alone is enough to bucket the whole group.
+  const ownedGroups = leagueGroups.filter((g) => g.latest.isOwner !== false);
+  const sharedGroups = leagueGroups.filter((g) => g.latest.isOwner === false);
   // Single source of truth for phase (see useDraftPhase) - replaces the old
   // client-side isDraftComplete recomputation, which read raw pick count
   // and so double-counted keepers the same way the pre-refactor
@@ -140,29 +147,42 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
     });
   };
 
+  const renderLeagueGroup = ({
+    latest,
+    seasons,
+  }: (typeof leagueGroups)[number]) => {
+    const statusMeta = DRAFT_STATUS_META[latest.draftStatus];
+    return (
+      <Menu.Item
+        key={latest.leagueId}
+        leftSection={
+          seasons.some((s) => s._id === leagueId) ? <Check size={16} /> : null
+        }
+        rightSection={
+          <Badge size="xs" variant="light" color={statusMeta.color}>
+            {statusMeta.label}
+          </Badge>
+        }
+        onClick={() => handleLeagueChange(latest._id)}
+      >
+        {latest.name}
+      </Menu.Item>
+    );
+  };
+
+  // Only split into labeled sections once there's actually something to
+  // disambiguate - a user with no shared leagues sees the same flat list as
+  // before.
   const leagueMenuItems = (
     <>
-      {leagueGroups.map(({ latest, seasons }) => {
-        const statusMeta = DRAFT_STATUS_META[latest.draftStatus];
-        return (
-          <Menu.Item
-            key={latest.leagueId}
-            leftSection={
-              seasons.some((s) => s._id === leagueId) ? (
-                <Check size={16} />
-              ) : null
-            }
-            rightSection={
-              <Badge size="xs" variant="light" color={statusMeta.color}>
-                {statusMeta.label}
-              </Badge>
-            }
-            onClick={() => handleLeagueChange(latest._id)}
-          >
-            {latest.name}
-          </Menu.Item>
-        );
-      })}
+      {sharedGroups.length > 0 && <Menu.Label>My Leagues</Menu.Label>}
+      {ownedGroups.map(renderLeagueGroup)}
+      {sharedGroups.length > 0 && (
+        <>
+          <Menu.Label>Shared</Menu.Label>
+          {sharedGroups.map(renderLeagueGroup)}
+        </>
+      )}
       <Menu.Divider />
       <Menu.Item
         leftSection={<Plus size={16} />}

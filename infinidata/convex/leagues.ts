@@ -74,13 +74,25 @@ export interface SeasonWithLeagueName extends Doc<"seasons"> {
   sleeperDraftId?: string;
   sleeperDraftScheduledAt?: number;
   sleeperSyncEnabled?: boolean;
+  // Only ever set by listSeasons below - true if the caller is this
+  // league's literal owner, false if they only have leagueCollaborators
+  // (co-manager) access. Powers the league picker/dashboard's "My Leagues"
+  // vs "Shared" grouping (see AppHeader.tsx, routes/index.tsx). Every other
+  // producer of this interface (listLinkedSeasons, getSeasonPublic,
+  // listMyAuctionSeasons) leaves this unset - their rows are always
+  // owner-only or public, so there's nothing to distinguish.
+  isOwner?: boolean;
 }
 
-// Every season across every league this user owns, each carrying its
-// league's display name - what the app calls "a league" in the UI (the
-// picker, route params, etc) is really one season at a time, since a
+// Every season across every league this user owns OR co-manages, each
+// carrying its league's display name - what the app calls "a league" in the
+// UI (the picker, route params, etc) is really one season at a time, since a
 // league's durable identity (leagues) has no format/roster fields of its
-// own to display.
+// own to display. Owned and shared (leagueCollaborators) leagues are both
+// included here (see isOwner above) rather than split into two queries -
+// requireSeasonOwner (convex/lib/access.ts) already treats a co-manager as
+// fully equivalent to the owner, so every page reachable from this list
+// works for them exactly the same way.
 export const listSeasons = query({
   args: {},
   handler: async (ctx): Promise<SeasonWithLeagueName[]> => {
@@ -88,39 +100,49 @@ export const listSeasons = query({
     if (!userId) {
       throw new Error("You must be signed in.");
     }
-    const leagues = await ctx.db
+
+    const result: SeasonWithLeagueName[] = [];
+    const seenSeasonIds = new Set<Id<"seasons">>();
+
+    const ownedLeagues = await ctx.db
       .query("leagues")
       .withIndex("by_owner", (q) => q.eq("ownerId", userId))
       .collect();
-    const result: SeasonWithLeagueName[] = [];
-    for (const league of leagues) {
+    for (const league of ownedLeagues) {
       const seasons = await ctx.db
         .query("seasons")
         .withIndex("by_league", (q) => q.eq("leagueId", league._id))
         .collect();
       for (const season of seasons) {
-        const draft = await ctx.db
-          .query("drafts")
-          .withIndex("by_season_kind", (q) =>
-            q.eq("seasonId", season._id).eq("kind", "real"),
-          )
-          .first();
+        seenSeasonIds.add(season._id);
         result.push({
-          ...season,
-          name: league.name,
-          draftStatus: draft?.status ?? "pre_draft",
-          ...(draft?.sleeperDraftId !== undefined
-            ? { sleeperDraftId: draft.sleeperDraftId }
-            : {}),
-          ...(draft?.sleeperDraftScheduledAt !== undefined
-            ? { sleeperDraftScheduledAt: draft.sleeperDraftScheduledAt }
-            : {}),
-          ...(draft?.sleeperSyncEnabled !== undefined
-            ? { sleeperSyncEnabled: draft.sleeperSyncEnabled }
-            : {}),
+          ...(await seasonWithLeagueName(ctx, season, league)),
+          isOwner: true,
         });
       }
     }
+
+    const collaborations = await ctx.db
+      .query("leagueCollaborators")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const collaboration of collaborations) {
+      const league = await ctx.db.get(collaboration.leagueId);
+      if (!league) continue;
+      const seasons = await ctx.db
+        .query("seasons")
+        .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+        .collect();
+      for (const season of seasons) {
+        if (seenSeasonIds.has(season._id)) continue;
+        seenSeasonIds.add(season._id);
+        result.push({
+          ...(await seasonWithLeagueName(ctx, season, league)),
+          isOwner: false,
+        });
+      }
+    }
+
     return result;
   },
 });

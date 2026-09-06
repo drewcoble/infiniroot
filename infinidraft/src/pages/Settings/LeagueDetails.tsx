@@ -36,6 +36,7 @@ import { SettingsForm } from "./components/SettingsForm";
 import { SeasonHistoryPanel } from "./components/SeasonHistoryPanel";
 import { TeamsPanel } from "./components/TeamsPanel";
 import { PickSlotsPanel } from "./components/PickSlotsPanel";
+import { SharingPanel } from "./components/SharingPanel";
 import { LeagueCreateChoice } from "./components/LeagueCreateChoice";
 import { LeagueImportWizard } from "./components/LeagueImportWizard";
 import { YahooLeagueImportWizard } from "./components/YahooLeagueImportWizard";
@@ -811,6 +812,15 @@ export function LeagueDetails({
           )}
         </Card>
       </SimpleGrid>
+
+      {/* Sharing is owner-only - getLeagueSharing itself throws for a
+          co-manager viewer (see requireLeagueOwner), so this must stay
+          gated on isOwner rather than relying on the query to fail
+          gracefully. isOwner is only absent on rows this interface's other
+          producers return (see SeasonWithLeagueName's comment) - listSeasons
+          (what settingsList reads) always sets it, so defaulting a missing
+          value to "owner" here is just defensive, never the real case. */}
+      {(settings.isOwner ?? true) && <SharingPanel seasonId={settings._id} />}
 
       {(settings.draftType ?? "auction") !== "auction" && hasTeams && (
         <PickSlotsPanel

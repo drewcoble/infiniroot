@@ -596,15 +596,16 @@ export default defineSchema({
     // next sync, and a mid-season commissioner change doesn't go stale.
     waiverType: v.optional(v.union(v.literal("faab"), v.literal("priority"))),
     // Sleeper's own waiver-clearing config (verified live against
-    // api.sleeper.app/v1/league/{id} - see convex/sleeper/transactions.ts's
-    // header comment for the full clear-time algorithm these feed).
-    // "After Games" mode (dailyWaivers false/absent) clears at the later of
-    // (drop time + waiverClearDays) and the next waiverDayOfWeek occurrence
-    // after the dropped player's own game ends; "Custom Daily" mode
-    // (dailyWaivers true) instead resets every 24h at dailyWaiversHour.
-    // Absent for a season that's never synced this (pre-feature) or isn't
-    // Sleeper-linked at all - same self-heals-on-next-sync convention as
-    // waiverType above.
+    // api.sleeper.app/v1/league/{id}). Currently DEAD for eligibility
+    // purposes - these fed a drop-derived Sleeper waiver-clear computation
+    // that convex/infinileague/auction/eligibility.ts's header comment
+    // explains was abandoned (real-world testing showed it undercounted the
+    // real waiver pool); nothing reads these anymore. Still synced on every
+    // convex/sleeper/league.ts roster sync (see rosterSync.ts's
+    // updateSeasonWaiverSettings) - left as a self-healing no-op rather than
+    // ripped out, in case a future need (e.g. a priority-waiver league where
+    // real clear timing matters more) brings this back. Absent for a season
+    // that's never synced this or isn't Sleeper-linked at all.
     waiverDayOfWeek: v.optional(v.number()),
     waiverClearDays: v.optional(v.number()),
     dailyWaivers: v.optional(v.boolean()),
@@ -841,18 +842,53 @@ export default defineSchema({
     .index("by_season_user", ["seasonId", "userId"])
     .index("by_user", ["userId"]),
 
+  // A shareable link the league owner hands to a co-manager - infinidraft's
+  // "invite a co-manager" feature (convex/infinidraft/sharing/invites.ts).
+  // Whole-league in scope (unlike leagueTeamInvites above, which is scoped
+  // to one team) - redeeming grants owner-equivalent access to every season
+  // of this league, current and future (see leagueCollaborators below and
+  // requireSeasonOwner in convex/lib/access.ts, which honors it the same as
+  // ownerId). Same regenerate-revokes-the-old-row convention as
+  // leagueTeamInvites, for the same reason.
+  leagueInvites: defineTable({
+    leagueId: v.id("leagues"),
+    token: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_token", ["token"])
+    .index("by_league", ["leagueId"]),
+
+  // One row per (league, co-manager) - grants that user the same access as
+  // league.ownerId everywhere requireSeasonOwner (convex/lib/access.ts) is
+  // the gate, i.e. full read/write on the league, not just one team (that
+  // narrower per-team grant is leagueTeamMembers above, infinifaab-specific).
+  // Only the real owner can create/revoke invites or remove a collaborator
+  // (see requireLeagueOwner) - a collaborator can act as the owner
+  // everywhere else, but can't grant that same access to someone new.
+  leagueCollaborators: defineTable({
+    leagueId: v.id("leagues"),
+    userId: v.id("users"),
+    invitedByUserId: v.id("users"),
+    joinedAt: v.number(),
+  })
+    .index("by_league_user", ["leagueId", "userId"])
+    .index("by_user", ["userId"])
+    .index("by_league", ["leagueId"]),
+
   // One row per real-world NFL game per week, synced from Tank01's weekly
   // schedule (convex/tank01/schedule.ts) - the one piece of "when does this
-  // player's own game happen" context nothing else in this app tracked
-  // before infinifaab needed it for Sleeper's "After Games" waiver-clear
-  // rule (see seasons.waiverDayOfWeek's comment). estimatedEndAt is kickoff
-  // + a fixed ~3.5h game-length approximation - Tank01's schedule endpoint
-  // gives kickoff only, not a real final-whistle timestamp, and an
-  // approximation here only ever affects when a player *might* clear
-  // waivers a few minutes early/late, never who wins an auction (see
-  // convex/sleeper/transactions.ts, which re-checks eligibility at cycle
-  // close regardless). Replace-all-on-sync per (season, week), same
-  // pattern rosterPlayers uses.
+  // player's own game happen" context infinifaab's Sleeper bid-eligibility
+  // now directly depends on: kickoffAt gates rule 1's always-open weekly
+  // cycle and rule 2's drop-cycle fold-into-weekly exception (see convex/
+  // infinileague/auction/eligibility.ts and convex/sleeper/transactions.ts).
+  // estimatedEndAt (kickoff + a fixed ~3.5h game-length approximation -
+  // Tank01's schedule endpoint gives kickoff only, not a real final-whistle
+  // timestamp) is otherwise unused today, kept from an earlier abandoned
+  // approach (see eligibility.ts's header comment) in case a future need
+  // for a real game-end signal brings it back. Replace-all-on-sync per
+  // (season, week), same pattern rosterPlayers uses.
   nflGames: defineTable({
     season: v.string(),
     week: v.string(),
@@ -862,19 +898,22 @@ export default defineSchema({
     estimatedEndAt: v.number(),
   }).index("by_season_week", ["season", "week"]),
 
-  // The eligibility source of truth for infinifaab's whole Players board -
-  // a row exists only while a player is still on waivers (not a true free
-  // agent, which anyone could add instantly on the real platform - see
-  // AUCTION_PLAN's "Waiver-eligibility data" section for why that
-  // distinction matters). clearsAt is a real computed timestamp for a
-  // Sleeper-linked season (convex/sleeper/transactions.ts); absent for a
-  // Yahoo-linked season (convex/infinidraft/yahoo/waivers.ts just polls
+  // The eligibility source of truth for infinifaab's whole Players board on
+  // a YAHOO-linked season only now - a row exists only while a player is
+  // still on waivers there (convex/infinidraft/yahoo/waivers.ts polls
   // Yahoo's own status=W filter directly, which has no exposed clear-time
   // field to give us - "still returned by the most recent poll" IS the
-  // eligibility signal there). Refreshed on its own frequent cron (see
-  // convex/crons.ts) - much tighter than rosterPlayers' manual/daily
-  // cadence, since a stale read here risks declaring an auction winner for
-  // a player someone already grabbed for real.
+  // eligibility signal). Sleeper eligibility is computed entirely
+  // differently now (see convex/infinileague/auction/eligibility.ts) and
+  // never writes here. clearsAt is consequently vestigial - it was only
+  // ever populated by a now-deleted Sleeper drop-derived computation (see
+  // that eligibility.ts file's header comment for why that approach was
+  // abandoned) and Yahoo's own sync has never set it - left in place
+  // (harmless, always undefined in practice) rather than migrating it out
+  // for a field with no real cost to leaving alone. Refreshed on its own
+  // frequent cron (see convex/crons.ts) - much tighter than rosterPlayers'
+  // manual/daily cadence, since a stale read here risks declaring an
+  // auction winner for a player someone already grabbed for real.
   waiverPlayers: defineTable({
     seasonId: v.id("seasons"),
     fpid: v.number(),
@@ -890,6 +929,11 @@ export default defineSchema({
   // tieBreakMode is the commissioner's explicit choice (no silent default)
   // between earliest-bid-wins and waiver-order-wins, the two conventions
   // real fantasy platforms use - see convex/infinileague/auction/bids.ts.
+  // dropCycleDurationHours is optional (added after launch, so existing rows
+  // lack it - read with a `?? 48` fallback everywhere, same as
+  // DEFAULT_SETTINGS) - how long a Sleeper drop-triggered dedicated cycle
+  // (faAuctionCycles.type "playerDrop") stays open, see sleeper/
+  // transactions.ts's detectSleeperDrops.
   faAuctionSettings: defineTable({
     seasonId: v.id("seasons"),
     enabled: v.boolean(),
@@ -901,30 +945,93 @@ export default defineSchema({
     startingBid: v.number(),
     antiSnipeMinutes: v.number(),
     tieBreakMode: v.union(v.literal("earliest"), v.literal("waiverOrder")),
+    dropCycleDurationHours: v.optional(v.number()),
   }).index("by_season", ["seasonId"]),
 
-  // One weekly bidding window per season - convex/infinileague/auction/
-  // cycles.ts's ensureAuctionCycles creates the next one whenever a season
-  // with faAuctionSettings.enabled has no open, non-expired cycle.
-  // closeJobId is the convex/scheduler id for the precise close call
-  // (internal.infinileague.auction.cycles.closeCycle) - stored so an
-  // anti-snipe extension (convex/infinileague/auction/bids.ts's placeBid)
-  // can cancel and reschedule it at the new closesAt.
+  // A bidding window scoped by `type`: "weekly" is the always-on recurring
+  // cycle (one per season, membership computed dynamically by
+  // eligibility.ts - never a fixed player list); "playerDrop" and "manual"
+  // are dedicated cycles scoped to a fixed, explicit set of fpids (see
+  // faAuctionFpidCycles below), created respectively by a detected Sleeper
+  // drop transaction (sleeper/transactions.ts's detectSleeperDrops) or a
+  // commissioner (cycles.ts's startManualAuctionCycle). Multiple cycles can
+  // be open at once per season now (one weekly + any number of dedicated),
+  // but a given fpid can only ever be scoped to one open cycle at a time -
+  // enforced via faAuctionFpidCycles, not by anything on this table itself.
+  // convex/infinileague/auction/cycles.ts's ensureAuctionCycles creates the
+  // next weekly cycle whenever a season with faAuctionSettings.enabled has
+  // no open, non-expired one. closeJobId is the convex/scheduler id for the
+  // precise close call (internal.infinileague.auction.cycles.closeCycle) -
+  // stored so an anti-snipe extension (convex/infinileague/auction/bids.ts's
+  // placeBid) can cancel and reschedule it at the new closesAt.
+  //
+  // `type` is v.optional for existing rows predating this field - a one-off
+  // migration mutation backfills every row to "weekly" (the only type that
+  // existed before), after which this should be tightened to required.
   faAuctionCycles: defineTable({
     seasonId: v.id("seasons"),
+    type: v.optional(
+      v.union(v.literal("weekly"), v.literal("playerDrop"), v.literal("manual")),
+    ),
     opensAt: v.number(),
     closesAt: v.number(),
     status: v.union(v.literal("open"), v.literal("closed")),
     closeJobId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_season", ["seasonId"])
-    .index("by_season_status", ["seasonId", "status"]),
+    .index("by_season_status", ["seasonId", "status"])
+    .index("by_season_type_status", ["seasonId", "type", "status"]),
+
+  // The exclusivity lock for dedicated ("playerDrop"/"manual") cycles: a row
+  // exists here IF AND ONLY IF that fpid is currently scoped to a specific
+  // open dedicated cycle. Inserted transactionally when such a cycle is
+  // created (one row per scoped fpid, see cycles.ts's
+  // openDedicatedCycleHandler) and deleted transactionally when that cycle
+  // closes (cycles.ts's closeCycleHandler), whatever the outcome. A "weekly"
+  // cycle never has rows here - its membership is fully dynamic, computed by
+  // eligibility.ts, not a fixed list. This table is what lets eligibility.ts
+  // and cycles.ts answer "is fpid X already locked to a cycle" (by_season_fpid),
+  // "which fpids does cycle Y own" (by_cycle), and "every locked fpid this
+  // season" (by_season) as single indexed lookups instead of scanning every
+  // open cycle.
+  faAuctionFpidCycles: defineTable({
+    seasonId: v.id("seasons"),
+    fpid: v.number(),
+    cycleId: v.id("faAuctionCycles"),
+  })
+    .index("by_season_fpid", ["seasonId", "fpid"])
+    .index("by_cycle", ["cycleId"])
+    .index("by_season", ["seasonId"]),
+
+  // Idempotency log for sleeper/transactions.ts's detectSleeperDrops (runs
+  // every 20 min, re-fetching overlapping rounds of Sleeper transactions
+  // each time) - without this, the same drop would be reprocessed on every
+  // poll. Dedup key is (seasonId, sleeperTransactionId, fpid), NOT just fpid
+  // - the same player can legitimately be dropped, auctioned, re-rostered,
+  // and dropped again later in the same season, and each of those is a
+  // distinct real transaction that must be processed on its own.
+  faAuctionProcessedDrops: defineTable({
+    seasonId: v.id("seasons"),
+    sleeperTransactionId: v.string(),
+    fpid: v.number(),
+    processedAt: v.number(),
+    outcome: v.union(
+      v.literal("cycleCreated"),
+      v.literal("foldedIntoWeekly"),
+      v.literal("skippedAlreadyCovered"),
+      v.literal("skippedRerostered"),
+    ),
+    cycleId: v.optional(v.id("faAuctionCycles")),
+  }).index("by_season_txn_fpid", ["seasonId", "sleeperTransactionId", "fpid"]),
 
   // A team's standing proxy ("max") bid on one player in one cycle - the
   // private half of the eBay analogy. Raise-only (see placeBid): a team's
   // maxBid for a given (cycle, fpid) only ever goes up. **Never read by any
   // query exposed to another team** - the only public-facing numbers are
-  // faAuctionState's currentPrice/leadingTeamId below.
+  // faAuctionState's currentPrice/leadingTeamId below. by_season_team backs
+  // placeBid's FAAB-cap check, which (now that several cycles can be open at
+  // once for the same season) must sum a team's committed bids across every
+  // currently-open cycle, not just the one cycle being bid in.
   faAuctionBids: defineTable({
     cycleId: v.id("faAuctionCycles"),
     seasonId: v.id("seasons"),
@@ -937,7 +1044,8 @@ export default defineSchema({
   })
     .index("by_cycle_fpid_team", ["cycleId", "fpid", "teamId"])
     .index("by_cycle_team", ["cycleId", "teamId"])
-    .index("by_cycle_fpid", ["cycleId", "fpid"]),
+    .index("by_cycle_fpid", ["cycleId", "fpid"])
+    .index("by_season_team", ["seasonId", "teamId"]),
 
   // The public board for one player in one cycle - recomputed transactionally
   // inside placeBid every time a bid changes. currentPrice is the eBay-style

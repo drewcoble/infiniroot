@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
+import { isLeagueAuthorized } from "./lib/access";
 
 // Shared by both provider syncs (convex/sleeper/league.ts's syncLeagueRoster
 // and convex/infinidraft/yahoo/league.ts's syncYahooLeagueRoster), which both apps'
@@ -13,6 +14,9 @@ import { Doc } from "./_generated/dataModel";
 // per-app-user, not per-season). Kept shared at the root, not under either
 // app's slice, since infinidraft's own sync (convex/sleeper/draftSync.ts,
 // convex/infinidraft/yahoo/league.ts) and infinileague's both depend on it.
+// Admits an invited co-manager (leagueCollaborators) the same as the literal
+// owner, via isLeagueAuthorized - same convention as requireSeasonOwner
+// (convex/lib/access.ts).
 export const requireOwnedSeasonForSync = internalQuery({
   args: { seasonId: v.id("seasons") },
   handler: async (
@@ -31,7 +35,7 @@ export const requireOwnedSeasonForSync = internalQuery({
     if (!league) {
       throw new Error("League not found.");
     }
-    if (league.ownerId !== userId) {
+    if (!(await isLeagueAuthorized(ctx, league, userId))) {
       throw new Error("Not authorized to sync this league.");
     }
     return { season, league };

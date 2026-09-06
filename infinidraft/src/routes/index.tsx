@@ -88,6 +88,64 @@ function Dashboard() {
   const leagueGroups = groupSeasonsByLeague(seasonsList ?? []).sort((a, b) =>
     a.latest.name.localeCompare(b.latest.name),
   );
+  // Split leagues you own from ones shared with you via a co-manager invite
+  // (see leagues.listSeasons' isOwner field) into their own dashboard
+  // section, rather than merging them into one grid - same "no ambiguity
+  // about whose league this is" reasoning as AppHeader.tsx's picker.
+  const ownedGroups = leagueGroups.filter((g) => g.latest.isOwner !== false);
+  const sharedGroups = leagueGroups.filter((g) => g.latest.isOwner === false);
+
+  const renderLeagueCard = (latest: NonNullable<typeof seasonsList>[number]) => {
+    const status = DRAFT_STATUS_META[latest.draftStatus];
+    return (
+      <EnterLeagueLink key={latest.leagueId} leagueId={latest._id}>
+        <Card
+          withBorder
+          padding="lg"
+          style={{
+            cursor: "pointer",
+            textDecoration: "none",
+            color: "inherit",
+            height: "100%",
+          }}
+        >
+          <Stack gap="sm" justify="space-between" h="100%">
+            <Stack gap={4}>
+              <Group justify="space-between" wrap="nowrap" align="flex-start">
+                <Text fw={600} lineClamp={2}>
+                  {latest.name}
+                </Text>
+                <Badge
+                  color={status.color}
+                  variant="light"
+                  style={{ flexShrink: 0 }}
+                >
+                  {status.label}
+                </Badge>
+              </Group>
+              <Text size="sm" c="dimmed">
+                {latest.year} · {latest.teamCount} teams ·{" "}
+                {DRAFT_TYPE_OPTIONS.find(
+                  (option) => option.value === (latest.draftType ?? "auction"),
+                )?.label ?? "Auction"}{" "}
+                · {latest.scoring}
+              </Text>
+              {latest.draftStatus === "pre_draft" &&
+                latest.sleeperDraftScheduledAt !== undefined && (
+                  <Text size="xs" c="dimmed">
+                    Draft:{" "}
+                    {formatSleeperDraftSchedule(latest.sleeperDraftScheduledAt)}
+                  </Text>
+                )}
+            </Stack>
+            <Button component="span" variant="light" fullWidth>
+              {ENTER_ACTION[latest.draftStatus].label}
+            </Button>
+          </Stack>
+        </Card>
+      </EnterLeagueLink>
+    );
+  };
 
   return (
     <PageContainer>
@@ -122,66 +180,24 @@ function Dashboard() {
                 </Button>
               </Link>
             </Group>
+            {sharedGroups.length > 0 && (
+              <Text size="sm" fw={600} c="dimmed">
+                My Leagues
+              </Text>
+            )}
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
-              {leagueGroups.map(({ latest }) => {
-                const status = DRAFT_STATUS_META[latest.draftStatus];
-                return (
-                  <EnterLeagueLink key={latest.leagueId} leagueId={latest._id}>
-                    <Card
-                      withBorder
-                      padding="lg"
-                      style={{
-                        cursor: "pointer",
-                        textDecoration: "none",
-                        color: "inherit",
-                        height: "100%",
-                      }}
-                    >
-                      <Stack gap="sm" justify="space-between" h="100%">
-                        <Stack gap={4}>
-                          <Group
-                            justify="space-between"
-                            wrap="nowrap"
-                            align="flex-start"
-                          >
-                            <Text fw={600} lineClamp={2}>
-                              {latest.name}
-                            </Text>
-                            <Badge
-                              color={status.color}
-                              variant="light"
-                              style={{ flexShrink: 0 }}
-                            >
-                              {status.label}
-                            </Badge>
-                          </Group>
-                          <Text size="sm" c="dimmed">
-                            {latest.year} · {latest.teamCount} teams ·{" "}
-                            {DRAFT_TYPE_OPTIONS.find(
-                              (option) =>
-                                option.value === (latest.draftType ?? "auction"),
-                            )?.label ?? "Auction"}{" "}
-                            · {latest.scoring}
-                          </Text>
-                          {latest.draftStatus === "pre_draft" &&
-                            latest.sleeperDraftScheduledAt !== undefined && (
-                              <Text size="xs" c="dimmed">
-                                Draft:{" "}
-                                {formatSleeperDraftSchedule(
-                                  latest.sleeperDraftScheduledAt,
-                                )}
-                              </Text>
-                            )}
-                        </Stack>
-                        <Button component="span" variant="light" fullWidth>
-                          {ENTER_ACTION[latest.draftStatus].label}
-                        </Button>
-                      </Stack>
-                    </Card>
-                  </EnterLeagueLink>
-                );
-              })}
+              {ownedGroups.map(({ latest }) => renderLeagueCard(latest))}
             </SimpleGrid>
+            {sharedGroups.length > 0 && (
+              <>
+                <Text size="sm" fw={600} c="dimmed">
+                  Shared
+                </Text>
+                <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+                  {sharedGroups.map(({ latest }) => renderLeagueCard(latest))}
+                </SimpleGrid>
+              </>
+            )}
           </>
         )}
       </Stack>
