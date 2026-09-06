@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsup index.ts --format esm --dts --external react,react-dom,@mantine/core,@mantine/hooks,@tanstack/react-router,convex,@convex-dev/auth,lucide-react",
+    "build": "tsup index.ts --format esm --dts --loader .png=dataurl --external react,react-dom,@mantine/core,@mantine/hooks,@tanstack/react-router,convex,@convex-dev/auth,lucide-react",
     "lint": "eslint ."
   },
   "peerDependencies": {

@@ -1,0 +1,32 @@
+{
+  "projectId": "b09388f4-e3ee-491a-8b26-ce0a2a4cf1bb",
+  "shape": "package",
+  "pkg": "@infiniroot/shared",
+  "buildCmd": "cp node_modules/@mantine/core/styles.css shared/.design-sync-mantine-styles.css && npm run build --workspace=shared",
+  "srcDir": ".",
+  "readmeHeader": ".design-sync/conventions.md",
+  "cssEntry": ".design-sync-mantine-styles.css",
+  "extraEntries": [
+    "@mantine/core",
+    "@convex-dev/auth/react",
+    "@tanstack/react-router",
+    "./previewProviders.tsx"
+  ],
+  "overrides": {
+    "BottomNav": { "cardMode": "single", "viewport": "390x320" }
+  },
+  "provider": {
+    "component": "ConvexAuthProvider",
+    "props": {
+      "client": { "$ref": "previewConvexClient" }
+    },
+    "inner": {
+      "component": "MantineProvider",
+      "props": {
+        "theme": { "$ref": "theme" },
+        "defaultColorScheme": "dark",
+        "cssVariablesResolver": { "$ref": "cssVariablesResolver" }
+      }
+    }
+  }
+}
