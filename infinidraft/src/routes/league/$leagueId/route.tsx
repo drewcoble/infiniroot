@@ -1,4 +1,4 @@
-import { Box, Center, Group, Loader, Stack, Tabs } from "@mantine/core";
+import { Box, Button, Center, Group, Loader, Stack, Tabs } from "@mantine/core";
 import {
   createFileRoute,
   Link,
@@ -9,17 +9,20 @@ import { useQuery } from "convex/react";
 import {
   CircleUserRound,
   DollarSign,
+  ExternalLink,
+  GraduationCap,
   HeartPulse,
   LayoutGrid,
   ListChecks,
   Settings2,
+  Tv,
   UserCheck,
   UserSearch,
 } from "lucide-react";
 import { api } from "@infinidata/api";
 import type { Id } from "@infinidata/dataModel";
 import { AppHeader } from "../../../components/AppHeader";
-import { BottomNav } from "../../../components/BottomNav";
+import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
 import { MOBILE_STATS_ROW_HEIGHT } from "../../../constants/general";
 import { MOBILE_HEADER_HEIGHT } from "@shared/constants";
@@ -127,9 +130,10 @@ const STARTED_ORDER: TabValue[] = [
 // around it instead of the pre-draft 4-tabs-no-FAB layout.
 const STARTED_DIRECT_COUNT = 3;
 
-const toBottomNavItem = (value: TabValue) => ({
+const toBottomNavItem = (value: TabValue, leagueId: string) => ({
   value,
   ...TAB_META[value],
+  params: { leagueId },
 });
 
 // Single merged layout for the whole season lifecycle - previously two
@@ -153,6 +157,7 @@ function LeagueLayout() {
   // Draft Room layout did.
   const selfTeamResult = useSelfTeam(seasonId);
   const isStarted = phase?.isStarted ?? false;
+  const draftComplete = phase?.isComplete ?? false;
 
   const activeTab = location.pathname.split("/").pop();
 
@@ -201,10 +206,40 @@ function LeagueLayout() {
   }));
   const bottomNavItems = visibleValues
     .slice(0, directCount)
-    .map(toBottomNavItem);
-  const bottomNavMoreItems = visibleValues
-    .slice(directCount)
-    .map(toBottomNavItem);
+    .map((value) => toBottomNavItem(value, leagueId));
+  // League-scoped pages that live outside this SPA's own routes (TV Board,
+  // Report Card - see DraftBoard.tsx/DraftReportCard.tsx) - kept with the
+  // rest of the league's nav rather than AppHeader's account/global overflow
+  // menu, since which league they point at is exactly the one already
+  // selected here. Always appended after the regular tabs, both here and on
+  // the desktop Tabs.List below, rather than merged into the ordered
+  // TAB_META rotation - they're a fixed, secondary pair, not part of the
+  // pre-draft/started reordering.
+  const externalNavItems = [
+    ...(!isNew
+      ? [{ value: "tvBoard", label: "TV Board", icon: Tv, to: "/board/$leagueId" }]
+      : []),
+    ...(draftComplete
+      ? [
+          {
+            value: "reportCard",
+            label: "Report Card",
+            icon: GraduationCap,
+            to: "/reportCard/$leagueId",
+          },
+        ]
+      : []),
+  ];
+  const bottomNavMoreItems = [
+    ...visibleValues
+      .slice(directCount)
+      .map((value) => toBottomNavItem(value, leagueId)),
+    ...externalNavItems.map((item) => ({
+      ...item,
+      params: { leagueId },
+      external: true as const,
+    })),
+  ];
 
   // pos="relative" + zIndex needed so this outranks the Keepers route's
   // non-dismissible free-plan upgrade Modal (zIndex 190, see keepers.tsx) -
@@ -228,6 +263,35 @@ function LeagueLayout() {
                 {tab.label}
               </Tabs.Tab>
             ))}
+            {externalNavItems.length > 0 && (
+              <Group
+                gap="xs"
+                wrap="nowrap"
+                ml="auto"
+                style={{ alignSelf: "center" }}
+              >
+                {externalNavItems.map((item) => (
+                  <Link
+                    key={item.value}
+                    to={item.to}
+                    params={{ leagueId }}
+                    target="_blank"
+                    style={{ textDecoration: "none" }}
+                  >
+                    <Button
+                      component="span"
+                      variant="subtle"
+                      color="gray"
+                      size="sm"
+                      leftSection={<item.icon size={16} />}
+                      rightSection={<ExternalLink size={14} />}
+                    >
+                      {item.label}
+                    </Button>
+                  </Link>
+                ))}
+              </Group>
+            )}
           </Tabs.List>
         </Tabs>
       </Box>
@@ -279,7 +343,7 @@ function LeagueLayout() {
         <BottomNav
           items={bottomNavItems}
           more={{ label: "More", items: bottomNavMoreItems }}
-          leagueId={leagueId}
+          activeValue={activeTab}
           hasFab={isStarted}
         />
         {/* Snake/linear's mobile counterpart to the auction FAB above -

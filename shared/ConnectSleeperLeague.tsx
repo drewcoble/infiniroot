@@ -14,7 +14,7 @@ import {
   Title,
 } from "@mantine/core";
 import { api } from "@infinidata/api";
-import { getErrorMessage } from "@shared/errors";
+import { getErrorMessage } from "./errors";
 
 // Trimmed 2-step version of infinidraft's LeagueImportWizard.tsx (~320
 // lines there, built around a full draft-settings review form and a

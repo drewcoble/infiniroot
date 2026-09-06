@@ -6,7 +6,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import { ChevronUp } from "lucide-react";
 import { RankChangeIndicator } from "./PowerRankingsList";
 import { TradePowerRankingsList } from "./TradePowerRankingsList";
-import { BOTTOM_NAV_BOTTOM_OFFSET, BOTTOM_NAV_HEIGHT } from "../constants/general";
+import { BOTTOM_NAV_BOTTOM_OFFSET, BOTTOM_NAV_HEIGHT } from "@shared/constants";
 import type { PowerRankingRow } from "../types/season";
 
 // Same overlap-BottomNav-by-its-own-corner-radius trick infinidraft's

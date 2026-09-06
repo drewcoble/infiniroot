@@ -44,7 +44,7 @@ import type { PlayerTag, Position, ValueGap } from "../../../types";
 import {
   BOTTOM_NAV_BOTTOM_OFFSET,
   BOTTOM_NAV_HEIGHT,
-} from "../../../constants/general";
+} from "@shared/constants";
 import { useHoldRepeat } from "@shared/useHoldRepeat";
 import { SearchBody, type SearchResult } from "./NominationPanel";
 import { BottomSheet, DraftFab, TeamChipRow } from "./mobileDraftSheet";

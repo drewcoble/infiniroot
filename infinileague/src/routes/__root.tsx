@@ -6,7 +6,7 @@ import { Center, Loader, Stack, Text } from "@mantine/core";
 // the token, not just "we have some token value in local state".
 import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@infinidata/api";
-import { AuthPanel } from "../components/AuthPanel";
+import { AuthPanel } from "@shared/AuthPanel";
 import { PageContainer } from "@shared/PageContainer";
 import { SignedOutHeader } from "@shared/SignedOutHeader";
 
@@ -49,7 +49,7 @@ function RootComponent() {
               Sign in with your infinidraft account to continue - infinileague
               shares the same login.
             </Text>
-            <AuthPanel />
+            <AuthPanel existingAccountHint="if you already have an infinidraft account, use that same email and password here." />
           </Stack>
         </Stack>
       </PageContainer>

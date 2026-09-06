@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Box, Badge, Card, Group, Stack, Text } from "@mantine/core";
-import { positionColorOrDefault } from "@shared/positionColors";
-import { injuryColor } from "@shared/injuryColor";
-import { RookieBadge } from "@shared/RookieBadge";
+import { positionColorOrDefault } from "./positionColors";
+import { injuryColor } from "./injuryColor";
+import { RookieBadge } from "./RookieBadge";
 
 // Minimal row shape this card actually reads - originally infinileague's
 // own RosVorRow (convex/rosVor.ts), duplicated here structurally rather

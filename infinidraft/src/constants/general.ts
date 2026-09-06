@@ -22,20 +22,9 @@ export const MOBILE_STATS_ROW_HEIGHT = 40;
 // same-height spacer right before its content.
 export const BUDGET_UNALLOCATED_BAR_HEIGHT = 44;
 
-// Bottom offset for the mobile bottom nav bar (BottomNav.tsx) and everything
-// else anchored to the same edge - currently just the nominate FAB in
-// MobileNomination.tsx. Kept in one place so they can't drift apart the way
-// the FAB briefly did after the nav bar's own offset changed without it.
-export const BOTTOM_NAV_BOTTOM_OFFSET = 7;
-
-// Total rendered height of the bottom nav bar's pill: each column is
-// py=12 top/bottom around a 20px icon + 2px gap + 10px label, plus the
-// pill's own 1px border top and bottom (12 + 20 + 2 + 10 + 12 + 1 + 1).
-// The nominate FAB's wrapper Box in MobileNomination.tsx is given this same
-// height and centers its 56px circle within it via flexbox, so the FAB's
-// vertical center lines up with the bar's by construction instead of by
-// two independently-guessed numbers happening to match.
-export const BOTTOM_NAV_HEIGHT = 58;
+// BOTTOM_NAV_BOTTOM_OFFSET and BOTTOM_NAV_HEIGHT moved to @shared/constants
+// (BottomNav.tsx itself lives there now, and all three apps' bars/anchored
+// FABs/sheets use the same values) - import from there now.
 
 // The +/- tap target size used by the Budget tab's per-slot $ stepper
 // (SlotRow.tsx) and the Draft Room's live bid stepper

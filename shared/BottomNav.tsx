@@ -1,17 +1,21 @@
 import { Box, Menu, Stack, Text, UnstyledButton } from "@mantine/core";
-import { Link, useLocation } from "@tanstack/react-router";
-import { MoreHorizontal } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ExternalLink, MoreHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import {
-  BOTTOM_NAV_BOTTOM_OFFSET,
-  BOTTOM_NAV_HEIGHT,
-} from "../constants/general";
+import { BOTTOM_NAV_BOTTOM_OFFSET, BOTTOM_NAV_HEIGHT } from "./constants";
 
 export type BottomNavItem = {
   value: string;
   label: string;
   icon: LucideIcon;
   to: string;
+  params: Record<string, string>;
+  // Global/account items never set this - only league-scoped pages that
+  // live outside an app's own tab navigation (e.g. infinidraft's TV
+  // Board/Report Card) open in a new tab, flagged here so the "More" menu
+  // can add the target and the trailing external-link icon rather than
+  // every caller remembering to do both.
+  external?: boolean;
 };
 
 type BottomNavMore = {
@@ -19,30 +23,30 @@ type BottomNavMore = {
   items: readonly BottomNavItem[];
 };
 
-type BottomNavProps = {
+interface BottomNavProps {
   items: readonly BottomNavItem[];
+  activeValue: string | undefined;
   more?: BottomNavMore;
-  leagueId: string;
-  // Reserves the center notch for the nominate FAB (see MobileNomination) -
-  // only shown once a draft has started (see routes/league/$leagueId/
-  // route.tsx's isStarted); before that there's no FAB, so it renders one
-  // flat evenly-spaced row instead of splitting around an empty gap.
+  // Reserves the center notch for infinidraft's nominate FAB (see
+  // MobileNomination) - only shown once a draft has started, so the other
+  // apps (which never set this) render one flat evenly-spaced row instead
+  // of splitting around an empty gap.
   hasFab?: boolean;
-};
-
-// `to` is a plain `string` on BottomNavItem (items come from a shared,
-// already route-checked TABS array - see routes/league/$leagueId/route.tsx),
-// not a literal, so TanStack Router's Link can't resolve which params
-// shape applies to it at this generic call site. The route paths
-// themselves are still type-checked at their point of definition via the
-// equivalent desktop <Tabs.Tab renderRoot> Link usage in those same files.
-function linkPropsFor(to: string, leagueId: string) {
-  return { to, params: { leagueId } } as { to: "/" };
 }
 
-// Width of the empty center notch reserved for the nominate FAB (see
-// MobileNomination, a fixed 56px circle centered on the same axis) - wide
-// enough that the FAB's shadow/border doesn't crowd the flanking buttons.
+// `to`/`params` are plain strings/a Record on BottomNavItem (items come from
+// each app's own already route-checked TABS array), not literals, so
+// TanStack Router's Link can't resolve which params shape applies to it at
+// this generic call site - the route paths themselves are still
+// type-checked at their point of definition via the equivalent desktop
+// Tabs.Tab renderRoot Link usage in each app's route files.
+function linkPropsFor(item: BottomNavItem) {
+  return { to: item.to, params: item.params } as { to: "/" };
+}
+
+// Width of the empty center notch reserved for infinidraft's nominate FAB
+// (a fixed 56px circle centered on the same axis) - wide enough that the
+// FAB's shadow/border doesn't crowd the flanking buttons.
 const FAB_GAP_WIDTH = 72;
 
 // Mobile-only tab bar, fixed to the bottom of the viewport (hidden at the
@@ -52,19 +56,17 @@ const FAB_GAP_WIDTH = 72;
 // page Container in the layout routes that use it so this doesn't cover
 // the last bit of scrollable content.
 //
-// Renders as two flex groups with an empty gap between them (rather than
-// one flat row) so the nominate FAB - fixed-positioned and horizontally
-// centered independently in MobileNomination - has a dedicated notch to
-// float in instead of landing on top of whichever button happened to sit
-// in the dead center of an evenly-spaced row.
+// When `hasFab` is set, renders as two flex groups with an empty gap
+// between them (rather than one flat row) so a nominate FAB - fixed-
+// positioned and horizontally centered independently - has a dedicated
+// notch to float in instead of landing on top of whichever button happened
+// to sit in the dead center of an evenly-spaced row.
 export function BottomNav({
   items,
+  activeValue,
   more,
-  leagueId,
   hasFab = false,
 }: BottomNavProps) {
-  const location = useLocation();
-  const activeValue = location.pathname.split("/").pop();
   const moreActive = more?.items.some((item) => item.value === activeValue);
 
   function renderItem(item: BottomNavItem) {
@@ -73,7 +75,7 @@ export function BottomNav({
     return (
       <Link
         key={item.value}
-        {...linkPropsFor(item.to, leagueId)}
+        {...linkPropsFor(item)}
         style={{ flex: 1, textDecoration: "none", color: "inherit" }}
       >
         <Stack
@@ -116,8 +118,12 @@ export function BottomNav({
             <Menu.Item
               key={item.value}
               component={Link}
-              {...linkPropsFor(item.to, leagueId)}
+              {...linkPropsFor(item)}
+              {...(item.external ? { target: "_blank" as const } : {})}
               leftSection={<Icon size={16} />}
+              rightSection={
+                item.external ? <ExternalLink size={14} /> : undefined
+              }
               fw={active ? 600 : 400}
               c={active ? "burlywood" : "dimmed"}
             >

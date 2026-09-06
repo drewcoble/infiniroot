@@ -17,7 +17,7 @@ import { api } from "@infinidata/api";
 import type { Doc, Id } from "@infinidata/dataModel";
 import { PlayerDetailModal } from "../../components/PlayerDetailModal";
 import { GenericValuesNotice } from "../../components/GenericValuesNotice";
-import { SortArrow } from "../../components/SortArrow";
+import { SortArrow } from "@shared/SortArrow";
 import { getErrorMessage } from "@shared/errors";
 import { formatSignedNumber, keeperValueColor } from "../../lib/keeperValue";
 import { positionColorOrDefault } from "@shared/positionColors";

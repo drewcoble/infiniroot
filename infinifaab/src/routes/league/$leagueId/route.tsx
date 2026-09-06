@@ -3,7 +3,7 @@ import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-rout
 import type { LucideIcon } from "lucide-react";
 import { Gavel, LayoutGrid, ListChecks, Settings, UserSearch } from "lucide-react";
 import { AppHeader } from "../../../components/AppHeader";
-import { BottomNav } from "../../../components/BottomNav";
+import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
 
 export const Route = createFileRoute("/league/$leagueId")({

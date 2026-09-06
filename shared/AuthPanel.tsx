@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   Button,
@@ -10,11 +9,8 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-// useConvexAuth from convex/react, not @convex-dev/auth/react - see
-// __root.tsx's comment on the same import for why (the latter's
-// isAuthenticated doesn't wait for server confirmation).
 import { useConvexAuth } from "convex/react";
-import { getErrorMessage } from "@shared/errors";
+import { getErrorMessage } from "./errors";
 
 // @convex-dev/auth's Password provider throws distinctly different errors
 // for "no such account" vs "wrong password" on sign-in - see node_modules/
@@ -42,20 +38,25 @@ const ACCOUNT_ALREADY_EXISTS_PATTERN = /^Account .+ already exists$/;
 const GENERIC_SIGN_UP_FAILURE =
   "Something went wrong creating your account. Please try again.";
 
-function toFriendlySignUpMessage(rawMessage: string): string {
-  if (rawMessage === "Invalid password") {
-    return "Password must be at least 8 characters.";
-  }
-  if (ACCOUNT_ALREADY_EXISTS_PATTERN.test(rawMessage)) {
-    return "Couldn't create an account with those details. Double-check the email, or try signing in instead.";
-  }
-  return GENERIC_SIGN_UP_FAILURE;
+interface AuthPanelProps {
+  // Fired after a successful sign-in and after sign-out. infinidraft uses
+  // this to always land on its dashboard afterward rather than whatever
+  // route happened to still be in the address bar; infinifaab/infinileague
+  // don't navigate at all, so they omit it.
+  afterAuthChange?: () => void;
+  // Appended to the "couldn't create an account" message when sign-up hits
+  // an existing-account error - infinifaab/infinileague use this to point
+  // the user at their shared-Convex-deployment sibling apps (each app names
+  // the *other* apps, not itself); infinidraft omits it.
+  existingAccountHint?: string;
 }
 
-export function AuthPanel() {
+export function AuthPanel({
+  afterAuthChange,
+  existingAccountHint,
+}: AuthPanelProps = {}) {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { signIn, signOut } = useAuthActions();
-  const navigate = useNavigate();
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,6 +70,18 @@ export function AuthPanel() {
     () => (mode === "signIn" ? "Sign in" : "Create account"),
     [mode],
   );
+
+  function toFriendlySignUpMessage(rawMessage: string): string {
+    if (rawMessage === "Invalid password") {
+      return "Password must be at least 8 characters.";
+    }
+    if (ACCOUNT_ALREADY_EXISTS_PATTERN.test(rawMessage)) {
+      const base =
+        "Couldn't create an account with those details. Double-check the email, or try signing in instead";
+      return existingAccountHint ? `${base} - ${existingAccountHint}` : `${base}.`;
+    }
+    return GENERIC_SIGN_UP_FAILURE;
+  }
 
   const handleSubmit = async () => {
     setStatus(null);
@@ -86,13 +99,7 @@ export function AuthPanel() {
         name: name || normalizedEmail,
       });
       setStatus({ kind: "success", message: `${title} succeeded.` });
-      // Always land on the dashboard after signing in, rather than
-      // whatever route happened to still be in the address bar (e.g. from
-      // signing out of a league that belonged to a different account on
-      // this browser) - otherwise a fresh sign-in can render a route whose
-      // leagueId belongs to whoever was signed in before, which then fails
-      // that owner check as "not authorized" for the new account.
-      void navigate({ to: "/", replace: true });
+      afterAuthChange?.();
     } catch (error) {
       const message =
         mode === "signIn"
@@ -115,12 +122,14 @@ export function AuthPanel() {
         <Button
           variant="default"
           onClick={() => {
-            // Awaited, not fire-and-forget - see AppHeader.tsx's sign-out
-            // handler for why racing navigate() against signOut() can leave
-            // the app stuck on an auth-error screen.
+            // Awaited, not fire-and-forget - navigating before the auth
+            // token actually clears left whatever authenticated route was
+            // still mounted racing the sign-out, so it could get
+            // invalidated mid-flight and throw "must be signed in" with no
+            // way back to the sign-in form short of a hard reload.
             void (async () => {
               await signOut();
-              await navigate({ to: "/", replace: true });
+              afterAuthChange?.();
             })();
           }}
         >
@@ -154,7 +163,7 @@ export function AuthPanel() {
         onChange={(event) => setPassword(event.currentTarget.value)}
       />
       <Group>
-        <Button onClick={handleSubmit}>{title}</Button>
+        <Button onClick={() => void handleSubmit()}>{title}</Button>
         <Button
           variant="default"
           onClick={() => setMode(mode === "signIn" ? "signUp" : "signIn")}

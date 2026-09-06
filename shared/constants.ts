@@ -44,3 +44,18 @@ export const MOBILE_HEADER_HEIGHT = 53;
 // InjuryReport.tsx and PlayersTable.tsx (both used `<Stack py="sm"
 // pt={...}>` before switching to the spacer-element pattern).
 export const POSITION_FILTER_BAR_HEIGHT = 57;
+
+// Bottom offset for the mobile bottom nav bar (BottomNav.tsx) and everything
+// else anchored to the same edge (e.g. infinidraft's nominate FAB in
+// MobileNomination.tsx). Kept in one place so they can't drift apart the way
+// the FAB briefly did after the nav bar's own offset changed without it.
+export const BOTTOM_NAV_BOTTOM_OFFSET = 7;
+
+// Total rendered height of the bottom nav bar's pill: each column is
+// py=12 top/bottom around a 20px icon + 2px gap + 10px label, plus the
+// pill's own 1px border top and bottom (12 + 20 + 2 + 10 + 12 + 1 + 1).
+// A FAB or bottom-sheet peek that anchors off the bar (e.g. infinidraft's
+// MobileNomination) is given this same height so its vertical center lines
+// up with the bar's by construction instead of by two independently-guessed
+// numbers happening to match.
+export const BOTTOM_NAV_HEIGHT = 58;

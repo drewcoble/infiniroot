@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
-import type { SortDir } from "../lib/tableSort";
+
+export type SortDir = "asc" | "desc";
 
 interface SortArrowProps {
   dir: SortDir;
@@ -7,8 +8,7 @@ interface SortArrowProps {
 }
 
 // Direction indicator for a clickable sortable column header - only
-// rendered next to whichever header is currently active (see
-// PlayersTable.tsx/PlayersLeftTab.tsx).
+// rendered next to whichever header is currently active.
 export function SortArrow({ dir, size = 12 }: SortArrowProps) {
   return dir === "asc" ? <ArrowUp size={size} /> : <ArrowDown size={size} />;
 }

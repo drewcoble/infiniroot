@@ -7,7 +7,7 @@ import type { Id } from "@infinidata/dataModel";
 import {
   BOTTOM_NAV_BOTTOM_OFFSET,
   BOTTOM_NAV_HEIGHT,
-} from "../../../constants/general";
+} from "@shared/constants";
 
 // Shared chrome for the two mobile draft bottom sheets - auction's
 // MobileNomination (nominate/bid/assign) and snake/linear's
