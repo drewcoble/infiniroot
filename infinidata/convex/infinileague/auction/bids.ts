@@ -4,7 +4,8 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "../../_generated/api";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { requireSeasonParticipant, requireTeamAccess } from "../../lib/access";
-import { isFpidEligible } from "./eligibility";
+import type { CycleType } from "./eligibility";
+import { listOpenCyclesForSeason, resolveOpenCycleForFpid } from "./cycleScope";
 import { getPlayerDisplayInfoByFpid, type PlayerDisplayInfo } from "./players";
 import { POSITIONS } from "../../positions";
 
@@ -16,10 +17,10 @@ const MS_PER_MINUTE = 60 * 1000;
 // The eBay-style proxy bidding engine - see AUCTION_PLAN's "Bidding engine"
 // section for the full design. Every check here is a hard rejection, not a
 // warning: raise-only per team/player, a hard FAAB cap across every player
-// a team is CURRENTLY WINNING this cycle (a bid it's been outbid on doesn't
-// lock up that money - see the cap check below for why that's safe), and
-// waiver eligibility re-checked at bid time (not just "not currently
-// rostered").
+// a team is CURRENTLY WINNING across EVERY currently-open cycle this season
+// (a bid it's been outbid on doesn't lock up that money - see the cap check
+// below for why that's safe), and waiver eligibility re-checked at bid time
+// (not just "not currently rostered").
 export const placeBid = mutation({
   args: {
     seasonId: v.id("seasons"),
@@ -45,21 +46,17 @@ export const placeBid = mutation({
     }
 
     const now = Date.now();
-    const cycle = await ctx.db
-      .query("faAuctionCycles")
-      .withIndex("by_season_status", (q) =>
-        q.eq("seasonId", args.seasonId).eq("status", "open"),
-      )
-      .first();
+    // Resolves which of the season's potentially-several open cycles (the
+    // weekly one, or this fpid's own dedicated playerDrop/manual cycle)
+    // this bid actually belongs to - see cycleScope.ts's own comment. Null
+    // covers both "no open cycle at all" and "not currently eligible",
+    // which under this model are really the same question.
+    const cycle = await resolveOpenCycleForFpid(ctx, season, args.fpid);
     if (!cycle) {
-      throw new Error("There's no open auction right now.");
+      throw new Error("This player isn't currently up for bid.");
     }
     if (cycle.closesAt <= now) {
       throw new Error("This auction cycle has already closed.");
-    }
-
-    if (!(await isFpidEligible(ctx, season, args.fpid))) {
-      throw new Error("This player isn't currently on waivers.");
     }
 
     const settings = await ctx.db
@@ -180,37 +177,34 @@ export const placeBid = mutation({
     }
 
     // Hard FAAB cap: sum of this team's max bids across only the players
-    // it's CURRENTLY WINNING this cycle must never exceed remaining FAAB -
-    // a bid the team has been outbid on doesn't lock up that money, since a
-    // losing bid can never spontaneously become winning without the team
-    // actively raising it (raise-only), and any such raise re-runs this
-    // exact check with fresh data at that time. Checked after (not before)
-    // this fpid's own leader is recomputed above, using that fresh result -
-    // if the cap is blown, throwing here rolls back every write this
-    // mutation has made so far (the bid upsert and state recompute
-    // included), since Convex mutations are atomic transactions. Since
-    // actual price paid is always <= a winner's own max (second-price
-    // rule), summing max bids (not resolved prices) is still a safe,
-    // conservative bound.
+    // it's CURRENTLY WINNING, across EVERY currently-open cycle this season
+    // (not just this one) - must never exceed remaining FAAB. Several
+    // cycles (the weekly one plus any number of playerDrop/manual ones) can
+    // be open at once now, and a team can hold winning bids in more than
+    // one simultaneously, so the cap has to look across all of them or a
+    // team could pass this check independently in each and collectively
+    // over-commit. A bid the team has been outbid on doesn't lock up that
+    // money, since a losing bid can never spontaneously become winning
+    // without the team actively raising it (raise-only), and any such raise
+    // re-runs this exact check with fresh data at that time. A bid whose own
+    // cycle has already closed doesn't count either - that cycle's outcome
+    // is already reflected in team.faabSpent. Since actual price paid is
+        // always <= a winner's own max (second-price rule), summing max bids
+    // (not resolved prices) is still a safe, conservative bound.
     const teamBids = await ctx.db
       .query("faAuctionBids")
-      .withIndex("by_cycle_team", (q) =>
-        q.eq("cycleId", cycle._id).eq("teamId", args.teamId),
+      .withIndex("by_season_team", (q) =>
+        q.eq("seasonId", args.seasonId).eq("teamId", args.teamId),
       )
       .collect();
     let committedTotal = 0;
     for (const bid of teamBids) {
-      if (bid.fpid === args.fpid) {
-        // This fpid's leader was just recomputed above - use that fresh
-        // result rather than re-querying the state row this same mutation
-        // just wrote.
-        if (leader.teamId === args.teamId) committedTotal += bid.maxBid;
-        continue;
-      }
+      const bidCycle = bid.cycleId === cycle._id ? cycle : await ctx.db.get(bid.cycleId);
+      if (!bidCycle || bidCycle.status !== "open") continue;
       const otherState = await ctx.db
         .query("faAuctionState")
         .withIndex("by_cycle_fpid", (q) =>
-          q.eq("cycleId", cycle._id).eq("fpid", bid.fpid),
+          q.eq("cycleId", bid.cycleId).eq("fpid", bid.fpid),
         )
         .unique();
       if (otherState?.leadingTeamId === args.teamId) {
@@ -231,7 +225,8 @@ export const placeBid = mutation({
 
     // Anti-snipe: a bid inside the window extends the close and reschedules
     // the exact close job - the standard "soft close" pattern silent
-    // auctions use to stop last-second sniping.
+    // auctions use to stop last-second sniping. Applies the same way
+    // regardless of cycle type.
     const msRemaining = cycle.closesAt - now;
     if (msRemaining < antiSnipeMinutes * MS_PER_MINUTE) {
       const newClosesAt = now + antiSnipeMinutes * MS_PER_MINUTE;
@@ -250,39 +245,42 @@ export const placeBid = mutation({
 
 export interface AuctionBoardRow {
   fpid: number;
+  cycleId: Id<"faAuctionCycles">;
+  cycleType: CycleType;
+  closesAt: number;
   currentPrice: number;
   leadingTeamName: string | null;
   bidCount: number;
 }
 
-// The public board for the current open cycle - currentPrice/leadingTeamName
-// only, never any team's real max (see faAuctionBids' own comment). Players
-// with no bids yet simply have no row here; the Players tab (task 6)
-// merges this against its own waiver-eligible player list and falls back
-// to the season's startingBid for anything absent.
+// The public board across every currently-open cycle - currentPrice/
+// leadingTeamName only, never any team's real max (see faAuctionBids' own
+// comment). Players with no bids yet simply have no row here; the Players
+// tab merges this against its own waiver-eligible player list and falls
+// back to the season's startingBid for anything absent.
 export const getAuctionBoardState = query({
   args: { seasonId: v.id("seasons") },
   handler: async (
     ctx,
     args,
-  ): Promise<{ cycle: Doc<"faAuctionCycles"> | null; rows: AuctionBoardRow[] }> => {
+  ): Promise<{ openCycles: Doc<"faAuctionCycles">[]; rows: AuctionBoardRow[] }> => {
     await requireSeasonParticipant(ctx, args.seasonId);
-    const cycle = await ctx.db
-      .query("faAuctionCycles")
-      .withIndex("by_season_status", (q) =>
-        q.eq("seasonId", args.seasonId).eq("status", "open"),
-      )
-      .first();
-    if (!cycle) return { cycle: null, rows: [] };
+    const openCycles = await listOpenCyclesForSeason(ctx, args.seasonId);
+    if (openCycles.length === 0) return { openCycles: [], rows: [] };
 
-    const stateRows = await ctx.db
-      .query("faAuctionState")
-      .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
-      .collect();
+    const stateRowsByCycle = await Promise.all(
+      openCycles.map((cycle) =>
+        ctx.db
+          .query("faAuctionState")
+          .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
+          .collect(),
+      ),
+    );
 
+    const allStateRows = stateRowsByCycle.flat();
     const teamIds = [
       ...new Set(
-        stateRows
+        allStateRows
           .map((s) => s.leadingTeamId)
           .filter((id): id is Id<"seasonTeams"> => id !== undefined),
       ),
@@ -294,56 +292,70 @@ export const getAuctionBoardState = query({
         .map((t) => [t._id, t.name]),
     );
 
-    return {
-      cycle,
-      rows: stateRows.map((s) => ({
+    const rows: AuctionBoardRow[] = openCycles.flatMap((cycle, index) =>
+      stateRowsByCycle[index]!.map((s) => ({
         fpid: s.fpid,
+        cycleId: cycle._id,
+        cycleType: cycle.type ?? "weekly",
+        closesAt: cycle.closesAt,
         currentPrice: s.currentPrice,
         leadingTeamName:
           s.leadingTeamId !== undefined ? teamNameById.get(s.leadingTeamId) ?? null : null,
         bidCount: s.bidCount,
       })),
-    };
+    );
+
+    return { openCycles, rows };
   },
 });
 
 export interface MyBidRow {
   fpid: number;
+  cycleId: Id<"faAuctionCycles">;
+  cycleType: CycleType;
+  closesAt: number;
   teamId: Id<"seasonTeams">;
   teamName: string;
   maxBid: number;
 }
 
-// The signed-in user's own outstanding max bids, in the current open cycle
-// - private to them (never another team's bid). Powers infinifaab's Players
-// tab "Your max" line. Uses displayTeamIds (this user's own actual team),
-// NOT teamIds (every team the commissioner can administratively bid as) -
-// see requireSeasonParticipant's own comment for why conflating the two
-// made every team's bid read as the commissioner's own.
+// The signed-in user's own outstanding max bids, across every currently-open
+// cycle - private to them (never another team's bid). Powers infinifaab's
+// Players tab "Your max" line and the Bids tab's grouping across
+// potentially-several concurrently-open cycles. Uses displayTeamIds (this
+// user's own actual team), NOT teamIds (every team the commissioner can
+// administratively bid as) - see requireSeasonParticipant's own comment for
+// why conflating the two made every team's bid read as the commissioner's
+// own.
 export const getMyBids = query({
   args: { seasonId: v.id("seasons") },
   handler: async (ctx, args): Promise<MyBidRow[]> => {
     const { displayTeamIds: teamIds } = await requireSeasonParticipant(ctx, args.seasonId);
-    const cycle = await ctx.db
-      .query("faAuctionCycles")
-      .withIndex("by_season_status", (q) =>
-        q.eq("seasonId", args.seasonId).eq("status", "open"),
-      )
-      .first();
-    if (!cycle) return [];
+    const openCycles = await listOpenCyclesForSeason(ctx, args.seasonId);
+    if (openCycles.length === 0) return [];
 
     const rows: MyBidRow[] = [];
     for (const teamId of teamIds) {
       const team = await ctx.db.get(teamId);
       if (!team) continue;
-      const bids = await ctx.db
-        .query("faAuctionBids")
-        .withIndex("by_cycle_team", (q) =>
-          q.eq("cycleId", cycle._id).eq("teamId", teamId),
-        )
-        .collect();
-      for (const bid of bids) {
-        rows.push({ fpid: bid.fpid, teamId, teamName: team.name, maxBid: bid.maxBid });
+      for (const cycle of openCycles) {
+        const bids = await ctx.db
+          .query("faAuctionBids")
+          .withIndex("by_cycle_team", (q) =>
+            q.eq("cycleId", cycle._id).eq("teamId", teamId),
+          )
+          .collect();
+        for (const bid of bids) {
+          rows.push({
+            fpid: bid.fpid,
+            cycleId: cycle._id,
+            cycleType: cycle.type ?? "weekly",
+            closesAt: cycle.closesAt,
+            teamId,
+            teamName: team.name,
+            maxBid: bid.maxBid,
+          });
+        }
       }
     }
     return rows;
@@ -359,9 +371,10 @@ export interface AuctionDashboardRow {
 
 // infinifaab's Dashboard tab - exactly the three fields asked for: team
 // name, FAAB remaining, and how many players this team is currently
-// leading on. Sorted FAAB-remaining descending.
+// leading on, across every currently-open cycle. Sorted FAAB-remaining
+// descending.
 //
-// faabRemaining is deliberately budget - spent ONLY, as of before this
+// faabRemaining is deliberately budget - spent ONLY, as of before any open
 // cycle's bidding started - NOT further reduced by the team's own
 // currently-committed open-cycle max bids (placeBid's internal FAAB-cap
 // check does subtract those, but only when computing a team's own ceiling
@@ -380,15 +393,10 @@ export const getAuctionDashboard = query({
       .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
       .collect();
 
-    const cycle = await ctx.db
-      .query("faAuctionCycles")
-      .withIndex("by_season_status", (q) =>
-        q.eq("seasonId", args.seasonId).eq("status", "open"),
-      )
-      .first();
+    const openCycles = await listOpenCyclesForSeason(ctx, args.seasonId);
 
     const winningCountByTeam = new Map<Id<"seasonTeams">, number>();
-    if (cycle) {
+    for (const cycle of openCycles) {
       const stateRows = await ctx.db
         .query("faAuctionState")
         .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
@@ -419,6 +427,9 @@ export const getAuctionDashboard = query({
 // same PlayerCard the Players tab does.
 export interface BidBoardRow extends PlayerDisplayInfo {
   fpid: number;
+  cycleId: Id<"faAuctionCycles">;
+  cycleType: CycleType;
+  closesAt: number;
   rosteredByTeamName: null;
   currentPrice: number;
   leadingTeamName: string | null;
@@ -439,15 +450,15 @@ const CATEGORY_ORDER: Record<BidBoardRow["category"], number> = {
   other: 2,
 };
 
-// Every player with at least one active bid this cycle, across every team
-// in the league - infinifaab's Bids tab. Grouped winning-mine-first,
-// outbid-mine-second, everyone else's activity third; sorted within each
-// group by current price descending, then by the same rest-of-season rank
-// the Players tab uses (0/no-rank-data sentinel falls back to alphabetical
-// - see players.ts's getWaiverEligiblePlayers for the identical fallback).
-// Never exposes another team's real max - "other" rows only ever carry the
-// same public currentPrice/leadingTeamName/bidCount getAuctionBoardState
-// shows.
+// Every player with at least one active bid across every currently-open
+// cycle, across every team in the league - infinifaab's Bids tab. Grouped
+// winning-mine-first, outbid-mine-second, everyone else's activity third;
+// sorted within each group by current price descending, then by the same
+// rest-of-season rank the Players tab uses (0/no-rank-data sentinel falls
+// back to alphabetical - see players.ts's getWaiverEligiblePlayers for the
+// identical fallback). Never exposes another team's real max - "other"
+// rows only ever carry the same public currentPrice/leadingTeamName/
+// bidCount getAuctionBoardState shows.
 export const getBidsBoard = query({
   args: { seasonId: v.id("seasons") },
   handler: async (ctx, args): Promise<BidBoardRow[]> => {
@@ -459,39 +470,51 @@ export const getBidsBoard = query({
     const { displayTeamIds: teamIds } = await requireSeasonParticipant(ctx, args.seasonId);
     const teamIdSet = new Set(teamIds);
 
-    const cycle = await ctx.db
-      .query("faAuctionCycles")
-      .withIndex("by_season_status", (q) =>
-        q.eq("seasonId", args.seasonId).eq("status", "open"),
-      )
-      .first();
-    if (!cycle) return [];
+    const openCycles = await listOpenCyclesForSeason(ctx, args.seasonId);
+    if (openCycles.length === 0) return [];
 
-    const stateRows = await ctx.db
-      .query("faAuctionState")
-      .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
-      .collect();
-    if (stateRows.length === 0) return [];
+    // (cycle, state) pairs, not a fpid-keyed flattening - a fpid can in
+    // principle have a lingering state row in more than one currently-open
+    // cycle at once (e.g. a stale weekly-cycle row from before it was
+    // re-rostered-then-dropped into a fresh playerDrop cycle), so every
+    // lookup below is keyed by `${cycleId}:${fpid}`, never fpid alone.
+    const statePairsByCycle = await Promise.all(
+      openCycles.map(async (cycle) => ({
+        cycle,
+        states: await ctx.db
+          .query("faAuctionState")
+          .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
+          .collect(),
+      })),
+    );
+    const statePairs = statePairsByCycle.flatMap(({ cycle, states }) =>
+      states.map((state) => ({ cycle, state })),
+    );
+    if (statePairs.length === 0) return [];
 
-    const myBidByFpid = new Map<number, { teamName: string; maxBid: number }>();
+    const key = (cycleId: Id<"faAuctionCycles">, fpid: number) => `${cycleId}:${fpid}`;
+
+    const myBidByKey = new Map<string, { teamName: string; maxBid: number }>();
     for (const teamId of teamIds) {
       const team = await ctx.db.get(teamId);
       if (!team) continue;
-      const bids = await ctx.db
-        .query("faAuctionBids")
-        .withIndex("by_cycle_team", (q) =>
-          q.eq("cycleId", cycle._id).eq("teamId", teamId),
-        )
-        .collect();
-      for (const bid of bids) {
-        myBidByFpid.set(bid.fpid, { teamName: team.name, maxBid: bid.maxBid });
+      for (const cycle of openCycles) {
+        const bids = await ctx.db
+          .query("faAuctionBids")
+          .withIndex("by_cycle_team", (q) =>
+            q.eq("cycleId", cycle._id).eq("teamId", teamId),
+          )
+          .collect();
+        for (const bid of bids) {
+          myBidByKey.set(key(cycle._id, bid.fpid), { teamName: team.name, maxBid: bid.maxBid });
+        }
       }
     }
 
     const leadingTeamIds = [
       ...new Set(
-        stateRows
-          .map((s) => s.leadingTeamId)
+        statePairs
+          .map(({ state }) => state.leadingTeamId)
           .filter((id): id is Id<"seasonTeams"> => id !== undefined),
       ),
     ];
@@ -502,13 +525,13 @@ export const getBidsBoard = query({
         .map((t) => [t._id, t.name]),
     );
 
-    const fpidSet = new Set(stateRows.map((state) => state.fpid));
+    const fpidSet = new Set(statePairs.map(({ state }) => state.fpid));
     const displayByFpid = await getPlayerDisplayInfoByFpid(ctx, args.seasonId, fpidSet);
     const hasRankData = [...displayByFpid.values()].some((d) => d.rosRank > 0);
 
-    const rows: BidBoardRow[] = stateRows.map((state) => {
+    const rows: BidBoardRow[] = statePairs.map(({ cycle, state }) => {
       const display = displayByFpid.get(state.fpid);
-      const mine = myBidByFpid.get(state.fpid);
+      const mine = myBidByKey.get(key(cycle._id, state.fpid));
       const leadingTeamName =
         state.leadingTeamId !== undefined ? teamNameById.get(state.leadingTeamId) ?? null : null;
       const iAmLeading = state.leadingTeamId !== undefined && teamIdSet.has(state.leadingTeamId);
@@ -519,6 +542,9 @@ export const getBidsBoard = query({
         : "other";
       return {
         fpid: state.fpid,
+        cycleId: cycle._id,
+        cycleType: cycle.type ?? "weekly",
+        closesAt: cycle.closesAt,
         // display should always be found - every fpid here came from a real
         // bid, which itself requires the player to already exist (see
         // eligibility.ts) - but this stays a safe fallback rather than a

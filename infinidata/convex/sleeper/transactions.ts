@@ -1,40 +1,35 @@
 import { v } from "convex/values";
-import { internalAction, internalQuery } from "../_generated/server";
-import { internal, api } from "../_generated/api";
-import type { Doc } from "../_generated/dataModel";
+import { internalAction, internalMutation, internalQuery } from "../_generated/server";
+import { internal } from "../_generated/api";
+import type { Doc, Id } from "../_generated/dataModel";
 import { fetchCurrentNflWeek } from "./state";
-import { nextWeeklyOccurrence, nextDailyOccurrence } from "../lib/timezone";
+import { getCurrentWeekKickoffByFpid } from "../infinileague/auction/eligibility";
+import { openDedicatedCycleHandler } from "../infinileague/auction/cycles";
 
 /**
- * Computes infinifaab's waiver-eligibility for a Sleeper-linked season -
- * see schema.ts's waiverPlayers/seasons.waiverDayOfWeek comments and
- * AUCTION_PLAN's "Waiver-eligibility data" section for the full context.
- * Sleeper has no live "is this player on waivers right now" endpoint (see
- * that plan section), so this derives it: pull recent drop events from
- * GET /league/{id}/transactions/{round}, then compute each drop's clear
- * time from the league's own waiver-clearing settings (confirmed live
- * field names - see schema.ts's seasons.waiverDayOfWeek comment) plus, for
- * "After Games" mode, the dropped player's own NFL game time this week
- * (convex/tank01/schedule.ts).
+ * Mechanism 2 of infinifaab's Sleeper bid-eligibility (see the "Multi-cycle
+ * Sleeper waiver eligibility" plan this shipped from): detects Sleeper drop
+ * transactions and opens a dedicated bid cycle scoped to just that player,
+ * for a commissioner-configurable duration (faAuctionSettings.
+ * dropCycleDurationHours, default 48h) - unless that player's own current-
+ * week game kicks off before that window would end, in which case the
+ * always-open weekly cycle (eligibility.ts's rule 1) will pick them up on
+ * its own once kickoff passes, so no dedicated cycle is needed.
  *
- * The "After Games" formula (dailyWaivers false/absent) is a documented
- * approximation, not a byte-exact port of Sleeper's own scheduler: Sleeper
- * support docs describe "next waiverDayOfWeek after the player's game ends"
- * but don't publish an exact clock time for that day, and Tank01's
- * schedule gives kickoff only (not a real final-whistle timestamp - see
- * schedule.ts's ESTIMATED_GAME_LENGTH_MS). Deliberately conservative in one
- * direction only: every approximation here (the AFTER_GAMES_CLEAR_HOUR
- * guess, the game-length estimate) can only push a computed clearsAt LATER
- * than the real one, never earlier - so the worst case is a player
- * appearing on infinifaab's board a little after they'd already be
- * addable on Sleeper, never a bid on someone who (from this app's
- * perspective) should still be locked. closeCycle re-checks eligibility
- * again right before freezing a winner regardless (see AUCTION_PLAN).
+ * Replaces an earlier, now-abandoned approach that lived in this file
+ * (computing a derived waiverPlayers.clearsAt from drop transactions) - real-
+ * world testing showed that approach massively undercounted the real
+ * waiver pool (see eligibility.ts's header comment for the full story) and
+ * was never wired into eligibility as a result. This file now polls the
+ * same Sleeper transactions endpoint for a different purpose: not computing
+ * "when does this player clear", but detecting the drop EVENT itself.
  */
 
+const DEFAULT_DROP_CYCLE_HOURS = 48;
+
 interface SleeperTransaction {
+  transaction_id: string;
   status: string;
-  created: number;
   drops: Record<string, string> | null;
 }
 
@@ -55,94 +50,198 @@ async function fetchSleeperTransactionsForRound(
   return await response.json();
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-// Sleeper's own support docs give "12:05 a.m. PST on Wednesday" as one real
-// "After Games" clear example - this mirrors that "shortly after midnight"
-// convention rather than inventing an unrelated hour. See this file's
-// header comment on why an approximate hour here is safe to be wrong about.
-const AFTER_GAMES_CLEAR_HOUR = 0;
-// This app has no per-league timezone setting captured from Sleeper (not
-// exposed on the settings payload this app reads) - reuses the same
-// America/New_York default the rest of infinifaab's scheduling assumes.
-const APP_TIME_ZONE = "America/New_York";
-
-// Tank01's team abbreviation for Washington ("WSH") doesn't match this
-// app's Sleeper-derived players.team convention ("WAS") - the one known
-// mismatch across all 32 teams, same discrepancy convex/tank01/
-// depthChartsData.ts documents for depth charts.
-const TANK01_TO_OUR_TEAM: Record<string, string> = { WSH: "WAS" };
-
-function normalizeTank01Team(team: string): string {
-  return TANK01_TO_OUR_TEAM[team] ?? team;
-}
-
-function computeClearsAt(
-  droppedAt: number,
-  season: Doc<"seasons">,
-  team: string | null,
-  gameEndByTeam: Map<string, number>,
-): number {
-  if (season.dailyWaivers === true && season.dailyWaiversHour !== undefined) {
-    return nextDailyOccurrence(droppedAt, season.dailyWaiversHour, 0, APP_TIME_ZONE);
-  }
-
-  const clearDays = season.waiverClearDays ?? 0;
-  let candidate = droppedAt + clearDays * DAY_MS;
-
-  if (season.waiverDayOfWeek !== undefined) {
-    const nextClearDay = nextWeeklyOccurrence(
-      droppedAt,
-      season.waiverDayOfWeek,
-      AFTER_GAMES_CLEAR_HOUR,
-      0,
-      APP_TIME_ZONE,
-    );
-    candidate = Math.max(candidate, nextClearDay);
-  }
-
-  // Never let a player clear before their own game this week ends - the
-  // core intent of "After Games" mode.
-  const gameEnd = team ? gameEndByTeam.get(team) : undefined;
-  if (gameEnd !== undefined) {
-    candidate = Math.max(candidate, gameEnd);
-  }
-
-  return candidate;
-}
-
 // No auth check - only ever called from our own cron-triggered orchestrator
-// (convex/infinileague/auction/waiverSync.ts), never exposed publicly. Same
-// "cron has no signed-in user" reasoning as fetchAllData.ts's
-// fetchAllInternal split.
-export const getSeasonForWaiverSync = internalQuery({
+// below, never exposed publicly. Same "cron has no signed-in user" reasoning
+// as fetchAllData.ts's fetchAllInternal split.
+export const getSeasonAndSettingsForDropDetection = internalQuery({
   args: { seasonId: v.id("seasons") },
-  handler: async (ctx, args): Promise<Doc<"seasons"> | null> => {
-    return await ctx.db.get(args.seasonId);
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ season: Doc<"seasons">; settings: Doc<"faAuctionSettings"> | null } | null> => {
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) return null;
+    const settings = await ctx.db
+      .query("faAuctionSettings")
+      .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+      .unique();
+    return { season, settings };
   },
 });
 
-export const syncSleeperWaiverPlayers = internalAction({
+interface DropCandidate {
+  fpid: number;
+  transactionId: string;
+}
+
+// Every completed drop from the current + previous transaction round that
+// hasn't already been logged in faAuctionProcessedDrops - the idempotency
+// gate that keeps a 20-min poll re-fetching overlapping rounds from
+// reprocessing the same real-world drop over and over.
+export const getUnprocessedDrops = internalQuery({
+  args: { seasonId: v.id("seasons"), candidates: v.array(
+    v.object({ fpid: v.number(), transactionId: v.string() }),
+  ) },
+  handler: async (ctx, args): Promise<DropCandidate[]> => {
+    const unprocessed: DropCandidate[] = [];
+    for (const candidate of args.candidates) {
+      const existing = await ctx.db
+        .query("faAuctionProcessedDrops")
+        .withIndex("by_season_txn_fpid", (q) =>
+          q
+            .eq("seasonId", args.seasonId)
+            .eq("sleeperTransactionId", candidate.transactionId)
+            .eq("fpid", candidate.fpid),
+        )
+        .unique();
+      if (!existing) unprocessed.push(candidate);
+    }
+    return unprocessed;
+  },
+});
+
+// Everything one drop candidate needs to decide its outcome, resolved in a
+// single query so the internalAction orchestrator below stays a thin loop.
+// dropCycleDurationHours is resolved once by the caller (not re-read per
+// fpid) - see detectSleeperDrops.
+export const getDropDetectionContext = internalQuery({
+  args: { seasonId: v.id("seasons"), fpid: v.number() },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    isRostered: boolean;
+    isLocked: boolean;
+    kickoffAt: number | undefined;
+  } | null> => {
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) return null;
+
+    const [rosteredRow, lockRow, kickoffByFpid] = await Promise.all([
+      ctx.db
+        .query("rosterPlayers")
+        .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+        .filter((q) => q.eq(q.field("fpid"), args.fpid))
+        .first(),
+      ctx.db
+        .query("faAuctionFpidCycles")
+        .withIndex("by_season_fpid", (q) =>
+          q.eq("seasonId", args.seasonId).eq("fpid", args.fpid),
+        )
+        .unique(),
+      getCurrentWeekKickoffByFpid(ctx, season),
+    ]);
+
+    return {
+      isRostered: rosteredRow !== null,
+      isLocked: lockRow !== null,
+      kickoffAt: kickoffByFpid.get(args.fpid),
+    };
+  },
+});
+
+export const recordProcessedDrop = internalMutation({
+  args: {
+    seasonId: v.id("seasons"),
+    sleeperTransactionId: v.string(),
+    fpid: v.number(),
+    outcome: v.union(
+      v.literal("cycleCreated"),
+      v.literal("foldedIntoWeekly"),
+      v.literal("skippedAlreadyCovered"),
+      v.literal("skippedRerostered"),
+    ),
+    cycleId: v.optional(v.id("faAuctionCycles")),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    await ctx.db.insert("faAuctionProcessedDrops", {
+      seasonId: args.seasonId,
+      sleeperTransactionId: args.sleeperTransactionId,
+      fpid: args.fpid,
+      processedAt: Date.now(),
+      outcome: args.outcome,
+      ...(args.cycleId !== undefined ? { cycleId: args.cycleId } : {}),
+    });
+  },
+});
+
+// Opens a dedicated "playerDrop" cycle for a single fpid - a thin mutation
+// wrapper around cycles.ts's shared openDedicatedCycleHandler (also used by
+// startManualAuctionCycle for mechanism 3) plus the processed-drop log
+// write, both inside one transaction so a crash between the two can never
+// happen.
+export const openPlayerDropCycle = internalMutation({
+  args: {
+    seasonId: v.id("seasons"),
+    fpid: v.number(),
+    durationMs: v.number(),
+    sleeperTransactionId: v.string(),
+  },
+  handler: async (ctx, args): Promise<Id<"faAuctionCycles"> | null> => {
+    // Re-check the lock right before creating - a concurrent event (another
+    // drop of the same player re-processed out of order, a manual cycle)
+    // could have claimed it since getDropDetectionContext read it.
+    const existingLock = await ctx.db
+      .query("faAuctionFpidCycles")
+      .withIndex("by_season_fpid", (q) =>
+        q.eq("seasonId", args.seasonId).eq("fpid", args.fpid),
+      )
+      .unique();
+    if (existingLock) {
+      await ctx.db.insert("faAuctionProcessedDrops", {
+        seasonId: args.seasonId,
+        sleeperTransactionId: args.sleeperTransactionId,
+        fpid: args.fpid,
+        processedAt: Date.now(),
+        outcome: "skippedAlreadyCovered",
+      });
+      return null;
+    }
+
+    const cycleId = await openDedicatedCycleHandler(ctx, {
+      seasonId: args.seasonId,
+      type: "playerDrop",
+      fpids: [args.fpid],
+      durationMs: args.durationMs,
+    });
+    await ctx.db.insert("faAuctionProcessedDrops", {
+      seasonId: args.seasonId,
+      sleeperTransactionId: args.sleeperTransactionId,
+      fpid: args.fpid,
+      processedAt: Date.now(),
+      outcome: "cycleCreated",
+      cycleId,
+    });
+    return cycleId;
+  },
+});
+
+// Per-season drop detection - see this file's header comment for the full
+// control flow. Bails immediately for a non-Sleeper or auction-disabled
+// season (mirrors waiverSync.ts's own season-filtering pattern).
+export const detectSleeperDrops = internalAction({
   args: { seasonId: v.id("seasons") },
-  handler: async (ctx, args): Promise<{ upserted: number }> => {
-    const season = await ctx.runQuery(
-      internal.sleeper.transactions.getSeasonForWaiverSync,
+  handler: async (ctx, args): Promise<{ processed: number }> => {
+    const seasonAndSettings = await ctx.runQuery(
+      internal.sleeper.transactions.getSeasonAndSettingsForDropDetection,
       { seasonId: args.seasonId },
     );
-    if (!season || !season.sleeperLeagueId) {
-      return { upserted: 0 };
-    }
+    if (!seasonAndSettings) return { processed: 0 };
+    const { season, settings } = seasonAndSettings;
+    if (!season.sleeperLeagueId || !settings?.enabled) return { processed: 0 };
+    const dropCycleDurationHours = settings.dropCycleDurationHours ?? DEFAULT_DROP_CYCLE_HOURS;
 
     const week = await fetchCurrentNflWeek();
     // "0" is the offseason/draft-prep sentinel (see fetchAllData.ts) - no
     // real transactions round to check. Otherwise check this week's round
     // and last week's, since a drop late last week could still be within
-    // its waiver window now.
+    // its 48h-ish window now.
     const rounds =
       week === "0"
         ? []
         : [...new Set([week, String(Math.max(1, Number(week) - 1))])];
 
-    const droppedAtByFpid = new Map<number, number>();
+    const candidatesByKey = new Map<string, DropCandidate>();
     for (const round of rounds) {
       const transactions = await fetchSleeperTransactionsForRound(
         season.sleeperLeagueId,
@@ -157,57 +256,100 @@ export const syncSleeperWaiverPlayers = internalAction({
           // correctly rejects here (waivers on defenses aren't modeled).
           const fpid = Number(playerId);
           if (!Number.isFinite(fpid)) continue;
-          const existing = droppedAtByFpid.get(fpid);
-          if (existing === undefined || txn.created > existing) {
-            droppedAtByFpid.set(fpid, txn.created);
-          }
+          candidatesByKey.set(`${txn.transaction_id}:${fpid}`, {
+            fpid,
+            transactionId: txn.transaction_id,
+          });
         }
       }
     }
+    if (candidatesByKey.size === 0) return { processed: 0 };
 
-    if (droppedAtByFpid.size === 0) {
-      await ctx.runMutation(
-        internal.infinileague.auction.waiverPlayersData.replaceWaiverPlayersForSeason,
-        { seasonId: args.seasonId, rows: [] },
+    const unprocessed = await ctx.runQuery(
+      internal.sleeper.transactions.getUnprocessedDrops,
+      { seasonId: args.seasonId, candidates: [...candidatesByKey.values()] },
+    );
+
+    let processed = 0;
+    for (const drop of unprocessed) {
+      const context = await ctx.runQuery(
+        internal.sleeper.transactions.getDropDetectionContext,
+        { seasonId: args.seasonId, fpid: drop.fpid },
       );
-      return { upserted: 0 };
+      if (!context) continue;
+
+      if (context.isRostered) {
+        await ctx.runMutation(internal.sleeper.transactions.recordProcessedDrop, {
+          seasonId: args.seasonId,
+          sleeperTransactionId: drop.transactionId,
+          fpid: drop.fpid,
+          outcome: "skippedRerostered",
+        });
+        processed++;
+        continue;
+      }
+      if (context.isLocked) {
+        await ctx.runMutation(internal.sleeper.transactions.recordProcessedDrop, {
+          seasonId: args.seasonId,
+          sleeperTransactionId: drop.transactionId,
+          fpid: drop.fpid,
+          outcome: "skippedAlreadyCovered",
+        });
+        processed++;
+        continue;
+      }
+
+      const durationMs = dropCycleDurationHours * 60 * 60 * 1000;
+      const wouldCloseAt = Date.now() + durationMs;
+      if (context.kickoffAt !== undefined && context.kickoffAt <= wouldCloseAt) {
+        // The always-open weekly cycle will pick this player up on its own
+        // once kickoff passes (eligibility.ts's rule 1) - a dedicated cycle
+        // would just be a redundant parallel window.
+        await ctx.runMutation(internal.sleeper.transactions.recordProcessedDrop, {
+          seasonId: args.seasonId,
+          sleeperTransactionId: drop.transactionId,
+          fpid: drop.fpid,
+          outcome: "foldedIntoWeekly",
+        });
+        processed++;
+        continue;
+      }
+
+      await ctx.runMutation(internal.sleeper.transactions.openPlayerDropCycle, {
+        seasonId: args.seasonId,
+        fpid: drop.fpid,
+        durationMs,
+        sleeperTransactionId: drop.transactionId,
+      });
+      processed++;
     }
 
-    const fpids = [...droppedAtByFpid.keys()];
-    const players = await ctx.runQuery(api.players.getPlayersByFpids, { fpids });
-    const teamByFpid = new Map(players.map((p) => [p.fpid, p.team]));
+    return { processed };
+  },
+});
 
-    const games =
-      week === "0"
-        ? []
-        : await ctx.runQuery(api.tank01.scheduleData.listGamesForWeek, {
-            season: season.year,
-            week,
-          });
-    const gameEndByTeam = new Map<string, number>();
-    for (const game of games) {
-      gameEndByTeam.set(normalizeTank01Team(game.homeTeam), game.estimatedEndAt);
-      gameEndByTeam.set(normalizeTank01Team(game.awayTeam), game.estimatedEndAt);
-    }
-
-    const now = Date.now();
-    const rows: Array<{ fpid: number; clearsAt: number }> = [];
-    for (const [fpid, droppedAt] of droppedAtByFpid) {
-      const clearsAt = computeClearsAt(
-        droppedAt,
-        season,
-        teamByFpid.get(fpid) ?? null,
-        gameEndByTeam,
-      );
-      if (clearsAt > now) {
-        rows.push({ fpid, clearsAt });
+// Cron-driven (see convex/crons.ts) - kept as its own separate cron entry
+// rather than folded into waiverSync.ts's refreshAllSeasons, which is
+// Yahoo-only by design (see that file's own comment); blurring that
+// boundary would make both files harder to reason about. Best-effort per
+// season: one league's hiccup (Sleeper rate limit, Tank01 API issue) can't
+// block every other league's drop detection in the same cron tick.
+export const detectSleeperDropsAllSeasons = internalAction({
+  args: {},
+  handler: async (ctx): Promise<void> => {
+    const seasons = await ctx.runQuery(
+      internal.infinileague.auction.waiverSync.listEnabledAuctionSeasons,
+      {},
+    );
+    for (const season of seasons) {
+      if (!season.sleeperLeagueId) continue;
+      try {
+        await ctx.runAction(internal.sleeper.transactions.detectSleeperDrops, {
+          seasonId: season._id,
+        });
+      } catch (err) {
+        console.error(`Sleeper drop detection failed for season ${season._id}:`, err);
       }
     }
-
-    await ctx.runMutation(
-      internal.infinileague.auction.waiverPlayersData.replaceWaiverPlayersForSeason,
-      { seasonId: args.seasonId, rows },
-    );
-    return { upserted: rows.length };
   },
 });

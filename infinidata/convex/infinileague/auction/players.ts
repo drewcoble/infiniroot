@@ -2,8 +2,8 @@ import { v } from "convex/values";
 import { query, QueryCtx } from "../../_generated/server";
 import { POSITIONS } from "../../positions";
 import type { Id } from "../../_generated/dataModel";
-import { requireSeasonParticipant } from "../../lib/access";
-import { getEligibleFpidSet } from "./eligibility";
+import { requireSeasonOwner, requireSeasonParticipant } from "../../lib/access";
+import { getEligibleFpidSet, type CycleType } from "./eligibility";
 
 export type Position = (typeof POSITIONS)[number];
 
@@ -94,6 +94,14 @@ export async function getPlayerDisplayInfoByFpid(
 export interface WaiverPlayerRow extends PlayerDisplayInfo {
   fpid: number;
   rosteredByTeamName: null;
+  cycleType: CycleType;
+  // Absent when cycleType is "weekly" but no weekly cycle happens to be
+  // open right now (auction disabled, or the brief gap before
+  // ensureAuctionCycles' next tick reopens one) - the row still shows, just
+  // not bid-able yet (see eligibility.ts's EligibleCycleRef comment).
+  // Always present for "playerDrop"/"manual" rows.
+  cycleId?: Id<"faAuctionCycles">;
+  closesAt?: number;
 }
 
 // infinifaab's Players tab - every currently-unowned, waiver-eligible
@@ -106,13 +114,23 @@ export const getWaiverEligiblePlayers = query({
   handler: async (ctx, args): Promise<WaiverPlayerRow[]> => {
     const { season } = await requireSeasonParticipant(ctx, args.seasonId);
     const eligibleFpids = await getEligibleFpidSet(ctx, season);
-    const displayByFpid = await getPlayerDisplayInfoByFpid(ctx, args.seasonId, eligibleFpids);
+    const displayByFpid = await getPlayerDisplayInfoByFpid(
+      ctx,
+      args.seasonId,
+      new Set(eligibleFpids.keys()),
+    );
 
-    const rows: WaiverPlayerRow[] = [...displayByFpid.entries()].map(([fpid, info]) => ({
-      fpid,
-      ...info,
-      rosteredByTeamName: null,
-    }));
+    const rows: WaiverPlayerRow[] = [...displayByFpid.entries()].map(([fpid, info]) => {
+      const cycleRef = eligibleFpids.get(fpid)!;
+      return {
+        fpid,
+        ...info,
+        rosteredByTeamName: null,
+        cycleType: cycleRef.cycleType,
+        ...(cycleRef.cycleId !== undefined ? { cycleId: cycleRef.cycleId } : {}),
+        ...(cycleRef.closesAt !== undefined ? { closesAt: cycleRef.closesAt } : {}),
+      };
+    });
 
     // Real rank when the cache has data (0 = "no rank" sentinel sorts
     // last); alphabetical fallback so the list still reads as a real,
@@ -121,6 +139,51 @@ export const getWaiverEligiblePlayers = query({
     rows.sort((a, b) =>
       hasRankData ? (a.rosRank || Infinity) - (b.rosRank || Infinity) : a.name.localeCompare(b.name),
     );
+    return rows;
+  },
+});
+
+export interface ManualCycleCandidateRow extends PlayerDisplayInfo {
+  fpid: number;
+}
+
+// Commissioner-only (mechanism 3's player picker, cycles.ts's
+// startManualAuctionCycle): every unrostered, not-already-locked Sleeper
+// player - deliberately WIDER than getWaiverEligiblePlayers above, which
+// hides anyone whose current-week game hasn't kicked off yet (rule 1's
+// "hide until eligible" rule only governs the regular weekly board, not
+// what a commissioner may hand-pick into a dedicated cycle).
+export const listManualCycleCandidates = query({
+  args: { seasonId: v.id("seasons") },
+  handler: async (ctx, args): Promise<ManualCycleCandidateRow[]> => {
+    const { season } = await requireSeasonOwner(ctx, args.seasonId);
+    if (season.sleeperLeagueId === undefined) return [];
+
+    const [allPlayers, rosteredRows, lockRows] = await Promise.all([
+      ctx.db.query("players").collect(),
+      ctx.db
+        .query("rosterPlayers")
+        .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+        .collect(),
+      ctx.db
+        .query("faAuctionFpidCycles")
+        .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+        .collect(),
+    ]);
+    const unavailable = new Set([
+      ...rosteredRows.map((r) => r.fpid),
+      ...lockRows.map((r) => r.fpid),
+    ]);
+    const candidateFpids = new Set(
+      allPlayers.map((p) => p.fpid).filter((fpid) => !unavailable.has(fpid)),
+    );
+
+    const displayByFpid = await getPlayerDisplayInfoByFpid(ctx, args.seasonId, candidateFpids);
+    const rows: ManualCycleCandidateRow[] = [...displayByFpid.entries()].map(([fpid, info]) => ({
+      fpid,
+      ...info,
+    }));
+    rows.sort((a, b) => a.name.localeCompare(b.name));
     return rows;
   },
 });

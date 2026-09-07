@@ -2,7 +2,20 @@ import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Button, Center, Group, Loader, NumberInput, Stack, Text, TextInput } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Card,
+  Center,
+  Group,
+  Loader,
+  MultiSelect,
+  NumberInput,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { Search } from "lucide-react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { api } from "@infinidata/api";
@@ -15,6 +28,8 @@ import type {
   AuctionCycle,
   AuctionSettings,
   BidBoardRow,
+  CycleType,
+  ManualCycleCandidateRow,
   MyBidRow,
   MyParticipation,
   WaiverPlayerRow,
@@ -36,6 +51,20 @@ export const Route = createFileRoute("/league/$leagueId/players")({
 // hardcoded estimate.
 const ESTIMATED_ROW_HEIGHT = 110;
 
+// Several cycles (the weekly one plus any number of drop-triggered/
+// commissioner ones) can be open at once now - this labels a card's own
+// cycle when it isn't the regular weekly one, so its independent close time
+// doesn't read as a typo against the weekly banner above it.
+const CYCLE_TYPE_LABEL: Record<CycleType, string | null> = {
+  weekly: null,
+  playerDrop: "Drop window",
+  manual: "Commissioner cycle",
+};
+
+function boardKey(cycleId: string, fpid: number): string {
+  return `${cycleId}:${fpid}`;
+}
+
 function PlayersTab() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
@@ -46,7 +75,7 @@ function PlayersTab() {
     isAuthenticated ? { seasonId } : "skip",
   );
   const board:
-    | { cycle: AuctionCycle | null; rows: AuctionBoardRow[] }
+    | { openCycles: AuctionCycle[]; rows: AuctionBoardRow[] }
     | undefined = useQuery(
     api.infinileague.auction.bids.getAuctionBoardState,
     isAuthenticated ? { seasonId } : "skip",
@@ -57,7 +86,7 @@ function PlayersTab() {
   );
   // Reused for its winning/outbid categorization (see getBidsBoard's own
   // comment) - compares by teamId under the hood, unlike this file's own
-  // boardByFpid/myBidsByFpid maps, which only carry team names and can't
+  // boardByKey/myBidsByKey maps, which only carry team names and can't
   // safely tell "leading team" and "my team" apart by string match alone.
   const bidsBoard: BidBoardRow[] | undefined = useQuery(
     api.infinileague.auction.bids.getBidsBoard,
@@ -76,15 +105,25 @@ function PlayersTab() {
     isAuthenticated ? {} : "skip",
   );
   const rookieFpidSet = new Set(rookieFpids ?? []);
+  const isCommissioner = participation?.isCommissioner ?? false;
+  const manualCandidates: ManualCycleCandidateRow[] | undefined = useQuery(
+    api.infinileague.auction.players.listManualCycleCandidates,
+    isAuthenticated && isCommissioner ? { seasonId } : "skip",
+  );
 
   const openCycleNow = useMutation(api.infinileague.auction.cycles.openAuctionCycleNow);
   const closeCycleNow = useMutation(api.infinileague.auction.cycles.closeAuctionCycleNow);
+  const startManualCycle = useMutation(api.infinileague.auction.cycles.startManualAuctionCycle);
 
   const [bidTarget, setBidTarget] = useState<BidModalTarget | null>(null);
   const [testDuration, setTestDuration] = useState<number | "">(60);
   const [cycleActionError, setCycleActionError] = useState<string | null>(null);
   const [cycleActionLoading, setCycleActionLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [manualFpids, setManualFpids] = useState<string[]>([]);
+  const [manualDuration, setManualDuration] = useState<number | "">(60);
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [manualLoading, setManualLoading] = useState(false);
 
   // Same simple client-side substring match infinidraft's own PlayersLeftTab
   // uses for its search box - one query narrows the whole (potentially
@@ -120,25 +159,30 @@ function PlayersTab() {
     );
   }
 
-  const categoryByFpid = new Map(bidsBoard.map((r) => [r.fpid, r.category]));
-  const boardByFpid = new Map(board.rows.map((r) => [r.fpid, r]));
-  const myBidsByFpid = new Map<number, MyBidRow[]>();
+  const weeklyCycle = board.openCycles.find((c) => (c.type ?? "weekly") === "weekly") ?? null;
+
+  const categoryByKey = new Map(bidsBoard.map((r) => [boardKey(r.cycleId, r.fpid), r.category]));
+  const boardByKey = new Map(board.rows.map((r) => [boardKey(r.cycleId, r.fpid), r]));
+  const myBidsByKey = new Map<string, MyBidRow[]>();
   for (const bid of myBids) {
-    const list = myBidsByFpid.get(bid.fpid) ?? [];
+    const key = boardKey(bid.cycleId, bid.fpid);
+    const list = myBidsByKey.get(key) ?? [];
     list.push(bid);
-    myBidsByFpid.set(bid.fpid, list);
+    myBidsByKey.set(key, list);
   }
 
-  const openBidModal = (fpid: number, name: string) => {
-    const existingMax = myBidsByFpid.get(fpid)?.[0]?.maxBid;
-    const boardRow = boardByFpid.get(fpid);
+  const openBidModal = (row: WaiverPlayerRow) => {
+    if (!row.cycleId) return;
+    const key = boardKey(row.cycleId, row.fpid);
+    const existingMax = myBidsByKey.get(key)?.[0]?.maxBid;
+    const boardRow = boardByKey.get(key);
     const initialAmount =
       existingMax !== undefined
         ? existingMax + settings.minIncrement
         : boardRow
           ? boardRow.currentPrice
           : settings.startingBid;
-    setBidTarget({ fpid, name, initialAmount });
+    setBidTarget({ fpid: row.fpid, name: row.name, initialAmount });
   };
 
   const handleOpenNow = async () => {
@@ -166,15 +210,33 @@ function PlayersTab() {
     }
   };
 
+  const handleStartManualCycle = async () => {
+    if (manualFpids.length === 0 || manualDuration === "") return;
+    setManualLoading(true);
+    setManualError(null);
+    try {
+      await startManualCycle({
+        seasonId,
+        fpids: manualFpids.map((v) => Number(v)),
+        durationMinutes: manualDuration,
+      });
+      setManualFpids([]);
+    } catch (err) {
+      setManualError(getErrorMessage(err, "Failed to start the bid cycle."));
+    } finally {
+      setManualLoading(false);
+    }
+  };
+
   return (
     <Stack gap="md">
-      {!board.cycle && (
+      {!weeklyCycle && (
         <Stack gap="xs">
           <Alert color="yellow" variant="light">
-            No auction window is open right now
+            No weekly auction window is open right now
             {!settings.enabled ? " and the weekly schedule is off." : " - check back soon."}
           </Alert>
-          {participation.isCommissioner && (
+          {isCommissioner && (
             <Group>
               <NumberInput
                 label="Duration (minutes)"
@@ -195,12 +257,12 @@ function PlayersTab() {
           )}
         </Stack>
       )}
-      {board.cycle && (
+      {weeklyCycle && (
         <Group justify="space-between">
           <Text size="sm" c="dimmed">
-            Closes in {formatCountdown(board.cycle.closesAt)}
+            Closes in {formatCountdown(weeklyCycle.closesAt)}
           </Text>
-          {participation.isCommissioner && (
+          {isCommissioner && (
             <Button
               size="xs"
               color="red"
@@ -217,6 +279,52 @@ function PlayersTab() {
         <Alert color="red" variant="light">
           {cycleActionError}
         </Alert>
+      )}
+
+      {isCommissioner && (
+        <Card withBorder padding="md" radius="md">
+          <Stack gap="sm">
+            <Title order={5}>Start a bid cycle for specific players</Title>
+            <Text size="sm" c="dimmed">
+              Hand-pick one or more free agents (not currently on a roster or
+              in another open bid cycle) and run a dedicated auction for them,
+              independent of the weekly schedule.
+            </Text>
+            <MultiSelect
+              placeholder="Search players..."
+              searchable
+              clearable
+              data={(manualCandidates ?? []).map((c) => ({
+                value: String(c.fpid),
+                label: c.team ? `${c.name} (${c.position} - ${c.team})` : `${c.name} (${c.position})`,
+              }))}
+              value={manualFpids}
+              onChange={setManualFpids}
+              disabled={manualCandidates === undefined}
+            />
+            <Group align="flex-end">
+              <NumberInput
+                label="Duration (minutes)"
+                min={1}
+                value={manualDuration}
+                onChange={(value) => setManualDuration(typeof value === "number" ? value : "")}
+                w={160}
+              />
+              <Button
+                onClick={() => void handleStartManualCycle()}
+                loading={manualLoading}
+                disabled={manualFpids.length === 0 || manualDuration === ""}
+              >
+                Start bid cycle
+              </Button>
+            </Group>
+            {manualError && (
+              <Alert color="red" variant="light">
+                {manualError}
+              </Alert>
+            )}
+          </Stack>
+        </Card>
       )}
 
       {players.length > 0 && (
@@ -241,15 +349,17 @@ function PlayersTab() {
           {virtualizer.getVirtualItems().map((item) => {
             const row = filteredPlayers[item.index];
             if (!row) return null;
-            const boardRow = boardByFpid.get(row.fpid);
-            const myMax = myBidsByFpid.get(row.fpid)?.[0]?.maxBid;
-            const category = categoryByFpid.get(row.fpid);
+            const key = row.cycleId ? boardKey(row.cycleId, row.fpid) : null;
+            const boardRow = key ? boardByKey.get(key) : undefined;
+            const myMax = key ? myBidsByKey.get(key)?.[0]?.maxBid : undefined;
+            const category = key ? categoryByKey.get(key) : undefined;
             // Colors the price/leader text green when winning, red when
             // outbid - not the whole card (tried that, too visually loud;
             // see recent commit history) - undefined falls back to each
             // Text's own default/dimmed color below.
             const statusColor =
               category === "winning" ? "green" : category === "outbid" ? "red" : undefined;
+            const cycleLabel = CYCLE_TYPE_LABEL[row.cycleType];
             return (
               <div
                 key={row.fpid}
@@ -282,12 +392,21 @@ function PlayersTab() {
                             </Text>
                           </>
                         )}
+                        {(cycleLabel || row.closesAt !== undefined) && (
+                          <Text size="xs" c="dimmed" truncate>
+                            {cycleLabel ? `${cycleLabel}` : ""}
+                            {cycleLabel && row.closesAt !== undefined ? " - " : ""}
+                            {row.closesAt !== undefined
+                              ? `closes in ${formatCountdown(row.closesAt)}`
+                              : ""}
+                          </Text>
+                        )}
                       </Stack>
                       <Button
                         size="xs"
                         variant="light"
-                        disabled={!board.cycle || participation.teams.length === 0}
-                        onClick={() => openBidModal(row.fpid, row.name)}
+                        disabled={!row.cycleId || participation.teams.length === 0}
+                        onClick={() => openBidModal(row)}
                       >
                         Bid
                       </Button>

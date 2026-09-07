@@ -34,15 +34,22 @@ crons.cron(
   {},
 )
 
-// Tank01's weekly game schedule - NOT currently scheduled. This only ever
-// fed convex/sleeper/transactions.ts's drop-derived waiver-clear
-// computation, which real-world testing showed was wrong for Sleeper
-// eligibility (see convex/infinileague/auction/eligibility.ts) and is no
-// longer wired into anything read at runtime. Parked rather than deleted -
-// re-enable with the same cadence as the depth-charts cron above
-// (internal.tank01.schedule.fetchScheduleInternal) if a future need
-// (e.g. a priority-waiver league where the game-time distinction matters
-// more) brings that computation back.
+// Tank01's weekly game schedule - re-enabled (was parked): infinifaab's
+// Sleeper bid-eligibility now directly gates on kickoff time (see
+// convex/infinileague/auction/eligibility.ts's rule 1 and convex/sleeper/
+// transactions.ts's drop-cycle exception check), making fresh nflGames data
+// a hard dependency rather than the abandoned drop-derived waiver-clear
+// computation this used to only feed. Every 6h (not once/day like the
+// depth-charts cron above) since staleness here now has real bidding
+// consequences, not just a cosmetic "clears a bit late" - still well within
+// Tank01's 1,000/month free-tier cap (see TANK01.md) alongside that daily
+// depth-chart call.
+crons.cron(
+  'fetch tank01 nfl schedule',
+  '0 */6 * * *',
+  internal.tank01.schedule.fetchScheduleInternal,
+  {},
+)
 
 // infinifaab's waiver-eligibility refresh - much more frequent than every
 // other cron here on purpose: a stale read risks declaring an auction
@@ -57,10 +64,24 @@ crons.interval(
   {},
 )
 
-// Self-healing backstop for weekly auction cycles - the precise close for
-// each cycle is its own ctx.scheduler.runAt call (see convex/infinileague/
-// auction/cycles.ts), this just makes sure a new cycle exists whenever one
-// should. Same 15-min-ish cadence as the waiver refresh above.
+// Sleeper's own equivalent of the refresh above - detects drop transactions
+// and opens a dedicated bid cycle for the dropped player (see convex/
+// sleeper/transactions.ts's detectSleeperDrops for the full mechanism, and
+// its own comment for why this is a separate cron entry rather than folded
+// into refreshAllSeasons above, which is Yahoo-only by design). Same 20-min
+// cadence, a no-op for every Yahoo-linked or disabled league.
+crons.interval(
+  'detect sleeper player drops',
+  { minutes: 20 },
+  internal.sleeper.transactions.detectSleeperDropsAllSeasons,
+  {},
+)
+
+// Self-healing backstop for auction cycles - the precise close for each
+// cycle is its own ctx.scheduler.runAt call (see convex/infinileague/
+// auction/cycles.ts), this just makes sure a weekly cycle exists whenever
+// one should (and self-heals any cycle type whose close job was somehow
+// lost). Same 15-min-ish cadence as the waiver refresh above.
 crons.interval(
   'ensure auction cycles',
   { minutes: 15 },

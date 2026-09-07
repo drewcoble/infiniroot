@@ -6,7 +6,8 @@ import { Button, Center, Group, Loader, Stack, Text, Title } from "@mantine/core
 import { api } from "@infinidata/api";
 import { PlayerCard } from "@shared/PlayerCard";
 import { BidModal, type BidModalTarget } from "../../../components/BidModal";
-import type { AuctionSettings, BidBoardRow, MyParticipation } from "../../../types/season";
+import { formatCountdown } from "../../../lib/countdown";
+import type { AuctionSettings, BidBoardRow, CycleType, MyParticipation } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/myBids")({
   component: BidsTab,
@@ -17,6 +18,16 @@ const SECTIONS: Array<{ category: BidBoardRow["category"]; title: string }> = [
   { category: "outbid", title: "Outbid" },
   { category: "other", title: "Other Bids" },
 ];
+
+// Several cycles (the weekly one plus any number of drop-triggered/
+// commissioner ones) can be open at once now, each closing independently -
+// this labels which kind a row belongs to so "closes in X" is legible
+// without implying every row shares the same weekly close time.
+const CYCLE_TYPE_LABEL: Record<CycleType, string | null> = {
+  weekly: null,
+  playerDrop: "Drop window",
+  manual: "Commissioner cycle",
+};
 
 // Every active bid this cycle, across every team in the league - not just
 // the signed-in user's own (see api.infinileague.auction.bids.getBidsBoard,
@@ -93,6 +104,12 @@ function BidsTab() {
                           <Text size="xs" c={statusColor ?? "dimmed"} truncate>
                             ({row.bidCount} bid{row.bidCount === 1 ? "" : "s"})
                             {row.myMaxBid !== null ? ` - your max: $${row.myMaxBid}` : ""}
+                          </Text>
+                          <Text size="xs" c="dimmed" truncate>
+                            {CYCLE_TYPE_LABEL[row.cycleType]
+                              ? `${CYCLE_TYPE_LABEL[row.cycleType]} - `
+                              : ""}
+                            Closes in {formatCountdown(row.closesAt)}
                           </Text>
                         </Stack>
                         <Button

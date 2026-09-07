@@ -27,7 +27,13 @@ export interface AuctionDashboardRow {
   activeWinningBids: number;
 }
 
+// Mirrors convex/infinileague/auction/eligibility.ts's CycleType.
+export type CycleType = "weekly" | "playerDrop" | "manual";
+
 // Mirrors convex/infinileague/auction/players.ts's WaiverPlayerRow.
+// cycleId/closesAt are absent for a "weekly" row when no weekly cycle
+// happens to be open right now - the player still shows, just isn't
+// bid-able yet (see eligibility.ts's EligibleCycleRef comment).
 export interface WaiverPlayerRow {
   fpid: number;
   name: string;
@@ -39,12 +45,18 @@ export interface WaiverPlayerRow {
   actualPpg: number;
   rosteredByTeamName: null;
   injury?: { status: string; statusShort: string };
+  cycleType: CycleType;
+  cycleId?: string;
+  closesAt?: number;
 }
 
 // Mirrors convex/infinileague/auction/bids.ts's AuctionBoardRow, plus the
-// cycle wrapper getAuctionBoardState returns.
+// openCycles list getAuctionBoardState returns alongside it.
 export interface AuctionBoardRow {
   fpid: number;
+  cycleId: string;
+  cycleType: CycleType;
+  closesAt: number;
   currentPrice: number;
   leadingTeamName: string | null;
   bidCount: number;
@@ -52,6 +64,7 @@ export interface AuctionBoardRow {
 
 export interface AuctionCycle {
   _id: string;
+  type?: CycleType;
   opensAt: number;
   closesAt: number;
   status: "open" | "closed";
@@ -62,6 +75,9 @@ export interface AuctionCycle {
 // directly (the Bids tab renders the same PlayerCard the Players tab does).
 export interface BidBoardRow {
   fpid: number;
+  cycleId: string;
+  cycleType: CycleType;
+  closesAt: number;
   name: string;
   position: "QB" | "RB" | "WR" | "TE" | "DST" | "K";
   team: string | null;
@@ -82,6 +98,9 @@ export interface BidBoardRow {
 // Mirrors convex/infinileague/auction/bids.ts's MyBidRow.
 export interface MyBidRow {
   fpid: number;
+  cycleId: string;
+  cycleType: CycleType;
+  closesAt: number;
   teamId: string;
   teamName: string;
   maxBid: number;
@@ -108,6 +127,22 @@ export interface AuctionSettings {
   startingBid: number;
   antiSnipeMinutes: number;
   tieBreakMode: "earliest" | "waiverOrder";
+  dropCycleDurationHours: number;
+}
+
+// Mirrors convex/infinileague/auction/players.ts's ManualCycleCandidateRow -
+// the commissioner-only picker for mechanism 3 (startManualAuctionCycle),
+// deliberately wider than WaiverPlayerRow (no kickoff gate).
+export interface ManualCycleCandidateRow {
+  fpid: number;
+  name: string;
+  team: string | null;
+  position: "QB" | "RB" | "WR" | "TE" | "DST" | "K";
+  rosRank: number;
+  positionRank: number;
+  rosPpg: number;
+  actualPpg: number;
+  injury?: { status: string; statusShort: string };
 }
 
 // Mirrors convex/infinileague/auction/invites.ts's TeamInviteRow.

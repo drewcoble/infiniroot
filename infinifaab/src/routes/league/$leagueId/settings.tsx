@@ -104,6 +104,7 @@ function SettingsTab() {
         startingBid: form.startingBid,
         antiSnipeMinutes: form.antiSnipeMinutes,
         tieBreakMode: form.tieBreakMode,
+        dropCycleDurationHours: form.dropCycleDurationHours,
       });
       setSaved(true);
     } catch (err) {
@@ -252,6 +253,27 @@ function SettingsTab() {
               setForm({ ...form, tieBreakMode: value })
             }
           />
+          <Stack gap={4}>
+            <Text size="sm" fw={500}>
+              Drop-triggered bid window (hours)
+            </Text>
+            <Text size="xs" c="dimmed">
+              When a player is dropped on Sleeper, this is how long their own
+              dedicated bid cycle stays open (unless their next game starts
+              sooner, in which case they join the regular weekly cycle
+              instead).
+            </Text>
+            <EditableNumberStepper
+              value={form.dropCycleDurationHours}
+              onChange={(value) =>
+                value !== undefined && setForm({ ...form, dropCycleDurationHours: value })
+              }
+              min={1}
+              width={90}
+              label="drop-triggered bid window"
+              disabled={!isCommissioner}
+            />
+          </Stack>
           {!isCommissioner && (
             <Text size="sm" c="dimmed">
               Only the commissioner can change these settings.
