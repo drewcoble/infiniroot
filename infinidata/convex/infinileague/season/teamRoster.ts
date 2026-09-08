@@ -9,6 +9,8 @@ import {
 } from "../../sleeper/league";
 import { SLOT_CODE_MAP, mapRosterPositions } from "../../sleeper/leagueSettingsMapping";
 import type { POSITIONS } from "../../positions";
+import { withYahooToken } from "../../infinidraft/yahoo/oauth";
+import { fetchYahooApi, findNodesByKey, mergeYahooFields } from "../../infinidraft/yahoo/client";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -42,6 +44,30 @@ export type SlotLabel =
   | "BENCH"
   | "IR"
   | "TAXI";
+
+// Yahoo's roster entries carry a `selected_position` field per player -
+// which slot THIS player occupies for this specific week (a starting
+// position, "BN" for bench, or "IR"/"IR+") - same code vocabulary
+// convex/infinidraft/yahoo/leagueSettingsMapping.ts's SLOT_CODE_MAP uses for
+// league-wide roster_positions counts, except IR/IR+ map to a real "IR" row
+// here rather than being dropped - matching how the Sleeper branch below
+// surfaces "who's actually on IR" as its own bucket rather than a counted
+// slot. NOT confirmed against a live response - see YAHOO.md.
+const YAHOO_SELECTED_POSITION_MAP: Record<string, SlotLabel> = {
+  QB: "QB",
+  RB: "RB",
+  WR: "WR",
+  TE: "TE",
+  DEF: "DST",
+  K: "K",
+  "W/R/T": "FLEX",
+  "W/T": "FLEX",
+  "R/W": "FLEX",
+  "Q/W/R/T": "SUPERFLEX",
+  BN: "BENCH",
+  IR: "IR",
+  "IR+": "IR",
+};
 
 const SLOT_ORDER_RANK: Record<SlotLabel, number> = {
   QB: 0,
@@ -101,12 +127,13 @@ function buildStartingSlotSequence(rosterPositions: string[]): SlotLabel[] {
 export const getTeamRosterForWeek = action({
   args: { teamId: v.id("seasonTeams"), week: v.string() },
   handler: async (ctx: ActionCtx, args): Promise<TeamRosterRow[]> => {
-    const { team, season } = await ctx.runQuery(
+    const { team, season, league } = await ctx.runQuery(
       internal.infinileague.season.rosterPlayers.requireOwnedTeamForRead,
       { teamId: args.teamId },
     );
 
     const isSleeperLinked = Boolean(team.sleeperRosterId && season.sleeperLeagueId);
+    const isYahooLinked = Boolean(team.yahooTeamKey && season.yahooLeagueKey);
 
     // One entry per physical roster slot the league is configured for -
     // starters 1:1 via startingSlotSequence, then however many bench/IR/taxi
@@ -114,9 +141,14 @@ export const getTeamRosterForWeek = action({
     // playerId) - so the team page always shows every slot Sleeper's own
     // roster view would, not just however many players happen to be
     // rostered right now. Only ever populated on the Sleeper-linked path;
-    // the fallback path below has no slot structure to build this from.
+    // the Yahoo/fallback paths below have no such fixed-slot-count source,
+    // so they only ever show slots for players actually rostered.
     let assignments: { slot: SlotLabel; playerId: string | null }[] = [];
     let fpids: number[] = [];
+    // Yahoo counterpart to `assignments` above - keyed by fpid instead of
+    // Sleeper's native player id, and only ever has entries for players
+    // actually rostered (no empty-slot placeholders, see above).
+    let yahooSlotByFpid: Map<number, SlotLabel> | undefined;
     const actualPointsBySleeperId = new Map<string, number>();
 
     if (isSleeperLinked && team.sleeperRosterId && season.sleeperLeagueId) {
@@ -191,13 +223,85 @@ export const getTeamRosterForWeek = action({
           actualPointsBySleeperId.set(playerId, rawPoints[playerId]);
         }
       }
+    } else if (isYahooLinked && team.yahooTeamKey) {
+      // Yahoo's roster resource supports a per-week sub-resource selector
+      // (`;week=`, same `;status=W` pattern convex/infinidraft/yahoo/waivers.ts
+      // uses) - each player node carries a `selected_position` field for
+      // that week (starting slot, "BN", or "IR"/"IR+" - see
+      // YAHOO_SELECTED_POSITION_MAP above). NOT confirmed against a live
+      // response - see YAHOO.md. No fixed-slot-count source exists here
+      // (unlike Sleeper's roster_positions), so this only ever produces
+      // rows for players actually rostered this week.
+      const rosterJson = await withYahooToken(ctx, league.ownerId, (accessToken) =>
+        fetchYahooApi<unknown>(
+          accessToken,
+          `/team/${team.yahooTeamKey}/roster;week=${args.week}`,
+        ),
+      );
+      const rosterEntries = findNodesByKey(rosterJson, "player")
+        .map((node) => {
+          const fields = mergeYahooFields(node);
+          const playerKey = typeof fields.player_key === "string" ? fields.player_key : undefined;
+          const nameField = fields.name as { full?: string } | undefined;
+          const fullName = nameField?.full;
+          const position = fields.display_position;
+          const teamAbbr =
+            typeof fields.editorial_team_abbr === "string"
+              ? fields.editorial_team_abbr
+              : undefined;
+          const selectedPositionFields = mergeYahooFields(fields.selected_position);
+          const positionCode =
+            typeof selectedPositionFields.position === "string"
+              ? selectedPositionFields.position
+              : undefined;
+          if (!playerKey || typeof fullName !== "string" || typeof position !== "string") {
+            return null;
+          }
+          return {
+            playerKey,
+            name: fullName,
+            position,
+            teamAbbr,
+            slot: positionCode ? YAHOO_SELECTED_POSITION_MAP[positionCode] : undefined,
+          };
+        })
+        .filter((e): e is NonNullable<typeof e> => e !== null);
+      if (rosterEntries.length === 0 || rosterEntries.every((e) => e.slot === undefined)) {
+        // Diagnostic for an unconfirmed shape - remove once checked against
+        // a real response and this stops happening.
+        console.error(
+          "getTeamRosterForWeek (Yahoo): no players or no slots resolved, raw response:",
+          JSON.stringify(rosterJson),
+        );
+      }
+
+      const resolved: Array<{ playerKey: string; fpid: number }> = await ctx.runQuery(
+        internal.infinidraft.yahoo.league.resolvePlayerKeysToFpids,
+        {
+          players: rosterEntries.map(({ playerKey, name, position, teamAbbr }) => ({
+            playerKey,
+            name,
+            position,
+            teamAbbr,
+          })),
+        },
+      );
+      const fpidByPlayerKey = new Map(resolved.map((r) => [r.playerKey, r.fpid]));
+
+      yahooSlotByFpid = new Map();
+      for (const entry of rosterEntries) {
+        const fpid = fpidByPlayerKey.get(entry.playerKey);
+        if (fpid === undefined) continue;
+        fpids.push(fpid);
+        if (entry.slot !== undefined) yahooSlotByFpid.set(fpid, entry.slot);
+      }
     } else {
-      // Not Sleeper-linked - no per-week matchup source at all, fall back
-      // to whatever the last roster sync stored. Shouldn't normally happen
-      // for a season infinileague can see (those are always provider-
-      // linked - see convex/leagues.ts's listLinkedSeasons), but handled
-      // rather than left to throw. No slot structure here, so no empty-slot
-      // rows either - just whatever's actually rostered.
+      // Not Sleeper- or Yahoo-linked - no per-week matchup source at all,
+      // fall back to whatever the last roster sync stored. Shouldn't
+      // normally happen for a season infinileague can see (those are always
+      // provider-linked - see convex/leagues.ts's listLinkedSeasons), but
+      // handled rather than left to throw. No slot structure here, so no
+      // empty-slot rows either - just whatever's actually rostered.
       fpids = await ctx.runQuery(
         internal.infinileague.season.rosterPlayers.listRosterFpidsForTeam,
         { teamId: args.teamId },
@@ -264,7 +368,7 @@ export const getTeamRosterForWeek = action({
           return filled ?? { slot };
         })
       : fpids
-          .map((fpid) => buildFilledRow(fpid, undefined, undefined))
+          .map((fpid) => buildFilledRow(fpid, yahooSlotByFpid?.get(fpid), undefined))
           .filter((row): row is TeamRosterRow => row !== null);
 
     // Same canonical order as infinidraft's My Team tab - see SLOT_ORDER_RANK.

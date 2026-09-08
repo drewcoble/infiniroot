@@ -246,14 +246,20 @@ export const resolveFpidsByName = internalQuery({
 
 // Keeper-history counterpart to resolveFpidsByName - preserves which
 // player_key each resolved fpid came from, so fetchPreviousYahooSeasonPreview
-// below can re-attach a draft pick's price to the right fpid. Doesn't accept
-// teamAbbr (fetchYahooPlayersByKeys below never fetches it) - draft-history
-// DST picks are still dropped rather than resolved, unlike the live roster
-// sync path above.
+// below can re-attach a draft pick's price to the right fpid, and
+// convex/infinileague/season/teamRoster.ts's per-week Yahoo lineup can
+// re-attach a slot. teamAbbr is optional since fetchYahooPlayersByKeys
+// below never fetches it - draft-history DST picks are still dropped rather
+// than resolved, unlike the two live-roster callers of this query.
 export const resolvePlayerKeysToFpids = internalQuery({
   args: {
     players: v.array(
-      v.object({ playerKey: v.string(), name: v.string(), position: v.string() }),
+      v.object({
+        playerKey: v.string(),
+        name: v.string(),
+        position: v.string(),
+        teamAbbr: v.optional(v.string()),
+      }),
     ),
   },
   handler: async (
