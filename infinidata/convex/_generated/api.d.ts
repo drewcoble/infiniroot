@@ -57,6 +57,7 @@ import type * as infinidraft_yahoo_leagueSettingsMapping from "../infinidraft/ya
 import type * as infinidraft_yahoo_oauth from "../infinidraft/yahoo/oauth.js";
 import type * as infinidraft_yahoo_waivers from "../infinidraft/yahoo/waivers.js";
 import type * as infinileague_auction_bids from "../infinileague/auction/bids.js";
+import type * as infinileague_auction_cycleScope from "../infinileague/auction/cycleScope.js";
 import type * as infinileague_auction_cycles from "../infinileague/auction/cycles.js";
 import type * as infinileague_auction_eligibility from "../infinileague/auction/eligibility.js";
 import type * as infinileague_auction_invites from "../infinileague/auction/invites.js";
@@ -172,6 +173,7 @@ declare const fullApi: ApiFromModules<{
   "infinidraft/yahoo/oauth": typeof infinidraft_yahoo_oauth;
   "infinidraft/yahoo/waivers": typeof infinidraft_yahoo_waivers;
   "infinileague/auction/bids": typeof infinileague_auction_bids;
+  "infinileague/auction/cycleScope": typeof infinileague_auction_cycleScope;
   "infinileague/auction/cycles": typeof infinileague_auction_cycles;
   "infinileague/auction/eligibility": typeof infinileague_auction_eligibility;
   "infinileague/auction/invites": typeof infinileague_auction_invites;

@@ -61,7 +61,14 @@ async function fetchYahooTeamsForLeague(
     accessToken,
     `/league/${leagueKey}/teams`,
   );
-  return findNodesByKey(json, "team")
+  const teamNodes = findNodesByKey(json, "team");
+  if (teamNodes.length === 0) {
+    // Diagnostic for the "opponent names required (got 0)" failure mode -
+    // remove once the team-parsing shape in mergeYahooFields/findNodesByKey
+    // is confirmed against a real response and this stops happening.
+    console.error("fetchYahooTeamsForLeague: no team nodes found, raw response:", JSON.stringify(json));
+  }
+  return teamNodes
     .map((node) => {
       const fields = mergeYahooFields(node);
       const managerFields = findNodesByKey(node, "manager").map((m) =>
@@ -81,6 +88,58 @@ async function fetchYahooTeamsForLeague(
       };
     })
     .filter((team) => team.teamKey !== "");
+}
+
+export interface YahooTeamStandings {
+  wins: number;
+  losses: number;
+  ties: number;
+  pointsFor: number;
+  pointsAgainst: number;
+}
+
+// One request covers every team in the league (unlike the per-team FAAB
+// balance lookup in syncYahooLeagueRoster below, which has no known
+// collection-level equivalent) - endpoint `/league/{leagueKey}/standings`,
+// each team node's `team_standings.outcome_totals.wins/losses/ties` and
+// `team_standings.points_for/points_against` fields, from general knowledge
+// of Yahoo's Fantasy API and NOT confirmed against a live response (see
+// YAHOO.md). Best-effort per team: one missing/unreachable team_standings
+// subtree just leaves that team out of the returned map rather than failing
+// the whole sync - syncYahooLeagueRoster falls back to zeroed standings for
+// any team not found here.
+async function fetchYahooStandingsForLeague(
+  accessToken: string,
+  leagueKey: string,
+): Promise<Map<string, YahooTeamStandings>> {
+  const json = await fetchYahooApi<unknown>(
+    accessToken,
+    `/league/${leagueKey}/standings`,
+  );
+  const standingsByTeamKey = new Map<string, YahooTeamStandings>();
+  for (const node of findNodesByKey(json, "team")) {
+    const fields = mergeYahooFields(node);
+    const teamKey = typeof fields.team_key === "string" ? fields.team_key : undefined;
+    if (!teamKey) continue;
+    const standingsFields = mergeYahooFields(fields.team_standings);
+    const outcomeTotals = mergeYahooFields(standingsFields.outcome_totals);
+    standingsByTeamKey.set(teamKey, {
+      wins: Number(outcomeTotals.wins) || 0,
+      losses: Number(outcomeTotals.losses) || 0,
+      ties: Number(outcomeTotals.ties) || 0,
+      pointsFor: Number(standingsFields.points_for) || 0,
+      pointsAgainst: Number(standingsFields.points_against) || 0,
+    });
+  }
+  if (standingsByTeamKey.size === 0) {
+    // Diagnostic for a still-unconfirmed shape - remove once checked
+    // against a real response and this stops happening.
+    console.error(
+      "fetchYahooStandingsForLeague: no team standings found, raw response:",
+      JSON.stringify(json),
+    );
+  }
+  return standingsByTeamKey;
 }
 
 export const fetchYahooLeagueTeams = action({
@@ -212,6 +271,7 @@ export const syncYahooLeagueRoster = action({
     if (!season.yahooLeagueKey) {
       throw new Error("This league isn't linked to a Yahoo league yet.");
     }
+    const yahooLeagueKey = season.yahooLeagueKey;
 
     const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
       internal.seasonTeams.listSeasonTeamsInternal,
@@ -220,6 +280,10 @@ export const syncYahooLeagueRoster = action({
 
     let syncedTeams = 0;
     await withYahooToken(ctx, league.ownerId, async (accessToken) => {
+      const standingsByTeamKey = await fetchYahooStandingsForLeague(
+        accessToken,
+        yahooLeagueKey,
+      );
       for (const team of teams) {
         if (!team.yahooTeamKey) continue;
 
@@ -254,22 +318,21 @@ export const syncYahooLeagueRoster = action({
           // Leave faabSpent at 0.
         }
 
-        // Standings fields (wins/losses/ties/pointsFor/pointsAgainst) aren't
-        // fetched from Yahoo yet - infinileague's standings feature only
-        // supports Sleeper-linked leagues today (see convex/sleeper/
-        // league.ts's syncLeagueRoster for the real implementation). Zeroed
-        // here rather than left unset so a Yahoo-linked season's standings
-        // read as "no games yet" instead of undefined/missing.
+        // Falls back to zeroed standings (rather than leaving them unset)
+        // for any team fetchYahooStandingsForLeague didn't find a match
+        // for, so a Yahoo-linked season's standings read as "no games yet"
+        // instead of undefined/missing.
+        const standings = standingsByTeamKey.get(team.yahooTeamKey);
         await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
           seasonId: args.seasonId,
           teamId: team._id as Id<"seasonTeams">,
           fpids,
           faabSpent,
-          wins: 0,
-          losses: 0,
-          ties: 0,
-          pointsFor: 0,
-          pointsAgainst: 0,
+          wins: standings?.wins ?? 0,
+          losses: standings?.losses ?? 0,
+          ties: standings?.ties ?? 0,
+          pointsFor: standings?.pointsFor ?? 0,
+          pointsAgainst: standings?.pointsAgainst ?? 0,
         });
         syncedTeams += 1;
       }

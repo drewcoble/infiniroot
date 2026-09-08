@@ -16,6 +16,12 @@ export interface LinkedSeason {
   // api.sleeper.league.syncLeagueRoster) - determines which column the
   // standings table shows (see StandingsRow below).
   waiverType?: "faab" | "priority";
+  // Exactly one of these is set (see convex/leagues.ts's listLinkedSeasons,
+  // which only returns seasons linked to one provider or the other) - lets
+  // the dashboard pick which provider's sync action to call (see
+  // routes/league/$leagueId/index.tsx's runSync).
+  sleeperLeagueId?: string;
+  yahooLeagueKey?: string;
 }
 
 // Mirrors convex/season/standings.ts's StandingsRow - already sorted by the

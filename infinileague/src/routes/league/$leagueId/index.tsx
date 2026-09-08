@@ -70,7 +70,10 @@ function LeaguePage() {
     api.infinileague.season.standings.getStandings,
     isAuthenticated ? { seasonId } : "skip",
   );
-  const syncLeagueRoster = useAction(api.sleeper.league.syncLeagueRoster);
+  const syncSleeperRoster = useAction(api.sleeper.league.syncLeagueRoster);
+  const syncYahooRoster = useAction(
+    api.infinidraft.yahoo.league.syncYahooLeagueRoster,
+  );
 
   const getPowerRankings = useAction(
     api.infinileague.season.powerRankings.getPowerRankings,
@@ -157,10 +160,15 @@ function LeaguePage() {
     lastSyncedAt === undefined || Date.now() - lastSyncedAt > ROSTER_STALE_MS;
 
   const runSync = async () => {
+    if (!season) return; // not loaded yet - nothing to branch on
     setSyncing(true);
     setSyncError(null);
     try {
-      await syncLeagueRoster({ seasonId });
+      if (season.yahooLeagueKey) {
+        await syncYahooRoster({ seasonId });
+      } else {
+        await syncSleeperRoster({ seasonId });
+      }
     } catch (err) {
       setSyncError(getErrorMessage(err, "Failed to sync roster."));
     } finally {
@@ -170,6 +178,7 @@ function LeaguePage() {
 
   useEffect(() => {
     if (syncStatus === undefined) return; // still loading
+    if (season === undefined) return; // still loading - runSync needs it to pick a provider
     if (autoSyncedRef.current === leagueId) return; // already tried this visit
     if (!isStale) return;
     autoSyncedRef.current = leagueId;
@@ -178,7 +187,7 @@ function LeaguePage() {
     // most once per (leagueId, syncStatus-has-loaded) transition, not every
     // time isStale's underlying Date.now() comparison would flip.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueId, syncStatus]);
+  }, [leagueId, syncStatus, season]);
 
   if (season === undefined) {
     return <Loader />;

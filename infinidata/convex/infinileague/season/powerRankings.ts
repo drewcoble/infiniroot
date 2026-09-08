@@ -127,11 +127,12 @@ interface PowerRankingsInputs {
 }
 
 // Shared setup both getPowerRankings and getPowerRankingsWithTrade need:
-// live Sleeper rosters (for each team's real current player pool) plus
-// every remaining week's projections (for computeTeamTotal below). Fetched
-// once per action call regardless of how many teams' totals end up
-// computed from it - a trade only ever touches two teams, so the
-// hypothetical run reuses this same gathered data rather than refetching.
+// each team's real current player pool (Sleeper: fetched live; Yahoo: read
+// from the already-synced rosterPlayers table, see below) plus every
+// remaining week's projections (for computeTeamTotal below). Fetched once
+// per action call regardless of how many teams' totals end up computed from
+// it - a trade only ever touches two teams, so the hypothetical run reuses
+// this same gathered data rather than refetching.
 async function gatherPowerRankingsInputs(
   ctx: ActionCtx,
   seasonId: Id<"seasons">,
@@ -139,8 +140,8 @@ async function gatherPowerRankingsInputs(
   const { season } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
     seasonId,
   });
-  if (!season.sleeperLeagueId) {
-    throw new Error("This league isn't linked to a Sleeper league yet.");
+  if (!season.sleeperLeagueId && !season.yahooLeagueKey) {
+    throw new Error("This league isn't linked to Sleeper or Yahoo yet.");
   }
 
   const nflState = await ctx.runQuery(api.nflState.getNflState, {});
@@ -152,28 +153,50 @@ async function gatherPowerRankingsInputs(
     String(currentWeek + i),
   );
 
-  const [teams, rosters] = await Promise.all([
-    ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, { seasonId }),
-    fetchSleeperJson<SleeperRoster[]>(`/league/${season.sleeperLeagueId}/rosters`),
-  ]);
-  const rosterBySleeperRosterId = new Map(
-    rosters.map((roster) => [String(roster.roster_id), roster]),
-  );
+  const teams = await ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, { seasonId });
 
   const eligibleFpidsByTeam = new Map<Id<"seasonTeams">, number[]>();
   const allFpids = new Set<number>();
-  for (const team of teams) {
-    if (!team.sleeperRosterId) continue;
-    const roster = rosterBySleeperRosterId.get(team.sleeperRosterId);
-    if (!roster) continue;
-    const taxiIds = new Set(roster.taxi ?? []);
-    const reserveIds = new Set(roster.reserve ?? []);
-    const fpids = (roster.players ?? [])
-      .filter((playerId) => !taxiIds.has(playerId) && !reserveIds.has(playerId))
-      .map(sleeperPlayerIdToFpid)
-      .filter((fpid): fpid is number => fpid !== null);
-    eligibleFpidsByTeam.set(team._id, fpids);
-    for (const fpid of fpids) allFpids.add(fpid);
+
+  if (season.sleeperLeagueId) {
+    const rosters = await fetchSleeperJson<SleeperRoster[]>(
+      `/league/${season.sleeperLeagueId}/rosters`,
+    );
+    const rosterBySleeperRosterId = new Map(
+      rosters.map((roster) => [String(roster.roster_id), roster]),
+    );
+    for (const team of teams) {
+      if (!team.sleeperRosterId) continue;
+      const roster = rosterBySleeperRosterId.get(team.sleeperRosterId);
+      if (!roster) continue;
+      const taxiIds = new Set(roster.taxi ?? []);
+      const reserveIds = new Set(roster.reserve ?? []);
+      const fpids = (roster.players ?? [])
+        .filter((playerId) => !taxiIds.has(playerId) && !reserveIds.has(playerId))
+        .map(sleeperPlayerIdToFpid)
+        .filter((fpid): fpid is number => fpid !== null);
+      eligibleFpidsByTeam.set(team._id, fpids);
+      for (const fpid of fpids) allFpids.add(fpid);
+    }
+  } else {
+    // Yahoo has no live per-slot roster endpoint wired up here yet (see
+    // YAHOO.md), so this reads the already-synced rosterPlayers table
+    // instead (kept fresh by infinidraft/yahoo/league.ts's
+    // syncYahooLeagueRoster) - same fallback source
+    // convex/infinileague/season/teamRoster.ts uses for non-Sleeper teams.
+    // Unlike the Sleeper branch above, this can't exclude taxi/IR players:
+    // rosterPlayers has no slot/status field, and syncYahooLeagueRoster
+    // itself writes every rostered player without distinguishing taxi
+    // squad - so a Yahoo team's taxi players (if any) count toward its
+    // total here, which Sleeper's do not.
+    for (const team of teams) {
+      const fpids: number[] = await ctx.runQuery(
+        internal.infinileague.season.rosterPlayers.listRosterFpidsForTeam,
+        { teamId: team._id },
+      );
+      eligibleFpidsByTeam.set(team._id, fpids);
+      for (const fpid of fpids) allFpids.add(fpid);
+    }
   }
 
   const players = await ctx.runQuery(api.players.getPlayersByFpids, {
