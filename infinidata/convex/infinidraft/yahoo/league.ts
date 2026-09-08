@@ -4,6 +4,7 @@ import { internal } from "../../_generated/api";
 import { Doc, Id } from "../../_generated/dataModel";
 import { fetchYahooApi, mergeYahooFields, findNodesByKey } from "./client";
 import { withYahooToken } from "./oauth";
+import { DEF_TEAM_FPIDS } from "../../sleeper/client";
 import {
   mapYahooRosterPositions,
   mapYahooScoringSettings,
@@ -161,10 +162,9 @@ export const fetchYahooLeagueTeams = action({
 // this resolves a Yahoo roster to fpids by matching full name + position
 // against convex/schema.ts's players table. Inherently imperfect (name
 // punctuation/suffix mismatches, genuine name collisions) - see YAHOO.md.
-// Team defenses are skipped entirely rather than guessed at, since Yahoo
-// names them by team ("49ers") while our DST rows are keyed by Sleeper's own
-// synthetic ids - matching those reliably would need a second, separate
-// team-name crosswalk this doesn't attempt.
+// Team defenses are matched separately (see normalizeYahooTeamAbbr below),
+// since Yahoo names them by city/mascot ("49ers") rather than a name that'd
+// ever match our DST rows, which are keyed by Sleeper's own synthetic ids.
 function normalizeYahooPlayerName(name: string): string {
   return name
     .toLowerCase()
@@ -172,6 +172,25 @@ function normalizeYahooPlayerName(name: string): string {
     .replace(/\s+(jr|sr|ii|iii|iv)\.?$/i, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// Yahoo's `editorial_team_abbr` field (present on every player, including
+// DEF/DST entries - it's just "which NFL team is this") doesn't always
+// match Sleeper's DEF_TEAM_FPIDS keys byte-for-byte. These two are the
+// mismatches commonly documented between Yahoo's and other providers' team
+// abbreviation conventions - not confirmed against a live Yahoo response
+// (see YAHOO.md). Anything else is assumed to already match after
+// uppercasing; an abbreviation that still doesn't resolve just drops that
+// team's DST from the roster (see matchPlayersToFpids below) rather than
+// guessing further.
+const YAHOO_TEAM_ABBR_ALIASES: Record<string, string> = {
+  JAC: "JAX",
+  WSH: "WAS",
+};
+
+function normalizeYahooTeamAbbr(abbr: string): string {
+  const upper = abbr.toUpperCase();
+  return YAHOO_TEAM_ABBR_ALIASES[upper] ?? upper;
 }
 
 // Shared match core for both resolveFpidsByName (live roster sync, only
@@ -183,7 +202,7 @@ function normalizeYahooPlayerName(name: string): string {
 // to filter out placeholders anyway).
 async function matchPlayersToFpids(
   ctx: QueryCtx,
-  players: Array<{ name: string; position: string }>,
+  players: Array<{ name: string; position: string; teamAbbr?: string }>,
 ): Promise<Array<{ index: number; fpid: number }>> {
   const allPlayers: Doc<"players">[] = await ctx.db.query("players").collect();
   const byKey = new Map<string, number>();
@@ -195,7 +214,12 @@ async function matchPlayersToFpids(
   }
   const matches: Array<{ index: number; fpid: number }> = [];
   players.forEach((player, index) => {
-    if (player.position === "DEF" || player.position === "DST") return;
+    if (player.position === "DEF" || player.position === "DST") {
+      if (!player.teamAbbr) return;
+      const fpid = DEF_TEAM_FPIDS[normalizeYahooTeamAbbr(player.teamAbbr)];
+      if (fpid !== undefined) matches.push({ index, fpid });
+      return;
+    }
     const fpid = byKey.get(
       `${normalizeYahooPlayerName(player.name)}|${player.position}`,
     );
@@ -206,7 +230,13 @@ async function matchPlayersToFpids(
 
 export const resolveFpidsByName = internalQuery({
   args: {
-    players: v.array(v.object({ name: v.string(), position: v.string() })),
+    players: v.array(
+      v.object({
+        name: v.string(),
+        position: v.string(),
+        teamAbbr: v.optional(v.string()),
+      }),
+    ),
   },
   handler: async (ctx, args): Promise<number[]> => {
     const matches = await matchPlayersToFpids(ctx, args.players);
@@ -216,7 +246,10 @@ export const resolveFpidsByName = internalQuery({
 
 // Keeper-history counterpart to resolveFpidsByName - preserves which
 // player_key each resolved fpid came from, so fetchPreviousYahooSeasonPreview
-// below can re-attach a draft pick's price to the right fpid.
+// below can re-attach a draft pick's price to the right fpid. Doesn't accept
+// teamAbbr (fetchYahooPlayersByKeys below never fetches it) - draft-history
+// DST picks are still dropped rather than resolved, unlike the live roster
+// sync path above.
 export const resolvePlayerKeysToFpids = internalQuery({
   args: {
     players: v.array(
@@ -236,12 +269,15 @@ export const resolvePlayerKeysToFpids = internalQuery({
 });
 
 // Exported for convex/infinidraft/yahoo/waivers.ts's reuse - same
-// name+position extraction from a Yahoo player node, needed by anything
-// that has to resolve a Yahoo player list to our own fpids (see
-// resolveFpidsByName below).
+// name+position(+team, for DEF/DST) extraction from a Yahoo player node,
+// needed by anything that has to resolve a Yahoo player list to our own
+// fpids (see resolveFpidsByName below). teamAbbr comes from
+// editorial_team_abbr, present on every player node (not just DEF/DST) -
+// field name from general knowledge of Yahoo's Fantasy API, not confirmed
+// against a live response (see YAHOO.md).
 export function extractRosterPlayers(
   playerNodes: unknown[],
-): Array<{ name: string; position: string }> {
+): Array<{ name: string; position: string; teamAbbr?: string }> {
   return playerNodes
     .map((node) => {
       const fields = mergeYahooFields(node);
@@ -251,9 +287,15 @@ export function extractRosterPlayers(
       if (typeof fullName !== "string" || typeof position !== "string") {
         return null;
       }
-      return { name: fullName, position };
+      const teamAbbr =
+        typeof fields.editorial_team_abbr === "string"
+          ? fields.editorial_team_abbr
+          : undefined;
+      return { name: fullName, position, ...(teamAbbr ? { teamAbbr } : {}) };
     })
-    .filter((p): p is { name: string; position: string } => p !== null);
+    .filter(
+      (p): p is { name: string; position: string; teamAbbr?: string } => p !== null,
+    );
 }
 
 // Pulls every mapped team's current roster + FAAB spend from the linked
