@@ -1,5 +1,5 @@
 {
   "outputDirectory": "dist",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- infinifaab shared infinidata/convex",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ':/infinifaab' ':/shared' ':/infinidata/convex'",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
