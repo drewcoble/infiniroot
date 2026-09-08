@@ -1015,22 +1015,24 @@ export const undoLastPick = mutation({
   },
 });
 
-// Sleeper-sync counterpart to resolvePick/draftPick - batch-writes picks
-// discovered by polling a linked live Sleeper draft (see convex/sleeper/
-// draftSync.ts's applySleeperSyncTick, the only caller, which has already
-// resolved each pick's fpid/teamId/round-or-price before calling here, the
-// round/pickInRound math going through the same resolveTeamPositionInRound/
-// countRealSlotsThroughRound helpers draftPick and addKeeper use so a synced
-// pick's slot always agrees with the board). No nomination to consume and
-// no auto-adjust-budget hook (that's specific to the self team's live
-// in-app bidding flow via resolvePick) - just the same draftPicks row shape
-// resolvePick/draftPick produce, applied in Sleeper's pick_no order so
-// `sequence` matches real pick order even when one poll discovers several
-// new picks at once. Silently no-ops (not a caller error) for an fpid
-// already in draftPicks - a poll always returns the full pick list so far,
-// and this is the same re-poll idempotency every hop of the sync loop
-// depends on.
-export const applySleeperSyncedPicks = internalMutation({
+// Live-sync counterpart to resolvePick/draftPick - batch-writes picks
+// discovered by polling a linked live draft, from either provider (see
+// convex/sleeper/draftSync.ts's applySleeperSyncTick and convex/infinidraft/
+// yahoo/draftSync.ts's applyYahooSyncTick, the only two callers - both have
+// already resolved each pick's fpid/teamId/round-or-price before calling
+// here, the round/pickInRound math going through the same
+// resolveTeamPositionInRound/countRealSlotsThroughRound helpers draftPick
+// and addKeeper use so a synced pick's slot always agrees with the board).
+// Nothing provider-specific in this function itself - only its callers
+// differ. No nomination to consume and no auto-adjust-budget hook (that's
+// specific to the self team's live in-app bidding flow via resolvePick) -
+// just the same draftPicks row shape resolvePick/draftPick produce, applied
+// in the provider's own pick_no/pick order so `sequence` matches real pick
+// order even when one poll discovers several new picks at once. Silently
+// no-ops (not a caller error) for an fpid already in draftPicks - a poll
+// always returns the full pick list so far, and this is the same re-poll
+// idempotency every hop of either sync loop depends on.
+export const applySyncedDraftPicks = internalMutation({
   args: {
     draftId: v.id("drafts"),
     picks: v.array(

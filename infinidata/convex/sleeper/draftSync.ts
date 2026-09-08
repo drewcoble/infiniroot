@@ -3,17 +3,15 @@ import {
   action,
   internalAction,
   internalMutation,
-  internalQuery,
   mutation,
-  query,
-  MutationCtx,
 } from "../_generated/server";
 import { internal } from "../_generated/api";
-import type { Doc, Id } from "../_generated/dataModel";
-import { requireDraftOwner, requireRealDraft } from "../lib/access";
+import type { Doc } from "../_generated/dataModel";
+import { requireDraftOwner } from "../lib/access";
 import { resolveDraftType } from "../draftType";
 import { resolveTeamPositionInRound } from "../infinidraft/draft/pickOrder";
 import { countForfeitedByRound, countRealSlotsThroughRound } from "../infinidraft/draft/pickSlots";
+import { upsertSyncStatus } from "../infinidraft/draft/draftSyncShared";
 import {
   fetchSleeperJson,
   fetchSleeperLeagueSettings,
@@ -41,55 +39,6 @@ const AUTO_START_WINDOW_MS = 10 * 60 * 1000;
 // After this many consecutive failed polls, auto-disable rather than retry
 // forever silently - see recordSyncError.
 const MAX_CONSECUTIVE_FAILURES = 10;
-
-// Upserts the poll chain's heartbeat onto its own draftSyncStatus row
-// (schema.ts) instead of the `drafts` document - see that table's comment
-// for why: writing this every ~3s onto `drafts` used to invalidate every
-// Draft Room query reading that document, which is what blew up read
-// bandwidth. `.unique()` is safe here because every write site below goes
-// through this same upsert, so a draft never accumulates more than one row.
-async function upsertSyncStatus(
-  ctx: MutationCtx,
-  draftId: Id<"drafts">,
-  patch: {
-    lastSyncedAt?: number;
-    syncError: string | undefined;
-    syncErrorCount: number | undefined;
-  },
-): Promise<void> {
-  const existing = await ctx.db
-    .query("draftSyncStatus")
-    .withIndex("by_draft", (q) => q.eq("draftId", draftId))
-    .unique();
-  if (existing) {
-    await ctx.db.patch(existing._id, patch);
-  } else {
-    // insert() requires the exact optional-field shape (no explicit
-    // `undefined`), unlike patch() above - conditionally spread instead.
-    await ctx.db.insert("draftSyncStatus", {
-      draftId,
-      ...(patch.lastSyncedAt !== undefined
-        ? { lastSyncedAt: patch.lastSyncedAt }
-        : {}),
-      ...(patch.syncError !== undefined ? { syncError: patch.syncError } : {}),
-      ...(patch.syncErrorCount !== undefined
-        ? { syncErrorCount: patch.syncErrorCount }
-        : {}),
-    });
-  }
-}
-
-// Resolves the real draft for a season the caller already proved ownership
-// of (via internal.rosterSync.requireOwnedSeasonForSync) - actions
-// can't call the QueryCtx-typed requireRealDraft directly, same reason
-// convex/sleeper/league.ts's syncLeagueRoster needs
-// listSeasonTeamsInternal instead of listSeasonTeams.
-export const loadRealDraftForLink = internalQuery({
-  args: { seasonId: v.id("seasons") },
-  handler: async (ctx, args) => {
-    return await requireRealDraft(ctx, args.seasonId);
-  },
-});
 
 // Caches Sleeper's own draft_id/start_time on the real draft doc, entirely
 // independent of sleeperSyncEnabled - lets the Dashboard/Settings/Draft tab
@@ -128,7 +77,7 @@ export const fetchSleeperDraftSchedule = action({
     if (!season.sleeperLeagueId) return { scheduledAt: null };
 
     const draft = await ctx.runQuery(
-      internal.sleeper.draftSync.loadRealDraftForLink,
+      internal.infinidraft.draft.draftSyncShared.loadRealDraftForLink,
       { seasonId: args.seasonId },
     );
 
@@ -197,7 +146,7 @@ export const linkSleeperDraft = action({
     }
 
     const draft = await ctx.runQuery(
-      internal.sleeper.draftSync.loadRealDraftForLink,
+      internal.infinidraft.draft.draftSyncShared.loadRealDraftForLink,
       { seasonId: args.seasonId },
     );
 
@@ -259,13 +208,6 @@ export const disableLiveSync = mutation({
   },
 });
 
-export const loadSyncStateInternal = internalQuery({
-  args: { draftId: v.id("drafts") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.draftId);
-  },
-});
-
 // Called on the slow pre-draft cadence (draft not started yet, Sleeper
 // hasn't opened the auto-start window) - just a heartbeat so the UI's "last
 // checked" readout still moves, and a place to clear a stale error once
@@ -297,7 +239,7 @@ export const recordWatchTick = internalMutation({
 // resolveTeamPositionInRound/countRealSlotsThroughRound helpers draftPick
 // and addKeeper use, so a synced pick's slot always agrees with the board
 // regardless of Sleeper's own raw slot numbering. Hands the fully-resolved
-// subset to convex/infinidraft/draft/picks.ts's applySleeperSyncedPicks for the actual
+// subset to convex/infinidraft/draft/picks.ts's applySyncedDraftPicks for the actual
 // draftPicks writes. A pick with no fpid/price (auction) or no resolvable
 // round/position (snake/linear), or no mapped team, is skipped rather than
 // thrown, so one bad mapping doesn't halt the rest of the draft - the
@@ -424,7 +366,7 @@ export const applySleeperSyncTick = internalMutation({
     }
 
     const { applied, skipped: unknownPlayerCount } = await ctx.runMutation(
-      internal.infinidraft.draft.picks.applySleeperSyncedPicks,
+      internal.infinidraft.draft.picks.applySyncedDraftPicks,
       { draftId: args.draftId, picks: resolved },
     );
 
@@ -499,7 +441,7 @@ export const syncSleeperDraft = internalAction({
   args: { draftId: v.id("drafts"), generation: v.number() },
   handler: async (ctx, args): Promise<null> => {
     const draft = await ctx.runQuery(
-      internal.sleeper.draftSync.loadSyncStateInternal,
+      internal.infinidraft.draft.draftSyncShared.loadSyncStateInternal,
       { draftId: args.draftId },
     );
     if (
@@ -592,30 +534,5 @@ export const syncSleeperDraft = internalAction({
       }
     }
     return null;
-  },
-});
-
-// Scoped, cheap counterpart to the sync fields listSeasons/getSeasonPublic
-// used to join off the `drafts` document itself - reads only the
-// draftSyncStatus row (schema.ts) plus the auth check, so the frontend can
-// subscribe to the live "last checked"/error readout without also
-// resubscribing every other listSeasons-backed panel on the page to a
-// value that changes every ~3 seconds. See draftSyncStatus's schema comment
-// for the read-amplification bug this replaces.
-export const getSyncStatus = query({
-  args: { seasonId: v.id("seasons") },
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{ lastSyncedAt: number | null; syncError: string | null }> => {
-    const { draft } = await requireDraftOwner(ctx, args.seasonId);
-    const status = await ctx.db
-      .query("draftSyncStatus")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
-      .unique();
-    return {
-      lastSyncedAt: status?.lastSyncedAt ?? null,
-      syncError: status?.syncError ?? null,
-    };
   },
 });

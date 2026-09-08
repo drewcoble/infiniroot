@@ -248,10 +248,11 @@ export const resolveFpidsByName = internalQuery({
 // Keeper-history counterpart to resolveFpidsByName - preserves which
 // player_key each resolved fpid came from, so fetchPreviousYahooSeasonPreview
 // below can re-attach a draft pick's price to the right fpid, and
-// convex/infinileague/season/teamRoster.ts's per-week Yahoo lineup can
-// re-attach a slot. teamAbbr is optional since fetchYahooPlayersByKeys
-// below never fetches it - draft-history DST picks are still dropped rather
-// than resolved, unlike the two live-roster callers of this query.
+// convex/infinileague/season/teamRoster.ts's per-week Yahoo lineup /
+// convex/infinidraft/yahoo/draftSync.ts's live poller can re-attach a
+// slot/pick. teamAbbr is optional since not every caller's source data
+// carries it, but fetchYahooPlayersByKeys below does fetch it now, so DST
+// resolves here too, not just via the roster-sync/live-poller paths.
 export const resolvePlayerKeysToFpids = internalQuery({
   args: {
     players: v.array(
@@ -272,6 +273,33 @@ export const resolvePlayerKeysToFpids = internalQuery({
       playerKey: args.players[m.index]!.playerKey,
       fpid: m.fpid,
     }));
+  },
+});
+
+// Primary player-resolution path for convex/infinidraft/yahoo/draftSync.ts's
+// live poller - a direct point lookup via schema.ts's players.by_yahoo_id
+// index (populated from Sleeper's own player directory, see that field's
+// schema comment) instead of the lossier name-match matchPlayersToFpids
+// above uses. NOT confirmed live that Sleeper's yahoo_id numbering actually
+// matches the numeric id Yahoo's own player_key encodes (see YAHOO.md) -
+// callers should fall back to resolvePlayerKeysToFpids (name-match) for any
+// playerId this misses, same as it already must for DST (no yahooId at
+// all).
+export const resolveFpidsByYahooId = internalQuery({
+  args: { playerIds: v.array(v.number()) },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<Array<{ playerId: number; fpid: number }>> => {
+    const matches: Array<{ playerId: number; fpid: number }> = [];
+    for (const playerId of args.playerIds) {
+      const player = await ctx.db
+        .query("players")
+        .withIndex("by_yahoo_id", (q) => q.eq("yahooId", playerId))
+        .unique();
+      if (player) matches.push({ playerId, fpid: player.fpid });
+    }
+    return matches;
   },
 });
 
@@ -457,25 +485,69 @@ async function fetchYahooLeagueSettings(
   };
 }
 
+// Bare `/league/{leagueKey}` (not `/settings`) so convex/infinidraft/yahoo/
+// draftSync.ts's live poller can check this every tick without pulling the
+// much larger settings/roster_positions/stat_categories payload each time.
+// Confirmed (public Yahoo docs) values: "predraft", "postdraft" - the
+// in-progress value's exact string is NOT confirmed; callers should treat
+// anything other than "predraft" as "drafting has started" rather than
+// check for a specific in-progress string, and only treat "postdraft" as
+// complete (never inferred from absence of "predraft") - see YAHOO.md.
+export async function fetchYahooDraftStatus(
+  accessToken: string,
+  leagueKey: string,
+): Promise<string | undefined> {
+  const json = await fetchYahooApi<unknown>(accessToken, `/league/${leagueKey}`);
+  const leagueFields = findNodesByKey(json, "league").reduce<
+    Record<string, unknown>
+  >((acc, node) => ({ ...acc, ...mergeYahooFields(node) }), {});
+  const draftStatus =
+    typeof leagueFields.draft_status === "string" ? leagueFields.draft_status : undefined;
+  if (draftStatus === undefined) {
+    // Diagnostic for an unconfirmed shape - remove once checked against a
+    // real response and this stops happening.
+    console.error(
+      "fetchYahooDraftStatus: draft_status not found, raw response:",
+      JSON.stringify(json),
+    );
+  }
+  return draftStatus;
+}
+
 function priorLeagueKeyFromRenew(renew: string): string | undefined {
   const match = /^(\d+)_(\d+)$/.exec(renew);
   if (!match) return undefined;
   return `${match[1]}.l.${match[2]}`;
 }
 
-interface YahooDraftPick {
+export interface YahooDraftPick {
   teamKey: string;
   playerKey: string;
   // Only present for auction drafts - absent (not zero) for a snake draft,
   // same "isAuction detected from whether any pick has a price" approach
   // convex/sleeper/league.ts's fetchPreviousSeasonPreview uses.
   cost: number | undefined;
+  // pick/round: confirmed present on draft_result entries per Yahoo's
+  // public API docs (not this app's own live testing yet - see YAHOO.md).
+  // Unused by the historical/keeper-price importer below (which only needs
+  // teamKey/playerKey/cost), added for convex/infinidraft/yahoo/draftSync.ts's
+  // live poller, which needs pick for insertion ordering (same role
+  // Sleeper's pick_no plays in applySleeperSyncTick) and round for
+  // resolveTeamPositionInRound in snake/linear leagues. Whether round is
+  // present/meaningful for auction-type leagues is unconfirmed - the live
+  // poller must tolerate its absence there.
+  pick: number | undefined;
+  round: number | undefined;
 }
 
 // Sub-resource name ("draftresults", no underscore) is from general
 // knowledge of the Yahoo Fantasy API, not a confirmed live response - see
-// YAHOO.md.
-async function fetchYahooDraftResults(
+// YAHOO.md. Exported for convex/infinidraft/yahoo/draftSync.ts's reuse -
+// same endpoint, live poller just needs pick/round too (see YahooDraftPick).
+// Whether this endpoint returns anything before a draft is fully complete
+// (as opposed to only once "postdraft") is the single biggest unconfirmed
+// assumption behind the whole live-sync feature - see YAHOO.md.
+export async function fetchYahooDraftResults(
   accessToken: string,
   leagueKey: string,
 ): Promise<YahooDraftPick[]> {
@@ -492,20 +564,33 @@ async function fetchYahooDraftResults(
         fields.cost !== undefined && fields.cost !== null
           ? Number(fields.cost)
           : undefined,
+      pick:
+        fields.pick !== undefined && fields.pick !== null
+          ? Number(fields.pick)
+          : undefined,
+      round:
+        fields.round !== undefined && fields.round !== null
+          ? Number(fields.round)
+          : undefined,
     }))
     .filter((pick) => pick.teamKey && pick.playerKey);
 }
 
 // Batched (Yahoo caps how many resources one request can return) player_key
-// -> name/position lookup, needed because draftresults only gives ids, not
-// names - draft picks are the one place this app needs player identity by
-// key instead of by roster (see extractRosterPlayers above for the roster
-// case, which gets names directly from the roster response).
-async function fetchYahooPlayersByKeys(
+// -> name/position/team lookup, needed because draftresults only gives ids,
+// not names - draft picks are the one place this app needs player identity
+// by key instead of by roster (see extractRosterPlayers above for the
+// roster case, which gets names directly from the roster response).
+// Exported for convex/infinidraft/yahoo/draftSync.ts's reuse as the live
+// poller's DST fallback path (see resolvePlayerKeysToFpids's teamAbbr arg,
+// added for exactly this - editorial_team_abbr is what lets a DEF/DST pick
+// resolve via the team-abbreviation crosswalk instead of being dropped, the
+// same fix already applied to the roster-sync path in extractRosterPlayers).
+export async function fetchYahooPlayersByKeys(
   accessToken: string,
   playerKeys: string[],
-): Promise<Map<string, { name: string; position: string }>> {
-  const map = new Map<string, { name: string; position: string }>();
+): Promise<Map<string, { name: string; position: string; teamAbbr?: string }>> {
+  const map = new Map<string, { name: string; position: string; teamAbbr?: string }>();
   const BATCH_SIZE = 25;
   for (let i = 0; i < playerKeys.length; i += BATCH_SIZE) {
     const batch = playerKeys.slice(i, i + BATCH_SIZE);
@@ -520,8 +605,12 @@ async function fetchYahooPlayersByKeys(
       const nameField = fields.name as { full?: string } | undefined;
       const fullName = nameField?.full;
       const position = fields.display_position;
+      const teamAbbr =
+        typeof fields.editorial_team_abbr === "string"
+          ? fields.editorial_team_abbr
+          : undefined;
       if (key && typeof fullName === "string" && typeof position === "string") {
-        map.set(key, { name: fullName, position });
+        map.set(key, { name: fullName, position, ...(teamAbbr ? { teamAbbr } : {}) });
       }
     }
   }

@@ -74,6 +74,11 @@ export interface SeasonWithLeagueName extends Doc<"seasons"> {
   sleeperDraftId?: string;
   sleeperDraftScheduledAt?: number;
   sleeperSyncEnabled?: boolean;
+  // Yahoo counterpart to sleeperSyncEnabled above (see convex/infinidraft/
+  // yahoo/draftSync.ts) - no yahooDraftId/yahooDraftScheduledAt equivalents,
+  // since Yahoo has neither (see schema.ts's drafts.yahooSyncEnabled
+  // comment).
+  yahooSyncEnabled?: boolean;
   // Only ever set by listSeasons below - true if the caller is this
   // league's literal owner, false if they only have leagueCollaborators
   // (co-manager) access. Powers the league picker/dashboard's "My Leagues"
@@ -201,6 +206,9 @@ export const listLinkedSeasons = query({
           ...(draft?.sleeperSyncEnabled !== undefined
             ? { sleeperSyncEnabled: draft.sleeperSyncEnabled }
             : {}),
+          ...(draft?.yahooSyncEnabled !== undefined
+            ? { yahooSyncEnabled: draft.yahooSyncEnabled }
+            : {}),
         });
       }
     }
@@ -231,6 +239,9 @@ async function seasonWithLeagueName(
       : {}),
     ...(draft?.sleeperSyncEnabled !== undefined
       ? { sleeperSyncEnabled: draft.sleeperSyncEnabled }
+      : {}),
+    ...(draft?.yahooSyncEnabled !== undefined
+      ? { yahooSyncEnabled: draft.yahooSyncEnabled }
       : {}),
   };
 }
@@ -323,6 +334,9 @@ export const getSeasonPublic = query({
         : {}),
       ...(draft?.sleeperSyncEnabled !== undefined
         ? { sleeperSyncEnabled: draft.sleeperSyncEnabled }
+        : {}),
+      ...(draft?.yahooSyncEnabled !== undefined
+        ? { yahooSyncEnabled: draft.yahooSyncEnabled }
         : {}),
     };
   },

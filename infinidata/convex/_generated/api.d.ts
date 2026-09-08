@@ -29,6 +29,7 @@ import type * as infinidraft_draft_budgetAutoAdjust from "../infinidraft/draft/b
 import type * as infinidraft_draft_consistency from "../infinidraft/draft/consistency.js";
 import type * as infinidraft_draft_customPlayers from "../infinidraft/draft/customPlayers.js";
 import type * as infinidraft_draft_draftOrder from "../infinidraft/draft/draftOrder.js";
+import type * as infinidraft_draft_draftSyncShared from "../infinidraft/draft/draftSyncShared.js";
 import type * as infinidraft_draft_fetchHelpers from "../infinidraft/draft/fetchHelpers.js";
 import type * as infinidraft_draft_history from "../infinidraft/draft/history.js";
 import type * as infinidraft_draft_insights from "../infinidraft/draft/insights.js";
@@ -52,6 +53,7 @@ import type * as infinidraft_gemini_preDraftInsights from "../infinidraft/gemini
 import type * as infinidraft_gemini_reportSummary from "../infinidraft/gemini/reportSummary.js";
 import type * as infinidraft_sharing_invites from "../infinidraft/sharing/invites.js";
 import type * as infinidraft_yahoo_client from "../infinidraft/yahoo/client.js";
+import type * as infinidraft_yahoo_draftSync from "../infinidraft/yahoo/draftSync.js";
 import type * as infinidraft_yahoo_league from "../infinidraft/yahoo/league.js";
 import type * as infinidraft_yahoo_leagueSettingsMapping from "../infinidraft/yahoo/leagueSettingsMapping.js";
 import type * as infinidraft_yahoo_oauth from "../infinidraft/yahoo/oauth.js";
@@ -145,6 +147,7 @@ declare const fullApi: ApiFromModules<{
   "infinidraft/draft/consistency": typeof infinidraft_draft_consistency;
   "infinidraft/draft/customPlayers": typeof infinidraft_draft_customPlayers;
   "infinidraft/draft/draftOrder": typeof infinidraft_draft_draftOrder;
+  "infinidraft/draft/draftSyncShared": typeof infinidraft_draft_draftSyncShared;
   "infinidraft/draft/fetchHelpers": typeof infinidraft_draft_fetchHelpers;
   "infinidraft/draft/history": typeof infinidraft_draft_history;
   "infinidraft/draft/insights": typeof infinidraft_draft_insights;
@@ -168,6 +171,7 @@ declare const fullApi: ApiFromModules<{
   "infinidraft/gemini/reportSummary": typeof infinidraft_gemini_reportSummary;
   "infinidraft/sharing/invites": typeof infinidraft_sharing_invites;
   "infinidraft/yahoo/client": typeof infinidraft_yahoo_client;
+  "infinidraft/yahoo/draftSync": typeof infinidraft_yahoo_draftSync;
   "infinidraft/yahoo/league": typeof infinidraft_yahoo_league;
   "infinidraft/yahoo/leagueSettingsMapping": typeof infinidraft_yahoo_leagueSettingsMapping;
   "infinidraft/yahoo/oauth": typeof infinidraft_yahoo_oauth;

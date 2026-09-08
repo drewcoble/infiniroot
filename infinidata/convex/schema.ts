@@ -199,11 +199,16 @@ export default defineSchema({
     // Absent for DST (synthetic fpids have no underlying Sleeper player
     // object to source these from) and for any player never matched.
     espnId: v.optional(v.number()),
+    // Unlike espnId above, NOT confirmed live that this equals Yahoo's own
+    // player_key numeric suffix - see convex/infinidraft/yahoo/draftSync.ts's
+    // resolveFpidsByYahooId, the first real user of this field/index, and
+    // YAHOO.md for what to check if it doesn't line up.
     yahooId: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_fpid", ["fpid"])
-    .index("by_espn_id", ["espnId"]),
+    .index("by_espn_id", ["espnId"])
+    .index("by_yahoo_id", ["yahooId"]),
 
   // External platforms' own player values/rankings, for comparing against
   // this app's own draft values rather than replacing them - see convex/
@@ -715,6 +720,17 @@ export default defineSchema({
     sleeperLastSyncedAt: v.optional(v.number()),
     sleeperSyncError: v.optional(v.string()),
     sleeperSyncErrorCount: v.optional(v.number()),
+    // Yahoo counterpart to sleeperSyncEnabled/sleeperSyncGeneration above -
+    // see convex/infinidraft/yahoo/draftSync.ts. No yahooDraftId/
+    // yahooDraftScheduledAt equivalents: unlike Sleeper (which needs a
+    // separate draft_id resolved from the league), Yahoo's draft resource is
+    // addressed directly via seasons.yahooLeagueKey, and there's no
+    // confirmed Yahoo field for a scheduled start time to cache (the
+    // pre-emptive "auto-start ahead of scheduled time" feature Sleeper's
+    // sync has isn't replicated for Yahoo - v1 starts reactively once
+    // Yahoo's own draft_status leaves "predraft" instead).
+    yahooSyncEnabled: v.optional(v.boolean()),
+    yahooSyncGeneration: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_season", ["seasonId"])

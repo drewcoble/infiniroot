@@ -38,8 +38,10 @@ export function DraftTab({ seasonId, teams }: DraftTabProps) {
   const settingsList = useQuery(api.leagues.listSeasons, {});
   const settings = settingsList?.find((s) => s._id === seasonId);
   const syncStatus = useQuery(
-    api.sleeper.draftSync.getSyncStatus,
-    settings?.sleeperSyncEnabled ? { seasonId } : "skip",
+    api.infinidraft.draft.draftSyncShared.getSyncStatus,
+    settings?.sleeperSyncEnabled || settings?.yahooSyncEnabled
+      ? { seasonId }
+      : "skip",
   );
   useSleeperDraftScheduleRefresh(
     seasonId,
@@ -276,13 +278,16 @@ export function DraftTab({ seasonId, teams }: DraftTabProps) {
           </Text>
         </Text>
       )}
-      {settings?.sleeperSyncEnabled && (
+      {(settings?.sleeperSyncEnabled || settings?.yahooSyncEnabled) && (
         <Text size="xs" c={syncStatus?.syncError ? "yellow.7" : "dimmed"}>
-          {syncStatus?.syncError
-            ? `Sleeper sync: ${syncStatus.syncError}`
-            : syncStatus?.lastSyncedAt
-              ? `Synced from Sleeper - last checked ${new Date(syncStatus.lastSyncedAt).toLocaleTimeString()}`
-              : "Sleeper sync starting up..."}
+          {(() => {
+            const provider = settings?.sleeperSyncEnabled ? "Sleeper" : "Yahoo";
+            if (syncStatus?.syncError) return `${provider} sync: ${syncStatus.syncError}`;
+            if (syncStatus?.lastSyncedAt) {
+              return `Synced from ${provider} - last checked ${new Date(syncStatus.lastSyncedAt).toLocaleTimeString()}`;
+            }
+            return `${provider} sync starting up...`;
+          })()}
         </Text>
       )}
       {usingGenericValues && <GenericValuesNotice />}
