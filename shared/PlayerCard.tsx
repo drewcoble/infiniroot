@@ -20,6 +20,11 @@ export interface PlayerCardRow {
   actualPpg: number;
   rosteredByTeamName: string | null;
   injury?: { status: string; statusShort: string };
+  // Optional - absent for consumers whose row type doesn't carry ownership
+  // info at all (e.g. infinifaab's waiver board row), same "just don't
+  // highlight" treatment as false. Only infinileague's Players tab
+  // (RosVorRow, see convex/rosVor.ts's isOnMyTeam) sets this today.
+  isOnMyTeam?: boolean;
 }
 
 // Selected-card highlight color for the Trade tab's clickable cards (see
@@ -29,6 +34,18 @@ export interface PlayerCardRow {
 // reusable semantic color like positionColors.ts's set.
 const SELECTED_BACKGROUND = "rgba(139, 69, 19, 0.15)";
 const SELECTED_BORDER = "saddlebrown";
+
+// "This player is on my team" wash for the Players tab - deliberately just
+// a background tint (no border change, unlike SELECTED_* above) so it
+// reads as passive/informational rather than interactive. Uses the theme's
+// own primaryColor (burlywood, see shared/theme.ts) rather than a one-off
+// color like SELECTED_BACKGROUND, since "mine" is closer to a reusable
+// brand/identity signal than a one-off UI state - color-mix at low opacity
+// over the card's own background is the same subtle-overlay technique
+// shared/theme.ts's Popover dropdown styling already uses, so it stays
+// legible in both light and dark without a separate shade pick per mode.
+const ON_MY_TEAM_BACKGROUND =
+  "color-mix(in srgb, var(--mantine-color-burlywood-3) 18%, transparent)";
 
 interface PlayerCardProps {
   row: PlayerCardRow;
@@ -103,6 +120,12 @@ export function PlayerCard({
       onClick={selectable?.onToggle}
       style={{
         ...(selectable ? { cursor: "pointer" } : {}),
+        // selectable.selected (an active, interactive choice) wins over the
+        // passive isOnMyTeam wash if a row somehow had both - shouldn't
+        // happen today (selectable is Trade-only, isOnMyTeam is Players-tab-
+        // only) but this keeps the more meaningful state visible if it ever
+        // did.
+        ...(row.isOnMyTeam ? { backgroundColor: ON_MY_TEAM_BACKGROUND } : {}),
         ...(selectable?.selected
           ? { backgroundColor: SELECTED_BACKGROUND, borderColor: SELECTED_BORDER }
           : {}),

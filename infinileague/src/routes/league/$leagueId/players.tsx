@@ -52,9 +52,24 @@ function PlayersPage() {
   );
   const rookieFpidSet = new Set(rookieFpids ?? []);
 
+  // Own-roster highlight - see PlayerCard's isOnMyTeam handling. Same
+  // getStandings->isSelf pattern route.tsx/freeAgents.tsx/trade.tsx already
+  // use to find "my team" in this league.
+  const standings = useQuery(
+    api.infinileague.season.standings.getStandings,
+    isAuthenticated ? { seasonId } : "skip",
+  );
+  const selfTeamId = standings?.find((row) => row.isSelf)?.teamId;
+
   const rows: RosVorRow[] | undefined = useQuery(
     api.rosVor.getRosVorBoard,
-    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
+    isAuthenticated && nflState
+      ? {
+          seasonId,
+          week: nflState.week,
+          ...(selfTeamId ? { teamId: selfTeamId as Id<"seasonTeams"> } : {}),
+        }
+      : "skip",
   );
 
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);

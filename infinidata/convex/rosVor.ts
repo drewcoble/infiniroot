@@ -42,6 +42,13 @@ export interface RosVorRow {
   // already joins for the Trade tab's roster panel. Only populated by
   // getRosVorBoard, same as rosteredByTeamName above.
   injury?: { status: string; statusShort: string };
+  // True when this player is rostered by the teamId getRosVorBoard was
+  // called with (see its optional teamId arg) - false whenever that arg is
+  // omitted, not just for other teams' players, so callers that don't pass
+  // a teamId (getPlayerRosVorHistory's raw rows, or a caller with no "my
+  // team" context yet) get a row that never claims false ownership. Powers
+  // infinileague's Players tab own-roster highlight (PlayerCard.tsx).
+  isOnMyTeam: boolean;
 }
 
 // Recomputes and upserts one week's full rosVorSnapshots board for one
@@ -233,7 +240,17 @@ export const refreshRosVor = internalMutation({
 // fantasy team's own name (not the NFL team abbreviation already on
 // `team`), null for a free agent, powering infinileague's Players tab.
 export const getRosVorBoard = query({
-  args: { seasonId: v.id("seasons"), week: v.string(), position: v.optional(positionValidator) },
+  args: {
+    seasonId: v.id("seasons"),
+    week: v.string(),
+    position: v.optional(positionValidator),
+    // Whoever's asking "which of these are mine" - the Players tab passes
+    // the viewer's own teamId; other callers (Trade/Depth Charts/Free
+    // Agents tabs) that don't need per-row ownership just omit it, and
+    // every row's isOnMyTeam comes back false rather than comparing against
+    // nothing.
+    teamId: v.optional(v.id("seasonTeams")),
+  },
   handler: async (ctx, args): Promise<RosVorRow[]> => {
     await requireSeasonOwner(ctx, args.seasonId);
 
@@ -254,6 +271,7 @@ export const getRosVorBoard = query({
     ]);
     const teamNameById = new Map(teams.map((team) => [team._id, team.name]));
     const teamNameByFpid = new Map(rosteredRows.map((row) => [row.fpid, teamNameById.get(row.teamId) ?? null]));
+    const teamIdByFpid = new Map(rosteredRows.map((row) => [row.fpid, row.teamId]));
     const injuryByFpid = new Map(injuries.map((row) => [row.fpid, row]));
 
     // Positional rank - grouped from this week's full board (before the
@@ -290,6 +308,7 @@ export const getRosVorBoard = query({
           rosPpg: row.rosPpg ?? 0,
           actualPpg: row.actualPpg ?? 0,
           rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
+          isOnMyTeam: args.teamId !== undefined && teamIdByFpid.get(row.fpid) === args.teamId,
           ...(injury ? { injury: { status: injury.status, statusShort: injury.statusShort } } : {}),
         };
       });

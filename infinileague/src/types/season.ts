@@ -142,6 +142,15 @@ export interface RosVorRow {
   // Absent means not currently injured - mirrors TeamRosterRow's injury
   // field below, same convex/injuries.ts source (Sleeper-derived).
   injury?: { status: string; statusShort: string };
+  // True when this player is on the team the query's teamId arg named -
+  // false when that arg was omitted (see getRosVorBoard's own comment), not
+  // just for other teams. Optional (not just boolean) since TeamRosterList/
+  // TradeRosterMatchup build minimal stand-in RosVorRows of their own that
+  // don't set it - same "zero the fields PlayerCard doesn't use here"
+  // convention as their other zeroed fields; absent reads the same as
+  // false. Powers the Players tab's own-roster highlight (see
+  // shared/PlayerCard.tsx's isOnMyTeam handling).
+  isOnMyTeam?: boolean;
 }
 
 export type SlotLabel =

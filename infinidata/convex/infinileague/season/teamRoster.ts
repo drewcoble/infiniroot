@@ -282,7 +282,7 @@ export const getTeamRosterForWeek = action({
             playerKey,
             name,
             position,
-            teamAbbr,
+            ...(teamAbbr ? { teamAbbr } : {}),
           })),
         },
       );
