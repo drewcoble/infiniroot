@@ -8,6 +8,7 @@ import { DEF_TEAM_FPIDS } from "../../sleeper/client";
 import {
   mapYahooRosterPositions,
   mapYahooScoringSettings,
+  mapYahooWaiverType,
   type MappedRosterSlots,
 } from "./leagueSettingsMapping";
 import type { Scoring } from "../../scoring";
@@ -328,10 +329,20 @@ export const syncYahooLeagueRoster = action({
 
     let syncedTeams = 0;
     await withYahooToken(ctx, league.ownerId, async (accessToken) => {
-      const standingsByTeamKey = await fetchYahooStandingsForLeague(
-        accessToken,
-        yahooLeagueKey,
-      );
+      const [standingsByTeamKey, settings] = await Promise.all([
+        fetchYahooStandingsForLeague(accessToken, yahooLeagueKey),
+        fetchYahooLeagueSettings(accessToken, yahooLeagueKey),
+      ]);
+
+      // Re-read every sync, not just at connect time - same self-healing
+      // rationale as convex/sleeper/league.ts's syncLeagueRoster. Doesn't
+      // pass faabBudget (see mapYahooWaiverType's comment) - leaves
+      // whatever the commissioner has set in Season Settings untouched.
+      await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
+        seasonId: args.seasonId,
+        waiverType: mapYahooWaiverType(settings.raw),
+      });
+
       for (const team of teams) {
         if (!team.yahooTeamKey) continue;
 
@@ -358,9 +369,20 @@ export const syncYahooLeagueRoster = action({
           );
           const teamNode = findNodesByKey(teamJson, "team")[0] ?? teamJson;
           const fields = mergeYahooFields(teamNode);
-          const budgetUsed = fields.faab_balance ?? fields.waiver_budget_used;
-          if (typeof budgetUsed === "string" || typeof budgetUsed === "number") {
-            faabSpent = Number(budgetUsed) || 0;
+          const remainingBalance = fields.faab_balance ?? fields.waiver_budget_used;
+          if (typeof remainingBalance === "string" || typeof remainingBalance === "number") {
+            // faab_balance is the team's current REMAINING FAAB dollars,
+            // not amount spent (confirmed live: every team read "-100 FAAB
+            // left" when this stored the raw balance straight into
+            // faabSpent). Converting remaining -> spent against whatever
+            // budget baseline getStandings/bids.ts will later subtract it
+            // back out of (faabBudgetOverride ?? season.faabBudget ?? 0)
+            // makes the two operations exact inverses regardless of that
+            // budget's actual value - this doesn't need Yahoo's real
+            // configured budget at all, just internal consistency with the
+            // read side. See YAHOO.md.
+            const effectiveBudget = team.faabBudgetOverride ?? season.faabBudget ?? 0;
+            faabSpent = effectiveBudget - Number(remainingBalance);
           }
         } catch {
           // Leave faabSpent at 0.

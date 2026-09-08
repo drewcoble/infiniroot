@@ -100,6 +100,23 @@ export function mapYahooRosterPositions(settingsNode: unknown): MappedRosterSlot
   };
 }
 
+// Yahoo's `uses_faab` settings field (0/1, seen elsewhere as "1"/true too -
+// same defensive truthy check convex/infinidraft/yahoo/league.ts's
+// is_owned_by_current_login uses) - whether this league uses FAAB waivers
+// vs. rolling waiver priority order, read the same find-anywhere-in-the-tree
+// way roster_positions/stat_categories above are, since it's not confirmed
+// which exact depth it lands at. NOT confirmed against a live response -
+// see YAHOO.md. Doesn't attempt to read a league-wide FAAB budget amount -
+// no confirmed Yahoo field for that; convex/infinidraft/yahoo/league.ts's
+// syncYahooLeagueRoster leaves seasons.faabBudget for the commissioner to
+// set manually in Season Settings, same as every other league.
+export function mapYahooWaiverType(settingsNode: unknown): "faab" | "priority" {
+  const usesFaab = findNodesByKey(settingsNode, "uses_faab")[0];
+  return usesFaab === 1 || usesFaab === "1" || usesFaab === true
+    ? "faab"
+    : "priority";
+}
+
 // Nearest-bucket match against infinidraft's fixed STD/HALF/PPR trio, mirroring
 // convex/sleeper/leagueSettingsMapping.ts's mapScoringSettings. Yahoo has no
 // single "rec" field the way Sleeper's scoring_settings does - the
