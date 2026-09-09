@@ -13,7 +13,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { api } from "@infinidata/api";
-import { getErrorMessage } from "@shared/errors";
+import { getErrorMessage } from "./errors";
 
 type ActionKey = "sync" | "playerPoints";
 
@@ -49,6 +49,11 @@ const WEEK_OPTIONS = [
 // the one action here with a genuinely different scope - actual per-week
 // results for a specific (optionally past) season, not this week's
 // projections/rankings.
+//
+// Lives in shared (not any one app) because the sync it triggers is
+// entirely league-independent (its actions loop over every league in the
+// database) and infinileague depends on its output just as much as
+// infinidraft does - see AdminDataPanel.tsx.
 export function DataPanel() {
   const fetchAll = useAction(api.fetchAllData.fetchAll);
   const fetchPlayerPoints = useAction(

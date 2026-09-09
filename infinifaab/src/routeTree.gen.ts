@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminDataRouteImport } from './routes/admin-data'
 import { Route as ConnectSleeperRouteImport } from './routes/connect-sleeper'
 import { Route as JoinTokenRouteImport } from './routes/join/$token'
 import { Route as LeagueLeagueIdRouteRouteImport } from './routes/league/$leagueId/route'
@@ -22,6 +24,16 @@ import { Route as LeagueLeagueIdSettingsRouteImport } from './routes/league/$lea
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDataRoute = AdminDataRouteImport.update({
+  id: '/admin-data',
+  path: '/admin-data',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectSleeperRoute = ConnectSleeperRouteImport.update({
@@ -67,6 +79,8 @@ const LeagueLeagueIdSettingsRoute = LeagueLeagueIdSettingsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/admin-data': typeof AdminDataRoute
   '/connect-sleeper': typeof ConnectSleeperRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/join/$token': typeof JoinTokenRoute
@@ -78,6 +92,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/admin-data': typeof AdminDataRoute
   '/connect-sleeper': typeof ConnectSleeperRoute
   '/join/$token': typeof JoinTokenRoute
   '/league/$leagueId/myBids': typeof LeagueLeagueIdMyBidsRoute
@@ -89,6 +105,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/admin-data': typeof AdminDataRoute
   '/connect-sleeper': typeof ConnectSleeperRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/join/$token': typeof JoinTokenRoute
@@ -102,6 +120,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/admin-data'
     | '/connect-sleeper'
     | '/league/$leagueId'
     | '/join/$token'
@@ -113,6 +133,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
+    | '/admin-data'
     | '/connect-sleeper'
     | '/join/$token'
     | '/league/$leagueId/myBids'
@@ -123,6 +145,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/admin-data'
     | '/connect-sleeper'
     | '/league/$leagueId'
     | '/join/$token'
@@ -135,6 +159,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AdminDataRoute: typeof AdminDataRoute
   ConnectSleeperRoute: typeof ConnectSleeperRoute
   LeagueLeagueIdRouteRoute: typeof LeagueLeagueIdRouteRouteWithChildren
   JoinTokenRoute: typeof JoinTokenRoute
@@ -147,6 +173,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-data': {
+      id: '/admin-data'
+      path: '/admin-data'
+      fullPath: '/admin-data'
+      preLoaderRoute: typeof AdminDataRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connect-sleeper': {
@@ -229,6 +269,8 @@ const LeagueLeagueIdRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AdminDataRoute: AdminDataRoute,
   ConnectSleeperRoute: ConnectSleeperRoute,
   LeagueLeagueIdRouteRoute: LeagueLeagueIdRouteRouteWithChildren,
   JoinTokenRoute: JoinTokenRoute,

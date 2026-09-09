@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Menu } from "@mantine/core";
 import { useConvexAuth, useQuery } from "convex/react";
-import { Check, Plus } from "lucide-react";
+import { Check, Database, Plus, ShieldCheck } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader as SharedAppHeader } from "@shared/AppHeader";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
@@ -64,6 +64,22 @@ export function AppHeader() {
             Connect League
           </Menu.Item>
         </>
+      }
+      extraOverflowItems={
+        currentUser?.role === "super-admin" && (
+          <>
+            <Link to="/admin" style={{ textDecoration: "none" }}>
+              <Menu.Item component="span" leftSection={<ShieldCheck size={16} />}>
+                Admin
+              </Menu.Item>
+            </Link>
+            <Link to="/admin-data" style={{ textDecoration: "none" }}>
+              <Menu.Item component="span" leftSection={<Database size={16} />}>
+                Data
+              </Menu.Item>
+            </Link>
+          </>
+        )
       }
     />
   );

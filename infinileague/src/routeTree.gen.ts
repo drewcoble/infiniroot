@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminDataRouteImport } from './routes/admin-data'
 import { Route as ConnectSleeperRouteImport } from './routes/connect-sleeper'
 import { Route as LeagueLeagueIdRouteRouteImport } from './routes/league/$leagueId/route'
 import { Route as LeagueLeagueIdIndexRouteImport } from './routes/league/$leagueId/index'
@@ -22,6 +24,16 @@ import { Route as LeagueLeagueIdTeamsTeamIdRouteImport } from './routes/league/$
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDataRoute = AdminDataRouteImport.update({
+  id: '/admin-data',
+  path: '/admin-data',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectSleeperRoute = ConnectSleeperRouteImport.update({
@@ -70,6 +82,8 @@ const LeagueLeagueIdTeamsTeamIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/admin-data': typeof AdminDataRoute
   '/connect-sleeper': typeof ConnectSleeperRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/league/$leagueId/depthCharts': typeof LeagueLeagueIdDepthChartsRoute
@@ -81,6 +95,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/admin-data': typeof AdminDataRoute
   '/connect-sleeper': typeof ConnectSleeperRoute
   '/league/$leagueId/depthCharts': typeof LeagueLeagueIdDepthChartsRoute
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
@@ -92,6 +108,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/admin-data': typeof AdminDataRoute
   '/connect-sleeper': typeof ConnectSleeperRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/league/$leagueId/depthCharts': typeof LeagueLeagueIdDepthChartsRoute
@@ -105,6 +123,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/admin-data'
     | '/connect-sleeper'
     | '/league/$leagueId'
     | '/league/$leagueId/depthCharts'
@@ -116,6 +136,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
+    | '/admin-data'
     | '/connect-sleeper'
     | '/league/$leagueId/depthCharts'
     | '/league/$leagueId/freeAgents'
@@ -126,6 +148,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/admin-data'
     | '/connect-sleeper'
     | '/league/$leagueId'
     | '/league/$leagueId/depthCharts'
@@ -138,6 +162,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AdminDataRoute: typeof AdminDataRoute
   ConnectSleeperRoute: typeof ConnectSleeperRoute
   LeagueLeagueIdRouteRoute: typeof LeagueLeagueIdRouteRouteWithChildren
 }
@@ -149,6 +175,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-data': {
+      id: '/admin-data'
+      path: '/admin-data'
+      fullPath: '/admin-data'
+      preLoaderRoute: typeof AdminDataRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connect-sleeper': {
@@ -233,6 +273,8 @@ const LeagueLeagueIdRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AdminDataRoute: AdminDataRoute,
   ConnectSleeperRoute: ConnectSleeperRoute,
   LeagueLeagueIdRouteRoute: LeagueLeagueIdRouteRouteWithChildren,
 }
