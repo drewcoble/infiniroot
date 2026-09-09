@@ -8,10 +8,12 @@ import { DEF_TEAM_FPIDS } from "../../sleeper/client";
 import {
   mapYahooRosterPositions,
   mapYahooScoringSettings,
+  mapYahooSixPointPassTds,
+  mapYahooTeScoring,
   mapYahooWaiverType,
   type MappedRosterSlots,
 } from "./leagueSettingsMapping";
-import type { Scoring } from "../../scoring";
+import type { Scoring, TeScoring } from "../../scoring";
 
 export const listMyYahooLeagues = action({
   args: {},
@@ -698,6 +700,8 @@ export interface YahooImportPreview {
   season: string;
   teamCount: number;
   scoring: Scoring;
+  teScoring: TeScoring;
+  sixPointPassTds: boolean;
   rosterSlots: MappedRosterSlots["rosterSlots"];
   flexPositions: MappedRosterSlots["flexPositions"];
   superflexPositions: MappedRosterSlots["superflexPositions"];
@@ -724,6 +728,8 @@ export const previewYahooImport = action({
       const settings = await fetchYahooLeagueSettings(accessToken, args.leagueKey);
       const mappedRoster = mapYahooRosterPositions(settings.raw);
       const scoring = mapYahooScoringSettings(settings.raw);
+      const teScoring = mapYahooTeScoring(settings.raw);
+      const sixPointPassTds = mapYahooSixPointPassTds(settings.raw);
       const teams = await fetchYahooTeamsForLeague(accessToken, args.leagueKey);
       const previousSeason = await fetchPreviousYahooSeasonPreview(
         ctx,
@@ -736,6 +742,8 @@ export const previewYahooImport = action({
         season: settings.season,
         teamCount: settings.teamCount || teams.length,
         scoring,
+        teScoring,
+        sixPointPassTds,
         rosterSlots: mappedRoster.rosterSlots,
         flexPositions: mappedRoster.flexPositions,
         superflexPositions: mappedRoster.superflexPositions,

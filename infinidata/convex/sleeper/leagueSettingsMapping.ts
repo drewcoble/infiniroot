@@ -1,5 +1,5 @@
 import { POSITIONS } from "../positions";
-import type { Scoring } from "../scoring";
+import type { Scoring, TeScoring } from "../scoring";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -100,4 +100,33 @@ export function mapScoringSettings(
   if (rec >= 0.75) return "PPR";
   if (rec >= 0.25) return "HALF";
   return "STD";
+}
+
+// Sleeper's scoring_settings object is flat (unlike Yahoo's stat_id
+// indirection - see convex/infinidraft/yahoo/leagueSettingsMapping.ts's
+// mapYahooSixPointPassTds) - pass_td is the league's real per-passing-TD
+// point value (commonly 4 or 6), read the same object mapScoringSettings'
+// `rec` already comes from. >=5 treated as a 6pt-equivalent league (real
+// leagues use exactly 4 or 6, this tolerates an unusual in-between value on
+// the higher side rather than requiring an exact match). Defaults to false
+// (4pt) when absent, same "absent means the pre-feature default" convention
+// convex/scoring.ts's scoringConfigFromSeason uses for a season doc.
+export function mapSixPointPassTds(
+  scoringSettings: { pass_td?: number } | undefined,
+): boolean {
+  return (scoringSettings?.pass_td ?? 4) >= 5;
+}
+
+// bonus_rec_te is Sleeper's flat TE-only per-reception bonus, layered on top
+// of the league's normal PPR value (see convex/scoring.ts's
+// TE_BONUS_PER_REC, which this app models the same three-bucket way this
+// function does). Absent/0 -> NONE, same "absent means off" convention as
+// mapSixPointPassTds above.
+export function mapTeScoring(
+  scoringSettings: { bonus_rec_te?: number } | undefined,
+): TeScoring {
+  const bonus = scoringSettings?.bonus_rec_te ?? 0;
+  if (bonus >= 0.75) return "FULL";
+  if (bonus >= 0.25) return "HALF";
+  return "NONE";
 }

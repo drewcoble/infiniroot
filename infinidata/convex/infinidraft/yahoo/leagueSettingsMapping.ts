@@ -1,5 +1,5 @@
 import { POSITIONS } from "../../positions";
-import type { Scoring } from "../../scoring";
+import type { Scoring, TeScoring } from "../../scoring";
 import { findNodesByKey, mergeYahooFields } from "./client";
 
 type Position = (typeof POSITIONS)[number];
@@ -117,36 +117,114 @@ export function mapYahooWaiverType(settingsNode: unknown): "faab" | "priority" {
     : "priority";
 }
 
-// Nearest-bucket match against infinidraft's fixed STD/HALF/PPR trio, mirroring
-// convex/sleeper/leagueSettingsMapping.ts's mapScoringSettings. Yahoo has no
-// single "rec" field the way Sleeper's scoring_settings does - the
-// reception point value is buried in stat_modifiers, keyed by a stat_id
-// that has to be resolved against stat_categories' stat name/display_name
-// first (both nested under the same league settings resource). This whole
-// two-step lookup is unverified against a live response - see YAHOO.md.
-export function mapYahooScoringSettings(settingsNode: unknown): Scoring {
+// Shared two-step lookup every Yahoo scoring signal below needs:
+// stat_categories gives each stat a stat_id + name, but the actual point
+// VALUE lives in the separate stat_modifiers list, keyed by that same
+// stat_id - both nested under the same league settings resource. Finds
+// every stat_categories entry whose name/display_name matches (a league can
+// define more than one stat with a matching name, e.g. a general "Reception"
+// and a position-scoped one - see mapYahooTeScoring below), then returns the
+// first matching stat_modifiers value found. undefined means no matching
+// stat category was found at all (wrong name guess, or - for a niche
+// setting like TE premium - this league genuinely doesn't have one).
+// Unverified against a live response - see YAHOO.md.
+function findYahooStatModifierValue(
+  settingsNode: unknown,
+  matchesName: (name: string) => boolean,
+): number | undefined {
   const statCategoriesRoot = findNodesByKey(settingsNode, "stat_categories");
-  const statDefs = findNodesByKey(statCategoriesRoot, "stat").map(mergeYahooFields);
-  const receptionStatIds = new Set(
-    statDefs
-      .filter((stat) => {
-        const name = String(stat.name ?? stat.display_name ?? "").toLowerCase();
-        return name.includes("reception") || name === "rec";
-      })
+  const statIds = new Set(
+    findNodesByKey(statCategoriesRoot, "stat")
+      .map(mergeYahooFields)
+      .filter((stat) =>
+        matchesName(String(stat.name ?? stat.display_name ?? "").toLowerCase()),
+      )
       .map((stat) => String(stat.stat_id)),
   );
+  if (statIds.size === 0) return undefined;
 
   const statModifiersRoot = findNodesByKey(settingsNode, "stat_modifiers");
-  const modifiers = findNodesByKey(statModifiersRoot, "stat").map(mergeYahooFields);
-  let recValue = 0;
-  for (const modifier of modifiers) {
-    if (receptionStatIds.has(String(modifier.stat_id))) {
-      recValue = Number(modifier.value) || 0;
-      break;
+  for (const modifier of findNodesByKey(statModifiersRoot, "stat").map(mergeYahooFields)) {
+    if (statIds.has(String(modifier.stat_id))) {
+      return Number(modifier.value) || 0;
     }
   }
+  return undefined;
+}
 
+// Nearest-bucket match against infinidraft's fixed STD/HALF/PPR trio, mirroring
+// convex/sleeper/leagueSettingsMapping.ts's mapScoringSettings. Yahoo has no
+// single "rec" field the way Sleeper's scoring_settings does - see
+// findYahooStatModifierValue above for the two-step lookup this needs.
+// Unverified against a live response - see YAHOO.md.
+export function mapYahooScoringSettings(settingsNode: unknown): Scoring {
+  const recValue =
+    findYahooStatModifierValue(
+      settingsNode,
+      (name) => name.includes("reception") || name === "rec",
+    ) ?? 0;
   if (recValue >= 0.75) return "PPR";
   if (recValue >= 0.25) return "HALF";
   return "STD";
+}
+
+// Passing-TD point value - same two-step lookup as reception scoring above,
+// matching Yahoo's standard stat label ("Passing Touchdowns"). >=5 is
+// treated as a 6pt-equivalent league (real leagues use exactly 4 or 6; this
+// tolerates an unusual in-between value on the higher side rather than
+// requiring an exact match). Defaults to false (4pt, the far more common
+// setting) if no matching stat category is found at all - every real Yahoo
+// league has SOME passing-TD stat, so unlike TE premium below, a miss here
+// means the name guess is wrong, not that the setting doesn't apply; logs
+// the raw settings tree so that's visible rather than silently importing
+// every league as 4pt. Unverified against a live response - see YAHOO.md.
+export function mapYahooSixPointPassTds(settingsNode: unknown): boolean {
+  const value = findYahooStatModifierValue(
+    settingsNode,
+    (name) => name.includes("passing touchdown") || name.includes("pass touchdown"),
+  );
+  if (value === undefined) {
+    // Diagnostic for an unconfirmed shape - remove once checked against a
+    // real response and this stops happening.
+    console.error(
+      "mapYahooSixPointPassTds: no passing-TD stat category found, raw settings:",
+      JSON.stringify(settingsNode),
+    );
+    return false;
+  }
+  return value >= 5;
+}
+
+// TE-premium detection - considerably less confident than the two lookups
+// above. Sleeper models this as a flat bonus-per-reception layered on top of
+// the league's normal PPR value (bonus_rec_te); Yahoo has no confirmed
+// equivalent single field. Working theory (unverified, see YAHOO.md): a
+// TE-premium Yahoo league defines a SEPARATE, position-scoped "Reception"
+// stat category just for tight ends (its own stat_id, distinct from the
+// general reception category mapYahooScoringSettings reads above), rather
+// than a bonus layered on the same stat - matches a stat category whose
+// name mentions both reception and TE/tight end, then buckets the
+// DIFFERENCE between its value and the general reception value the same way
+// mapYahooScoringSettings buckets the raw PPR value. No matching category
+// found at all -> NONE, without logging - a true negative is the expected/
+// correct result for the large majority of leagues that don't use TE
+// premium (unlike sixPointPassTds, where every league has SOME passing-TD
+// stat to find, so a miss there is a real signal something's wrong).
+export function mapYahooTeScoring(settingsNode: unknown): TeScoring {
+  const teRecValue = findYahooStatModifierValue(
+    settingsNode,
+    (name) =>
+      (name.includes("reception") || name.includes(" rec")) &&
+      (name.includes("te") || name.includes("tight end")),
+  );
+  if (teRecValue === undefined) return "NONE";
+  const generalRecValue =
+    findYahooStatModifierValue(
+      settingsNode,
+      (name) => name.includes("reception") || name === "rec",
+    ) ?? 0;
+  const bonus = teRecValue - generalRecValue;
+  if (bonus >= 0.75) return "FULL";
+  if (bonus >= 0.25) return "HALF";
+  return "NONE";
 }

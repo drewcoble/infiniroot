@@ -18,7 +18,7 @@ import { upsertSyncStatus } from "../draft/draftSyncShared";
 import { expandRosterSlots } from "../../lib/rosterSlots";
 import { invalidateDraftValues } from "../../draftValues";
 import { positionValidator } from "../../positions";
-import { scoringValidator } from "../../scoring";
+import { scoringValidator, teScoringValidator } from "../../scoring";
 import {
   fetchYahooDraftResults,
   fetchYahooDraftStatus,
@@ -28,6 +28,8 @@ import {
 import {
   mapYahooRosterPositions,
   mapYahooScoringSettings,
+  mapYahooSixPointPassTds,
+  mapYahooTeScoring,
 } from "./leagueSettingsMapping";
 import { withYahooToken } from "./oauth";
 
@@ -238,6 +240,12 @@ const yahooResyncRosterSlotsValidator = v.object({
 // drafts.status (see status.ts) unable to ever reach "complete", which
 // gates the Report Card.
 //
+// Also carries teScoring/sixPointPassTds (added 2026-09-09, alongside
+// scoring/rosterSlots above - previously missing here the same way the
+// import wizard was missing them, see YAHOO.md) - both affect draft-value
+// math (convex/scoring.ts's bonusPoints), same reason a stale rosterSlots
+// mattered enough to build this resync for in the first place.
+//
 // Refuses to shrink rosterSlots below whatever round count this draft's own
 // synced picks already reach - a real Yahoo settings change should never
 // retroactively invalidate picks that already happened, and this also
@@ -251,6 +259,8 @@ export const applyYahooSettingsResync = internalMutation({
     flexPositions: v.array(positionValidator),
     superflexPositions: v.array(positionValidator),
     scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
   },
   handler: async (ctx, args): Promise<{ changed: boolean }> => {
     const season = await ctx.db.get(args.seasonId);
@@ -262,7 +272,9 @@ export const applyYahooSettingsResync = internalMutation({
         JSON.stringify(args.flexPositions) &&
       JSON.stringify(season.superflexPositions) ===
         JSON.stringify(args.superflexPositions) &&
-      season.scoring === args.scoring;
+      season.scoring === args.scoring &&
+      (season.teScoring ?? "NONE") === args.teScoring &&
+      (season.sixPointPassTds ?? false) === args.sixPointPassTds;
     if (unchanged) return { changed: false };
 
     const newTotalRounds = expandRosterSlots(args.rosterSlots).length;
@@ -291,6 +303,8 @@ export const applyYahooSettingsResync = internalMutation({
       flexPositions: args.flexPositions,
       superflexPositions: args.superflexPositions,
       scoring: args.scoring,
+      teScoring: args.teScoring,
+      sixPointPassTds: args.sixPointPassTds,
     });
     await invalidateDraftValues(ctx, args.draftId);
     await syncDraftStatus(ctx, args.draftId);
@@ -316,6 +330,8 @@ async function resyncSeasonSettingsFromYahoo(
     const settings = await fetchYahooLeagueSettings(accessToken, yahooLeagueKey);
     const mappedRoster = mapYahooRosterPositions(settings.raw);
     const scoring = mapYahooScoringSettings(settings.raw);
+    const teScoring = mapYahooTeScoring(settings.raw);
+    const sixPointPassTds = mapYahooSixPointPassTds(settings.raw);
     await ctx.runMutation(internal.infinidraft.yahoo.draftSync.applyYahooSettingsResync, {
       draftId,
       seasonId,
@@ -323,6 +339,8 @@ async function resyncSeasonSettingsFromYahoo(
       flexPositions: mappedRoster.flexPositions,
       superflexPositions: mappedRoster.superflexPositions,
       scoring,
+      teScoring,
+      sixPointPassTds,
     });
   } catch {
     // Leave season settings untouched - the next tick tries again.

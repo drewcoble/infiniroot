@@ -3,8 +3,13 @@ import { action, ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { Doc, Id } from "../_generated/dataModel";
 import { DEF_TEAM_FPIDS, currentSeason } from "./client";
-import { mapRosterPositions, mapScoringSettings } from "./leagueSettingsMapping";
-import type { Scoring } from "../scoring";
+import {
+  mapRosterPositions,
+  mapScoringSettings,
+  mapSixPointPassTds,
+  mapTeScoring,
+} from "./leagueSettingsMapping";
+import type { Scoring, TeScoring } from "../scoring";
 import type { DraftType } from "../draftType";
 
 // Sleeper's real, documented consumer API - same base fetchCurrentNflWeek
@@ -355,7 +360,12 @@ interface SleeperLeagueSettings {
   season: string;
   total_rosters: number;
   roster_positions: string[];
-  scoring_settings?: { rec?: number };
+  // pass_td/bonus_rec_te: well-documented Sleeper fields (per-passing-TD
+  // point value, flat TE-only per-reception bonus) but NOT yet confirmed
+  // against a real connected league the way rec/waiver_type above are - see
+  // mapSixPointPassTds/mapTeScoring in ./leagueSettingsMapping.ts, the
+  // first callers of either field.
+  scoring_settings?: { rec?: number; pass_td?: number; bonus_rec_te?: number };
   previous_league_id?: string | null;
   draft_id?: string | null;
   // waiver_budget is present (defaulted to 100) even for a league that
@@ -571,6 +581,8 @@ export interface SleeperImportPreview {
   // back to "auction" in that case, same as before this was detected at all.
   draftType: DraftType | undefined;
   scoring: Scoring;
+  teScoring: TeScoring;
+  sixPointPassTds: boolean;
   rosterSlots: ReturnType<typeof mapRosterPositions>["rosterSlots"];
   flexPositions: ReturnType<typeof mapRosterPositions>["flexPositions"];
   superflexPositions: ReturnType<typeof mapRosterPositions>["superflexPositions"];
@@ -591,6 +603,8 @@ export const previewSleeperImport = action({
     const settings = await fetchSleeperLeagueSettings(args.sleeperLeagueId);
     const mapped = mapRosterPositions(settings.roster_positions ?? []);
     const scoring = mapScoringSettings(settings.scoring_settings);
+    const teScoring = mapTeScoring(settings.scoring_settings);
+    const sixPointPassTds = mapSixPointPassTds(settings.scoring_settings);
     const { rows: teams } = await fetchLeagueTeamRows(args.sleeperLeagueId);
 
     const draftType = settings.draft_id
@@ -607,6 +621,8 @@ export const previewSleeperImport = action({
       teamCount: settings.total_rosters,
       draftType,
       scoring,
+      teScoring,
+      sixPointPassTds,
       rosterSlots: mapped.rosterSlots,
       flexPositions: mapped.flexPositions,
       superflexPositions: mapped.superflexPositions,
