@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { ActionCtx } from "../../_generated/server";
 import {
   action,
   internalAction,
@@ -7,17 +8,27 @@ import {
   mutation,
 } from "../../_generated/server";
 import { internal } from "../../_generated/api";
-import type { Doc } from "../../_generated/dataModel";
+import type { Doc, Id } from "../../_generated/dataModel";
 import { requireDraftOwner } from "../../lib/access";
 import { resolveDraftType } from "../../draftType";
 import { resolveTeamPositionInRound } from "../draft/pickOrder";
 import { countForfeitedByRound, countRealSlotsThroughRound } from "../draft/pickSlots";
+import { syncDraftStatus } from "../draft/status";
 import { upsertSyncStatus } from "../draft/draftSyncShared";
+import { expandRosterSlots } from "../../lib/rosterSlots";
+import { invalidateDraftValues } from "../../draftValues";
+import { positionValidator } from "../../positions";
+import { scoringValidator } from "../../scoring";
 import {
   fetchYahooDraftResults,
   fetchYahooDraftStatus,
+  fetchYahooLeagueSettings,
   fetchYahooPlayersByKeys,
 } from "./league";
+import {
+  mapYahooRosterPositions,
+  mapYahooScoringSettings,
+} from "./leagueSettingsMapping";
 import { withYahooToken } from "./oauth";
 
 // Live sync from an in-progress Yahoo draft into this app's own draftPicks -
@@ -202,6 +213,121 @@ export const recordWatchTick = internalMutation({
     return { stopped: false };
   },
 });
+
+const yahooResyncRosterSlotsValidator = v.object({
+  QB: v.number(),
+  RB: v.number(),
+  WR: v.number(),
+  TE: v.number(),
+  DST: v.number(),
+  K: v.number(),
+  FLEX: v.number(),
+  SUPERFLEX: v.number(),
+  BENCH: v.number(),
+});
+
+// Writes a freshly-fetched Yahoo roster/scoring config onto the season -
+// called by resyncSeasonSettingsFromYahoo below, both right as a real draft
+// starts (zero picks exist yet, so any change is unconditionally safe) and
+// once Yahoo confirms "postdraft" (a last-chance catch-up if the settings
+// changed after the season was originally linked/started). Confirmed live
+// 2026-09-08: a commissioner dropped 2 bench spots in Yahoo's league
+// settings right before the real draft opened, so the real draft only ran
+// 11 rounds while this app stayed configured for 13 - no synced pick would
+// ever fill those last 2 rounds, leaving the board on-the-clock forever and
+// drafts.status (see status.ts) unable to ever reach "complete", which
+// gates the Report Card.
+//
+// Refuses to shrink rosterSlots below whatever round count this draft's own
+// synced picks already reach - a real Yahoo settings change should never
+// retroactively invalidate picks that already happened, and this also
+// guards against a transient/malformed settings read silently truncating a
+// perfectly fine larger roster.
+export const applyYahooSettingsResync = internalMutation({
+  args: {
+    draftId: v.id("drafts"),
+    seasonId: v.id("seasons"),
+    rosterSlots: yahooResyncRosterSlotsValidator,
+    flexPositions: v.array(positionValidator),
+    superflexPositions: v.array(positionValidator),
+    scoring: scoringValidator,
+  },
+  handler: async (ctx, args): Promise<{ changed: boolean }> => {
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) return { changed: false };
+
+    const unchanged =
+      JSON.stringify(season.rosterSlots) === JSON.stringify(args.rosterSlots) &&
+      JSON.stringify(season.flexPositions) ===
+        JSON.stringify(args.flexPositions) &&
+      JSON.stringify(season.superflexPositions) ===
+        JSON.stringify(args.superflexPositions) &&
+      season.scoring === args.scoring;
+    if (unchanged) return { changed: false };
+
+    const newTotalRounds = expandRosterSlots(args.rosterSlots).length;
+    const picks = await ctx.db
+      .query("draftPicks")
+      .withIndex("by_draft", (q) => q.eq("draftId", args.draftId))
+      .collect();
+    const picksPerTeam = new Map<Id<"seasonTeams">, number>();
+    for (const pick of picks) {
+      picksPerTeam.set(pick.teamId, (picksPerTeam.get(pick.teamId) ?? 0) + 1);
+    }
+    const maxPicksForAnyTeam = Math.max(0, ...picksPerTeam.values());
+    if (newTotalRounds < maxPicksForAnyTeam) {
+      await upsertSyncStatus(ctx, args.draftId, {
+        syncError:
+          `Yahoo's real roster settings (${newTotalRounds} rounds) look ` +
+          `smaller than picks already synced (${maxPicksForAnyTeam}) - ` +
+          "left season settings as-is, check manually.",
+        syncErrorCount: undefined,
+      });
+      return { changed: false };
+    }
+
+    await ctx.db.patch(args.seasonId, {
+      rosterSlots: args.rosterSlots,
+      flexPositions: args.flexPositions,
+      superflexPositions: args.superflexPositions,
+      scoring: args.scoring,
+    });
+    await invalidateDraftValues(ctx, args.draftId);
+    await syncDraftStatus(ctx, args.draftId);
+    return { changed: true };
+  },
+});
+
+// Action-side counterpart to applyYahooSettingsResync above - does the
+// actual Yahoo fetch (needs the access token, so can't run inside a
+// mutation) and hands the mapped result to it. Best-effort: any failure
+// here (network, unexpected shape) is swallowed rather than thrown, same
+// degrade-gracefully contract fetchPreviousYahooSeasonPreview uses for
+// prior-season keeper import - a settings-resync miss shouldn't take down
+// the pick-syncing poll chain around it.
+async function resyncSeasonSettingsFromYahoo(
+  ctx: ActionCtx,
+  draftId: Id<"drafts">,
+  seasonId: Id<"seasons">,
+  accessToken: string,
+  yahooLeagueKey: string,
+): Promise<void> {
+  try {
+    const settings = await fetchYahooLeagueSettings(accessToken, yahooLeagueKey);
+    const mappedRoster = mapYahooRosterPositions(settings.raw);
+    const scoring = mapYahooScoringSettings(settings.raw);
+    await ctx.runMutation(internal.infinidraft.yahoo.draftSync.applyYahooSettingsResync, {
+      draftId,
+      seasonId,
+      rosterSlots: mappedRoster.rosterSlots,
+      flexPositions: mappedRoster.flexPositions,
+      superflexPositions: mappedRoster.superflexPositions,
+      scoring,
+    });
+  } catch {
+    // Leave season settings untouched - the next tick tries again.
+  }
+}
 
 // Applies one poll's worth of Yahoo picks: resolves each pick's team_key to
 // a seasonTeams row (a single map - Yahoo has one team identifier, unlike
@@ -481,9 +607,39 @@ export const syncYahooDraft = internalAction({
             }
             return;
           }
+          // Draft room just opened - Yahoo only reveals real roster/scoring
+          // settings (and the real draft order, handled separately in
+          // applyYahooSyncTick below) once drafting is imminent/underway,
+          // never before (see YAHOO.md). Zero picks exist yet at this
+          // point, so any settings change here is unconditionally safe to
+          // apply - this is what catches a commissioner's last-minute Yahoo
+          // settings edit (e.g. dropped bench spots) before any pick ever
+          // gets synced against the stale config.
+          await resyncSeasonSettingsFromYahoo(
+            ctx,
+            args.draftId,
+            draft.seasonId,
+            accessToken,
+            yahooLeagueKey,
+          );
           await ctx.runMutation(
             internal.infinidraft.draft.lifecycle.startDraftForSyncInternal,
             { draftId: args.draftId },
+          );
+        } else if (draftStatus === "postdraft") {
+          // Last-chance catch-up: if the draft-start resync above was never
+          // reached (e.g. sync was enabled after the draft had already
+          // started) or Yahoo's settings changed again mid-draft, this is
+          // the final tick before applyYahooSyncTick's own postdraft check
+          // disables sync below - see applyYahooSettingsResync's comment
+          // for the guard against shrinking below picks that already
+          // happened.
+          await resyncSeasonSettingsFromYahoo(
+            ctx,
+            args.draftId,
+            draft.seasonId,
+            accessToken,
+            yahooLeagueKey,
           );
         }
 

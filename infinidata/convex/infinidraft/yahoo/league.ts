@@ -455,7 +455,12 @@ interface YahooLeagueSettingsSummary {
   raw: unknown;
 }
 
-async function fetchYahooLeagueSettings(
+// Exported for convex/infinidraft/yahoo/draftSync.ts's reuse - the live
+// poller re-fetches this at draft-start and again once Yahoo confirms
+// "postdraft" to catch a league's roster/scoring settings changing after
+// this app's own season config was last synced (see draftSync.ts's
+// resyncSeasonSettingsFromYahoo).
+export async function fetchYahooLeagueSettings(
   accessToken: string,
   leagueKey: string,
 ): Promise<YahooLeagueSettingsSummary> {
