@@ -85,10 +85,14 @@ export const enableSync = internalMutation({
 // mapped to a Yahoo team (Season Settings' team-mapping step) so picks
 // don't start silently getting skipped mid-draft, and - for snake/linear -
 // requires the in-app Draft Order (drafts.draftOrder/reversalRounds,
-// Settings' Teams panel) to already be configured, since a synced pick's
-// round/pickInRound is computed from *our* configured order
-// (resolveTeamPositionInRound below), not re-derived from Yahoo's own
-// numbering.
+// Settings' Teams panel) to already be configured, since resolveTeamPositionInRound
+// below needs *some* order to compute round/pickInRound the instant the
+// first picks arrive. This is only ever a placeholder, though - Yahoo
+// doesn't expose the real order pre-draft (confirmed live 2026-09-08: it's
+// revealed only once the draft room opens), so applyYahooSyncTick derives
+// the real slot-by-slot order from round 1's own picks the moment they come
+// in and overwrites whatever was configured here with it - see that
+// function's comment.
 //
 // Unlike Sleeper's linkSleeperDraft, this does NOT cross-validate the real
 // draft's type (auction vs. snake) against a live Yahoo field before
@@ -251,9 +255,41 @@ export const applyYahooSyncTick = internalMutation({
       teams.filter((t) => t.yahooTeamKey).map((t) => [t.yahooTeamKey as string, t]),
     );
 
-    // Only needed for snake/linear - computed once per tick rather than
-    // per-pick, same as Sleeper's tick / draftPick / addKeeper.
-    const draftOrder = draft.draftOrder ?? [];
+    // Yahoo never exposes the real draft order pre-draft (see YAHOO.md) -
+    // linkYahooDraft only requires *some* draftOrder configured so the
+    // feature can be enabled ahead of time, but Yahoo can (and typically
+    // does) randomize/reveal the actual slot assignments right as the draft
+    // room opens, after which the Teams panel no longer allows editing
+    // draftOrder (picks are already being placed against it). So every
+    // tick, once round 1's own picks have revealed a full slot-by-slot
+    // order (one distinct team_key per seasonTeam, in pick order), that
+    // real order overwrites whatever was configured - confirmed-live Yahoo
+    // data always wins over a pre-draft guess. Harmless to keep re-deriving
+    // every tick even after it's settled (identical order = no-op patch
+    // avoided below), same re-derive-everything-per-tick approach the rest
+    // of this poller already uses.
+    let draftOrder = draft.draftOrder ?? [];
+    if (mode !== "auction" && teams.length > 0) {
+      const round1TeamKeysInOrder: string[] = [];
+      const seenTeamKeys = new Set<string>();
+      for (const pick of [...args.picks].sort((a, b) => a.pickNo - b.pickNo)) {
+        if (pick.round !== 1 || !pick.teamKey || seenTeamKeys.has(pick.teamKey)) continue;
+        seenTeamKeys.add(pick.teamKey);
+        round1TeamKeysInOrder.push(pick.teamKey);
+      }
+      if (round1TeamKeysInOrder.length === teams.length) {
+        const derivedOrder = round1TeamKeysInOrder
+          .map((teamKey) => teamByYahooTeamKey.get(teamKey)?._id)
+          .filter((id): id is Doc<"seasonTeams">["_id"] => id !== undefined);
+        const changed =
+          derivedOrder.length !== draftOrder.length ||
+          derivedOrder.some((id, i) => id !== draftOrder[i]);
+        if (derivedOrder.length === teams.length && changed) {
+          await ctx.db.patch(args.draftId, { draftOrder: derivedOrder });
+          draftOrder = derivedOrder;
+        }
+      }
+    }
     const reversalRounds = draft.reversalRounds ?? [];
     const teamCount = draftOrder.length;
     const forfeitedByRound =
