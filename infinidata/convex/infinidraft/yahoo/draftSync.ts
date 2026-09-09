@@ -39,7 +39,7 @@ import { withYahooToken } from "./oauth";
 //
 // More conservative than Sleeper's 3s/60s cadence - Yahoo's rate limits are
 // less documented/generous than Sleeper's fully-public API.
-const FAST_INTERVAL_MS = 7_000;
+const FAST_INTERVAL_MS = 4_500;
 const SLOW_INTERVAL_MS = 60_000;
 // After this many consecutive failed polls, auto-disable rather than retry
 // forever silently - see recordSyncError.
