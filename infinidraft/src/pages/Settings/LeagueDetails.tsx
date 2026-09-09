@@ -21,7 +21,7 @@ import {
 } from "@mantine/core";
 import { api } from "@infinidata/api";
 import type { Id } from "@infinidata/dataModel";
-import type { DraftTypeFormat } from "../../types";
+import type { DraftTypeFormat, LeagueTypeFormat } from "../../types";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { SNAKE_DRAFT_ENABLED } from "../../lib/featureFlags";
 import {
@@ -81,6 +81,7 @@ export function LeagueDetails({
   const removeDraftTeam = useMutation(api.infinidraft.draft.teams.removeSeasonTeam);
   const setUseKeepers = useMutation(api.leagues.setUseKeepers);
   const setDraftType = useMutation(api.leagues.setDraftType);
+  const setLeagueType = useMutation(api.leagues.setLeagueType);
   const deleteDraftSettings = useMutation(api.leagues.deleteLeague);
   const phase = useDraftPhase(selectedLeagueId);
   const isStarted = phase?.isStarted ?? false;
@@ -125,6 +126,7 @@ export function LeagueDetails({
   );
   const [useKeepersError, setUseKeepersError] = useState<string | null>(null);
   const [draftTypeError, setDraftTypeError] = useState<string | null>(null);
+  const [leagueTypeError, setLeagueTypeError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -201,6 +203,10 @@ export function LeagueDetails({
             // draftTypeControl below (setDraftType) instead, not this
             // form's own batched Save.
             draftType: settings.draftType ?? "auction",
+            // Same display-only-here story as draftType above - an existing
+            // league's leagueType changes via the live leagueTypeControl
+            // below (setLeagueType), not this form's own batched Save.
+            leagueType: settings.leagueType ?? "redraft",
             salaryCap: settings.salaryCap,
             scoring: settings.scoring,
             teScoring: settings.teScoring ?? "NONE",
@@ -244,6 +250,7 @@ export function LeagueDetails({
           // showDraftType && SNAKE_DRAFT_ENABLED check is the only thing
           // stopping a *manual* pick, but this is the actual write path).
           draftType: SNAKE_DRAFT_ENABLED ? form.draftType : "auction",
+          leagueType: form.leagueType,
           useKeepers: form.useKeepers,
         });
         onLeagueSaved(newId);
@@ -336,6 +343,18 @@ export function LeagueDetails({
       await setDraftType({ id: settings._id, draftType });
     } catch (err) {
       setDraftTypeError(getErrorMessage(err, "Failed to update draft type."));
+    }
+  };
+
+  const handleSetLeagueType = async (leagueType: LeagueTypeFormat) => {
+    if (!settings) return;
+    setLeagueTypeError(null);
+    try {
+      await setLeagueType({ id: settings._id, leagueType });
+    } catch (err) {
+      setLeagueTypeError(
+        getErrorMessage(err, "Failed to update league type."),
+      );
     }
   };
 
@@ -528,6 +547,29 @@ export function LeagueDetails({
               },
             }
           : {})}
+        leagueTypeControl={
+          settings
+            ? {
+                // Existing league - live-toggles via setLeagueType,
+                // independent of this form's own Save/Cancel. Unlike
+                // draftTypeControl above, always available regardless of
+                // isStarted - nothing about leagueType is tied to
+                // already-recorded picks.
+                checked: settings.leagueType ?? "redraft",
+                onChange: (leagueType: LeagueTypeFormat) =>
+                  void handleSetLeagueType(leagueType),
+                error: leagueTypeError,
+              }
+            : {
+                // Brand-new league - no id yet to toggle a live mutation
+                // against, so this just sets local form state and rides
+                // along with the rest of the form on Save (see handleSave).
+                checked: form.leagueType,
+                onChange: (leagueType: LeagueTypeFormat) =>
+                  setForm({ ...form, leagueType }),
+                error: null,
+              }
+        }
         useKeepersControl={
           settings
             ? {

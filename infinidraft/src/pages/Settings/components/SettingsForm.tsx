@@ -36,13 +36,14 @@ import {
 } from "@shared/positionColors";
 import {
   DRAFT_TYPE_OPTIONS,
+  LEAGUE_TYPE_OPTIONS,
   PASSING_TD_OPTIONS,
   ROSTER_SLOT_KEYS,
   SCORING_OPTIONS,
   TE_SCORING_OPTIONS,
   type LeagueSettingsFormValues,
 } from "../../../constants/leagueSettings";
-import type { DraftTypeFormat } from "../../../types";
+import type { DraftTypeFormat, LeagueTypeFormat } from "../../../types";
 
 interface SettingsFormProps {
   form: LeagueSettingsFormValues;
@@ -118,6 +119,16 @@ interface SettingsFormProps {
     onChange: (value: DraftTypeFormat) => void;
     error?: string | null;
   };
+  // Same optional-live-control-vs-plain-form-field shape as draftTypeControl
+  // above, but always rendered (no SNAKE_DRAFT_ENABLED-style flag) and never
+  // locked - LeagueDetails.tsx supplies this for an existing league (live
+  // setLeagueType mutation), the import wizards leave it undefined and let
+  // form.leagueType/onSave's payload handle it instead.
+  leagueTypeControl?: {
+    checked: LeagueTypeFormat;
+    onChange: (value: LeagueTypeFormat) => void;
+    error?: string | null;
+  };
 }
 
 export function SettingsForm({
@@ -134,6 +145,7 @@ export function SettingsForm({
   compact = false,
   showDraftType = false,
   draftTypeControl,
+  leagueTypeControl,
 }: SettingsFormProps) {
   // SettingsForm is freshly mounted at the start of every edit session (see
   // LeagueDetails.tsx's isEditing early-return, and the import wizards'
@@ -207,6 +219,35 @@ export function SettingsForm({
                 </Stack>
               </Grid.Col>
             )}
+            <Grid.Col span={{ base: 12, sm: 6 }}>
+              <Stack gap={4}>
+                <Text size="sm" fw={500}>
+                  League Type
+                </Text>
+                <SegmentedControl
+                  value={
+                    leagueTypeControl ? leagueTypeControl.checked : form.leagueType
+                  }
+                  onChange={(value) =>
+                    leagueTypeControl
+                      ? leagueTypeControl.onChange(value as LeagueTypeFormat)
+                      : handleChange({
+                          ...form,
+                          leagueType: value as LeagueTypeFormat,
+                        })
+                  }
+                  data={LEAGUE_TYPE_OPTIONS.map(({ label, value }) => ({
+                    label,
+                    value,
+                  }))}
+                />
+                {leagueTypeControl?.error && (
+                  <Text c="red" size="xs">
+                    {leagueTypeControl.error}
+                  </Text>
+                )}
+              </Stack>
+            </Grid.Col>
             <Grid.Col span={{ base: 6, sm: 3 }}>
               <Stack gap={4}>
                 <Text size="sm" fw={500}>

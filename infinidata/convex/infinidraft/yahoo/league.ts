@@ -14,6 +14,7 @@ import {
   type MappedRosterSlots,
 } from "./leagueSettingsMapping";
 import type { Scoring, TeScoring } from "../../scoring";
+import type { LeagueType } from "../../leagueType";
 
 export const listMyYahooLeagues = action({
   args: {},
@@ -451,6 +452,17 @@ interface YahooLeagueSettingsSummary {
   // unverified against a live response, see YAHOO.md. Absent for a
   // brand-new (first-year) league.
   renew: string | undefined;
+  // Yahoo's own guillotine flag, sibling of name/season/num_teams/renew on
+  // the same "league" node - confirmed live 2026-09-09 against a real Yahoo
+  // Guillotine league ("1"/"0" string, not a boolean). NOT the same as
+  // scoring_type, which stays "head" even for a guillotine league (that
+  // field describes the underlying head-to-head-style points mechanic, not
+  // the elimination format layered on top) - scoring_type was tried first
+  // and confirmed wrong against this same live league before is_guillotine
+  // was found. Unlike Sleeper, this is a real auto-detectable signal rather
+  // than something the wizard has to ask for manually (see leagueType.ts,
+  // previewYahooImport below).
+  isGuillotine: boolean;
   // The full settings response, handed to mapYahooRosterPositions/
   // mapYahooScoringSettings, which each do their own deep search rather
   // than assume one exact nesting.
@@ -488,6 +500,10 @@ export async function fetchYahooLeagueSettings(
       typeof leagueFields.renew === "string" && leagueFields.renew
         ? leagueFields.renew
         : undefined,
+    isGuillotine:
+      leagueFields.is_guillotine === "1" ||
+      leagueFields.is_guillotine === 1 ||
+      leagueFields.is_guillotine === true,
     raw: json,
   };
 }
@@ -702,6 +718,11 @@ export interface YahooImportPreview {
   scoring: Scoring;
   teScoring: TeScoring;
   sixPointPassTds: boolean;
+  // Detected from Yahoo's own is_guillotine flag (see
+  // YahooLeagueSettingsSummary.isGuillotine) - "guillotine" if Yahoo reports
+  // it, "redraft" otherwise. Still user-editable on the review step before
+  // creating, same as every other detected field here.
+  leagueType: LeagueType;
   rosterSlots: MappedRosterSlots["rosterSlots"];
   flexPositions: MappedRosterSlots["flexPositions"];
   superflexPositions: MappedRosterSlots["superflexPositions"];
@@ -730,6 +751,9 @@ export const previewYahooImport = action({
       const scoring = mapYahooScoringSettings(settings.raw);
       const teScoring = mapYahooTeScoring(settings.raw);
       const sixPointPassTds = mapYahooSixPointPassTds(settings.raw);
+      const leagueType: LeagueType = settings.isGuillotine
+        ? "guillotine"
+        : "redraft";
       const teams = await fetchYahooTeamsForLeague(accessToken, args.leagueKey);
       const previousSeason = await fetchPreviousYahooSeasonPreview(
         ctx,
@@ -744,6 +768,7 @@ export const previewYahooImport = action({
         scoring,
         teScoring,
         sixPointPassTds,
+        leagueType,
         rosterSlots: mappedRoster.rosterSlots,
         flexPositions: mappedRoster.flexPositions,
         superflexPositions: mappedRoster.superflexPositions,

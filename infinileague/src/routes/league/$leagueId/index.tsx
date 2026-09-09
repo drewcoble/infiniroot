@@ -16,9 +16,11 @@ import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
 import { StandingsList } from "../../../components/StandingsList";
 import { PowerRankingsList } from "../../../components/PowerRankingsList";
+import { EliminationWatchList } from "../../../components/EliminationWatchList";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
 import type {
+  EliminationWatchRow,
   LinkedSeason,
   PowerRankingRow,
   StandingsRow,
@@ -52,15 +54,23 @@ function LeaguePage() {
   const seasonId = leagueId as Id<"seasons">;
   const { isAuthenticated } = useConvexAuth();
 
-  const [tableView, setTableView] = useState<"standings" | "power">(
-    "standings",
-  );
+  // null = no manual pick yet, so the tab defaults to Elimination Watch for
+  // a guillotine league (win/loss doesn't mean anything without head-to-
+  // head games) or Standings otherwise - see the tableView derivation
+  // below. Once the viewer picks a tab themselves, that choice sticks
+  // regardless of which league format this turns out to be.
+  const [manualTableView, setManualTableView] = useState<
+    "standings" | "power" | "elimination" | null
+  >(null);
 
   const seasonsList: LinkedSeason[] | undefined = useQuery(
     api.leagues.listLinkedSeasons,
     isAuthenticated ? {} : "skip",
   );
   const season = seasonsList?.find((s) => s._id === leagueId);
+  const isGuillotine = season?.leagueType === "guillotine";
+  const tableView =
+    manualTableView ?? (isGuillotine ? "elimination" : "standings");
 
   const syncStatus: RosterSyncStatusRow[] | undefined = useQuery(
     api.infinileague.season.rosterPlayers.getRosterSyncStatus,
@@ -101,6 +111,31 @@ function LeaguePage() {
     // same convention as the auto-sync effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, isAuthenticated]);
+
+  const getEliminationWatch = useAction(
+    api.infinileague.season.eliminationWatch.getEliminationWatch,
+  );
+  const [eliminationWatch, setEliminationWatch] = useState<
+    EliminationWatchRow[] | undefined
+  >(undefined);
+  const [eliminationWatchError, setEliminationWatchError] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isGuillotine) return;
+    setEliminationWatch(undefined);
+    setEliminationWatchError(null);
+    getEliminationWatch({ seasonId })
+      .then(setEliminationWatch)
+      .catch((err) =>
+        setEliminationWatchError(
+          getErrorMessage(err, "Failed to load elimination watch."),
+        ),
+      );
+    // Same dep convention as the getPowerRankings effect above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated, isGuillotine]);
 
   // Backs every team card's click-to-expand position radar chart (see
   // StandingsList/PowerRankingsList) - fetched once per league visit
@@ -230,14 +265,41 @@ function LeaguePage() {
       )}
       <SegmentedControl
         value={tableView}
-        onChange={(value) => setTableView(value as "standings" | "power")}
+        onChange={(value) =>
+          setManualTableView(value as "standings" | "power" | "elimination")
+        }
         data={[
-          { label: "Standings", value: "standings" },
+          // Standings' win/loss record doesn't mean anything in a
+          // guillotine league (no head-to-head games) - swapped for
+          // Elimination Watch instead, same tab slot. Power rankings is
+          // unaffected either way.
+          isGuillotine
+            ? { label: "Elimination Watch", value: "elimination" }
+            : { label: "Standings", value: "standings" },
           { label: "Power rankings", value: "power" },
         ]}
         style={{ alignSelf: "flex-start" }}
       />
-      {tableView === "standings" ? (
+      {tableView === "elimination" ? (
+        <>
+          {eliminationWatchError && (
+            <Alert
+              color="red"
+              withCloseButton
+              onClose={() => setEliminationWatchError(null)}
+            >
+              {eliminationWatchError}
+            </Alert>
+          )}
+          <EliminationWatchList
+            leagueId={leagueId}
+            rows={eliminationWatch}
+            expandedTeamIds={expandedTeamIds}
+            onToggleExpand={toggleExpanded}
+            positionRanksByTeam={positionRanksByTeam}
+          />
+        </>
+      ) : tableView === "standings" ? (
         standings === undefined ? (
           <Loader />
         ) : (

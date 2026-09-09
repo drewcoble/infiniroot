@@ -22,6 +22,10 @@ export interface LinkedSeason {
   // routes/league/$leagueId/index.tsx's runSync).
   sleeperLeagueId?: string;
   yahooLeagueKey?: string;
+  // Absent means "redraft" (see convex/leagueType.ts's resolveLeagueType) -
+  // "guillotine" swaps the dashboard's Standings tab for Elimination Watch
+  // (see routes/league/$leagueId/index.tsx).
+  leagueType?: "redraft" | "guillotine";
 }
 
 // Mirrors convex/season/standings.ts's StandingsRow - already sorted by the
@@ -55,6 +59,20 @@ export interface PowerRankingRow {
   // up, negative means moved down. Absent when there's no prior snapshot
   // yet (first computation for this season).
   rankChange?: number;
+}
+
+// Mirrors convex/infinileague/season/eliminationWatch.ts's
+// EliminationWatchRow - this week's optimal-lineup total only (not
+// rest-of-season, unlike PowerRankingRow above), already ranked descending
+// (rank 1 = best/safest, same convention as every other list here) with the
+// bottom slice flagged red/gold/green.
+export interface EliminationWatchRow {
+  teamId: string;
+  name: string;
+  isSelf: boolean;
+  weekPoints: number;
+  rank: number;
+  status: "cut" | "bubble" | "safe";
 }
 
 // Roster-slot categories the position radar chart ranks by - mirrors

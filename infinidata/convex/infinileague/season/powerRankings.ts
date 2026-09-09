@@ -111,7 +111,7 @@ export const saveSnapshot = internalMutation({
   },
 });
 
-interface PowerRankingsInputs {
+export interface PowerRankingsInputs {
   season: Doc<"seasons">;
   currentWeek: number;
   teams: Doc<"seasonTeams">[];
@@ -133,9 +133,14 @@ interface PowerRankingsInputs {
 // per action call regardless of how many teams' totals end up computed from
 // it - a trade only ever touches two teams, so the hypothetical run reuses
 // this same gathered data rather than refetching.
-async function gatherPowerRankingsInputs(
+// weeksAhead caps how many remaining weeks' projections get fetched -
+// defaults to every week through 18 (rest-of-season, what getPowerRankings/
+// getTeamPositionRanks need). eliminationWatch.ts passes 1 to only fetch the
+// current week, since it has no use for a rest-of-season total.
+export async function gatherPowerRankingsInputs(
   ctx: ActionCtx,
   seasonId: Id<"seasons">,
+  weeksAhead?: number,
 ): Promise<PowerRankingsInputs> {
   const { season } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
     seasonId,
@@ -149,7 +154,8 @@ async function gatherPowerRankingsInputs(
   // routes/league/$leagueId/teams/$teamId.tsx) - pre-season (week "0")
   // isn't a real week to project from, so start at week 1.
   const currentWeek = nflState ? Math.max(Number(nflState.week), 1) : 1;
-  const weeks = Array.from({ length: 18 - currentWeek + 1 }, (_, i) =>
+  const weekCount = weeksAhead ?? 18 - currentWeek + 1;
+  const weeks = Array.from({ length: weekCount }, (_, i) =>
     String(currentWeek + i),
   );
 
@@ -220,7 +226,7 @@ async function gatherPowerRankingsInputs(
 // One week's LineupPick list for a given fpid list - shared by
 // computeTeamTotal and computeTeamCategoryTotals below, which otherwise
 // only differ in which part of optimizeLineup's result they keep.
-function buildWeekPicks(
+export function buildWeekPicks(
   fpids: number[],
   projectionByFpid: Map<number, Doc<"projections">>,
   { season, positionByFpid }: PowerRankingsInputs,

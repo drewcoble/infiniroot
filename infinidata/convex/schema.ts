@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { positionValidator } from "./positions";
 import { scoringValidator, teScoringValidator } from "./scoring";
 import { draftTypeValidator } from "./draftType";
+import { leagueTypeValidator } from "./leagueType";
 
 // Shared by seasons/drafts below.
 const rosterSlotsValidator = v.object({
@@ -575,6 +576,14 @@ export default defineSchema({
     // season (SNAKE_DRAFT.md §2/§5); locked once teams/picks exist, same as
     // scoring/rosterSlots below.
     draftType: v.optional(draftTypeValidator),
+    // Weekly-elimination format, independent of draftType above - see
+    // leagueType.ts's resolveLeagueType. Absent means "redraft", i.e.
+    // exactly pre-feature behavior. Not locked once teams/picks exist (see
+    // leagues.ts's setLeagueType) - unlike draftType/rosterSlots, nothing
+    // about this field is tied to already-recorded pick data, and a
+    // commissioner may need to correct a wrong Sleeper-import guess
+    // mid-season, which is exactly when guillotine status matters most.
+    leagueType: v.optional(leagueTypeValidator),
     salaryCap: v.number(),
     scoring: scoringValidator,
     // TE-only reception bonus / 6pt-passing-TD toggle - both v.optional since

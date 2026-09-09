@@ -19,6 +19,7 @@ import { expandRosterSlots } from "../../lib/rosterSlots";
 import { invalidateDraftValues } from "../../draftValues";
 import { positionValidator } from "../../positions";
 import { scoringValidator, teScoringValidator } from "../../scoring";
+import { leagueTypeValidator, type LeagueType } from "../../leagueType";
 import {
   fetchYahooDraftResults,
   fetchYahooDraftStatus,
@@ -246,6 +247,10 @@ const yahooResyncRosterSlotsValidator = v.object({
 // math (convex/scoring.ts's bonusPoints), same reason a stale rosterSlots
 // mattered enough to build this resync for in the first place.
 //
+// Also carries leagueType - Yahoo's scoring_type is read fresh every resync
+// so a season stays correctly marked guillotine/redraft even if it was
+// linked before this field existed, or Yahoo's own settings change later.
+//
 // Refuses to shrink rosterSlots below whatever round count this draft's own
 // synced picks already reach - a real Yahoo settings change should never
 // retroactively invalidate picks that already happened, and this also
@@ -261,6 +266,7 @@ export const applyYahooSettingsResync = internalMutation({
     scoring: scoringValidator,
     teScoring: teScoringValidator,
     sixPointPassTds: v.boolean(),
+    leagueType: leagueTypeValidator,
   },
   handler: async (ctx, args): Promise<{ changed: boolean }> => {
     const season = await ctx.db.get(args.seasonId);
@@ -274,7 +280,8 @@ export const applyYahooSettingsResync = internalMutation({
         JSON.stringify(args.superflexPositions) &&
       season.scoring === args.scoring &&
       (season.teScoring ?? "NONE") === args.teScoring &&
-      (season.sixPointPassTds ?? false) === args.sixPointPassTds;
+      (season.sixPointPassTds ?? false) === args.sixPointPassTds &&
+      (season.leagueType ?? "redraft") === args.leagueType;
     if (unchanged) return { changed: false };
 
     const newTotalRounds = expandRosterSlots(args.rosterSlots).length;
@@ -305,6 +312,7 @@ export const applyYahooSettingsResync = internalMutation({
       scoring: args.scoring,
       teScoring: args.teScoring,
       sixPointPassTds: args.sixPointPassTds,
+      leagueType: args.leagueType,
     });
     await invalidateDraftValues(ctx, args.draftId);
     await syncDraftStatus(ctx, args.draftId);
@@ -332,6 +340,9 @@ async function resyncSeasonSettingsFromYahoo(
     const scoring = mapYahooScoringSettings(settings.raw);
     const teScoring = mapYahooTeScoring(settings.raw);
     const sixPointPassTds = mapYahooSixPointPassTds(settings.raw);
+    const leagueType: LeagueType = settings.isGuillotine
+      ? "guillotine"
+      : "redraft";
     await ctx.runMutation(internal.infinidraft.yahoo.draftSync.applyYahooSettingsResync, {
       draftId,
       seasonId,
@@ -341,6 +352,7 @@ async function resyncSeasonSettingsFromYahoo(
       scoring,
       teScoring,
       sixPointPassTds,
+      leagueType,
     });
   } catch {
     // Leave season settings untouched - the next tick tries again.

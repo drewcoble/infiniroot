@@ -68,6 +68,7 @@ import type * as infinileague_auction_players from "../infinileague/auction/play
 import type * as infinileague_auction_settings from "../infinileague/auction/settings.js";
 import type * as infinileague_auction_waiverPlayersData from "../infinileague/auction/waiverPlayersData.js";
 import type * as infinileague_auction_waiverSync from "../infinileague/auction/waiverSync.js";
+import type * as infinileague_season_eliminationWatch from "../infinileague/season/eliminationWatch.js";
 import type * as infinileague_season_faabValues from "../infinileague/season/faabValues.js";
 import type * as infinileague_season_powerRankings from "../infinileague/season/powerRankings.js";
 import type * as infinileague_season_rosterPlayers from "../infinileague/season/rosterPlayers.js";
@@ -76,6 +77,7 @@ import type * as infinileague_season_teamRoster from "../infinileague/season/tea
 import type * as infinileague_season_teams from "../infinileague/season/teams.js";
 import type * as injuries from "../injuries.js";
 import type * as injurySnapshots from "../injurySnapshots.js";
+import type * as leagueType from "../leagueType.js";
 import type * as leagues from "../leagues.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_dataFetch from "../lib/dataFetch.js";
@@ -186,6 +188,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/auction/settings": typeof infinileague_auction_settings;
   "infinileague/auction/waiverPlayersData": typeof infinileague_auction_waiverPlayersData;
   "infinileague/auction/waiverSync": typeof infinileague_auction_waiverSync;
+  "infinileague/season/eliminationWatch": typeof infinileague_season_eliminationWatch;
   "infinileague/season/faabValues": typeof infinileague_season_faabValues;
   "infinileague/season/powerRankings": typeof infinileague_season_powerRankings;
   "infinileague/season/rosterPlayers": typeof infinileague_season_rosterPlayers;
@@ -194,6 +197,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/teams": typeof infinileague_season_teams;
   injuries: typeof injuries;
   injurySnapshots: typeof injurySnapshots;
+  leagueType: typeof leagueType;
   leagues: typeof leagues;
   "lib/access": typeof lib_access;
   "lib/dataFetch": typeof lib_dataFetch;

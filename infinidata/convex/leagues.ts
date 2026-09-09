@@ -15,6 +15,7 @@ import {
   scoringConfigFromSeason,
 } from "./scoring";
 import { draftTypeValidator } from "./draftType";
+import { leagueTypeValidator } from "./leagueType";
 import {
   invalidateDraftValues,
   refreshDraftValuesForLeague,
@@ -364,6 +365,10 @@ export const createLeague = mutation({
     // creates auction leagues), so every existing creation flow keeps
     // working unchanged. See SNAKE_DRAFT.md §4 for the eventual UI wiring.
     draftType: v.optional(draftTypeValidator),
+    // Absent means "redraft" (see leagueType.ts's resolveLeagueType) -
+    // independent of draftType above, a guillotine league still picks a
+    // draft mechanic.
+    leagueType: v.optional(leagueTypeValidator),
     salaryCap: v.number(),
     scoring: scoringValidator,
     teScoring: teScoringValidator,
@@ -780,6 +785,25 @@ export const setDraftType = mutation({
       );
     }
     await ctx.db.patch(args.id, { draftType: args.draftType });
+    return await ctx.db.get(args.id);
+  },
+});
+
+// Corrects a season's guillotine/redraft status after creation - unlike
+// setDraftType/setUseKeepers above, this is never locked to pre-draft (no
+// requireDraftNotStarted, no Pro gate): nothing about leagueType is tied to
+// already-recorded picks or keeper prices, and a commissioner fixing a wrong
+// Sleeper-import guess (Sleeper has no native guillotine signal - see
+// convex/sleeper/league.ts) is exactly as likely to need this mid-season as
+// before the draft.
+export const setLeagueType = mutation({
+  args: {
+    id: v.id("seasons"),
+    leagueType: leagueTypeValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireSeasonOwner(ctx, args.id);
+    await ctx.db.patch(args.id, { leagueType: args.leagueType });
     return await ctx.db.get(args.id);
   },
 });

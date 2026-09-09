@@ -131,6 +131,10 @@ export function YahooLeagueImportWizard({
         // looked at, and only to seed keeper price history) - defaults to
         // auction same as every import today, adjustable after import.
         draftType: DEFAULT_FORM.draftType,
+        // Detected from Yahoo's own scoring_type field (see
+        // convex/infinidraft/yahoo/league.ts's previewYahooImport) - still
+        // adjustable on this review step below before creating.
+        leagueType: result.leagueType,
         salaryCap: DEFAULT_FORM.salaryCap,
         scoring: result.scoring,
         teScoring: result.teScoring,
@@ -158,6 +162,7 @@ export function YahooLeagueImportWizard({
         // Clamped at the actual write path - see LeagueImportWizard.tsx's
         // matching comment (Yahoo draft-type detection isn't built either).
         draftType: SNAKE_DRAFT_ENABLED ? form.draftType : "auction",
+        leagueType: form.leagueType,
         salaryCap: form.salaryCap,
         scoring: form.scoring,
         teScoring: form.teScoring,
