@@ -4,8 +4,9 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../shared/*"],
+      "@shared-core/*": ["../shared-core/*"],
       "@infinidata/*": ["../infinidata/convex/_generated/*"]
     }
   },
-  "include": ["src", "middleware.ts", "../shared"]
+  "include": ["src", "middleware.ts", "../shared", "../shared-core"]
 }

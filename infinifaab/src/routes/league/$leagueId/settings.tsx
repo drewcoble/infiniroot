@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import {
   Alert,
@@ -18,11 +17,16 @@ import {
   Title,
 } from "@mantine/core";
 import { Check, Copy } from "lucide-react";
-import { api } from "@infinidata/api";
 import { EditableNumberStepper } from "@shared/NumberStepper";
 import { getErrorMessage } from "@shared/errors";
 import { copyToClipboard } from "../../../lib/clipboard";
-import type { AuctionSettings, MyParticipation, TeamInviteRow } from "../../../types/season";
+import { useAuctionSettings, type AuctionSettings } from "@shared-core/useAuctionSettings";
+import { useCreateTeamInvite } from "@shared-core/useCreateTeamInvite";
+import { useMyParticipation } from "@shared-core/useMyParticipation";
+import { useRemoveTeamMember } from "@shared-core/useRemoveTeamMember";
+import { useRevokeTeamInvite } from "@shared-core/useRevokeTeamInvite";
+import { useTeamInvites, type TeamInviteRow } from "@shared-core/useTeamInvites";
+import { useUpdateAuctionSettings } from "@shared-core/useUpdateAuctionSettings";
 
 export const Route = createFileRoute("/league/$leagueId/settings")({
   component: SettingsTab,
@@ -46,26 +50,16 @@ const TIE_BREAK_OPTIONS = [
 function SettingsTab() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
-  const { isAuthenticated } = useConvexAuth();
 
-  const participation: MyParticipation | undefined = useQuery(
-    api.infinileague.auction.participant.getMyParticipation,
-    isAuthenticated ? { seasonId } : "skip",
-  );
-  const settings: AuctionSettings | undefined = useQuery(
-    api.infinileague.auction.settings.getAuctionSettings,
-    isAuthenticated ? { seasonId } : "skip",
-  );
+  const participation = useMyParticipation(seasonId);
+  const settings = useAuctionSettings(seasonId);
   const isCommissioner = participation?.isCommissioner ?? false;
-  const invites: TeamInviteRow[] | undefined = useQuery(
-    api.infinileague.auction.invites.listTeamInvites,
-    isAuthenticated && isCommissioner ? { seasonId } : "skip",
-  );
+  const invites = useTeamInvites(seasonId, isCommissioner);
 
-  const updateSettings = useMutation(api.infinileague.auction.settings.updateAuctionSettings);
-  const createInvite = useMutation(api.infinileague.auction.invites.createTeamInvite);
-  const revokeInvite = useMutation(api.infinileague.auction.invites.revokeTeamInvite);
-  const removeMember = useMutation(api.infinileague.auction.invites.removeTeamMember);
+  const updateSettings = useUpdateAuctionSettings();
+  const createInvite = useCreateTeamInvite();
+  const revokeInvite = useRevokeTeamInvite();
+  const removeMember = useRemoveTeamMember();
 
   const [form, setForm] = useState<AuctionSettings | null>(null);
   const [saving, setSaving] = useState(false);

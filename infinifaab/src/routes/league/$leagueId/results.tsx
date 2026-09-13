@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { Card, Center, Group, Loader, Stack, Text, Title } from "@mantine/core";
-import { api } from "@infinidata/api";
-import type { AuctionResultRow } from "../../../types/season";
+import { useAuctionResults, type AuctionResultRow } from "@shared-core/useAuctionResults";
 
 export const Route = createFileRoute("/league/$leagueId/results")({
   component: ResultsTab,
@@ -12,12 +10,8 @@ export const Route = createFileRoute("/league/$leagueId/results")({
 function ResultsTab() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
-  const { isAuthenticated } = useConvexAuth();
 
-  const results: AuctionResultRow[] | undefined = useQuery(
-    api.infinileague.auction.cycles.listResults,
-    isAuthenticated ? { seasonId } : "skip",
-  );
+  const results = useAuctionResults(seasonId);
 
   if (results === undefined) {
     return (

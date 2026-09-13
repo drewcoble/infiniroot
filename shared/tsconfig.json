@@ -3,8 +3,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@shared-core/*": ["../shared-core/*"],
       "@infinidata/*": ["../infinidata/convex/_generated/*"]
     }
   },
-  "include": ["."]
+  "include": [".", "../shared-core"]
 }

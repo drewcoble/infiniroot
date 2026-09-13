@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import {
   Alert,
@@ -18,22 +17,22 @@ import {
 } from "@mantine/core";
 import { Search } from "lucide-react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { api } from "@infinidata/api";
 import { PlayerCard } from "@shared/PlayerCard";
 import { getErrorMessage } from "@shared/errors";
 import { BidModal, type BidModalTarget } from "../../../components/BidModal";
-import { formatCountdown } from "../../../lib/countdown";
-import type {
-  AuctionBoardRow,
-  AuctionCycle,
-  AuctionSettings,
-  BidBoardRow,
-  CycleType,
-  ManualCycleCandidateRow,
-  MyBidRow,
-  MyParticipation,
-  WaiverPlayerRow,
-} from "../../../types/season";
+import { formatCountdown } from "@shared-core/countdown";
+import { useAuctionBoardState } from "@shared-core/useAuctionBoardState";
+import { useAuctionSettings } from "@shared-core/useAuctionSettings";
+import { useBidsBoard } from "@shared-core/useBidsBoard";
+import { useCloseAuctionCycleNow } from "@shared-core/useCloseAuctionCycleNow";
+import { useManualCycleCandidates } from "@shared-core/useManualCycleCandidates";
+import { useMyBids, type MyBidRow } from "@shared-core/useMyBids";
+import { useMyParticipation } from "@shared-core/useMyParticipation";
+import { useOpenAuctionCycleNow } from "@shared-core/useOpenAuctionCycleNow";
+import { useRookieFpids } from "@shared-core/useRookieFpids";
+import { useStartManualAuctionCycle } from "@shared-core/useStartManualAuctionCycle";
+import { useWaiverEligiblePlayers, type WaiverPlayerRow } from "@shared-core/useWaiverEligiblePlayers";
+import type { CycleType } from "@shared-core/CycleType";
 
 export const Route = createFileRoute("/league/$leagueId/players")({
   component: PlayersTab,
@@ -68,52 +67,24 @@ function boardKey(cycleId: string, fpid: number): string {
 function PlayersTab() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
-  const { isAuthenticated } = useConvexAuth();
 
-  const players: WaiverPlayerRow[] | undefined = useQuery(
-    api.infinileague.auction.players.getWaiverEligiblePlayers,
-    isAuthenticated ? { seasonId } : "skip",
-  );
-  const board:
-    | { openCycles: AuctionCycle[]; rows: AuctionBoardRow[] }
-    | undefined = useQuery(
-    api.infinileague.auction.bids.getAuctionBoardState,
-    isAuthenticated ? { seasonId } : "skip",
-  );
-  const myBids: MyBidRow[] | undefined = useQuery(
-    api.infinileague.auction.bids.getMyBids,
-    isAuthenticated ? { seasonId } : "skip",
-  );
+  const players = useWaiverEligiblePlayers(seasonId);
+  const board = useAuctionBoardState(seasonId);
+  const myBids = useMyBids(seasonId);
   // Reused for its winning/outbid categorization (see getBidsBoard's own
   // comment) - compares by teamId under the hood, unlike this file's own
   // boardByKey/myBidsByKey maps, which only carry team names and can't
   // safely tell "leading team" and "my team" apart by string match alone.
-  const bidsBoard: BidBoardRow[] | undefined = useQuery(
-    api.infinileague.auction.bids.getBidsBoard,
-    isAuthenticated ? { seasonId } : "skip",
-  );
-  const participation: MyParticipation | undefined = useQuery(
-    api.infinileague.auction.participant.getMyParticipation,
-    isAuthenticated ? { seasonId } : "skip",
-  );
-  const settings: AuctionSettings | undefined = useQuery(
-    api.infinileague.auction.settings.getAuctionSettings,
-    isAuthenticated ? { seasonId } : "skip",
-  );
-  const rookieFpids = useQuery(
-    api.players.getRookieFpids,
-    isAuthenticated ? {} : "skip",
-  );
-  const rookieFpidSet = new Set(rookieFpids ?? []);
+  const bidsBoard = useBidsBoard(seasonId);
+  const participation = useMyParticipation(seasonId);
+  const settings = useAuctionSettings(seasonId);
+  const rookieFpidSet = useRookieFpids();
   const isCommissioner = participation?.isCommissioner ?? false;
-  const manualCandidates: ManualCycleCandidateRow[] | undefined = useQuery(
-    api.infinileague.auction.players.listManualCycleCandidates,
-    isAuthenticated && isCommissioner ? { seasonId } : "skip",
-  );
+  const manualCandidates = useManualCycleCandidates(seasonId, isCommissioner);
 
-  const openCycleNow = useMutation(api.infinileague.auction.cycles.openAuctionCycleNow);
-  const closeCycleNow = useMutation(api.infinileague.auction.cycles.closeAuctionCycleNow);
-  const startManualCycle = useMutation(api.infinileague.auction.cycles.startManualAuctionCycle);
+  const openCycleNow = useOpenAuctionCycleNow();
+  const closeCycleNow = useCloseAuctionCycleNow();
+  const startManualCycle = useStartManualAuctionCycle();
 
   const [bidTarget, setBidTarget] = useState<BidModalTarget | null>(null);
   const [testDuration, setTestDuration] = useState<number | "">(60);

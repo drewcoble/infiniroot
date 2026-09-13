@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Menu } from "@mantine/core";
-import { useConvexAuth, useQuery } from "convex/react";
 import { Check, Database, Plus, ShieldCheck } from "lucide-react";
-import { api } from "@infinidata/api";
 import { AppHeader as SharedAppHeader } from "@shared/AppHeader";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
-import type { LinkedSeason } from "../types/season";
+import { useCurrentUser } from "@shared-core/useCurrentUser";
+import { useMyAuctionSeasons } from "@shared-core/useMyAuctionSeasons";
 
 // Thin infinifaab-specific wrapper around @shared/AppHeader: backed by
 // listMyAuctionSeasons instead of infinidraft's listSeasons so an invited
@@ -15,12 +14,8 @@ import type { LinkedSeason } from "../types/season";
 export function AppHeader() {
   const navigate = useNavigate();
   const { leagueId } = useParams({ strict: false });
-  const { isAuthenticated } = useConvexAuth();
-  const currentUser = useQuery(api.users.getCurrentUser);
-  const seasonsList: LinkedSeason[] | undefined = useQuery(
-    api.leagues.listMyAuctionSeasons,
-    isAuthenticated ? {} : "skip",
-  );
+  const currentUser = useCurrentUser();
+  const seasonsList = useMyAuctionSeasons();
 
   const selectedLeague = seasonsList?.find((s) => s._id === leagueId);
   const leagueGroups = useMemo(

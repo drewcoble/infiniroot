@@ -1,29 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { Badge, Card, Center, Group, Loader, Stack, Text } from "@mantine/core";
-import { api } from "@infinidata/api";
-import type { AuctionDashboardRow } from "../../../types/season";
+import { useAuctionDashboard } from "@shared-core/useAuctionDashboard";
 
 export const Route = createFileRoute("/league/$leagueId/")({
   component: DashboardTab,
 });
 
-// Team FAAB standings for this season's current auction cycle - already
-// sorted FAAB-remaining descending by the backend (see
-// api.infinileague.auction.bids.getAuctionDashboard). Card layout matches
-// the rest of the app's list style (PlayerCard/TeamCard's "left label,
-// flexible middle, stat stack right" shape), simplified to just the three
-// fields asked for.
+// Card layout matches the rest of the app's list style (PlayerCard/
+// TeamCard's "left label, flexible middle, stat stack right" shape),
+// simplified to just the three fields asked for. Data fetching lives in
+// shared-core's useAuctionDashboard, not here - see MOBILE_SPLIT_PLAN.md /
+// INFINIFAAB_MOBILE_PLAN.md for why (shared between the web and future
+// native FAAB apps).
 function DashboardTab() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
-  const { isAuthenticated } = useConvexAuth();
 
-  const rows: AuctionDashboardRow[] | undefined = useQuery(
-    api.infinileague.auction.bids.getAuctionDashboard,
-    isAuthenticated ? { seasonId } : "skip",
-  );
+  const rows = useAuctionDashboard(seasonId);
 
   if (rows === undefined) {
     return (

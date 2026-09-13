@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { Alert, Button, Group, Modal, Select, Stack, Text } from "@mantine/core";
-import { api } from "@infinidata/api";
 import { EditableNumberStepper } from "@shared/NumberStepper";
 import { getErrorMessage } from "@shared/errors";
+import { usePlaceBid } from "@shared-core/usePlaceBid";
 
 export interface BidModalTarget {
   fpid: number;
@@ -24,7 +23,7 @@ interface BidModalProps {
 // already winning/outbid on) open the exact same modal rather than each
 // keeping their own copy of this state/submit logic.
 export function BidModal({ seasonId, target, onClose, teams }: BidModalProps) {
-  const placeBid = useMutation(api.infinileague.auction.bids.placeBid);
+  const placeBid = usePlaceBid();
   const [bidTeamId, setBidTeamId] = useState<string | null>(null);
   const [bidAmount, setBidAmount] = useState<number | "">("");
   const [submitting, setSubmitting] = useState(false);

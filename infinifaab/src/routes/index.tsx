@@ -1,7 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-// useConvexAuth from convex/react, not @convex-dev/auth/react's - see
-// __root.tsx's comment on the same import.
-import { useConvexAuth, useQuery } from "convex/react";
 import {
   Button,
   Card,
@@ -13,11 +10,10 @@ import {
   Text,
 } from "@mantine/core";
 import { Plus } from "lucide-react";
-import { api } from "@infinidata/api";
 import { AppHeader } from "../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
-import type { LinkedSeason } from "../types/season";
+import { useMyAuctionSeasons } from "@shared-core/useMyAuctionSeasons";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -28,11 +24,7 @@ export const Route = createFileRoute("/")({
 // (see api.leagues.listMyAuctionSeasons), grouped by leagueId same as the
 // other two apps' own dashboards.
 function Dashboard() {
-  const { isAuthenticated } = useConvexAuth();
-  const seasonsList: LinkedSeason[] | undefined = useQuery(
-    api.leagues.listMyAuctionSeasons,
-    isAuthenticated ? {} : "skip",
-  );
+  const seasonsList = useMyAuctionSeasons();
 
   const leagueGroups = groupSeasonsByLeague(seasonsList ?? []).sort((a, b) =>
     a.latest.name.localeCompare(b.latest.name),

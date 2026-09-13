@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { Button, Center, Group, Loader, Stack, Text, Title } from "@mantine/core";
-import { api } from "@infinidata/api";
 import { PlayerCard } from "@shared/PlayerCard";
 import { BidModal, type BidModalTarget } from "../../../components/BidModal";
-import { formatCountdown } from "../../../lib/countdown";
-import type { AuctionSettings, BidBoardRow, CycleType, MyParticipation } from "../../../types/season";
+import { formatCountdown } from "@shared-core/countdown";
+import { useAuctionSettings } from "@shared-core/useAuctionSettings";
+import { useBidsBoard, type BidBoardRow } from "@shared-core/useBidsBoard";
+import { useMyParticipation } from "@shared-core/useMyParticipation";
+import type { CycleType } from "@shared-core/CycleType";
 
 export const Route = createFileRoute("/league/$leagueId/myBids")({
   component: BidsTab,
@@ -40,20 +41,10 @@ const CYCLE_TYPE_LABEL: Record<CycleType, string | null> = {
 function BidsTab() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
-  const { isAuthenticated } = useConvexAuth();
 
-  const rows: BidBoardRow[] | undefined = useQuery(
-    api.infinileague.auction.bids.getBidsBoard,
-    isAuthenticated ? { seasonId } : "skip",
-  );
-  const participation: MyParticipation | undefined = useQuery(
-    api.infinileague.auction.participant.getMyParticipation,
-    isAuthenticated ? { seasonId } : "skip",
-  );
-  const settings: AuctionSettings | undefined = useQuery(
-    api.infinileague.auction.settings.getAuctionSettings,
-    isAuthenticated ? { seasonId } : "skip",
-  );
+  const rows = useBidsBoard(seasonId);
+  const participation = useMyParticipation(seasonId);
+  const settings = useAuctionSettings(seasonId);
 
   const [bidTarget, setBidTarget] = useState<BidModalTarget | null>(null);
 

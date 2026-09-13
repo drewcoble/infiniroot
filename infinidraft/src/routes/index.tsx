@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 // useConvexAuth from convex/react, not @convex-dev/auth/react - see
 // __root.tsx's comment on the same import for why (the latter's
@@ -50,7 +50,11 @@ function EnterLeagueLink({
   children,
 }: {
   leagueId: string;
-  children: ReactNode;
+  // Always a single <Card> in practice (see the one call site below) -
+  // ReactElement rather than the broader ReactNode also sidesteps a
+  // React 19 typing friction: ReactNode now includes bigint, which
+  // @tanstack/react-router's own Link children prop type predates.
+  children: ReactElement;
 }) {
   const linkStyle = {
     display: "block",
