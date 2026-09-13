@@ -1,4 +1,4 @@
-import { useIsFocused, useLocalSearchParams } from 'expo-router';
+import { useGlobalSearchParams, useIsFocused } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
@@ -43,7 +43,10 @@ const RING_COLOR: Partial<Record<BidBoardRow['category'], string>> = {
 };
 
 export default function SeasonMyBidsScreen() {
-  const { seasonId } = useLocalSearchParams<{ seasonId: string }>();
+  // useGlobalSearchParams, not useLocalSearchParams - see results.tsx's
+  // comment for why (expo/expo#27472, #27992: dynamic parent segment
+  // params don't propagate to sibling NativeTabs screens otherwise).
+  const { seasonId } = useGlobalSearchParams<{ seasonId: string }>();
   // !seasonId guards the Tabs.Screen-siblings-mount-before-params-
   // propagate race; !isFocused keeps this tab's queries unsubscribed
   // while another tab is showing, since NativeTabs mounts every tab's

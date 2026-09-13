@@ -1,4 +1,4 @@
-import { useIsFocused, useLocalSearchParams } from 'expo-router';
+import { useGlobalSearchParams, useIsFocused } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import type { Id } from '@infinidata/dataModel';
@@ -32,7 +32,10 @@ const TIE_BREAK_OPTIONS: { value: AuctionSettings['tieBreakMode']; label: string
 const JOIN_BASE_URL = 'https://infinifaab.com/join';
 
 export default function SeasonSettingsScreen() {
-  const { seasonId } = useLocalSearchParams<{ seasonId: string }>();
+  // useGlobalSearchParams, not useLocalSearchParams - see results.tsx's
+  // comment for why (expo/expo#27472, #27992: dynamic parent segment
+  // params don't propagate to sibling NativeTabs screens otherwise).
+  const { seasonId } = useGlobalSearchParams<{ seasonId: string }>();
   // !seasonId guards the Tabs.Screen-siblings-mount-before-params-
   // propagate race; !isFocused keeps this tab's queries unsubscribed
   // while another tab is showing, since NativeTabs mounts every tab's

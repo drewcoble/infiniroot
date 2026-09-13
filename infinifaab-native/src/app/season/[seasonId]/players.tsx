@@ -1,4 +1,4 @@
-import { useIsFocused, useLocalSearchParams } from 'expo-router';
+import { useGlobalSearchParams, useIsFocused } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -52,7 +52,10 @@ function boardKey(cycleId: string, fpid: number): string {
 }
 
 export default function SeasonPlayersScreen() {
-  const { seasonId } = useLocalSearchParams<{ seasonId: string }>();
+  // useGlobalSearchParams, not useLocalSearchParams - see results.tsx's
+  // comment for why (expo/expo#27472, #27992: dynamic parent segment
+  // params don't propagate to sibling NativeTabs screens otherwise).
+  const { seasonId } = useGlobalSearchParams<{ seasonId: string }>();
   // !seasonId guards the Tabs.Screen-siblings-mount-before-params-
   // propagate race; !isFocused keeps this tab's 8 queries (the heaviest
   // of the five) unsubscribed while another tab is showing, since

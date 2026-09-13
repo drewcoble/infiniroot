@@ -1,4 +1,4 @@
-import { useIsFocused, useLocalSearchParams } from 'expo-router';
+import { useGlobalSearchParams, useIsFocused } from 'expo-router';
 import { FlatList, StyleSheet, View } from 'react-native';
 import type { Id } from '@infinidata/dataModel';
 import { useAuctionDashboard, type AuctionDashboardRow } from '@shared-core/useAuctionDashboard';
@@ -10,7 +10,16 @@ import { AppText, Card, Loading, Screen, colors } from '@/components/ui';
 // with RN primitives instead of Mantine's Card/Group/Text (see
 // INFINIFAAB_MOBILE_PLAN.md for why the JSX itself isn't shared).
 export default function SeasonDashboardScreen() {
-  const { seasonId } = useLocalSearchParams<{ seasonId: string }>();
+  // useGlobalSearchParams, not useLocalSearchParams: expo-router has a
+  // known bug (expo/expo#27472, #27992) where a dynamic parent segment's
+  // param ([seasonId]) doesn't propagate to sibling NativeTabs screens via
+  // useLocalSearchParams - only the tab you originally navigated to gets a
+  // real value, every other tab reads undefined forever. The URL itself is
+  // correct, so useGlobalSearchParams (which reads the current URL rather
+  // than the route's own local match) works around it. This tab happens to
+  // be the one you always navigate to first, so it was masked here, but
+  // returning to it after visiting another tab would hit the same bug.
+  const { seasonId } = useGlobalSearchParams<{ seasonId: string }>();
   // Two independent reasons to hold off mounting DashboardTab:
   // 1. Tabs.Screen siblings can mount before the route's params have
   //    propagated - guard here rather than in useAuctionDashboard (shared

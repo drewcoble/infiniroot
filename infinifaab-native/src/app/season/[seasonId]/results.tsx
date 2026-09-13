@@ -1,4 +1,4 @@
-import { useIsFocused, useLocalSearchParams } from 'expo-router';
+import { useGlobalSearchParams, useIsFocused } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { Id } from '@infinidata/dataModel';
 import { useAuctionResults, type AuctionResultRow } from '@shared-core/useAuctionResults';
@@ -9,7 +9,14 @@ import { AppText, Card, Loading, Screen } from '@/components/ui';
 // cycleId, rebuilt with RN primitives (see INFINIFAAB_MOBILE_PLAN.md for
 // why the JSX itself isn't shared).
 export default function SeasonResultsScreen() {
-  const { seasonId } = useLocalSearchParams<{ seasonId: string }>();
+  // useGlobalSearchParams, not useLocalSearchParams: expo-router has a
+  // known bug (expo/expo#27472, #27992) where a dynamic parent segment's
+  // param ([seasonId]) doesn't propagate to sibling NativeTabs screens via
+  // useLocalSearchParams - only the tab you originally navigated to gets a
+  // real value, every other tab reads undefined forever. The URL itself is
+  // correct, so useGlobalSearchParams (which reads the current URL rather
+  // than the route's own local match) works around it.
+  const { seasonId } = useGlobalSearchParams<{ seasonId: string }>();
   // !seasonId guards the Tabs.Screen-siblings-mount-before-params-
   // propagate race; !isFocused keeps this tab's query unsubscribed while
   // another tab is showing, since NativeTabs mounts every tab's content at
