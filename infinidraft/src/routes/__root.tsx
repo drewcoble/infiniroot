@@ -1,5 +1,10 @@
 import { useEffect, useMemo } from "react";
-import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { Center, Loader, Stack, Text } from "@mantine/core";
 // convex/react's useConvexAuth, NOT @convex-dev/auth/react's - the latter's
 // isAuthenticated only means "we have some token value in local state"
@@ -11,7 +16,7 @@ import { Center, Loader, Stack, Text } from "@mantine/core";
 // authenticated query," which is exactly what gates <Outlet/> below.
 import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@infinidata/api";
-import { AuthPanel } from "../components/AuthPanel";
+import { AuthPanel } from "@shared/AuthPanel";
 import { PageContainer } from "@shared/PageContainer";
 import { RouteErrorFallback } from "../components/RouteErrorFallback";
 import { SignedOutHeader } from "@shared/SignedOutHeader";
@@ -23,6 +28,7 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const ensureUser = useMutation(api.users.ensureCurrentUser);
   const configuredSuperAdminEmails = useMemo(
@@ -70,7 +76,9 @@ function RootComponent() {
           <SignedOutHeader wordmark="draft" />
           <Stack gap="md" maw={420} mx="auto">
             <Text c="dimmed">Sign in to view projections and draft.</Text>
-            <AuthPanel />
+            <AuthPanel
+              afterAuthChange={() => void navigate({ to: "/", replace: true })}
+            />
           </Stack>
         </Stack>
       </PageContainer>

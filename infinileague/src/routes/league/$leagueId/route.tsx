@@ -6,7 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import { ArrowLeftRight, CircleUserRound, LayoutGrid, Trophy, UserSearch, Users } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../../../components/AppHeader";
-import { BottomNav } from "../../../components/BottomNav";
+import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
 import type { StandingsRow } from "../../../types/season";
 

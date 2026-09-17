@@ -17,7 +17,7 @@ import type { Doc, Id } from "@infinidata/dataModel";
 import type { Position } from "../../../types";
 import { POSITION_COLORS } from "@shared/positionColors";
 import { RookieBadge } from "@shared/RookieBadge";
-import { EditableNumberStepper } from "../../../components/NumberStepper";
+import { EditableNumberStepper } from "@shared/NumberStepper";
 import {
   computeKeeperCost,
   computeKeeperCostRound,

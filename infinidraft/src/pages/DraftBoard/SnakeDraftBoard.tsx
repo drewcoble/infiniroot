@@ -642,13 +642,18 @@ export function SnakeDraftBoard({ seasonId }: SnakeDraftBoardProps) {
             // - the round-label column (and, mirroring it, the last team
             // column) otherwise sits with a visibly wide gap from the
             // screen edge, wasted space on an already-cramped phone width.
-            // Bottom is generously padded instead (140px raw, ~112px once
-            // zoomed below) - the last round was otherwise clipped by half
-            // under the fixed footer, mobile browsers apparently not quite
-            // agreeing with the zoomed content's true scrollHeight down to
-            // the pixel, so this trades a bit of extra scroll-past-the-end
-            // for guaranteeing the final round always fully clears it.
-            padding: isDesktop ? "14px 20px" : "14px 8px 140px",
+            // Bottom is generously padded on both instead (140px mobile,
+            // ~112px once zoomed below; 60px desktop) - the last round was
+            // otherwise clipped/hidden under the fixed footer, since the
+            // scroll container's height already subtracts a *measured*
+            // footerHeight (ResizeObserver, see footerRef) rather than a
+            // static constant - any lag between a footer height change
+            // (e.g. its content wrapping to two lines) and that
+            // measurement being applied leaves the container briefly taller
+            // than it should be, clipping the final round underneath. This
+            // padding is a safety margin against that gap rather than a fix
+            // for it, same trade-off already made for mobile.
+            padding: isDesktop ? "14px 20px 60px" : "14px 8px 140px",
             ...(!isDesktop ? { zoom: 0.8 } : {}),
           }}
         >

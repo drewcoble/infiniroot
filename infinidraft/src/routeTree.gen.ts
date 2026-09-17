@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminDataRouteImport } from './routes/admin-data'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as BoardLeagueIdRouteImport } from './routes/board/$leagueId'
+import { Route as JoinTokenRouteImport } from './routes/join/$token'
 import { Route as LeagueLeagueIdRouteRouteImport } from './routes/league/$leagueId/route'
 import { Route as ReportCardLeagueIdRouteImport } from './routes/reportCard/$leagueId'
 import { Route as SeasonLeagueIdRouteRouteImport } from './routes/season/$leagueId/route'
@@ -52,6 +53,11 @@ const BillingRoute = BillingRouteImport.update({
 const BoardLeagueIdRoute = BoardLeagueIdRouteImport.update({
   id: '/board/$leagueId',
   path: '/board/$leagueId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinTokenRoute = JoinTokenRouteImport.update({
+  id: '/join/$token',
+  path: '/join/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeagueLeagueIdRouteRoute = LeagueLeagueIdRouteRouteImport.update({
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/season/$leagueId': typeof SeasonLeagueIdRouteRouteWithChildren
   '/board/$leagueId': typeof BoardLeagueIdRoute
+  '/join/$token': typeof JoinTokenRoute
   '/reportCard/$leagueId': typeof ReportCardLeagueIdRoute
   '/league/$leagueId/budget': typeof LeagueLeagueIdBudgetRoute
   '/league/$leagueId/draft': typeof LeagueLeagueIdDraftRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/admin-data': typeof AdminDataRoute
   '/billing': typeof BillingRoute
   '/board/$leagueId': typeof BoardLeagueIdRoute
+  '/join/$token': typeof JoinTokenRoute
   '/reportCard/$leagueId': typeof ReportCardLeagueIdRoute
   '/league/$leagueId/budget': typeof LeagueLeagueIdBudgetRoute
   '/league/$leagueId/draft': typeof LeagueLeagueIdDraftRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/season/$leagueId': typeof SeasonLeagueIdRouteRouteWithChildren
   '/board/$leagueId': typeof BoardLeagueIdRoute
+  '/join/$token': typeof JoinTokenRoute
   '/reportCard/$leagueId': typeof ReportCardLeagueIdRoute
   '/league/$leagueId/budget': typeof LeagueLeagueIdBudgetRoute
   '/league/$leagueId/draft': typeof LeagueLeagueIdDraftRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId'
     | '/season/$leagueId'
     | '/board/$leagueId'
+    | '/join/$token'
     | '/reportCard/$leagueId'
     | '/league/$leagueId/budget'
     | '/league/$leagueId/draft'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/admin-data'
     | '/billing'
     | '/board/$leagueId'
+    | '/join/$token'
     | '/reportCard/$leagueId'
     | '/league/$leagueId/budget'
     | '/league/$leagueId/draft'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId'
     | '/season/$leagueId'
     | '/board/$leagueId'
+    | '/join/$token'
     | '/reportCard/$leagueId'
     | '/league/$leagueId/budget'
     | '/league/$leagueId/draft'
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   LeagueLeagueIdRouteRoute: typeof LeagueLeagueIdRouteRouteWithChildren
   SeasonLeagueIdRouteRoute: typeof SeasonLeagueIdRouteRouteWithChildren
   BoardLeagueIdRoute: typeof BoardLeagueIdRoute
+  JoinTokenRoute: typeof JoinTokenRoute
   ReportCardLeagueIdRoute: typeof ReportCardLeagueIdRoute
 }
 
@@ -297,6 +310,13 @@ declare module '@tanstack/react-router' {
       path: '/board/$leagueId'
       fullPath: '/board/$leagueId'
       preLoaderRoute: typeof BoardLeagueIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join/$token': {
+      id: '/join/$token'
+      path: '/join/$token'
+      fullPath: '/join/$token'
+      preLoaderRoute: typeof JoinTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/league/$leagueId': {
@@ -448,6 +468,7 @@ const rootRouteChildren: RootRouteChildren = {
   LeagueLeagueIdRouteRoute: LeagueLeagueIdRouteRouteWithChildren,
   SeasonLeagueIdRouteRoute: SeasonLeagueIdRouteRouteWithChildren,
   BoardLeagueIdRoute: BoardLeagueIdRoute,
+  JoinTokenRoute: JoinTokenRoute,
   ReportCardLeagueIdRoute: ReportCardLeagueIdRoute,
 }
 export const routeTree = rootRouteImport

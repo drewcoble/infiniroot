@@ -14,7 +14,7 @@ export const requireOwnedTeamForRead = internalQuery({
   handler: async (
     ctx,
     args,
-  ): Promise<{ team: Doc<"seasonTeams">; season: Doc<"seasons"> }> => {
+  ): Promise<{ team: Doc<"seasonTeams">; season: Doc<"seasons">; league: Doc<"leagues"> }> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("You must be signed in.");
@@ -34,7 +34,7 @@ export const requireOwnedTeamForRead = internalQuery({
     if (league.ownerId !== userId) {
       throw new Error("Not authorized to view this team.");
     }
-    return { team, season };
+    return { team, season, league };
   },
 });
 

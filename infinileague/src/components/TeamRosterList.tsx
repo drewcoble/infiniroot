@@ -1,6 +1,6 @@
 import { Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
-import { PlayerCard } from "./PlayerCard";
+import { PlayerCard } from "@shared/PlayerCard";
 import type { RosVorRow, SlotLabel, TeamRosterRow } from "../types/season";
 
 interface TeamRosterListProps {

@@ -17,7 +17,7 @@ import { X } from "lucide-react";
 import { api } from "@infinidata/api";
 import type { Id } from "@infinidata/dataModel";
 import { POSITION_COLORS } from "@shared/positionColors";
-import { EditableNumberStepper } from "../../../components/NumberStepper";
+import { EditableNumberStepper } from "@shared/NumberStepper";
 import { WEEK } from "../../../constants/general";
 import type { Position } from "../../../types";
 import { getErrorMessage } from "@shared/errors";

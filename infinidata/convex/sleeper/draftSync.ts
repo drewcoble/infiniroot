@@ -5,15 +5,20 @@ import {
   internalMutation,
   internalQuery,
   mutation,
-  query,
-  MutationCtx,
+  type ActionCtx,
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import { requireDraftOwner, requireRealDraft } from "../lib/access";
+import { requireDraftOwner } from "../lib/access";
 import { resolveDraftType } from "../draftType";
 import { resolveTeamPositionInRound } from "../infinidraft/draft/pickOrder";
 import { countForfeitedByRound, countRealSlotsThroughRound } from "../infinidraft/draft/pickSlots";
+import { syncDraftStatus } from "../infinidraft/draft/status";
+import { upsertSyncStatus } from "../infinidraft/draft/draftSyncShared";
+import { expandRosterSlots } from "../lib/rosterSlots";
+import { invalidateDraftValues } from "../draftValues";
+import { positionValidator } from "../positions";
+import { scoringValidator, teScoringValidator } from "../scoring";
 import {
   fetchSleeperJson,
   fetchSleeperLeagueSettings,
@@ -21,6 +26,12 @@ import {
   type SleeperDraft,
   type SleeperDraftPick,
 } from "./league";
+import {
+  mapRosterPositions,
+  mapScoringSettings,
+  mapSixPointPassTds,
+  mapTeScoring,
+} from "./leagueSettingsMapping";
 
 // Live sync from an in-progress Sleeper draft into this app's own
 // draftPicks, for any of the three formats Sleeper supports (auction,
@@ -41,55 +52,6 @@ const AUTO_START_WINDOW_MS = 10 * 60 * 1000;
 // After this many consecutive failed polls, auto-disable rather than retry
 // forever silently - see recordSyncError.
 const MAX_CONSECUTIVE_FAILURES = 10;
-
-// Upserts the poll chain's heartbeat onto its own draftSyncStatus row
-// (schema.ts) instead of the `drafts` document - see that table's comment
-// for why: writing this every ~3s onto `drafts` used to invalidate every
-// Draft Room query reading that document, which is what blew up read
-// bandwidth. `.unique()` is safe here because every write site below goes
-// through this same upsert, so a draft never accumulates more than one row.
-async function upsertSyncStatus(
-  ctx: MutationCtx,
-  draftId: Id<"drafts">,
-  patch: {
-    lastSyncedAt?: number;
-    syncError: string | undefined;
-    syncErrorCount: number | undefined;
-  },
-): Promise<void> {
-  const existing = await ctx.db
-    .query("draftSyncStatus")
-    .withIndex("by_draft", (q) => q.eq("draftId", draftId))
-    .unique();
-  if (existing) {
-    await ctx.db.patch(existing._id, patch);
-  } else {
-    // insert() requires the exact optional-field shape (no explicit
-    // `undefined`), unlike patch() above - conditionally spread instead.
-    await ctx.db.insert("draftSyncStatus", {
-      draftId,
-      ...(patch.lastSyncedAt !== undefined
-        ? { lastSyncedAt: patch.lastSyncedAt }
-        : {}),
-      ...(patch.syncError !== undefined ? { syncError: patch.syncError } : {}),
-      ...(patch.syncErrorCount !== undefined
-        ? { syncErrorCount: patch.syncErrorCount }
-        : {}),
-    });
-  }
-}
-
-// Resolves the real draft for a season the caller already proved ownership
-// of (via internal.rosterSync.requireOwnedSeasonForSync) - actions
-// can't call the QueryCtx-typed requireRealDraft directly, same reason
-// convex/sleeper/league.ts's syncLeagueRoster needs
-// listSeasonTeamsInternal instead of listSeasonTeams.
-export const loadRealDraftForLink = internalQuery({
-  args: { seasonId: v.id("seasons") },
-  handler: async (ctx, args) => {
-    return await requireRealDraft(ctx, args.seasonId);
-  },
-});
 
 // Caches Sleeper's own draft_id/start_time on the real draft doc, entirely
 // independent of sleeperSyncEnabled - lets the Dashboard/Settings/Draft tab
@@ -128,7 +90,7 @@ export const fetchSleeperDraftSchedule = action({
     if (!season.sleeperLeagueId) return { scheduledAt: null };
 
     const draft = await ctx.runQuery(
-      internal.sleeper.draftSync.loadRealDraftForLink,
+      internal.infinidraft.draft.draftSyncShared.loadRealDraftForLink,
       { seasonId: args.seasonId },
     );
 
@@ -197,7 +159,7 @@ export const linkSleeperDraft = action({
     }
 
     const draft = await ctx.runQuery(
-      internal.sleeper.draftSync.loadRealDraftForLink,
+      internal.infinidraft.draft.draftSyncShared.loadRealDraftForLink,
       { seasonId: args.seasonId },
     );
 
@@ -259,13 +221,6 @@ export const disableLiveSync = mutation({
   },
 });
 
-export const loadSyncStateInternal = internalQuery({
-  args: { draftId: v.id("drafts") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.draftId);
-  },
-});
-
 // Called on the slow pre-draft cadence (draft not started yet, Sleeper
 // hasn't opened the auto-start window) - just a heartbeat so the UI's "last
 // checked" readout still moves, and a place to clear a stale error once
@@ -290,6 +245,140 @@ export const recordWatchTick = internalMutation({
   },
 });
 
+// No-auth re-read of a season for the poll loop's per-hop settings-resync
+// lookup below - same trust model as draftSyncShared's loadSyncStateInternal
+// (internal/not user-facing, authorization already happened at link time).
+export const loadSleeperSyncSeason = internalQuery({
+  args: { seasonId: v.id("seasons") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.seasonId);
+  },
+});
+
+const sleeperResyncRosterSlotsValidator = v.object({
+  QB: v.number(),
+  RB: v.number(),
+  WR: v.number(),
+  TE: v.number(),
+  DST: v.number(),
+  K: v.number(),
+  FLEX: v.number(),
+  SUPERFLEX: v.number(),
+  BENCH: v.number(),
+});
+
+// Writes a freshly-fetched Sleeper roster/scoring config onto the season -
+// same feature and rationale as convex/infinidraft/yahoo/draftSync.ts's
+// applyYahooSettingsResync (see that file's comment for the live incident
+// that motivated it: a commissioner changing league settings between import/
+// link and the real draft starting, leaving this app's roster/scoring
+// config stale for the entire draft). Sleeper's `linkSleeperDraft` above
+// already validates draft TYPE (auction/snake/linear) matches at link time,
+// but nothing previously re-checked roster slots or scoring once linked -
+// this closes that gap the same way Yahoo's version does, called by
+// resyncSeasonSettingsFromSleeper below both right as the real draft starts
+// (zero picks exist yet, so any change is unconditionally safe) and once
+// Sleeper confirms "complete" (a last-chance catch-up).
+//
+// Refuses to shrink rosterSlots below whatever round count this draft's own
+// synced picks already reach - a real Sleeper settings change should never
+// retroactively invalidate picks that already happened, and this also
+// guards against a transient/malformed settings read silently truncating a
+// perfectly fine larger roster.
+export const applySleeperSettingsResync = internalMutation({
+  args: {
+    draftId: v.id("drafts"),
+    seasonId: v.id("seasons"),
+    rosterSlots: sleeperResyncRosterSlotsValidator,
+    flexPositions: v.array(positionValidator),
+    superflexPositions: v.array(positionValidator),
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+  },
+  handler: async (ctx, args): Promise<{ changed: boolean }> => {
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) return { changed: false };
+
+    const unchanged =
+      JSON.stringify(season.rosterSlots) === JSON.stringify(args.rosterSlots) &&
+      JSON.stringify(season.flexPositions) ===
+        JSON.stringify(args.flexPositions) &&
+      JSON.stringify(season.superflexPositions) ===
+        JSON.stringify(args.superflexPositions) &&
+      season.scoring === args.scoring &&
+      (season.teScoring ?? "NONE") === args.teScoring &&
+      (season.sixPointPassTds ?? false) === args.sixPointPassTds;
+    if (unchanged) return { changed: false };
+
+    const newTotalRounds = expandRosterSlots(args.rosterSlots).length;
+    const picks = await ctx.db
+      .query("draftPicks")
+      .withIndex("by_draft", (q) => q.eq("draftId", args.draftId))
+      .collect();
+    const picksPerTeam = new Map<Id<"seasonTeams">, number>();
+    for (const pick of picks) {
+      picksPerTeam.set(pick.teamId, (picksPerTeam.get(pick.teamId) ?? 0) + 1);
+    }
+    const maxPicksForAnyTeam = Math.max(0, ...picksPerTeam.values());
+    if (newTotalRounds < maxPicksForAnyTeam) {
+      await upsertSyncStatus(ctx, args.draftId, {
+        syncError:
+          `Sleeper's real roster settings (${newTotalRounds} rounds) look ` +
+          `smaller than picks already synced (${maxPicksForAnyTeam}) - ` +
+          "left season settings as-is, check manually.",
+        syncErrorCount: undefined,
+      });
+      return { changed: false };
+    }
+
+    await ctx.db.patch(args.seasonId, {
+      rosterSlots: args.rosterSlots,
+      flexPositions: args.flexPositions,
+      superflexPositions: args.superflexPositions,
+      scoring: args.scoring,
+      teScoring: args.teScoring,
+      sixPointPassTds: args.sixPointPassTds,
+    });
+    await invalidateDraftValues(ctx, args.draftId);
+    await syncDraftStatus(ctx, args.draftId);
+    return { changed: true };
+  },
+});
+
+// Action-side counterpart to applySleeperSettingsResync above - does the
+// actual Sleeper fetch and hands the mapped result to it. Best-effort: any
+// failure here (network, unexpected shape) is swallowed rather than thrown,
+// same degrade-gracefully contract convex/infinidraft/yahoo/draftSync.ts's
+// resyncSeasonSettingsFromYahoo uses - a settings-resync miss shouldn't take
+// down the pick-syncing poll chain around it.
+async function resyncSeasonSettingsFromSleeper(
+  ctx: ActionCtx,
+  draftId: Id<"drafts">,
+  seasonId: Id<"seasons">,
+  sleeperLeagueId: string,
+): Promise<void> {
+  try {
+    const settings = await fetchSleeperLeagueSettings(sleeperLeagueId);
+    const mappedRoster = mapRosterPositions(settings.roster_positions ?? []);
+    const scoring = mapScoringSettings(settings.scoring_settings);
+    const teScoring = mapTeScoring(settings.scoring_settings);
+    const sixPointPassTds = mapSixPointPassTds(settings.scoring_settings);
+    await ctx.runMutation(internal.sleeper.draftSync.applySleeperSettingsResync, {
+      draftId,
+      seasonId,
+      rosterSlots: mappedRoster.rosterSlots,
+      flexPositions: mappedRoster.flexPositions,
+      superflexPositions: mappedRoster.superflexPositions,
+      scoring,
+      teScoring,
+      sixPointPassTds,
+    });
+  } catch {
+    // Leave season settings untouched - the next tick tries again.
+  }
+}
+
 // Applies one poll's worth of Sleeper picks: resolves each pick's roster_id/
 // picked_by to a seasonTeams row (same join technique convex/sleeper/
 // league.ts's syncLeagueRoster uses for rosters), then - for snake/linear -
@@ -297,7 +386,7 @@ export const recordWatchTick = internalMutation({
 // resolveTeamPositionInRound/countRealSlotsThroughRound helpers draftPick
 // and addKeeper use, so a synced pick's slot always agrees with the board
 // regardless of Sleeper's own raw slot numbering. Hands the fully-resolved
-// subset to convex/infinidraft/draft/picks.ts's applySleeperSyncedPicks for the actual
+// subset to convex/infinidraft/draft/picks.ts's applySyncedDraftPicks for the actual
 // draftPicks writes. A pick with no fpid/price (auction) or no resolvable
 // round/position (snake/linear), or no mapped team, is skipped rather than
 // thrown, so one bad mapping doesn't halt the rest of the draft - the
@@ -424,7 +513,7 @@ export const applySleeperSyncTick = internalMutation({
     }
 
     const { applied, skipped: unknownPlayerCount } = await ctx.runMutation(
-      internal.infinidraft.draft.picks.applySleeperSyncedPicks,
+      internal.infinidraft.draft.picks.applySyncedDraftPicks,
       { draftId: args.draftId, picks: resolved },
     );
 
@@ -499,7 +588,7 @@ export const syncSleeperDraft = internalAction({
   args: { draftId: v.id("drafts"), generation: v.number() },
   handler: async (ctx, args): Promise<null> => {
     const draft = await ctx.runQuery(
-      internal.sleeper.draftSync.loadSyncStateInternal,
+      internal.infinidraft.draft.draftSyncShared.loadSyncStateInternal,
       { draftId: args.draftId },
     );
     if (
@@ -534,10 +623,47 @@ export const syncSleeperDraft = internalAction({
           }
           return null;
         }
+        // Draft room just opened - zero picks exist yet at this point, so
+        // any settings change here is unconditionally safe to apply. This
+        // is what catches a commissioner's last-minute Sleeper settings
+        // edit (roster slots, scoring) before any pick ever gets synced
+        // against a stale config - see applySleeperSettingsResync's comment.
+        const seasonForResync = await ctx.runQuery(
+          internal.sleeper.draftSync.loadSleeperSyncSeason,
+          { seasonId: draft.seasonId },
+        );
+        if (seasonForResync?.sleeperLeagueId) {
+          await resyncSeasonSettingsFromSleeper(
+            ctx,
+            args.draftId,
+            draft.seasonId,
+            seasonForResync.sleeperLeagueId,
+          );
+        }
         await ctx.runMutation(
           internal.infinidraft.draft.lifecycle.startDraftForSyncInternal,
           { draftId: args.draftId },
         );
+      } else if (sleeperDraft.status === "complete") {
+        // Last-chance catch-up: if the draft-start resync above was never
+        // reached (e.g. sync was enabled after the draft had already
+        // started) or Sleeper's settings changed again mid-draft, this is
+        // the final tick before applySleeperSyncTick's own complete check
+        // disables sync below - see applySleeperSettingsResync's comment
+        // for the guard against shrinking below picks that already
+        // happened.
+        const seasonForResync = await ctx.runQuery(
+          internal.sleeper.draftSync.loadSleeperSyncSeason,
+          { seasonId: draft.seasonId },
+        );
+        if (seasonForResync?.sleeperLeagueId) {
+          await resyncSeasonSettingsFromSleeper(
+            ctx,
+            args.draftId,
+            draft.seasonId,
+            seasonForResync.sleeperLeagueId,
+          );
+        }
       }
 
       const sleeperPicks = await fetchSleeperJson<SleeperDraftPick[]>(
@@ -592,30 +718,5 @@ export const syncSleeperDraft = internalAction({
       }
     }
     return null;
-  },
-});
-
-// Scoped, cheap counterpart to the sync fields listSeasons/getSeasonPublic
-// used to join off the `drafts` document itself - reads only the
-// draftSyncStatus row (schema.ts) plus the auth check, so the frontend can
-// subscribe to the live "last checked"/error readout without also
-// resubscribing every other listSeasons-backed panel on the page to a
-// value that changes every ~3 seconds. See draftSyncStatus's schema comment
-// for the read-amplification bug this replaces.
-export const getSyncStatus = query({
-  args: { seasonId: v.id("seasons") },
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{ lastSyncedAt: number | null; syncError: string | null }> => {
-    const { draft } = await requireDraftOwner(ctx, args.seasonId);
-    const status = await ctx.db
-      .query("draftSyncStatus")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
-      .unique();
-    return {
-      lastSyncedAt: status?.lastSyncedAt ?? null,
-      syncError: status?.syncError ?? null,
-    };
   },
 });

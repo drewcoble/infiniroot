@@ -13,7 +13,7 @@ import { useMutation, useQuery } from "convex/react";
 import { ListChecks, X } from "lucide-react";
 import { api } from "@infinidata/api";
 import type { Doc, Id } from "@infinidata/dataModel";
-import { SortArrow } from "../../../components/SortArrow";
+import { SortArrow } from "@shared/SortArrow";
 import { PlayerDetailModal } from "../../../components/PlayerDetailModal";
 import { WEEK } from "../../../constants/general";
 import { getErrorMessage } from "@shared/errors";

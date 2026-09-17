@@ -225,7 +225,7 @@ interface RosterAward {
 // fix with no shape change (e.g. v3: excluding K/DST from steals/reaches) -
 // otherwise an already-completed draft's frozen snapshot would keep serving
 // the old, wrong callouts until someone manually clicks Regenerate.
-const REPORT_CARD_VERSION = 9;
+const REPORT_CARD_VERSION = 10;
 
 // Value surplus, VOR, and starters strength are on different scales, so each
 // is percentile-ranked against the field before blending - see gradeTeams.
@@ -390,6 +390,31 @@ async function computeReportCardData(
   // their own comment.
   const teamValueOf = (p: ResolvedPick): number | null =>
     isAuction ? p.surplus : p.roundSurplus;
+
+  // vorTotal's per-pick input - see below. A below-replacement pick (vor <=
+  // 0) doesn't distinguish a smart, priced-in bench stash (e.g. a handcuff
+  // RB - low standalone production by design, but no real cost either) from
+  // a genuinely wasted pick, even though only the latter should read as bad
+  // draft strategy. Floor it at 0 (neutral) unless it actually looks like a
+  // reach: auction, paid above the fair/floor value (dollarValue, or
+  // keeperEstimatedValue for a keeper - same $1-floor-or-higher figure
+  // `surplus`/`keeperSurplus` already compare price against); snake/linear,
+  // drafted earlier than its own real market ADP (adpSurplus < 0) or with no
+  // real ADP at all under RELEVANT_ADP_CEILING (nobody drafts it anywhere,
+  // so there's no "recognized value" story to credit - see ResolvedPick.adp
+  // for why that's null for a true afterthought pick, not just a deep one).
+  // User-requested (2026-09-08) after handcuff RBs were dinging otherwise-
+  // sound draft grades purely for being below-replacement by design.
+  const vorContribution = (p: ResolvedPick): number => {
+    if (p.vor > 0) return p.vor;
+    if (isAuction) {
+      const fairValue = p.dollarValue ?? p.keeperEstimatedValue;
+      return fairValue !== null && p.price <= fairValue ? 0 : p.vor;
+    }
+    return p.adp !== null && p.adpSurplus !== null && p.adpSurplus >= 0
+      ? 0
+      : p.vor;
+  };
 
   // Blended market ADP (Sleeper's adpForScoring averaged with ESPN's
   // overall draft-kit rank, ESPN alone for superflex) - the display-only
@@ -674,8 +699,9 @@ async function computeReportCardData(
     ) as Record<Position, number>;
     let vorTotal = 0;
     for (const p of teamPicks) {
-      vorTotal += p.vor;
-      vorByPosition[p.position] += p.vor;
+      const vor = vorContribution(p);
+      vorTotal += vor;
+      vorByPosition[p.position] += vor;
     }
 
     // K/DST excluded from best/worst pick the same way (and for the same

@@ -21,7 +21,7 @@ import {
 } from "@mantine/core";
 import { api } from "@infinidata/api";
 import type { Id } from "@infinidata/dataModel";
-import type { DraftTypeFormat } from "../../types";
+import type { DraftTypeFormat, LeagueTypeFormat } from "../../types";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { SNAKE_DRAFT_ENABLED } from "../../lib/featureFlags";
 import {
@@ -36,15 +36,18 @@ import { SettingsForm } from "./components/SettingsForm";
 import { SeasonHistoryPanel } from "./components/SeasonHistoryPanel";
 import { TeamsPanel } from "./components/TeamsPanel";
 import { PickSlotsPanel } from "./components/PickSlotsPanel";
+import { SharingPanel } from "./components/SharingPanel";
 import { LeagueCreateChoice } from "./components/LeagueCreateChoice";
 import { LeagueImportWizard } from "./components/LeagueImportWizard";
 import { YahooLeagueImportWizard } from "./components/YahooLeagueImportWizard";
+import { LiveSyncCard } from "./components/LiveSyncCard";
 import { UpgradePrompt } from "../../components/UpgradePrompt";
 import { LockedNotice } from "../../components/LockedNotice";
 import { useDraftPhase } from "../../hooks/useDraftPhase";
 import { useSleeperDraftScheduleRefresh } from "../../hooks/useSleeperDraftScheduleRefresh";
 import { getErrorMessage } from "@shared/errors";
 import { formatSleeperDraftSchedule } from "../../lib/sleeperDraftSchedule";
+import { YAHOO_IMPORT_ENABLED } from "../../lib/featureFlags";
 
 interface LeagueDetailsProps {
   selectedLeagueId: Id<"seasons"> | undefined;
@@ -78,13 +81,16 @@ export function LeagueDetails({
   const removeDraftTeam = useMutation(api.infinidraft.draft.teams.removeSeasonTeam);
   const setUseKeepers = useMutation(api.leagues.setUseKeepers);
   const setDraftType = useMutation(api.leagues.setDraftType);
+  const setLeagueType = useMutation(api.leagues.setLeagueType);
   const deleteDraftSettings = useMutation(api.leagues.deleteLeague);
   const phase = useDraftPhase(selectedLeagueId);
   const isStarted = phase?.isStarted ?? false;
   const startDraft = useMutation(api.infinidraft.draft.lifecycle.startDraft);
   const reopenPreDraft = useMutation(api.infinidraft.draft.lifecycle.reopenPreDraft);
   const linkSleeperDraft = useAction(api.sleeper.draftSync.linkSleeperDraft);
-  const disableLiveSync = useMutation(api.sleeper.draftSync.disableLiveSync);
+  const disableSleeperLiveSync = useMutation(api.sleeper.draftSync.disableLiveSync);
+  const linkYahooDraft = useAction(api.infinidraft.yahoo.draftSync.linkYahooDraft);
+  const disableYahooLiveSync = useMutation(api.infinidraft.yahoo.draftSync.disableLiveSync);
   const seasonLineage = useQuery(
     api.infinidraft.draft.history.listSeasonLineage,
     selectedLeagueId ? { seasonId: selectedLeagueId } : "skip",
@@ -120,6 +126,7 @@ export function LeagueDetails({
   );
   const [useKeepersError, setUseKeepersError] = useState<string | null>(null);
   const [draftTypeError, setDraftTypeError] = useState<string | null>(null);
+  const [leagueTypeError, setLeagueTypeError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -129,9 +136,12 @@ export function LeagueDetails({
   const [startError, setStartError] = useState<string | null>(null);
   const [isReopening, setIsReopening] = useState(false);
   const [reopenError, setReopenError] = useState<string | null>(null);
-  const [liveSyncError, setLiveSyncError] = useState<string | null>(null);
-  const [liveSyncStatus, setLiveSyncStatus] = useState<string | null>(null);
-  const [linkingLiveSync, setLinkingLiveSync] = useState(false);
+  const [sleeperLiveSyncError, setSleeperLiveSyncError] = useState<string | null>(null);
+  const [sleeperLiveSyncStatus, setSleeperLiveSyncStatus] = useState<string | null>(null);
+  const [linkingSleeperLiveSync, setLinkingSleeperLiveSync] = useState(false);
+  const [yahooLiveSyncError, setYahooLiveSyncError] = useState<string | null>(null);
+  const [yahooLiveSyncStatus, setYahooLiveSyncStatus] = useState<string | null>(null);
+  const [linkingYahooLiveSync, setLinkingYahooLiveSync] = useState(false);
 
   // Triggered by the "+ New League" option in the header dropdown, which can
   // fire regardless of which tab is currently active.
@@ -147,8 +157,8 @@ export function LeagueDetails({
     (league) => league._id === selectedLeagueId,
   );
   const syncStatus = useQuery(
-    api.sleeper.draftSync.getSyncStatus,
-    settings?.sleeperLeagueId && selectedLeagueId
+    api.infinidraft.draft.draftSyncShared.getSyncStatus,
+    (settings?.sleeperLeagueId || settings?.yahooLeagueKey) && selectedLeagueId
       ? { seasonId: selectedLeagueId }
       : "skip",
   );
@@ -193,6 +203,10 @@ export function LeagueDetails({
             // draftTypeControl below (setDraftType) instead, not this
             // form's own batched Save.
             draftType: settings.draftType ?? "auction",
+            // Same display-only-here story as draftType above - an existing
+            // league's leagueType changes via the live leagueTypeControl
+            // below (setLeagueType), not this form's own batched Save.
+            leagueType: settings.leagueType ?? "redraft",
             salaryCap: settings.salaryCap,
             scoring: settings.scoring,
             teScoring: settings.teScoring ?? "NONE",
@@ -236,6 +250,7 @@ export function LeagueDetails({
           // showDraftType && SNAKE_DRAFT_ENABLED check is the only thing
           // stopping a *manual* pick, but this is the actual write path).
           draftType: SNAKE_DRAFT_ENABLED ? form.draftType : "auction",
+          leagueType: form.leagueType,
           useKeepers: form.useKeepers,
         });
         onLeagueSaved(newId);
@@ -331,6 +346,18 @@ export function LeagueDetails({
     }
   };
 
+  const handleSetLeagueType = async (leagueType: LeagueTypeFormat) => {
+    if (!settings) return;
+    setLeagueTypeError(null);
+    try {
+      await setLeagueType({ id: settings._id, leagueType });
+    } catch (err) {
+      setLeagueTypeError(
+        getErrorMessage(err, "Failed to update league type."),
+      );
+    }
+  };
+
   const handleStartDraft = async () => {
     if (!settings) return;
     setIsStarting(true);
@@ -358,32 +385,61 @@ export function LeagueDetails({
     }
   };
 
-  const handleEnableLiveSync = async () => {
+  const handleEnableSleeperLiveSync = async () => {
     if (!settings) return;
-    setLiveSyncError(null);
-    setLiveSyncStatus(null);
-    setLinkingLiveSync(true);
+    setSleeperLiveSyncError(null);
+    setSleeperLiveSyncStatus(null);
+    setLinkingSleeperLiveSync(true);
     try {
       await linkSleeperDraft({ seasonId: settings._id });
-      setLiveSyncStatus(
+      setSleeperLiveSyncStatus(
         "Live sync enabled - watching for the Sleeper draft to start.",
       );
     } catch (err) {
-      setLiveSyncError(getErrorMessage(err, "Failed to enable live sync."));
+      setSleeperLiveSyncError(getErrorMessage(err, "Failed to enable live sync."));
     } finally {
-      setLinkingLiveSync(false);
+      setLinkingSleeperLiveSync(false);
     }
   };
 
-  const handleDisableLiveSync = async () => {
+  const handleDisableSleeperLiveSync = async () => {
     if (!settings) return;
-    setLiveSyncError(null);
-    setLiveSyncStatus(null);
+    setSleeperLiveSyncError(null);
+    setSleeperLiveSyncStatus(null);
     try {
-      await disableLiveSync({ seasonId: settings._id });
-      setLiveSyncStatus("Live sync disabled.");
+      await disableSleeperLiveSync({ seasonId: settings._id });
+      setSleeperLiveSyncStatus("Live sync disabled.");
     } catch (err) {
-      setLiveSyncError(getErrorMessage(err, "Failed to disable live sync."));
+      setSleeperLiveSyncError(getErrorMessage(err, "Failed to disable live sync."));
+    }
+  };
+
+  const handleEnableYahooLiveSync = async () => {
+    if (!settings) return;
+    setYahooLiveSyncError(null);
+    setYahooLiveSyncStatus(null);
+    setLinkingYahooLiveSync(true);
+    try {
+      await linkYahooDraft({ seasonId: settings._id });
+      setYahooLiveSyncStatus(
+        "Live sync enabled - watching for the Yahoo draft to start.",
+      );
+    } catch (err) {
+      setYahooLiveSyncError(getErrorMessage(err, "Failed to enable live sync."));
+    } finally {
+      setLinkingYahooLiveSync(false);
+    }
+  };
+
+  const handleDisableYahooLiveSync = async () => {
+    if (!settings) return;
+    setYahooLiveSyncError(null);
+    setYahooLiveSyncStatus(null);
+    try {
+      await disableYahooLiveSync({ seasonId: settings._id });
+      setYahooLiveSyncStatus("Live sync disabled.");
+    } catch (err) {
+      setYahooLiveSyncError(getErrorMessage(err, "Failed to disable live sync."));
     }
   };
 
@@ -491,6 +547,29 @@ export function LeagueDetails({
               },
             }
           : {})}
+        leagueTypeControl={
+          settings
+            ? {
+                // Existing league - live-toggles via setLeagueType,
+                // independent of this form's own Save/Cancel. Unlike
+                // draftTypeControl above, always available regardless of
+                // isStarted - nothing about leagueType is tied to
+                // already-recorded picks.
+                checked: settings.leagueType ?? "redraft",
+                onChange: (leagueType: LeagueTypeFormat) =>
+                  void handleSetLeagueType(leagueType),
+                error: leagueTypeError,
+              }
+            : {
+                // Brand-new league - no id yet to toggle a live mutation
+                // against, so this just sets local form state and rides
+                // along with the rest of the form on Save (see handleSave).
+                checked: form.leagueType,
+                onChange: (leagueType: LeagueTypeFormat) =>
+                  setForm({ ...form, leagueType }),
+                error: null,
+              }
+        }
         useKeepersControl={
           settings
             ? {
@@ -812,6 +891,15 @@ export function LeagueDetails({
         </Card>
       </SimpleGrid>
 
+      {/* Sharing is owner-only - getLeagueSharing itself throws for a
+          co-manager viewer (see requireLeagueOwner), so this must stay
+          gated on isOwner rather than relying on the query to fail
+          gracefully. isOwner is only absent on rows this interface's other
+          producers return (see SeasonWithLeagueName's comment) - listSeasons
+          (what settingsList reads) always sets it, so defaulting a missing
+          value to "owner" here is just defensive, never the real case. */}
+      {(settings.isOwner ?? true) && <SharingPanel seasonId={settings._id} />}
+
       {(settings.draftType ?? "auction") !== "auction" && hasTeams && (
         <PickSlotsPanel
           seasonId={settings._id}
@@ -822,72 +910,42 @@ export function LeagueDetails({
       )}
 
       {settings.sleeperLeagueId && (
-        <Card withBorder padding="md">
-          <Stack gap="sm">
-            <Group justify="space-between">
-              <Text fw={500}>Live sync from Sleeper</Text>
-              {settings.sleeperSyncEnabled && (
-                <Badge variant="light" color={syncStatus?.syncError ? "yellow" : "teal"}>
-                  {syncStatus?.syncError ? "Sync issue" : "Live"}
-                </Badge>
-              )}
-            </Group>
-            {!isStarted && settings.sleeperDraftScheduledAt !== undefined && (
-              <Text size="sm">
-                Scheduled for{" "}
-                <Text component="span" fw={600}>
-                  {formatSleeperDraftSchedule(settings.sleeperDraftScheduledAt)}
-                </Text>
-              </Text>
-            )}
-            <Text size="sm" c="dimmed">
-              Mirror picks from your league's actual Sleeper draft into this
-              board as they happen - no webhooks exist on Sleeper's side, so
-              this polls in the background. Requires every team to be mapped
-              to a Sleeper roster (Season Settings, after import), and the
-              Sleeper draft's format (auction/snake/linear) to match this
-              league's configured draft type above. For a snake or linear
-              draft, also set the Draft Order below to match Sleeper's real
-              draft order first.
-            </Text>
-            {settings.sleeperSyncEnabled ? (
-              <>
-                <Text size="sm">
-                  {syncStatus?.lastSyncedAt
-                    ? `Last checked ${new Date(syncStatus.lastSyncedAt).toLocaleTimeString()}`
-                    : "Starting up..."}
-                </Text>
-                <Button
-                  variant="default"
-                  color="red"
-                  onClick={() => void handleDisableLiveSync()}
-                  w="fit-content"
-                >
-                  Disable Live Sync
-                </Button>
-              </>
-            ) : (
-              <Button
-                onClick={() => void handleEnableLiveSync()}
-                loading={linkingLiveSync}
-                disabled={!draftTeams?.length || draftTeams.some((t) => !t.sleeperRosterId)}
-                w="fit-content"
-              >
-                Enable Live Sync from Sleeper
-              </Button>
-            )}
-            {liveSyncStatus && (
-              <Text size="xs" c="teal">
-                {liveSyncStatus}
-              </Text>
-            )}
-            {(syncStatus?.syncError || liveSyncError) && (
-              <Text size="xs" c={liveSyncError ? "red" : "yellow.7"}>
-                {liveSyncError ?? syncStatus?.syncError}
-              </Text>
-            )}
-          </Stack>
-        </Card>
+        <LiveSyncCard
+          title="Live sync from Sleeper"
+          enableButtonLabel="Enable Live Sync from Sleeper"
+          description="Mirror picks from your league's actual Sleeper draft into this board as they happen - no webhooks exist on Sleeper's side, so this polls in the background. Requires every team to be mapped to a Sleeper roster (Season Settings, after import), and the Sleeper draft's format (auction/snake/linear) to match this league's configured draft type above. For a snake or linear draft, also set the Draft Order below to match Sleeper's real draft order first."
+          scheduledAtText={
+            !isStarted && settings.sleeperDraftScheduledAt !== undefined
+              ? formatSleeperDraftSchedule(settings.sleeperDraftScheduledAt)
+              : undefined
+          }
+          enabled={Boolean(settings.sleeperSyncEnabled)}
+          syncError={syncStatus?.syncError}
+          lastSyncedAt={syncStatus?.lastSyncedAt}
+          canEnable={Boolean(draftTeams?.length) && !draftTeams?.some((t) => !t.sleeperRosterId)}
+          enabling={linkingSleeperLiveSync}
+          onEnable={() => void handleEnableSleeperLiveSync()}
+          onDisable={() => void handleDisableSleeperLiveSync()}
+          localStatus={sleeperLiveSyncStatus}
+          localError={sleeperLiveSyncError}
+        />
+      )}
+
+      {YAHOO_IMPORT_ENABLED && settings.yahooLeagueKey && (
+        <LiveSyncCard
+          title="Live sync from Yahoo"
+          enableButtonLabel="Enable Live Sync from Yahoo"
+          description="Mirror picks from your league's actual Yahoo draft into this board as they happen - no webhooks exist on Yahoo's side, so this polls in the background. Requires every team to be mapped to a Yahoo team (Season Settings, after import). For a snake draft, also set the Draft Order below to match Yahoo's real draft order first."
+          enabled={Boolean(settings.yahooSyncEnabled)}
+          syncError={syncStatus?.syncError}
+          lastSyncedAt={syncStatus?.lastSyncedAt}
+          canEnable={Boolean(draftTeams?.length) && !draftTeams?.some((t) => !t.yahooTeamKey)}
+          enabling={linkingYahooLiveSync}
+          onEnable={() => void handleEnableYahooLiveSync()}
+          onDisable={() => void handleDisableYahooLiveSync()}
+          localStatus={yahooLiveSyncStatus}
+          localError={yahooLiveSyncError}
+        />
       )}
 
       <Modal

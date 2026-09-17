@@ -19,6 +19,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, '../shared'),
+      '@shared-core': path.resolve(__dirname, '../shared-core'),
       '@infinidata': path.resolve(__dirname, '../infinidata/convex/_generated'),
     },
   },

@@ -16,6 +16,16 @@ export interface LinkedSeason {
   // api.sleeper.league.syncLeagueRoster) - determines which column the
   // standings table shows (see StandingsRow below).
   waiverType?: "faab" | "priority";
+  // Exactly one of these is set (see convex/leagues.ts's listLinkedSeasons,
+  // which only returns seasons linked to one provider or the other) - lets
+  // the dashboard pick which provider's sync action to call (see
+  // routes/league/$leagueId/index.tsx's runSync).
+  sleeperLeagueId?: string;
+  yahooLeagueKey?: string;
+  // Absent means "redraft" (see convex/leagueType.ts's resolveLeagueType) -
+  // "guillotine" swaps the dashboard's Standings tab for Elimination Watch
+  // (see routes/league/$leagueId/index.tsx).
+  leagueType?: "redraft" | "guillotine";
 }
 
 // Mirrors convex/season/standings.ts's StandingsRow - already sorted by the
@@ -49,6 +59,36 @@ export interface PowerRankingRow {
   // up, negative means moved down. Absent when there's no prior snapshot
   // yet (first computation for this season).
   rankChange?: number;
+}
+
+// Mirrors convex/infinileague/season/eliminationWatch.ts's
+// EliminationWatchRow - this week's optimal-lineup total only (not
+// rest-of-season, unlike PowerRankingRow above), already ranked descending
+// (rank 1 = best/safest, same convention as every other list here) with the
+// bottom slice flagged red/gold/green.
+export interface EliminationWatchRow {
+  teamId: string;
+  name: string;
+  isSelf: boolean;
+  weekPoints: number;
+  rank: number;
+  status: "cut" | "bubble" | "safe";
+}
+
+// Roster-slot categories the position radar chart ranks by - mirrors
+// convex/infinidraft/draft/lineupOptimizer.ts's StarterCategory (SUPERFLEX
+// folds into QB there, FLEX is its own axis - see that file's own comment).
+export type StarterCategory = "QB" | "RB" | "WR" | "TE" | "DST" | "K" | "FLEX";
+
+// Mirrors convex/infinileague/season/powerRankings.ts's TeamPositionRanks -
+// powers the dashboard's expandable team cards' position radar chart (see
+// components/PositionRadarChart.tsx). positionalRanks only includes
+// categories this league actually starts (see that query's activeCategories
+// filter) - a league with no K/DST/FLEX just omits that axis.
+export interface TeamPositionRanks {
+  teamId: string;
+  gradeScore: number;
+  positionalRanks: { category: StarterCategory; rank: number }[];
 }
 
 // Mirrors convex/lib/faab.ts's FaabSuggestionRow/FaabSuggestionsResult -
@@ -120,6 +160,15 @@ export interface RosVorRow {
   // Absent means not currently injured - mirrors TeamRosterRow's injury
   // field below, same convex/injuries.ts source (Sleeper-derived).
   injury?: { status: string; statusShort: string };
+  // True when this player is on the team the query's teamId arg named -
+  // false when that arg was omitted (see getRosVorBoard's own comment), not
+  // just for other teams. Optional (not just boolean) since TeamRosterList/
+  // TradeRosterMatchup build minimal stand-in RosVorRows of their own that
+  // don't set it - same "zero the fields PlayerCard doesn't use here"
+  // convention as their other zeroed fields; absent reads the same as
+  // false. Powers the Players tab's own-roster highlight (see
+  // shared/PlayerCard.tsx's isOnMyTeam handling).
+  isOnMyTeam?: boolean;
 }
 
 export type SlotLabel =

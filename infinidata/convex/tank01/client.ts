@@ -64,3 +64,53 @@ export async function fetchTank01DepthCharts(): Promise<
   const json = await response.json();
   return json.body as Tank01TeamDepthChart[];
 }
+
+// The one known Tank01-vs-this-app team abbreviation mismatch (Washington),
+// same discrepancy depthChartsData.ts documents for depth charts. Shared here
+// (rather than duplicated locally) since both convex/infinileague/auction/
+// eligibility.ts and convex/sleeper/transactions.ts join nflGames.homeTeam/
+// awayTeam against players.team and need the same normalization.
+const TANK01_TO_OUR_TEAM: Record<string, string> = { WSH: "WAS" };
+
+export function normalizeTank01Team(team: string): string {
+  return TANK01_TO_OUR_TEAM[team] ?? team;
+}
+
+// One row per real NFL game - confirmed live shape against /getNFLGamesForWeek.
+// gameTime_epoch is a real Unix-seconds kickoff timestamp as a numeric
+// string - no timezone parsing needed, unlike gameTime's human-readable
+// "8:20p" (which is not used here). home/away are Tank01's own team
+// abbreviations - see normalizeTank01Team above for the one normalization
+// this requires.
+export interface Tank01ScheduleGame {
+  gameID: string;
+  home: string;
+  away: string;
+  gameTime_epoch: string;
+}
+
+export async function fetchTank01WeeklySchedule(
+  week: string,
+  season: string,
+): Promise<Tank01ScheduleGame[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/getNFLGamesForWeek?week=${encodeURIComponent(week)}&season=${encodeURIComponent(season)}&seasonType=reg`,
+    {
+      headers: {
+        "x-rapidapi-key": requireApiKey(),
+        "x-rapidapi-host": API_HOST,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Tank01 schedule request failed: ${response.status} ${response.statusText}` +
+        (body ? ` - ${body}` : ""),
+    );
+  }
+
+  const json = await response.json();
+  return json.body as Tank01ScheduleGame[];
+}

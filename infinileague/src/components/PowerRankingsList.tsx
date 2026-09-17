@@ -1,11 +1,17 @@
 import { Group, Loader, Stack, Text } from "@mantine/core";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { TeamCard } from "./TeamCard";
-import type { PowerRankingRow } from "../types/season";
+import { TeamPositionRanksPanel } from "./TeamPositionRanksPanel";
+import type { PowerRankingRow, TeamPositionRanks } from "../types/season";
 
 interface PowerRankingsListProps {
   leagueId: string;
   rows: PowerRankingRow[] | undefined;
+  // See StandingsList's identical props for why this lives one level up
+  // rather than as local state here.
+  expandedTeamIds: Set<string>;
+  onToggleExpand: (teamId: string) => void;
+  positionRanksByTeam: Map<string, TeamPositionRanks> | undefined;
 }
 
 // Same up/down convention as LineupSuggestionsCard's start/sit arrows -
@@ -38,7 +44,13 @@ export function RankChangeIndicator({ rankChange }: { rankChange: number | undef
 // loss record. rankChange is this week's rank vs. the last snapshot the
 // backend saved (also powerRankings.ts) - absent, not zero, the very first
 // time it's computed for a season.
-export function PowerRankingsList({ leagueId, rows }: PowerRankingsListProps) {
+export function PowerRankingsList({
+  leagueId,
+  rows,
+  expandedTeamIds,
+  onToggleExpand,
+  positionRanksByTeam,
+}: PowerRankingsListProps) {
   if (rows === undefined) {
     return <Loader size="sm" />;
   }
@@ -58,6 +70,14 @@ export function PowerRankingsList({ leagueId, rows }: PowerRankingsListProps) {
             <Text size="sm" fw={500}>
               {row.totalProjectedPoints.toFixed(1)} pts
             </Text>
+          }
+          expanded={expandedTeamIds.has(row.teamId)}
+          onToggleExpand={() => onToggleExpand(row.teamId)}
+          expandedContent={
+            <TeamPositionRanksPanel
+              positionRanks={positionRanksByTeam?.get(row.teamId)}
+              totalTeams={rows.length}
+            />
           }
         />
       ))}

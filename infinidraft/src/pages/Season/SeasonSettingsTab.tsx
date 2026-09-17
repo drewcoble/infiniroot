@@ -16,7 +16,7 @@ import {
 import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
 import type { Id } from "@infinidata/dataModel";
-import { EditableNumberStepper } from "../../components/NumberStepper";
+import { EditableNumberStepper } from "@shared/NumberStepper";
 import { getErrorMessage } from "@shared/errors";
 
 interface SeasonSettingsTabProps {

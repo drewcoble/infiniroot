@@ -1,5 +1,6 @@
 import type {
   DraftTypeFormat,
+  LeagueTypeFormat,
   Position,
   ScoringFormat,
   TeScoringFormat,
@@ -50,6 +51,14 @@ export const DRAFT_TYPE_OPTIONS: Array<{
   { label: "Linear", value: "linear" },
 ];
 
+export const LEAGUE_TYPE_OPTIONS: Array<{
+  label: string;
+  value: LeagueTypeFormat;
+}> = [
+  { label: "Redraft", value: "redraft" },
+  { label: "Guillotine", value: "guillotine" },
+];
+
 export interface LeagueSettingsFormValues {
   name: string;
   teamCount: number;
@@ -60,6 +69,12 @@ export interface LeagueSettingsFormValues {
   // useKeepers below has. See SettingsForm.tsx's showDraftType/
   // draftTypeControl props.
   draftType: DraftTypeFormat;
+  // Only rides along with this form's own batched Save during creation - an
+  // existing league's leagueType instead changes via a live setLeagueType
+  // mutation, same "live control, not batched with the rest of the form"
+  // shape as draftType/useKeepers above. See SettingsForm.tsx's
+  // leagueTypeControl prop.
+  leagueType: LeagueTypeFormat;
   salaryCap: number;
   scoring: ScoringFormat;
   teScoring: TeScoringFormat;
@@ -77,6 +92,7 @@ export const DEFAULT_FORM: LeagueSettingsFormValues = {
   name: "Default $200/12-team",
   teamCount: 12,
   draftType: "auction",
+  leagueType: "redraft",
   salaryCap: 200,
   scoring: "PPR",
   teScoring: "NONE",

@@ -4,6 +4,7 @@ import {
   query,
   internalQuery,
   type MutationCtx,
+  type QueryCtx,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id, Doc } from "./_generated/dataModel";
@@ -14,6 +15,7 @@ import {
   scoringConfigFromSeason,
 } from "./scoring";
 import { draftTypeValidator } from "./draftType";
+import { leagueTypeValidator } from "./leagueType";
 import {
   invalidateDraftValues,
   refreshDraftValuesForLeague,
@@ -73,13 +75,30 @@ export interface SeasonWithLeagueName extends Doc<"seasons"> {
   sleeperDraftId?: string;
   sleeperDraftScheduledAt?: number;
   sleeperSyncEnabled?: boolean;
+  // Yahoo counterpart to sleeperSyncEnabled above (see convex/infinidraft/
+  // yahoo/draftSync.ts) - no yahooDraftId/yahooDraftScheduledAt equivalents,
+  // since Yahoo has neither (see schema.ts's drafts.yahooSyncEnabled
+  // comment).
+  yahooSyncEnabled?: boolean;
+  // Only ever set by listSeasons below - true if the caller is this
+  // league's literal owner, false if they only have leagueCollaborators
+  // (co-manager) access. Powers the league picker/dashboard's "My Leagues"
+  // vs "Shared" grouping (see AppHeader.tsx, routes/index.tsx). Every other
+  // producer of this interface (listLinkedSeasons, getSeasonPublic,
+  // listMyAuctionSeasons) leaves this unset - their rows are always
+  // owner-only or public, so there's nothing to distinguish.
+  isOwner?: boolean;
 }
 
-// Every season across every league this user owns, each carrying its
-// league's display name - what the app calls "a league" in the UI (the
-// picker, route params, etc) is really one season at a time, since a
+// Every season across every league this user owns OR co-manages, each
+// carrying its league's display name - what the app calls "a league" in the
+// UI (the picker, route params, etc) is really one season at a time, since a
 // league's durable identity (leagues) has no format/roster fields of its
-// own to display.
+// own to display. Owned and shared (leagueCollaborators) leagues are both
+// included here (see isOwner above) rather than split into two queries -
+// requireSeasonOwner (convex/lib/access.ts) already treats a co-manager as
+// fully equivalent to the owner, so every page reachable from this list
+// works for them exactly the same way.
 export const listSeasons = query({
   args: {},
   handler: async (ctx): Promise<SeasonWithLeagueName[]> => {
@@ -87,39 +106,49 @@ export const listSeasons = query({
     if (!userId) {
       throw new Error("You must be signed in.");
     }
-    const leagues = await ctx.db
+
+    const result: SeasonWithLeagueName[] = [];
+    const seenSeasonIds = new Set<Id<"seasons">>();
+
+    const ownedLeagues = await ctx.db
       .query("leagues")
       .withIndex("by_owner", (q) => q.eq("ownerId", userId))
       .collect();
-    const result: SeasonWithLeagueName[] = [];
-    for (const league of leagues) {
+    for (const league of ownedLeagues) {
       const seasons = await ctx.db
         .query("seasons")
         .withIndex("by_league", (q) => q.eq("leagueId", league._id))
         .collect();
       for (const season of seasons) {
-        const draft = await ctx.db
-          .query("drafts")
-          .withIndex("by_season_kind", (q) =>
-            q.eq("seasonId", season._id).eq("kind", "real"),
-          )
-          .first();
+        seenSeasonIds.add(season._id);
         result.push({
-          ...season,
-          name: league.name,
-          draftStatus: draft?.status ?? "pre_draft",
-          ...(draft?.sleeperDraftId !== undefined
-            ? { sleeperDraftId: draft.sleeperDraftId }
-            : {}),
-          ...(draft?.sleeperDraftScheduledAt !== undefined
-            ? { sleeperDraftScheduledAt: draft.sleeperDraftScheduledAt }
-            : {}),
-          ...(draft?.sleeperSyncEnabled !== undefined
-            ? { sleeperSyncEnabled: draft.sleeperSyncEnabled }
-            : {}),
+          ...(await seasonWithLeagueName(ctx, season, league)),
+          isOwner: true,
         });
       }
     }
+
+    const collaborations = await ctx.db
+      .query("leagueCollaborators")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const collaboration of collaborations) {
+      const league = await ctx.db.get(collaboration.leagueId);
+      if (!league) continue;
+      const seasons = await ctx.db
+        .query("seasons")
+        .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+        .collect();
+      for (const season of seasons) {
+        if (seenSeasonIds.has(season._id)) continue;
+        seenSeasonIds.add(season._id);
+        result.push({
+          ...(await seasonWithLeagueName(ctx, season, league)),
+          isOwner: false,
+        });
+      }
+    }
+
     return result;
   },
 });
@@ -178,9 +207,100 @@ export const listLinkedSeasons = query({
           ...(draft?.sleeperSyncEnabled !== undefined
             ? { sleeperSyncEnabled: draft.sleeperSyncEnabled }
             : {}),
+          ...(draft?.yahooSyncEnabled !== undefined
+            ? { yahooSyncEnabled: draft.yahooSyncEnabled }
+            : {}),
         });
       }
     }
+    return result;
+  },
+});
+
+async function seasonWithLeagueName(
+  ctx: QueryCtx,
+  season: Doc<"seasons">,
+  league: Doc<"leagues">,
+): Promise<SeasonWithLeagueName> {
+  const draft = await ctx.db
+    .query("drafts")
+    .withIndex("by_season_kind", (q) =>
+      q.eq("seasonId", season._id).eq("kind", "real"),
+    )
+    .first();
+  return {
+    ...season,
+    name: league.name,
+    draftStatus: draft?.status ?? "pre_draft",
+    ...(draft?.sleeperDraftId !== undefined
+      ? { sleeperDraftId: draft.sleeperDraftId }
+      : {}),
+    ...(draft?.sleeperDraftScheduledAt !== undefined
+      ? { sleeperDraftScheduledAt: draft.sleeperDraftScheduledAt }
+      : {}),
+    ...(draft?.sleeperSyncEnabled !== undefined
+      ? { sleeperSyncEnabled: draft.sleeperSyncEnabled }
+      : {}),
+    ...(draft?.yahooSyncEnabled !== undefined
+      ? { yahooSyncEnabled: draft.yahooSyncEnabled }
+      : {}),
+  };
+}
+
+// infinifaab's dashboard/league-switcher query - same provider-linked
+// filter as listLinkedSeasons (free agency needs synced rosters), but a
+// broader access check: a season qualifies if the caller owns its league
+// OR has been invited onto one of its teams (leagueTeamMembers - see
+// convex/infinileague/auction/invites.ts's redeemTeamInvite). Deliberately
+// its own function rather than a listLinkedSeasons parameter, since the two
+// will keep diverging (this one needs to join through leagueTeamMembers,
+// which listLinkedSeasons/infinileague never will).
+export const listMyAuctionSeasons = query({
+  args: {},
+  handler: async (ctx): Promise<SeasonWithLeagueName[]> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in.");
+    }
+
+    const result: SeasonWithLeagueName[] = [];
+    const seenSeasonIds = new Set<Doc<"seasons">["_id"]>();
+
+    const ownedLeagues = await ctx.db
+      .query("leagues")
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .collect();
+    for (const league of ownedLeagues) {
+      const seasons = await ctx.db
+        .query("seasons")
+        .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+        .collect();
+      for (const season of seasons) {
+        if (
+          season.sleeperLeagueId === undefined &&
+          season.yahooLeagueKey === undefined
+        ) {
+          continue;
+        }
+        seenSeasonIds.add(season._id);
+        result.push(await seasonWithLeagueName(ctx, season, league));
+      }
+    }
+
+    const memberships = await ctx.db
+      .query("leagueTeamMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const membership of memberships) {
+      if (seenSeasonIds.has(membership.seasonId)) continue;
+      seenSeasonIds.add(membership.seasonId);
+      const season = await ctx.db.get(membership.seasonId);
+      if (!season) continue;
+      const league = await ctx.db.get(season.leagueId);
+      if (!league) continue;
+      result.push(await seasonWithLeagueName(ctx, season, league));
+    }
+
     return result;
   },
 });
@@ -216,6 +336,9 @@ export const getSeasonPublic = query({
       ...(draft?.sleeperSyncEnabled !== undefined
         ? { sleeperSyncEnabled: draft.sleeperSyncEnabled }
         : {}),
+      ...(draft?.yahooSyncEnabled !== undefined
+        ? { yahooSyncEnabled: draft.yahooSyncEnabled }
+        : {}),
     };
   },
 });
@@ -242,6 +365,10 @@ export const createLeague = mutation({
     // creates auction leagues), so every existing creation flow keeps
     // working unchanged. See SNAKE_DRAFT.md §4 for the eventual UI wiring.
     draftType: v.optional(draftTypeValidator),
+    // Absent means "redraft" (see leagueType.ts's resolveLeagueType) -
+    // independent of draftType above, a guillotine league still picks a
+    // draft mechanic.
+    leagueType: v.optional(leagueTypeValidator),
     salaryCap: v.number(),
     scoring: scoringValidator,
     teScoring: teScoringValidator,
@@ -658,6 +785,25 @@ export const setDraftType = mutation({
       );
     }
     await ctx.db.patch(args.id, { draftType: args.draftType });
+    return await ctx.db.get(args.id);
+  },
+});
+
+// Corrects a season's guillotine/redraft status after creation - unlike
+// setDraftType/setUseKeepers above, this is never locked to pre-draft (no
+// requireDraftNotStarted, no Pro gate): nothing about leagueType is tied to
+// already-recorded picks or keeper prices, and a commissioner fixing a wrong
+// Sleeper-import guess (Sleeper has no native guillotine signal - see
+// convex/sleeper/league.ts) is exactly as likely to need this mid-season as
+// before the draft.
+export const setLeagueType = mutation({
+  args: {
+    id: v.id("seasons"),
+    leagueType: leagueTypeValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireSeasonOwner(ctx, args.id);
+    await ctx.db.patch(args.id, { leagueType: args.leagueType });
     return await ctx.db.get(args.id);
   },
 });

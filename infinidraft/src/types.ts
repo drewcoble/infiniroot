@@ -18,6 +18,11 @@ export type TeScoringFormat = "NONE" | "HALF" | "FULL";
 // unions kept in sync by hand rather than type-imported from convex/).
 export type DraftTypeFormat = "auction" | "snake" | "linear";
 
+// Mirrors convex/leagueType.ts's LeagueType - same hand-synced convention as
+// DraftTypeFormat above. Independent axis from draft type: a guillotine
+// league still picks auction/snake/linear.
+export type LeagueTypeFormat = "redraft" | "guillotine";
+
 export interface ScoringConfig {
   scoring: ScoringFormat;
   teScoring: TeScoringFormat;

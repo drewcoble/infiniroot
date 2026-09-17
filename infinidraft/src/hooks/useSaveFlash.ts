@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 // feedback that the mutation actually fired.
 export function useSaveFlash(durationMs = 1500) {
   const [isVisible, setIsVisible] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => () => clearTimeout(timeoutRef.current), []);
 

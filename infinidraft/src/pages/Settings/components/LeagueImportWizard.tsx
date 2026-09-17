@@ -116,14 +116,15 @@ export function LeagueImportWizard({
         // fetchSleeperDraftType). Still adjustable on this review step below,
         // gated the same as a from-scratch league (SNAKE_DRAFT_ENABLED).
         draftType: result.draftType ?? DEFAULT_FORM.draftType,
+        // Sleeper has no native guillotine signal (unlike Yahoo's
+        // scoring_type - see convex/infinidraft/yahoo/league.ts) - always
+        // defaults to redraft here, adjustable on this review step below
+        // via the same League Type control the Yahoo wizard uses.
+        leagueType: DEFAULT_FORM.leagueType,
         salaryCap: DEFAULT_FORM.salaryCap,
         scoring: result.scoring,
-        // Sleeper's TE-premium/passing-TD settings aren't mapped yet (see
-        // convex/sleeper/leagueSettingsMapping.ts) - default off, same as a
-        // brand-new custom league, and the owner can adjust after import if
-        // their real league differs.
-        teScoring: DEFAULT_FORM.teScoring,
-        sixPointPassTds: DEFAULT_FORM.sixPointPassTds,
+        teScoring: result.teScoring,
+        sixPointPassTds: result.sixPointPassTds,
         rosterSlots: result.rosterSlots,
         flexPositions: result.flexPositions,
         superflexPositions: result.superflexPositions,
@@ -150,6 +151,7 @@ export function LeagueImportWizard({
         // auction if the flag is off no matter what form.draftType ended
         // up as.
         draftType: SNAKE_DRAFT_ENABLED ? form.draftType : "auction",
+        leagueType: form.leagueType,
         salaryCap: form.salaryCap,
         scoring: form.scoring,
         teScoring: form.teScoring,

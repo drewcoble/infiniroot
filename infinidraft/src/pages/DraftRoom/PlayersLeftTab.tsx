@@ -39,7 +39,7 @@ import { POSITION_COLORS } from "@shared/positionColors";
 import { buildStandardValueByFpid } from "../../lib/standardValues";
 import { compareSortValues, type SortDir } from "../../lib/tableSort";
 import { buildBlendedAdpByFpid, buildOurRankByFpid } from "../../lib/valueRank";
-import { SortArrow } from "../../components/SortArrow";
+import { SortArrow } from "@shared/SortArrow";
 import { MOBILE_STATS_ROW_HEIGHT, WEEK } from "../../constants/general";
 import { MOBILE_HEADER_HEIGHT, POSITION_FILTER_BAR_HEIGHT } from "@shared/constants";
 import { BUDGET_MATCH_WINDOW } from "../../constants/playersLeft";

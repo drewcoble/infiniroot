@@ -10,7 +10,7 @@ import { Settings2 } from "lucide-react";
 import { api } from "@infinidata/api";
 import type { Id } from "@infinidata/dataModel";
 import { AppHeader } from "../../../components/AppHeader";
-import { BottomNav } from "../../../components/BottomNav";
+import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
 import { useSelfTeam } from "../../../hooks/useSelfTeam";
 
@@ -96,7 +96,10 @@ function SeasonLayout() {
             </Tabs.List>
           </Tabs>
         </Box>
-        <BottomNav items={TABS} leagueId={leagueId} />
+        <BottomNav
+          items={TABS.map((tab) => ({ ...tab, params: { leagueId } }))}
+          activeValue={activeTab}
+        />
         {selfTeam ? (
           <Outlet />
         ) : (

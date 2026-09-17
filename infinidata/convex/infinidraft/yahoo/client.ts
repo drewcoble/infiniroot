@@ -145,12 +145,22 @@ export async function fetchYahooApi<T>(
  */
 
 // Merges an array of small field objects (Yahoo's field-list pattern) into
-// one - no-op passthrough for anything not shaped that way.
+// one - no-op passthrough for anything not shaped that way. Some resources
+// (e.g. "team") are documented as wrapping their field list in an extra
+// array level - `team: [[{team_key: ...}, {name: ...}, ...]]` - rather than
+// the flat `league: [{league_key: ...}, {name: ...}, ...]` shape other
+// resources use, so nested array entries are recursively merged instead of
+// skipped. This explains a real "opponent names required (got 0)" failure
+// (teamCount from `league` fields was correct, but every team's fields came
+// back empty) - still worth confirming against the actual raw JSON if teams
+// come back empty again, per YAHOO.md.
 export function mergeYahooFields(node: unknown): Record<string, unknown> {
   if (Array.isArray(node)) {
     const merged: Record<string, unknown> = {};
     for (const entry of node) {
-      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+      if (Array.isArray(entry)) {
+        Object.assign(merged, mergeYahooFields(entry));
+      } else if (entry && typeof entry === "object") {
         Object.assign(merged, entry);
       }
     }
