@@ -47,7 +47,6 @@ import { useDraftPhase } from "../../hooks/useDraftPhase";
 import { useSleeperDraftScheduleRefresh } from "../../hooks/useSleeperDraftScheduleRefresh";
 import { getErrorMessage } from "@shared/errors";
 import { formatSleeperDraftSchedule } from "../../lib/sleeperDraftSchedule";
-import { YAHOO_IMPORT_ENABLED } from "../../lib/featureFlags";
 
 interface LeagueDetailsProps {
   selectedLeagueId: Id<"seasons"> | undefined;
@@ -931,7 +930,7 @@ export function LeagueDetails({
         />
       )}
 
-      {YAHOO_IMPORT_ENABLED && settings.yahooLeagueKey && (
+      {settings.yahooLeagueKey && (
         <LiveSyncCard
           title="Live sync from Yahoo"
           enableButtonLabel="Enable Live Sync from Yahoo"
