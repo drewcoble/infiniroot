@@ -131,9 +131,7 @@ function PlayersPage() {
           spacer element rather than a `pt` prop on this Stack. */}
       <Box hiddenFrom="sm" h={POSITION_FILTER_BAR_HEIGHT} />
       <Group justify="space-between" wrap="wrap" align="center">
-        <Title order={3}>
-          Players — {isWeekMode ? `Week ${nflState.week}` : `Rest of Season (Wk ${nflState.week}–18)`}
-        </Title>
+        <Title order={3}>Players — {isWeekMode ? `Week ${nflState.week}` : "Rest of Season"}</Title>
         <Text c="dimmed" size="sm">
           {filteredRows.length} of {rows.length} players
         </Text>
@@ -175,14 +173,9 @@ function PlayersPage() {
                   ? {
                       leftLabel: String(row.weekRank),
                       rightStats: (
-                        <>
-                          <Text size="xs" c="dimmed">
-                            {row.weekPpg.toFixed(1)} PPG
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            {row.rosPpg.toFixed(1)} ROS PPG
-                          </Text>
-                        </>
+                        <Text size="xs" c="dimmed">
+                          {row.weekPpg.toFixed(1)} Proj
+                        </Text>
                       ),
                     }
                   : {})}
