@@ -1185,6 +1185,12 @@ export default defineSchema({
     // existed predate it.
     weekVor: v.optional(v.number()),
     weekRank: v.optional(v.number()),
+    // The plain scoring-config projection (no momentum adjustment) -
+    // weekVor/weekRank above are still momentum-adjusted for ranking
+    // quality, but this is deliberately the same number convex/
+    // infinileague/season/teamRoster.ts's projectedPoints shows for this
+    // player/week, so the Players tab's "This Week" view and My Team never
+    // disagree on what a player's projected for.
     weekPpg: v.optional(v.number()),
     computedAt: v.number(),
   })

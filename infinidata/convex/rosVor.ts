@@ -214,7 +214,10 @@ export const refreshRosVor = internalMutation({
         rosPpg: remainingWeeks > 0 ? rosValue / remainingWeeks : 0,
         actualPpg: actualStats && actualStats.gamesPlayed > 0 ? actualStats.totalPoints / actualStats.gamesPlayed : 0,
         weekVor: weekValue - weekReplacementValues[form.position],
-        weekPpg: weekValue,
+        // The plain, un-momentum-adjusted projection - see PlayerForm.
+        // currentWeekProjectionRaw's comment for why this (not weekValue)
+        // is what gets displayed.
+        weekPpg: form.currentWeekProjectionRaw,
       };
     });
     const rosRankByFpid = new Map<number, number>();
