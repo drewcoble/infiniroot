@@ -134,20 +134,40 @@ async function fetchAllPlayerPointsHandler(
       { scoring: "HALF", pick: (row) => row.ptsHalf },
     ];
 
+    // Chunked rather than one runMutation call for the whole week - each row
+    // now costs upsertPlayerPoints's own read+write plus (since real games
+    // started landing points > 0 instead of the all-zero preseason payload)
+    // applySeasonStatsDelta's cascade in convex/playerPoints.ts: a season-to-
+    // date collect() plus 6 BONUS_VARIANTS reads+writes. That's ~25 reads per
+    // row by late season, and a full week's roster (several hundred rows) in
+    // one transaction is well past Convex's 4096-reads-per-transaction limit
+    // (see the matching comment in ../sleeper/playerLinks.ts).
+    const CHUNK_SIZE = 100;
+
     for (const { scoring, pick } of scoringVariants) {
-      const result = await ctx.runMutation(api.playerPoints.upsertPlayerPoints, {
-        season: year,
-        scoring,
-        rows: rows.map((row) => ({
-          fpid: row.fpid,
-          position: row.position,
-          week,
-          points: pick(row),
-          stats: row.stats,
-        })),
-      });
+      const scoringRows = rows.map((row) => ({
+        fpid: row.fpid,
+        position: row.position,
+        week,
+        points: pick(row),
+        stats: row.stats,
+      }));
+
+      let inserted = 0;
+      let updated = 0;
+      for (let i = 0; i < scoringRows.length; i += CHUNK_SIZE) {
+        const chunk = scoringRows.slice(i, i + CHUNK_SIZE);
+        const result = await ctx.runMutation(api.playerPoints.upsertPlayerPoints, {
+          season: year,
+          scoring,
+          rows: chunk,
+        });
+        inserted += result.inserted;
+        updated += result.updated;
+      }
+
       const key = `week${week}-${scoring}`;
-      totals[key] = result;
+      totals[key] = { inserted, updated };
     }
   }
 
