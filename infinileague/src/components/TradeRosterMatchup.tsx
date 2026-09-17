@@ -46,6 +46,10 @@ function toFallbackRow(row: TeamRosterRow, fpid: number): RosVorRow {
     positionRank: 0,
     rosPpg: 0,
     actualPpg: 0,
+    weekVor: 0,
+    weekRank: 0,
+    weekPpg: 0,
+    weekPositionRank: 0,
     rosteredByTeamName: null,
     ...(row.injury ? { injury: row.injury } : {}),
   };
@@ -111,10 +115,10 @@ function PlayerCell({ row, vorByFpid, selected, onToggle }: PlayerCellProps) {
         footer={
           <Stack gap={0}>
             <Text size="xs" c="dimmed">
-              {(vorRow?.actualVor ?? 0).toFixed(1)} VOR
+              {(vorRow?.actualPpg ?? 0).toFixed(1)} PPG
             </Text>
             <Text size="xs" c="dimmed">
-              {(vorRow?.rosVor ?? 0).toFixed(1)} ROS VOR
+              {(vorRow?.rosPpg ?? 0).toFixed(1)} ROS PPG
             </Text>
           </Stack>
         }

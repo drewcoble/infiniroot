@@ -156,6 +156,15 @@ export interface RosVorRow {
   // season's real average so far.
   rosPpg: number;
   actualPpg: number;
+  // Single-week counterpart to rosVor/rosRank/rosPpg/positionRank above -
+  // "best play this week specifically" rather than summed over the rest of
+  // the season. Powers the Players tab's week/rest-of-season toggle (see
+  // convex/rosVor.ts's schema comment on weekVor for why this isn't just
+  // rosVor/remainingWeeks).
+  weekVor: number;
+  weekRank: number;
+  weekPpg: number;
+  weekPositionRank: number;
   rosteredByTeamName: string | null;
   // Absent means not currently injured - mirrors TeamRosterRow's injury
   // field below, same convex/injuries.ts source (Sleeper-derived).

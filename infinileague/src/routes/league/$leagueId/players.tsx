@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Box, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { Box, Group, Loader, SegmentedControl, Stack, Text, Title } from "@mantine/core";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { api } from "@infinidata/api";
 import { PositionFilterBar } from "@shared/PositionFilterBar";
@@ -73,7 +73,14 @@ function PlayersPage() {
   );
 
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
-  const filteredRows = (rows ?? []).filter((row) => selectedPositions.includes(row.position));
+  // Defaults to "ros" - matches the board's own default sort
+  // (getRosVorBoard orders by rosRank) so switching to this tab shows the
+  // same ranking it always has unless the viewer opts into "This Week."
+  const [metric, setMetric] = useState<"week" | "ros">("ros");
+  const isWeekMode = metric === "week";
+  const filteredRows = (rows ?? [])
+    .filter((row) => selectedPositions.includes(row.position))
+    .sort((a, b) => (isWeekMode ? a.weekRank - b.weekRank : a.rosRank - b.rosRank));
 
   const listRef = useRef<HTMLDivElement>(null);
   const virtualizer = useWindowVirtualizer({
@@ -124,11 +131,21 @@ function PlayersPage() {
           spacer element rather than a `pt` prop on this Stack. */}
       <Box hiddenFrom="sm" h={POSITION_FILTER_BAR_HEIGHT} />
       <Group justify="space-between" wrap="wrap" align="center">
-        <Title order={3}>Players — Week {nflState.week}</Title>
+        <Title order={3}>
+          Players — {isWeekMode ? `Week ${nflState.week}` : `Rest of Season (Wk ${nflState.week}–18)`}
+        </Title>
         <Text c="dimmed" size="sm">
           {filteredRows.length} of {rows.length} players
         </Text>
       </Group>
+      <SegmentedControl
+        value={metric}
+        onChange={(value) => setMetric(value as "week" | "ros")}
+        data={[
+          { label: "This Week", value: "week" },
+          { label: "Rest of Season", value: "ros" },
+        ]}
+      />
       <PositionFilterBar
         positions={ALL_POSITIONS}
         selected={selectedPositions}
@@ -151,7 +168,25 @@ function PlayersPage() {
                 transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)`,
               }}
             >
-              <PlayerCard row={row} isRookie={rookieFpidSet.has(row.fpid)} />
+              <PlayerCard
+                row={isWeekMode ? { ...row, positionRank: row.weekPositionRank } : row}
+                isRookie={rookieFpidSet.has(row.fpid)}
+                {...(isWeekMode
+                  ? {
+                      leftLabel: String(row.weekRank),
+                      rightStats: (
+                        <>
+                          <Text size="xs" c="dimmed">
+                            {row.weekPpg.toFixed(1)} PPG
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {row.rosPpg.toFixed(1)} ROS PPG
+                          </Text>
+                        </>
+                      ),
+                    }
+                  : {})}
+              />
             </div>
           );
         })}

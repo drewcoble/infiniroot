@@ -43,6 +43,10 @@ function toRosVorRow(row: TeamRosterRow, teamName: string): RosVorRow {
     positionRank: 0,
     rosPpg: 0,
     actualPpg: 0,
+    weekVor: 0,
+    weekRank: 0,
+    weekPpg: 0,
+    weekPositionRank: 0,
     rosteredByTeamName: teamName,
     ...(row.injury ? { injury: row.injury } : {}),
   };
