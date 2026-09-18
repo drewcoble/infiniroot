@@ -101,7 +101,7 @@ export interface PlayerForm {
 // than bundled into this pass.
 export async function gatherPlayerForms(
   ctx: QueryCtx | MutationCtx,
-  args: { activePositions: Position[]; week: string; scoringConfig: ScoringConfig },
+  args: { activePositions: Position[]; week: string; season: string; scoringConfig: ScoringConfig },
 ): Promise<Map<number, PlayerForm>> {
   const forms = new Map<number, PlayerForm>();
 
@@ -150,9 +150,13 @@ export async function gatherPlayerForms(
   const actualsByFpid = new Map<number, { points: number; snapShare: number | undefined; touches: number | undefined }[]>();
   for (const week of recentWeeks) {
     for (const pos of args.activePositions) {
+      // Scoped to args.season - playerPoints keeps every past season's rows
+      // around for history (see that table's own schema comment), so an
+      // unscoped (position, week) read would pull a prior year's same-
+      // numbered week's game right alongside the real current one.
       const rows = await ctx.db
         .query("playerPoints")
-        .withIndex("by_position_week", (q) => q.eq("position", pos).eq("week", week))
+        .withIndex("by_position_week_season", (q) => q.eq("position", pos).eq("week", week).eq("season", args.season))
         .collect();
       for (const row of rows) {
         if (row.scoring !== args.scoringConfig.scoring) continue;

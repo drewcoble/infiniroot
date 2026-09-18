@@ -98,7 +98,7 @@ export const refreshRosVor = internalMutation({
     // rostered status (see below), and rosVor/rosRank/actualVor/actualRank
     // are stored for every player either way, so this function has no
     // remaining use for "who's on which team."
-    const forms = await gatherPlayerForms(ctx, { activePositions, week: nflState.week, scoringConfig });
+    const forms = await gatherPlayerForms(ctx, { activePositions, week: nflState.week, season: nflState.season, scoringConfig });
 
     // Real per-remaining-week projection sum (bye-aware - a bye week simply
     // has no projections row to add), rebuilt daily across every scoring

@@ -362,7 +362,14 @@ export default defineSchema({
     // is still only ever stored per base scoring (3 rows/week), never per
     // teScoring/sixPointPassTds (those bonuses are derived at read time from
     // this row's `stats` blob, not stored as separate rows here).
-    .index("by_fpid_season_scoring", ["fpid", "season", "scoring"]),
+    .index("by_fpid_season_scoring", ["fpid", "season", "scoring"])
+    // convex/lib/playerValue.ts's gatherPlayerForms uses this to read one
+    // position/week's "recent form" rows scoped to the CURRENT season only -
+    // by_position_week above has no season field, which let a prior year's
+    // same-numbered week (this table is never pruned - see playerPoints'
+    // own header comment on why old seasons are kept for history) leak into
+    // that recency window right alongside the real current-season game.
+    .index("by_position_week_season", ["position", "week", "season"]),
 
   // Season-long digest of playerPoints, maintained incrementally by
   // upsertPlayerPoints (see convex/playerPoints.ts) rather than recomputed at
