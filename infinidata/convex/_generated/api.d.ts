@@ -99,6 +99,7 @@ import type * as projectionBlending from "../projectionBlending.js";
 import type * as projections from "../projections.js";
 import type * as providerProjections from "../providerProjections.js";
 import type * as rankings from "../rankings.js";
+import type * as rosProjTotals from "../rosProjTotals.js";
 import type * as rosVor from "../rosVor.js";
 import type * as rosterSync from "../rosterSync.js";
 import type * as scoring from "../scoring.js";
@@ -219,6 +220,7 @@ declare const fullApi: ApiFromModules<{
   projections: typeof projections;
   providerProjections: typeof providerProjections;
   rankings: typeof rankings;
+  rosProjTotals: typeof rosProjTotals;
   rosVor: typeof rosVor;
   rosterSync: typeof rosterSync;
   scoring: typeof scoring;

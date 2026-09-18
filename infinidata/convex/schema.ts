@@ -1197,6 +1197,44 @@ export default defineSchema({
     .index("by_season_week", ["seasonId", "week"])
     .index("by_season_fpid", ["seasonId", "fpid"]),
 
+  // Shared, league-independent cache of each player's summed rest-of-season
+  // projection - one row per (position, scoring, teScoring, sixPointPassTds,
+  // fpid), rebuilt daily by convex/rosProjTotals.ts's refreshRosProjTotals
+  // from every remaining week's own `projections` row, the same "full
+  // cross-product computed once, read cheaply by every league" split
+  // valueGaps already uses (see that table's own comment) - convex/rosVor.ts
+  // reads this instead of re-summing every remaining week per league. A bye
+  // week naturally contributes nothing (no projections row exists for that
+  // fpid/week), so weeksIncluded is bye-aware with no special-casing needed.
+  // Entirely rebuilt (delete+reinsert) on each refresh, same as valueGaps -
+  // there's no "history" concept here, only "current as of the last cron
+  // run," unlike rosVorSnapshots above which keeps one.
+  rosProjTotals: defineTable({
+    fpid: v.number(),
+    position: positionValidator,
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+    // The week this sum starts from (inclusive) through week 18 -
+    // bookkeeping only, not indexed on; refreshRosProjTotals always rebuilds
+    // the whole cache from the current NFL week, so a stale value here means
+    // the daily cron hasn't run since the week advanced.
+    asOfWeek: v.string(),
+    totalPoints: v.number(),
+    weeksIncluded: v.number(),
+    computedAt: v.number(),
+  })
+    // Write path: refreshRosProjTotals rebuilds one position's full combo
+    // set at a time. Read path: convex/rosVor.ts's gatherRosProjTotals looks
+    // up one position/combo at a time, batched like playerValue.ts's
+    // gatherPlayerForms.
+    .index("by_position_scoring_teScoring_sixPointPassTds", [
+      "position",
+      "scoring",
+      "teScoring",
+      "sixPointPassTds",
+    ]),
+
   // One row per app user (not per league) - connecting a Yahoo account is a
   // one-time action that then lets that user link any of their Yahoo leagues
   // to any of their infinidraft leagues, mirroring how leagues.ownerId already
@@ -1221,6 +1259,18 @@ export default defineSchema({
     state: v.string(),
     userId: v.id("users"),
     seasonId: v.optional(v.id("seasons")),
+    // Which frontend app started this OAuth round trip - resolves the
+    // `/yahoo/callback` HTTP route's post-auth redirect target (see
+    // convex/infinidraft/yahoo/client.ts's requireAppBaseUrl). Optional so
+    // rows created before this field existed still validate; treated as
+    // "infinidraft" wherever it's missing.
+    app: v.optional(
+      v.union(
+        v.literal("infinidraft"),
+        v.literal("infinileague"),
+        v.literal("infinifaab"),
+      ),
+    ),
     createdAt: v.number(),
   }).index("by_state", ["state"]),
 
