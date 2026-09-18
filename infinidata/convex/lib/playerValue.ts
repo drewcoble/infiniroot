@@ -193,12 +193,12 @@ export async function gatherPlayerForms(
 // handful of touches is mostly noise and gets damped back toward the
 // projection. VOLUME_CONFIDENCE_SNAP_SHARE is "the snap share at which we
 // fully trust the surprise" - both this and the [MIN,MAX] band are starting
-// guesses, not calibrated against real outcomes yet. Narrowed from
-// 0.7/1.4 after live review found that band swinging rankings too hard off
-// a single game's surprise - 0.9/1.1 is the first narrower band to try.
+// guesses, not calibrated against real outcomes yet. Narrowed from 0.7/1.4
+// (too severe) to 0.9/1.1 (still a little much) to 0.95/1.05 after live
+// review of each step.
 const VOLUME_CONFIDENCE_SNAP_SHARE = 0.5;
-const MOMENTUM_MIN = 0.9;
-const MOMENTUM_MAX = 1.1;
+const MOMENTUM_MIN = 0.95;
+const MOMENTUM_MAX = 1.05;
 
 export function momentumMultiplier(form: PlayerForm): number {
   if (form.gamesInWindow === 0 || form.currentWeekProjection <= 0) return 1;
