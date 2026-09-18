@@ -1,11 +1,12 @@
+import { useEffect } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { Button, Center, Group, Stack, Text, Title } from "@mantine/core";
+import { Button, Center, Group, Loader, Stack, Text, Title } from "@mantine/core";
 import { Link, type ErrorComponentProps } from "@tanstack/react-router";
-// useConvexAuth from convex/react, not @convex-dev/auth/react - see
+// convex/react's useConvexAuth, not @convex-dev/auth/react's - see
 // __root.tsx's comment on the same import for why (the latter's
 // isAuthenticated doesn't wait for server confirmation).
 import { useConvexAuth } from "convex/react";
-import { getErrorMessage } from "@shared/errors";
+import { getErrorMessage, isStaleChunkError, reloadForStaleChunk } from "./errors";
 
 // @convex-dev/auth's React client stores its JWT/refresh token/etc in
 // localStorage under these key prefixes (namespaced by a suffix derived
@@ -26,15 +27,43 @@ function clearStoredConvexAuthTokens() {
   }
 }
 
-// Wired in as __root.tsx's errorComponent - the one app-wide safety net
-// against a blank white screen. Convex's useQuery throws synchronously
-// during render when the underlying query errors (e.g. a stale/deleted
-// league, an auth check failing mid-session), and with no error boundary
-// anywhere that throw used to unmount the entire React tree with nothing
-// but a console error. This catches it app-wide; "Try again" re-renders
-// the failed subtree in place, "Back to dashboard" is the escape hatch for
-// anything that keeps failing on retry.
+// Wired in as every app's __root.tsx errorComponent (infinidraft,
+// infinileague, infinifaab all share this same Convex Auth backend and root-
+// route shape) - the one app-wide safety net against a blank white screen.
+// Convex's useQuery throws synchronously during render when the underlying
+// query errors (e.g. a stale/deleted league, an auth check failing mid-
+// session), and with no error boundary anywhere that throw used to unmount
+// the entire React tree with nothing but a console error. This catches it
+// app-wide; "Try again" re-renders the failed subtree in place, "Back to
+// dashboard" is the escape hatch for anything that keeps failing on retry.
 export function RouteErrorFallback({ error, reset }: ErrorComponentProps) {
+  // A stale JS chunk after a deploy (browser tries to dynamically import a
+  // route chunk whose hash a new deploy already replaced) - most of the
+  // time installStaleChunkReload's window-level listener (see each app's
+  // main.tsx) already reloads before this ever mounts, but a route lazy-
+  // import's rejection can still reach here directly on some browsers, so
+  // this is the backstop.
+  const isStaleChunk = isStaleChunkError(error);
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut } = useAuthActions();
+
+  // In an effect, not called directly during render, since reloading is a
+  // real side effect - reloadForStaleChunk itself no-ops (returns false) if
+  // a reload already happened very recently, so a genuinely still-broken
+  // deploy doesn't bounce the tab forever (see that function's own
+  // comment), but the call still shouldn't happen on every re-render.
+  useEffect(() => {
+    if (isStaleChunk) reloadForStaleChunk();
+  }, [isStaleChunk]);
+
+  if (isStaleChunk) {
+    return (
+      <Center py="xl">
+        <Loader />
+      </Center>
+    );
+  }
+
   const message = getErrorMessage(error, "Something went wrong.");
   // Unlike `message` above (deliberately scrubbed for end users - see
   // getErrorMessage's comment), this keeps Convex's raw wrapped error.message
@@ -47,8 +76,6 @@ export function RouteErrorFallback({ error, reset }: ErrorComponentProps) {
   // the normal view, but expandable for exactly this kind of "which query
   // is actually failing" debugging without needing devtools access.
   const rawDetail = error instanceof Error ? error.message : String(error);
-  const { isAuthenticated } = useConvexAuth();
-  const { signOut } = useAuthActions();
 
   // Landing here while NOT authenticated almost always means a stale/
   // invalid token was still sitting in this browser's storage - __root.tsx

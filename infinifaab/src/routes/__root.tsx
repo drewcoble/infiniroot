@@ -8,10 +8,12 @@ import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@infinidata/api";
 import { AuthPanel } from "@shared/AuthPanel";
 import { PageContainer } from "@shared/PageContainer";
+import { RouteErrorFallback } from "@shared/RouteErrorFallback";
 import { SignedOutHeader } from "@shared/SignedOutHeader";
 
 export const Route = createRootRoute({
   component: RootComponent,
+  errorComponent: RouteErrorFallback,
 });
 
 function RootComponent() {

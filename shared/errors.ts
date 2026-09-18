@@ -48,3 +48,63 @@ export function getErrorMessage(error: unknown, fallback: string): string {
 
   return fallback;
 }
+
+// Cross-browser signatures for "a code-split JS chunk failed to load,
+// almost always because a new deploy replaced the build this tab's already-
+// loaded index.html still points at." Each browser reports it differently -
+// a stale SPA-fallback rewrite (serving index.html for a 404'd chunk path)
+// turns it into exactly the MIME-type mismatch below rather than a clean
+// 404, which is the one RouteErrorFallback.tsx's screenshot-driven bug
+// report actually showed, but the others are the same failure mode.
+const STALE_CHUNK_ERROR_PATTERNS = [
+  "is not a valid javascript mime type",
+  "failed to fetch dynamically imported module",
+  "error loading dynamically imported module",
+  "importing a module script failed",
+];
+
+export function isStaleChunkError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  return STALE_CHUNK_ERROR_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
+// Guards against a reload loop: if the chunk is somehow STILL stale right
+// after a reload (e.g. a CDN edge that hasn't caught up yet), this refuses
+// to reload again within the cooldown rather than bouncing the tab forever -
+// callers should fall through to their normal error UI when this returns
+// false instead of assuming the reload always happens.
+const STALE_CHUNK_RELOAD_KEY = "staleChunkReloadedAt";
+const STALE_CHUNK_RELOAD_COOLDOWN_MS = 10_000;
+
+export function reloadForStaleChunk(): boolean {
+  const lastReload = Number(window.sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY) ?? 0);
+  if (Date.now() - lastReload < STALE_CHUNK_RELOAD_COOLDOWN_MS) {
+    return false;
+  }
+  window.sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, String(Date.now()));
+  window.location.reload();
+  return true;
+}
+
+// Vite wraps every dynamically-imported code-split chunk (TanStack
+// Router's own route lazy-loading included) with its own module-preload
+// polyfill, which emits this event on `window` instead of just letting the
+// rejection propagate silently to whatever awaited the import - catching it
+// here means a stale chunk is handled before React/the router even see it,
+// rather than only as a fallback once it's already reached an error
+// boundary. Call once at app boot (see each app's main.tsx).
+// https://vite.dev/guide/build.html#load-error-handling
+export function installStaleChunkReload() {
+  window.addEventListener("vite:preloadError", (event) => {
+    // Only suppress the rejection (which would otherwise propagate to
+    // whatever awaited the failed import, e.g. the router's own error
+    // boundary) if a reload is actually happening - preventDefault()
+    // unconditionally here would silently swallow the error on a cooldown-
+    // blocked reload attempt, leaving the tab stuck with no reload AND no
+    // visible error at all.
+    if (reloadForStaleChunk()) {
+      event.preventDefault();
+    }
+  });
+}
