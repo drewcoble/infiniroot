@@ -1224,11 +1224,21 @@ export default defineSchema({
     weeksIncluded: v.number(),
     computedAt: v.number(),
   })
-    // Write path: refreshRosProjTotals rebuilds one position's full combo
-    // set at a time. Read path: convex/rosVor.ts's gatherRosProjTotals looks
-    // up one position/combo at a time, batched like playerValue.ts's
-    // gatherPlayerForms.
+    // Read path: convex/rosVor.ts's gatherRosProjTotals looks up one
+    // position/combo at a time, batched like playerValue.ts's
+    // gatherPlayerForms. Also refreshRosProjTotals's own pruning pass uses
+    // this indirectly via the plain table scan in pruneStaleRosProjTotals.
     .index("by_position_scoring_teScoring_sixPointPassTds", [
+      "position",
+      "scoring",
+      "teScoring",
+      "sixPointPassTds",
+    ])
+    // Write path: refreshRosProjTotals's applyRosProjTotalsChunk does one
+    // point lookup per (fpid, position, combo) to patch-in-place rather
+    // than duplicate a row on a rerun.
+    .index("by_fpid_position_scoring_teScoring_sixPointPassTds", [
+      "fpid",
       "position",
       "scoring",
       "teScoring",

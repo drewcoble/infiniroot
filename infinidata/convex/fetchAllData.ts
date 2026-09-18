@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import { requireSuperAdmin, currentSeason } from "./lib/dataFetch";
 import { fetchCurrentNflWeek, fetchNflSeasonState } from "./sleeper/state";
 import { ALL_SCORING_CONFIGS, scoringConfigFromSeason } from "./scoring";
-import { BLENDED_POSITIONS, POSITIONS } from "./positions";
+import { BLENDED_POSITIONS } from "./positions";
 
 // Prefetches every remaining week's projections, not just the current one,
 // so a team page browsing ahead (see infinileague's team page) isn't
@@ -42,17 +42,15 @@ async function refreshCachedComputations(
   }
 
   // Rest-of-season projection totals - a second league-independent shared
-  // cache alongside valueGaps above, one refresh per position (not per
-  // scoring combo; convex/rosProjTotals.ts computes every combo from the
-  // same per-position projections read in one pass). Must run before the
-  // per-season rosVor refresh below, which reads this cache rather than
-  // re-summing every remaining week itself.
-  for (const position of POSITIONS) {
-    await ctx.runMutation(internal.rosProjTotals.refreshRosProjTotals, {
-      position,
-      week: args.week,
-    });
-  }
+  // cache alongside valueGaps above, covering every position/scoring combo
+  // in one action call (see convex/rosProjTotals.ts for why this has to be
+  // an action, not a mutation - summing every remaining week's projections
+  // in a single transaction exceeds Convex's per-execution read limit).
+  // Must run before the per-season rosVor refresh below, which reads this
+  // cache rather than re-summing every remaining week itself.
+  await ctx.runAction(internal.rosProjTotals.refreshRosProjTotals, {
+    week: args.week,
+  });
 
   // Includes the system-owned generic league free users see instead of
   // their own real league's numbers (see convex/genericLeague.ts) - it's a
