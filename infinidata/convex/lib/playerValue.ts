@@ -1,7 +1,7 @@
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { POSITIONS } from "../positions";
-import { bonusPoints, pointsForScoringConfig, type ScoringConfig } from "../scoring";
+import { bonusPoints, pointsForScoring, pointsForScoringConfig, type ScoringConfig } from "../scoring";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -75,6 +75,14 @@ export interface PlayerForm {
   // config (TE premium / 6pt passing TDs) - the forward-looking baseline
   // rate everything else nudges up or down.
   currentWeekProjection: number;
+  // Same week's projection, but the plain scoring-config number with no
+  // bonus adjustment - matches convex/infinileague/season/teamRoster.ts's
+  // own projectedPoints exactly (same pointsStd/Half/Ppr pick, no
+  // bonusPoints layered on). Only for display (rosVor.ts's weekPpg) so "This
+  // Week" on the Players tab shows the identical number My Team already
+  // shows for the same player/week - ranking still uses the momentum-
+  // adjusted currentWeekProjection via forwardRate below.
+  currentWeekProjectionRaw: number;
   previousWeekProjection: number | null;
   weightedActualPPG: number;
   weightedSnapShare: number;
@@ -109,6 +117,7 @@ export async function gatherPlayerForms(
         team: row.team,
         position: pos,
         currentWeekProjection: pointsForScoringConfig(row, args.scoringConfig),
+        currentWeekProjectionRaw: pointsForScoring(row, args.scoringConfig.scoring),
         previousWeekProjection:
           row.previousPointsStd !== undefined
             ? pointsForScoringConfig(

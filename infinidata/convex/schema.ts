@@ -1174,6 +1174,24 @@ export default defineSchema({
     // written before these fields existed predate them.
     rosPpg: v.optional(v.number()),
     actualPpg: v.optional(v.number()),
+    // Forward-looking, but scoped to just THIS week's projection (momentum-
+    // adjusted, no remainingWeeks multiplier) instead of rosVor's full
+    // rest-of-season sum - "who's the best play this week specifically,"
+    // distinct from both rosVor (rest of season) and actualVor (backward,
+    // season-to-date). Replacement level is computed off this same
+    // single-week pool, so weekVor isn't just rosVor/remainingWeeks - a
+    // player can rank differently week-to-week vs. their ROS rank as
+    // matchups/roles shift. Optional since rows written before this field
+    // existed predate it.
+    weekVor: v.optional(v.number()),
+    weekRank: v.optional(v.number()),
+    // The plain scoring-config projection (no momentum adjustment) -
+    // weekVor/weekRank above are still momentum-adjusted for ranking
+    // quality, but this is deliberately the same number convex/
+    // infinileague/season/teamRoster.ts's projectedPoints shows for this
+    // player/week, so the Players tab's "This Week" view and My Team never
+    // disagree on what a player's projected for.
+    weekPpg: v.optional(v.number()),
     computedAt: v.number(),
   })
     .index("by_season_week", ["seasonId", "week"])

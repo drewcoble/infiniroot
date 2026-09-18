@@ -32,6 +32,17 @@ export interface RosVorRow {
   // week's row).
   rosPpg: number;
   actualPpg: number;
+  // Single-week counterpart to rosVor/rosRank/rosPpg above - "best play
+  // this week specifically" rather than summed over the rest of the
+  // season. See schema.ts's comment on rosVorSnapshots.weekVor for why this
+  // isn't just rosVor/remainingWeeks.
+  weekVor: number;
+  weekRank: number;
+  weekPpg: number;
+  // Position rank derived from weekVor, same "computed at read time" reason
+  // positionRank (rosVor-based) is - the week-mode counterpart to
+  // positionRank for infinileague's Players tab toggle.
+  weekPositionRank: number;
   // The fantasy team's own name (not the NFL team abbreviation above) -
   // null means this player is a free agent. Only populated by
   // getRosVorBoard, which joins against rosterPlayers/seasonTeams for
@@ -124,6 +135,32 @@ export const refreshRosVor = internalMutation({
     }
     const rosReplacementValues = computeReplacementLevels(settings, activePositions, allPlayersByRosValue);
 
+    // Single-week value - same momentum-adjusted rate rosValue is built
+    // from, but for just the current week (no remainingWeeks multiplier),
+    // with an injury boost applied for one week only rather than the full
+    // boostedWeeks span. Replacement level is computed off this pool
+    // separately from rosReplacementValues above - the "next player up"
+    // this week isn't necessarily the same player it is for the rest of
+    // the season.
+    const weekValueByFpid = new Map<number, number>();
+    for (const form of forms.values()) {
+      let value = forwardRate(form);
+      const boost = boosts.get(form.fpid);
+      if (boost && remainingWeeks > 0) {
+        value += Math.max(boost.boostedRate - forwardRate(form), 0);
+      }
+      weekValueByFpid.set(form.fpid, value);
+    }
+    const allPlayersByWeekValue = new Map<Position, ValuedPlayer[]>();
+    for (const pos of activePositions) {
+      const rows = [...forms.values()]
+        .filter((form) => form.position === pos)
+        .map((form) => ({ fpid: form.fpid, name: form.name, team: form.team, position: form.position, rosValue: weekValueByFpid.get(form.fpid) ?? 0 }))
+        .sort((a, b) => b.rosValue - a.rosValue);
+      allPlayersByWeekValue.set(pos, rows);
+    }
+    const weekReplacementValues = computeReplacementLevels(settings, activePositions, allPlayersByWeekValue);
+
     // Backward replacement level - same full-pool reasoning as above, but
     // ranked by cumulative actual points scored this season instead of
     // rosValue (computeReplacementLevels only cares that its input is
@@ -167,6 +204,7 @@ export const refreshRosVor = internalMutation({
     // comparable cross-position scale.
     const valued = [...forms.values()].map((form) => {
       const rosValue = rosValueByFpid.get(form.fpid) ?? 0;
+      const weekValue = weekValueByFpid.get(form.fpid) ?? 0;
       const actualStats = actualStatsByFpid.get(form.fpid);
       return {
         form,
@@ -175,6 +213,11 @@ export const refreshRosVor = internalMutation({
         actualVor: (actualStats?.totalPoints ?? 0) - actualReplacementValues[form.position],
         rosPpg: remainingWeeks > 0 ? rosValue / remainingWeeks : 0,
         actualPpg: actualStats && actualStats.gamesPlayed > 0 ? actualStats.totalPoints / actualStats.gamesPlayed : 0,
+        weekVor: weekValue - weekReplacementValues[form.position],
+        // The plain, un-momentum-adjusted projection - see PlayerForm.
+        // currentWeekProjectionRaw's comment for why this (not weekValue)
+        // is what gets displayed.
+        weekPpg: form.currentWeekProjectionRaw,
       };
     });
     const rosRankByFpid = new Map<number, number>();
@@ -185,6 +228,10 @@ export const refreshRosVor = internalMutation({
     [...valued]
       .sort((a, b) => b.actualVor - a.actualVor)
       .forEach((row, index) => actualRankByFpid.set(row.form.fpid, index + 1));
+    const weekRankByFpid = new Map<number, number>();
+    [...valued]
+      .sort((a, b) => b.weekVor - a.weekVor)
+      .forEach((row, index) => weekRankByFpid.set(row.form.fpid, index + 1));
 
     const existing = await ctx.db
       .query("rosVorSnapshots")
@@ -194,7 +241,7 @@ export const refreshRosVor = internalMutation({
     const now = Date.now();
     const seen = new Set<number>();
 
-    for (const { form, rosValue, rosVor, actualVor, rosPpg, actualPpg } of valued) {
+    for (const { form, rosValue, rosVor, actualVor, rosPpg, actualPpg, weekVor, weekPpg } of valued) {
       seen.add(form.fpid);
       const fields = {
         position: form.position,
@@ -208,6 +255,9 @@ export const refreshRosVor = internalMutation({
         rosRank: rosRankByFpid.get(form.fpid) ?? 0,
         actualVor,
         actualRank: actualRankByFpid.get(form.fpid) ?? 0,
+        weekVor,
+        weekRank: weekRankByFpid.get(form.fpid) ?? 0,
+        weekPpg,
         computedAt: now,
       };
       const match = existingByFpid.get(form.fpid);
@@ -289,6 +339,15 @@ export const getRosVorBoard = query({
         .sort((a, b) => b.rosVor - a.rosVor)
         .forEach((row, index) => positionRankByFpid.set(row.fpid, index + 1));
     }
+    // Week-mode counterpart, sorted by weekVor instead - powers the
+    // Players tab's position-rank badge when its toggle is set to "This
+    // Week" (see infinileague/src/routes/league/$leagueId/players.tsx).
+    const weekPositionRankByFpid = new Map<number, number>();
+    for (const list of byPosition.values()) {
+      [...list]
+        .sort((a, b) => (b.weekVor ?? 0) - (a.weekVor ?? 0))
+        .forEach((row, index) => weekPositionRankByFpid.set(row.fpid, index + 1));
+    }
 
     return rows
       .filter((row) => !args.position || row.position === args.position)
@@ -307,6 +366,10 @@ export const getRosVorBoard = query({
           positionRank: positionRankByFpid.get(row.fpid) ?? 0,
           rosPpg: row.rosPpg ?? 0,
           actualPpg: row.actualPpg ?? 0,
+          weekVor: row.weekVor ?? 0,
+          weekRank: row.weekRank ?? 0,
+          weekPpg: row.weekPpg ?? 0,
+          weekPositionRank: weekPositionRankByFpid.get(row.fpid) ?? 0,
           rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
           isOnMyTeam: args.teamId !== undefined && teamIdByFpid.get(row.fpid) === args.teamId,
           ...(injury ? { injury: { status: injury.status, statusShort: injury.statusShort } } : {}),
