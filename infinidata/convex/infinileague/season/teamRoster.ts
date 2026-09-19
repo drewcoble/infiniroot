@@ -18,12 +18,16 @@ type Position = (typeof POSITIONS)[number];
 // connected league (GET /league/{id}/matchups/{week}), including for a
 // week that hasn't happened yet (it just mirrors the current roster with
 // 0 points - see this feature's plan doc). `players`/`starters` are native
-// Sleeper player ids, not fpids.
-interface SleeperMatchupEntry {
+// Sleeper player ids, not fpids. Exported so matchup.ts's getOpponentForWeek
+// can read matchup_id off the same shape rather than redeclaring it -
+// Sleeper groups exactly two roster_ids under one matchup_id per week
+// (documented behavior, null/absent means that roster has a bye).
+export interface SleeperMatchupEntry {
   roster_id: number;
   players: string[] | null;
   starters: string[] | null;
   players_points?: Record<string, number>;
+  matchup_id?: number | null;
 }
 
 // Same canonical slot ordering as infinidraft's own src/lib/rosterSlots.ts
