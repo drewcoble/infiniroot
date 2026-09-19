@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
@@ -65,28 +65,6 @@ function winProbability(projA: number, projB: number): number {
   return 1 / (1 + Math.exp(-(projA - projB) / WIN_PROB_SCALE));
 }
 
-// While the opponent's roster is still loading, projB reads as a flat 0
-// (sumStarterPoints' undefined-rows fallback) - plugged straight into
-// winProbability that skews the bar to a false ~100% until the real
-// roster lands and it snaps to the true number. The animation below papers
-// over that same window with a deliberate "still figuring this out" flip
-// through random numbers instead, landing on the real one only once it's
-// actually known.
-const WIN_PROB_ANIMATION_INTERVAL_MS = 900;
-// Close to the interval itself (rather than notably shorter) so each glide
-// keeps moving right up until the next tick fires instead of finishing
-// early and sitting still for a beat - that dead pause read as jumpy/
-// stop-start rather than one continuous flow between numbers.
-const WIN_PROB_TRANSITION_MS = 850;
-// However fast the real total arrives, the animation still flips through
-// at least this many random numbers first - a single tick wouldn't read as
-// an animation, just a flicker before the real one.
-const MIN_WIN_PROB_TICKS = 3;
-
-function randomWinProb(): number {
-  return 35 + Math.random() * 30;
-}
-
 // Head-to-head view of this week's matchup: your own roster on the left,
 // this week's opponent on the right, lined up slot-by-slot (see
 // MatchupRosterMatchup.tsx) same layout as the Trade tab, minus the
@@ -151,42 +129,12 @@ function MatchupPage() {
   const actualB = sumStarterPoints(teamBRoster.rows, "actualPoints");
   const winProbA = winProbability(projA, projB);
 
-  // The real winProbA above isn't trustworthy until both rosters are in -
-  // gates the animation effect below on that, not just on an opponent
-  // being picked.
+  // Not trustworthy until both rosters are actually in - before that, projB
+  // reads as a flat 0 (sumStarterPoints' undefined-rows fallback), which
+  // winProbability skews to a false ~100% rather than a real number. Gates
+  // the win-probability section below so it only ever shows once this is
+  // true, rather than a wrong number that then jumps to the right one.
   const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
-
-  const [displayedWinProbA, setDisplayedWinProbA] = useState(() => randomWinProb());
-
-  // Latest-value refs, not effect dependencies - matchupReady/winProbA
-  // landing mid-flip shouldn't tear down and restart an interval that's
-  // already ticking (see the effect below, which only depends on teamBId).
-  const matchupReadyRef = useRef(matchupReady);
-  matchupReadyRef.current = matchupReady;
-  const winProbARef = useRef(winProbA);
-  winProbARef.current = winProbA;
-
-  // Genuinely random every tick (not a handful of fixed "random-looking"
-  // values on a loop) so the flip never reads as a repeating pattern -
-  // keeps flipping for at least MIN_WIN_PROB_TICKS ticks even once the real
-  // total is known, then locks onto it - the Progress bar's own
-  // transitionDuration (see WIN_PROB_TRANSITION_MS) turns that final jump
-  // into a smooth glide rather than a snap.
-  useEffect(() => {
-    if (teamBId === null) return;
-    let ticks = 0;
-    setDisplayedWinProbA(randomWinProb());
-    const interval = setInterval(() => {
-      ticks += 1;
-      if (matchupReadyRef.current && ticks >= MIN_WIN_PROB_TICKS) {
-        setDisplayedWinProbA(winProbARef.current * 100);
-        clearInterval(interval);
-        return;
-      }
-      setDisplayedWinProbA(randomWinProb());
-    }, WIN_PROB_ANIMATION_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [teamBId]);
 
   if (nflState === undefined || standings === undefined) {
     return <Loader />;
@@ -269,19 +217,27 @@ function MatchupPage() {
           </Group>
 
           {teamBId !== null && (
-            <Stack gap={4}>
-              <Group justify="space-between" wrap="nowrap">
-                <Text size="xs" fw={600} c={WIN_PROB_COLOR_A}>
-                  {displayedWinProbA.toFixed(0)}%
-                </Text>
-                <Text size="xs" fw={600} c={WIN_PROB_COLOR_B}>
-                  {(100 - displayedWinProbA).toFixed(0)}%
-                </Text>
-              </Group>
-              <Progress.Root size="lg" transitionDuration={WIN_PROB_TRANSITION_MS}>
-                <Progress.Section value={displayedWinProbA} color={WIN_PROB_COLOR_A} />
-                <Progress.Section value={100 - displayedWinProbA} color={WIN_PROB_COLOR_B} />
-              </Progress.Root>
+            <Stack gap={4} mih={36} justify="center">
+              {matchupReady ? (
+                <>
+                  <Group justify="space-between" wrap="nowrap">
+                    <Text size="xs" fw={600} c={WIN_PROB_COLOR_A}>
+                      {(winProbA * 100).toFixed(0)}%
+                    </Text>
+                    <Text size="xs" fw={600} c={WIN_PROB_COLOR_B}>
+                      {(100 - winProbA * 100).toFixed(0)}%
+                    </Text>
+                  </Group>
+                  <Progress.Root size="lg">
+                    <Progress.Section value={winProbA * 100} color={WIN_PROB_COLOR_A} />
+                    <Progress.Section value={100 - winProbA * 100} color={WIN_PROB_COLOR_B} />
+                  </Progress.Root>
+                </>
+              ) : (
+                <Group justify="center">
+                  <Loader size="xs" />
+                </Group>
+              )}
             </Stack>
           )}
         </Stack>
