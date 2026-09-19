@@ -116,6 +116,7 @@ async function computeLivePlayerValues(
     settings: Doc<"seasons">;
     activePositions: Position[];
     week: string;
+    season: string;
     scoringConfig: ReturnType<typeof scoringConfigFromSeason>;
     remainingWeeks: number;
   },
@@ -123,6 +124,7 @@ async function computeLivePlayerValues(
   const forms = await gatherPlayerForms(ctx, {
     activePositions: args.activePositions,
     week: args.week,
+    season: args.season,
     scoringConfig: args.scoringConfig,
   });
   const boosts = await findInjuryBoosts(ctx, { forms });
@@ -315,6 +317,7 @@ export async function computeFaabSuggestions(
       settings,
       activePositions,
       week: nflState.week,
+      season: nflState.season,
       scoringConfig,
       remainingWeeks,
     }));

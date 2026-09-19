@@ -3,14 +3,8 @@ import { action, internalAction, ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { requireSuperAdmin, currentSeason } from "./lib/dataFetch";
 import { fetchCurrentNflWeek, fetchNflSeasonState } from "./sleeper/state";
-import { Scoring, TeScoring, ScoringConfig, scoringConfigFromSeason } from "./scoring";
+import { ALL_SCORING_CONFIGS, scoringConfigFromSeason } from "./scoring";
 import { BLENDED_POSITIONS } from "./positions";
-
-// valueGaps.getAllValueGaps is only ever called with the current draft week
-// (see src/constants/general.ts's WEEK), so these are the only combos worth
-// precomputing daily - see convex/valueGaps.ts's cache comment.
-const SCORINGS: Scoring[] = ["STD", "HALF", "PPR"];
-const TE_SCORINGS: TeScoring[] = ["NONE", "HALF", "FULL"];
 
 // Prefetches every remaining week's projections, not just the current one,
 // so a team page browsing ahead (see infinileague's team page) isn't
@@ -30,21 +24,6 @@ function weeksToFetch(week: string): string[] {
   return weeks;
 }
 
-// Full cross-product for valueGaps, the one remaining league-independent
-// shared cache - 3 x 3 x 2 = 18 combos. draftValues (including the generic
-// league's own row - see convex/genericLeague.ts) stays one combo per real
-// draft (that draft's own scoringConfigFromSeason), so its cardinality is
-// unaffected by this fan-out.
-const ALL_SCORING_CONFIGS: ScoringConfig[] = SCORINGS.flatMap((scoring) =>
-  TE_SCORINGS.flatMap((teScoring) =>
-    [false, true].map((sixPointPassTds) => ({
-      scoring,
-      teScoring,
-      sixPointPassTds,
-    })),
-  ),
-);
-
 // Shared by fetchAll (after a fresh external fetch) and refreshCaches (an
 // on-demand repair with no external calls) - recomputes the valueGaps and
 // draftValues caches from whatever projections/rankings/playerSeasonStats
@@ -61,6 +40,17 @@ async function refreshCachedComputations(
       lastSeason,
     });
   }
+
+  // Rest-of-season projection totals - a second league-independent shared
+  // cache alongside valueGaps above, covering every position/scoring combo
+  // in one action call (see convex/rosProjTotals.ts for why this has to be
+  // an action, not a mutation - summing every remaining week's projections
+  // in a single transaction exceeds Convex's per-execution read limit).
+  // Must run before the per-season rosVor refresh below, which reads this
+  // cache rather than re-summing every remaining week itself.
+  await ctx.runAction(internal.rosProjTotals.refreshRosProjTotals, {
+    week: args.week,
+  });
 
   // Includes the system-owned generic league free users see instead of
   // their own real league's numbers (see convex/genericLeague.ts) - it's a

@@ -3,7 +3,15 @@ import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-rout
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import type { LucideIcon } from "lucide-react";
-import { ArrowLeftRight, CircleUserRound, LayoutGrid, Trophy, UserSearch, Users } from "lucide-react";
+import {
+  ArrowLeftRight,
+  CircleUserRound,
+  LayoutGrid,
+  Ticket,
+  Trophy,
+  UserSearch,
+  Users,
+} from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "@shared/BottomNav";
@@ -14,7 +22,14 @@ export const Route = createFileRoute("/league/$leagueId")({
   component: LeagueLayout,
 });
 
-type TabValue = "standings" | "myTeam" | "freeAgents" | "players" | "depthCharts" | "trade";
+type TabValue =
+  | "standings"
+  | "myTeam"
+  | "matchup"
+  | "freeAgents"
+  | "players"
+  | "depthCharts"
+  | "trade";
 
 interface TabItem {
   value: TabValue;
@@ -24,10 +39,10 @@ interface TabItem {
   params: Record<string, string>;
 }
 
-// Standings, Free Agents, and Players are always reachable; "My Team" only
-// once the self team is known (it needs a concrete teamId param, unlike
-// infinidraft's flat per-league tabs) so it's appended conditionally below
-// rather than listed here.
+// Standings, Free Agents, and Players are always reachable; "My Team" and
+// "Matchup" only once the self team is known (both need a concrete teamId
+// param, unlike infinidraft's flat per-league tabs) so they're appended
+// conditionally below rather than listed here.
 const STANDINGS_VALUE: TabValue = "standings";
 
 // Mobile BottomNav's direct-row cutoff, same "positional rather than a
@@ -77,6 +92,13 @@ function LeagueLayout() {
             to: "/league/$leagueId/teams/$teamId",
             params: { leagueId, teamId: selfTeam.teamId },
           },
+          {
+            value: "matchup" as const,
+            label: "Matchup",
+            icon: Ticket,
+            to: "/league/$leagueId/matchup",
+            params: { leagueId },
+          },
         ]
       : []),
     {
@@ -122,15 +144,17 @@ function LeagueLayout() {
       ? "standings"
       : selfTeam && location.pathname === `/league/${leagueId}/teams/${selfTeam.teamId}`
         ? "myTeam"
-        : location.pathname === `/league/${leagueId}/freeAgents`
-          ? "freeAgents"
-          : location.pathname === `/league/${leagueId}/players`
-            ? "players"
-            : location.pathname === `/league/${leagueId}/depthCharts`
-              ? "depthCharts"
-              : location.pathname === `/league/${leagueId}/trade`
-                ? "trade"
-                : undefined;
+        : location.pathname === `/league/${leagueId}/matchup`
+          ? "matchup"
+          : location.pathname === `/league/${leagueId}/freeAgents`
+            ? "freeAgents"
+            : location.pathname === `/league/${leagueId}/players`
+              ? "players"
+              : location.pathname === `/league/${leagueId}/depthCharts`
+                ? "depthCharts"
+                : location.pathname === `/league/${leagueId}/trade`
+                  ? "trade"
+                  : undefined;
 
   return (
     <PageContainer pb={{ base: 100, sm: "xl" }}>

@@ -70,6 +70,7 @@ import type * as infinileague_auction_waiverPlayersData from "../infinileague/au
 import type * as infinileague_auction_waiverSync from "../infinileague/auction/waiverSync.js";
 import type * as infinileague_season_eliminationWatch from "../infinileague/season/eliminationWatch.js";
 import type * as infinileague_season_faabValues from "../infinileague/season/faabValues.js";
+import type * as infinileague_season_matchup from "../infinileague/season/matchup.js";
 import type * as infinileague_season_powerRankings from "../infinileague/season/powerRankings.js";
 import type * as infinileague_season_rosterPlayers from "../infinileague/season/rosterPlayers.js";
 import type * as infinileague_season_standings from "../infinileague/season/standings.js";
@@ -99,6 +100,7 @@ import type * as projectionBlending from "../projectionBlending.js";
 import type * as projections from "../projections.js";
 import type * as providerProjections from "../providerProjections.js";
 import type * as rankings from "../rankings.js";
+import type * as rosProjTotals from "../rosProjTotals.js";
 import type * as rosVor from "../rosVor.js";
 import type * as rosterSync from "../rosterSync.js";
 import type * as scoring from "../scoring.js";
@@ -190,6 +192,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/auction/waiverSync": typeof infinileague_auction_waiverSync;
   "infinileague/season/eliminationWatch": typeof infinileague_season_eliminationWatch;
   "infinileague/season/faabValues": typeof infinileague_season_faabValues;
+  "infinileague/season/matchup": typeof infinileague_season_matchup;
   "infinileague/season/powerRankings": typeof infinileague_season_powerRankings;
   "infinileague/season/rosterPlayers": typeof infinileague_season_rosterPlayers;
   "infinileague/season/standings": typeof infinileague_season_standings;
@@ -219,6 +222,7 @@ declare const fullApi: ApiFromModules<{
   projections: typeof projections;
   providerProjections: typeof providerProjections;
   rankings: typeof rankings;
+  rosProjTotals: typeof rosProjTotals;
   rosVor: typeof rosVor;
   rosterSync: typeof rosterSync;
   scoring: typeof scoring;

@@ -13,6 +13,12 @@ import "./index.css";
 import { authCookieStorage } from "./lib/authStorage";
 import { routeTree } from "./routeTree.gen";
 import { cssVariablesResolver, theme } from "@shared/theme";
+import { installStaleChunkReload } from "@shared/errors";
+
+// A stale JS chunk after a deploy replaces this tab's already-loaded build -
+// see shared/errors.ts's own comment. Installed before the router even
+// renders so most cases reload before React ever shows an error.
+installStaleChunkReload();
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
 

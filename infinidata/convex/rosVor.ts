@@ -3,7 +3,8 @@ import { internalMutation, query } from "./_generated/server";
 import { POSITIONS, positionValidator } from "./positions";
 import { scoringConfigFromSeason } from "./scoring";
 import { requireSeasonOwner } from "./lib/access";
-import { computeReplacementLevels, findInjuryBoosts, forwardRate, gatherPlayerForms, type ValuedPlayer } from "./lib/playerValue";
+import { computeReplacementLevels, findInjuryBoosts, forwardRate, gatherPlayerForms, momentumMultiplier, type ValuedPlayer } from "./lib/playerValue";
+import { gatherRosProjTotals } from "./rosProjTotals";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -97,7 +98,16 @@ export const refreshRosVor = internalMutation({
     // rostered status (see below), and rosVor/rosRank/actualVor/actualRank
     // are stored for every player either way, so this function has no
     // remaining use for "who's on which team."
-    const forms = await gatherPlayerForms(ctx, { activePositions, week: nflState.week, scoringConfig });
+    const forms = await gatherPlayerForms(ctx, { activePositions, week: nflState.week, season: nflState.season, scoringConfig });
+
+    // Real per-remaining-week projection sum (bye-aware - a bye week simply
+    // has no projections row to add), rebuilt daily across every scoring
+    // combo by convex/rosProjTotals.ts - see that file for why this is a
+    // separate shared cache rather than summed here on every refresh. Falls
+    // back to the old flat single-week extrapolation on a cache miss (this
+    // combo's daily refresh hasn't run yet), same cache-miss fallback
+    // convex/valueGaps.ts's getAllValueGaps uses.
+    const rosProjTotals = await gatherRosProjTotals(ctx, { activePositions, scoringConfig });
 
     // Applied to EVERY player (rostered or not), unlike FAAB's own
     // valueOf, which only boosts the free-agent view - a general "how good
@@ -105,14 +115,19 @@ export const refreshRosVor = internalMutation({
     // whether or not anyone happens to already roster them.
     const boosts = await findInjuryBoosts(ctx, { forms });
     const rosValueByFpid = new Map<number, number>();
+    const rosWeeksByFpid = new Map<number, number>();
     for (const form of forms.values()) {
-      let value = forwardRate(form) * remainingWeeks;
+      const cached = rosProjTotals.get(form.fpid);
+      const totalRawProjection = cached ? cached.totalPoints : form.currentWeekProjection * remainingWeeks;
+      const weeksIncluded = cached ? cached.weeksIncluded : remainingWeeks;
+      let value = totalRawProjection * momentumMultiplier(form);
       const boost = boosts.get(form.fpid);
       if (boost) {
         const boostedWeeks = Math.min(boost.boostedWeeks, remainingWeeks);
         value += Math.max(boost.boostedRate - forwardRate(form), 0) * boostedWeeks;
       }
       rosValueByFpid.set(form.fpid, value);
+      rosWeeksByFpid.set(form.fpid, weeksIncluded);
     }
 
     // Forward replacement level - the FULL pool (rostered + free agent)
@@ -206,12 +221,17 @@ export const refreshRosVor = internalMutation({
       const rosValue = rosValueByFpid.get(form.fpid) ?? 0;
       const weekValue = weekValueByFpid.get(form.fpid) ?? 0;
       const actualStats = actualStatsByFpid.get(form.fpid);
+      // Divides by this player's own weeksIncluded (which excludes any bye
+      // still ahead of them), not the season-wide remainingWeeks - two
+      // players with the same rosValue but different bye timing should
+      // still show the same per-game rate.
+      const rosWeeks = rosWeeksByFpid.get(form.fpid) ?? remainingWeeks;
       return {
         form,
         rosValue,
         rosVor: rosValue - rosReplacementValues[form.position],
         actualVor: (actualStats?.totalPoints ?? 0) - actualReplacementValues[form.position],
-        rosPpg: remainingWeeks > 0 ? rosValue / remainingWeeks : 0,
+        rosPpg: rosWeeks > 0 ? rosValue / rosWeeks : 0,
         actualPpg: actualStats && actualStats.gamesPlayed > 0 ? actualStats.totalPoints / actualStats.gamesPlayed : 0,
         weekVor: weekValue - weekReplacementValues[form.position],
         // The plain, un-momentum-adjusted projection - see PlayerForm.

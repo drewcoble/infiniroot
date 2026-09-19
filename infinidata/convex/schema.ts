@@ -362,7 +362,14 @@ export default defineSchema({
     // is still only ever stored per base scoring (3 rows/week), never per
     // teScoring/sixPointPassTds (those bonuses are derived at read time from
     // this row's `stats` blob, not stored as separate rows here).
-    .index("by_fpid_season_scoring", ["fpid", "season", "scoring"]),
+    .index("by_fpid_season_scoring", ["fpid", "season", "scoring"])
+    // convex/lib/playerValue.ts's gatherPlayerForms uses this to read one
+    // position/week's "recent form" rows scoped to the CURRENT season only -
+    // by_position_week above has no season field, which let a prior year's
+    // same-numbered week (this table is never pruned - see playerPoints'
+    // own header comment on why old seasons are kept for history) leak into
+    // that recency window right alongside the real current-season game.
+    .index("by_position_week_season", ["position", "week", "season"]),
 
   // Season-long digest of playerPoints, maintained incrementally by
   // upsertPlayerPoints (see convex/playerPoints.ts) rather than recomputed at
@@ -1197,6 +1204,54 @@ export default defineSchema({
     .index("by_season_week", ["seasonId", "week"])
     .index("by_season_fpid", ["seasonId", "fpid"]),
 
+  // Shared, league-independent cache of each player's summed rest-of-season
+  // projection - one row per (position, scoring, teScoring, sixPointPassTds,
+  // fpid), rebuilt daily by convex/rosProjTotals.ts's refreshRosProjTotals
+  // from every remaining week's own `projections` row, the same "full
+  // cross-product computed once, read cheaply by every league" split
+  // valueGaps already uses (see that table's own comment) - convex/rosVor.ts
+  // reads this instead of re-summing every remaining week per league. A bye
+  // week naturally contributes nothing (no projections row exists for that
+  // fpid/week), so weeksIncluded is bye-aware with no special-casing needed.
+  // Entirely rebuilt (delete+reinsert) on each refresh, same as valueGaps -
+  // there's no "history" concept here, only "current as of the last cron
+  // run," unlike rosVorSnapshots above which keeps one.
+  rosProjTotals: defineTable({
+    fpid: v.number(),
+    position: positionValidator,
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+    // The week this sum starts from (inclusive) through week 18 -
+    // bookkeeping only, not indexed on; refreshRosProjTotals always rebuilds
+    // the whole cache from the current NFL week, so a stale value here means
+    // the daily cron hasn't run since the week advanced.
+    asOfWeek: v.string(),
+    totalPoints: v.number(),
+    weeksIncluded: v.number(),
+    computedAt: v.number(),
+  })
+    // Read path: convex/rosVor.ts's gatherRosProjTotals looks up one
+    // position/combo at a time, batched like playerValue.ts's
+    // gatherPlayerForms. Also refreshRosProjTotals's own pruning pass uses
+    // this indirectly via the plain table scan in pruneStaleRosProjTotals.
+    .index("by_position_scoring_teScoring_sixPointPassTds", [
+      "position",
+      "scoring",
+      "teScoring",
+      "sixPointPassTds",
+    ])
+    // Write path: refreshRosProjTotals's applyRosProjTotalsChunk does one
+    // point lookup per (fpid, position, combo) to patch-in-place rather
+    // than duplicate a row on a rerun.
+    .index("by_fpid_position_scoring_teScoring_sixPointPassTds", [
+      "fpid",
+      "position",
+      "scoring",
+      "teScoring",
+      "sixPointPassTds",
+    ]),
+
   // One row per app user (not per league) - connecting a Yahoo account is a
   // one-time action that then lets that user link any of their Yahoo leagues
   // to any of their infinidraft leagues, mirroring how leagues.ownerId already
@@ -1221,6 +1276,18 @@ export default defineSchema({
     state: v.string(),
     userId: v.id("users"),
     seasonId: v.optional(v.id("seasons")),
+    // Which frontend app started this OAuth round trip - resolves the
+    // `/yahoo/callback` HTTP route's post-auth redirect target (see
+    // convex/infinidraft/yahoo/client.ts's requireAppBaseUrl). Optional so
+    // rows created before this field existed still validate; treated as
+    // "infinidraft" wherever it's missing.
+    app: v.optional(
+      v.union(
+        v.literal("infinidraft"),
+        v.literal("infinileague"),
+        v.literal("infinifaab"),
+      ),
+    ),
     createdAt: v.number(),
   }).index("by_state", ["state"]),
 

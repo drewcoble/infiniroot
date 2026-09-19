@@ -15,13 +15,14 @@ import {
 } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
+import { useTeamRoster } from "../../../hooks/useTeamRoster";
 import { TradeRosterMatchup } from "../../../components/TradeRosterMatchup";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
 import {
   TradePowerRankingsSheet,
   TRADE_PEEK_CARD_HEIGHT,
 } from "../../../components/TradePowerRankingsSheet";
-import type { PowerRankingRow, RosVorRow, StandingsRow, TeamRosterRow } from "../../../types/season";
+import type { PowerRankingRow, RosVorRow, StandingsRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/trade")({
   component: TradePage,
@@ -36,28 +37,6 @@ interface NflState {
 interface TradeImpact {
   before: PowerRankingRow[];
   after: PowerRankingRow[];
-}
-
-// Thin wrapper around the teamRoster action (same one teams/$teamId.tsx
-// calls) - re-fetches whenever teamId/week change, null-safe so callers can
-// pass a not-yet-known teamId without an extra guard at every call site.
-function useTeamRoster(teamId: string | null, week: string | null) {
-  const getTeamRosterForWeek = useAction(
-    api.infinileague.season.teamRoster.getTeamRosterForWeek,
-  );
-  const [rows, setRows] = useState<TeamRosterRow[] | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (teamId === null || week === null) return;
-    setRows(undefined);
-    setError(null);
-    getTeamRosterForWeek({ teamId: teamId as Id<"seasonTeams">, week })
-      .then(setRows)
-      .catch((err) => setError(getErrorMessage(err, "Failed to load roster.")));
-  }, [teamId, week, getTeamRosterForWeek]);
-
-  return { rows, error };
 }
 
 // Trade analyzer: pick players off your own team and a second team, and see

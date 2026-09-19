@@ -101,7 +101,7 @@ export interface PlayerForm {
 // than bundled into this pass.
 export async function gatherPlayerForms(
   ctx: QueryCtx | MutationCtx,
-  args: { activePositions: Position[]; week: string; scoringConfig: ScoringConfig },
+  args: { activePositions: Position[]; week: string; season: string; scoringConfig: ScoringConfig },
 ): Promise<Map<number, PlayerForm>> {
   const forms = new Map<number, PlayerForm>();
 
@@ -150,9 +150,13 @@ export async function gatherPlayerForms(
   const actualsByFpid = new Map<number, { points: number; snapShare: number | undefined; touches: number | undefined }[]>();
   for (const week of recentWeeks) {
     for (const pos of args.activePositions) {
+      // Scoped to args.season - playerPoints keeps every past season's rows
+      // around for history (see that table's own schema comment), so an
+      // unscoped (position, week) read would pull a prior year's same-
+      // numbered week's game right alongside the real current one.
       const rows = await ctx.db
         .query("playerPoints")
-        .withIndex("by_position_week", (q) => q.eq("position", pos).eq("week", week))
+        .withIndex("by_position_week_season", (q) => q.eq("position", pos).eq("week", week).eq("season", args.season))
         .collect();
       for (const row of rows) {
         if (row.scoring !== args.scoringConfig.scoring) continue;
@@ -189,10 +193,12 @@ export async function gatherPlayerForms(
 // handful of touches is mostly noise and gets damped back toward the
 // projection. VOLUME_CONFIDENCE_SNAP_SHARE is "the snap share at which we
 // fully trust the surprise" - both this and the [MIN,MAX] band are starting
-// guesses, not calibrated against real outcomes yet.
+// guesses, not calibrated against real outcomes yet. Narrowed from 0.7/1.4
+// (too severe) to 0.9/1.1 (still a little much) to 0.95/1.05 after live
+// review of each step.
 const VOLUME_CONFIDENCE_SNAP_SHARE = 0.5;
-const MOMENTUM_MIN = 0.7;
-const MOMENTUM_MAX = 1.4;
+const MOMENTUM_MIN = 0.95;
+const MOMENTUM_MAX = 1.05;
 
 export function momentumMultiplier(form: PlayerForm): number {
   if (form.gamesInWindow === 0 || form.currentWeekProjection <= 0) return 1;

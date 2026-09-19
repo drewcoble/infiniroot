@@ -145,3 +145,20 @@ export function scoringConfigFromSeason(season: {
     sixPointPassTds: season.sixPointPassTds ?? false,
   };
 }
+
+// Every scoring combo a league can be configured with - the full 3 x 3 x 2
+// cross-product. Single source of truth for convex/fetchAllData.ts's
+// valueGaps precompute loop and convex/rosProjTotals.ts's own daily
+// precompute, both of which need to build every combo once rather than only
+// whichever real leagues happen to be using today.
+export const SCORINGS: Scoring[] = ["STD", "HALF", "PPR"];
+export const TE_SCORINGS: TeScoring[] = ["NONE", "HALF", "FULL"];
+export const ALL_SCORING_CONFIGS: ScoringConfig[] = SCORINGS.flatMap((scoring) =>
+  TE_SCORINGS.flatMap((teScoring) =>
+    [false, true].map((sixPointPassTds) => ({
+      scoring,
+      teScoring,
+      sixPointPassTds,
+    })),
+  ),
+);
