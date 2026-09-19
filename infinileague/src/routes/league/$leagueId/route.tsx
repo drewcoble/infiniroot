@@ -7,7 +7,7 @@ import {
   ArrowLeftRight,
   CircleUserRound,
   LayoutGrid,
-  Swords,
+  Ticket,
   Trophy,
   UserSearch,
   Users,
@@ -95,7 +95,7 @@ function LeagueLayout() {
           {
             value: "matchup" as const,
             label: "Matchup",
-            icon: Swords,
+            icon: Ticket,
             to: "/league/$leagueId/matchup",
             params: { leagueId },
           },
