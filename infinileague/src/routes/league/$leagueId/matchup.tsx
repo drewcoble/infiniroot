@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
@@ -72,8 +72,12 @@ function winProbability(projA: number, projB: number): number {
 // over that same window with a deliberate "still figuring this out" flip
 // through random numbers instead, landing on the real one only once it's
 // actually known.
-const WIN_PROB_ANIMATION_INTERVAL_MS = 900;
+const WIN_PROB_ANIMATION_INTERVAL_MS = 700;
 const WIN_PROB_TRANSITION_MS = 650;
+// However fast the real total arrives, the animation still flips through
+// at least this many random numbers first - a single tick wouldn't read as
+// an animation, just a flicker before the real one.
+const MIN_WIN_PROB_TICKS = 3;
 
 function randomWinProb(): number {
   return 35 + Math.random() * 30;
@@ -144,34 +148,41 @@ function MatchupPage() {
   const winProbA = winProbability(projA, projB);
 
   // The real winProbA above isn't trustworthy until both rosters are in -
-  // matchupReady gates both effects below on that, not just on an opponent
+  // gates the animation effect below on that, not just on an opponent
   // being picked.
   const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
 
   const [displayedWinProbA, setDisplayedWinProbA] = useState(() => randomWinProb());
 
+  // Latest-value refs, not effect dependencies - matchupReady/winProbA
+  // landing mid-flip shouldn't tear down and restart an interval that's
+  // already ticking (see the effect below, which only depends on teamBId).
+  const matchupReadyRef = useRef(matchupReady);
+  matchupReadyRef.current = matchupReady;
+  const winProbARef = useRef(winProbA);
+  winProbARef.current = winProbA;
+
   // Genuinely random every tick (not a handful of fixed "random-looking"
   // values on a loop) so the flip never reads as a repeating pattern -
-  // including the starting value itself, so it doesn't land on the same
-  // spot every time loading begins.
+  // keeps flipping for at least MIN_WIN_PROB_TICKS ticks even once the real
+  // total is known, then locks onto it - the Progress bar's own
+  // transitionDuration (see WIN_PROB_TRANSITION_MS) turns that final jump
+  // into a smooth glide rather than a snap.
   useEffect(() => {
-    if (teamBId === null || matchupReady) return;
+    if (teamBId === null) return;
+    let ticks = 0;
     setDisplayedWinProbA(randomWinProb());
     const interval = setInterval(() => {
+      ticks += 1;
+      if (matchupReadyRef.current && ticks >= MIN_WIN_PROB_TICKS) {
+        setDisplayedWinProbA(winProbARef.current * 100);
+        clearInterval(interval);
+        return;
+      }
       setDisplayedWinProbA(randomWinProb());
     }, WIN_PROB_ANIMATION_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [teamBId, matchupReady]);
-
-  // Once the real number is known, this is the only other place
-  // displayedWinProbA ever gets set - the Progress bar's own
-  // transitionDuration (see WIN_PROB_TRANSITION_MS) is what makes the jump
-  // from wherever the animation left off to this real value read as a
-  // smooth glide rather than a snap.
-  useEffect(() => {
-    if (!matchupReady) return;
-    setDisplayedWinProbA(winProbA * 100);
-  }, [matchupReady, winProbA]);
+  }, [teamBId]);
 
   if (nflState === undefined || standings === undefined) {
     return <Loader />;
