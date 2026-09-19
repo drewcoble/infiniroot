@@ -5,6 +5,7 @@ import type { GenericId as Id } from "convex/values";
 import { Alert, Card, Group, Loader, Progress, Select, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
+import { POSITION_COLORS } from "@shared/positionColors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
 import { MatchupRosterMatchup } from "../../../components/MatchupRosterMatchup";
 import type { SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
@@ -204,16 +205,16 @@ function MatchupPage() {
           {teamBId !== null && (
             <Stack gap={4}>
               <Group justify="space-between" wrap="nowrap">
-                <Text size="xs" fw={600} c="blue">
+                <Text size="xs" fw={600} c={POSITION_COLORS.RB}>
                   {(winProbA * 100).toFixed(0)}%
                 </Text>
-                <Text size="xs" fw={600} c="orange">
+                <Text size="xs" fw={600} c={POSITION_COLORS.DST}>
                   {(100 - winProbA * 100).toFixed(0)}%
                 </Text>
               </Group>
               <Progress.Root size="lg">
-                <Progress.Section value={winProbA * 100} color="blue" />
-                <Progress.Section value={100 - winProbA * 100} color="orange" />
+                <Progress.Section value={winProbA * 100} color={POSITION_COLORS.RB} />
+                <Progress.Section value={100 - winProbA * 100} color={POSITION_COLORS.DST} />
               </Progress.Root>
             </Stack>
           )}
