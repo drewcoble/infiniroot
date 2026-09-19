@@ -217,27 +217,28 @@ function MatchupPage() {
           </Group>
 
           {teamBId !== null && (
-            <Stack gap={4} mih={36} justify="center">
-              {matchupReady ? (
-                <>
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text size="xs" fw={600} c={WIN_PROB_COLOR_A}>
-                      {(winProbA * 100).toFixed(0)}%
-                    </Text>
-                    <Text size="xs" fw={600} c={WIN_PROB_COLOR_B}>
-                      {(100 - winProbA * 100).toFixed(0)}%
-                    </Text>
-                  </Group>
-                  <Progress.Root size="lg">
-                    <Progress.Section value={winProbA * 100} color={WIN_PROB_COLOR_A} />
-                    <Progress.Section value={100 - winProbA * 100} color={WIN_PROB_COLOR_B} />
-                  </Progress.Root>
-                </>
-              ) : (
-                <Group justify="center">
-                  <Loader size="xs" />
-                </Group>
-              )}
+            <Stack
+              gap={4}
+              style={{ opacity: matchupReady ? 1 : 0.4, transition: "opacity 200ms ease" }}
+            >
+              <Group justify="space-between" wrap="nowrap">
+                <Text size="xs" fw={600} c={WIN_PROB_COLOR_A}>
+                  {(matchupReady ? winProbA * 100 : 50).toFixed(0)}%
+                </Text>
+                <Text size="xs" fw={600} c={WIN_PROB_COLOR_B}>
+                  {(matchupReady ? 100 - winProbA * 100 : 50).toFixed(0)}%
+                </Text>
+              </Group>
+              <Progress.Root size="lg">
+                <Progress.Section
+                  value={matchupReady ? winProbA * 100 : 50}
+                  color={WIN_PROB_COLOR_A}
+                />
+                <Progress.Section
+                  value={matchupReady ? 100 - winProbA * 100 : 50}
+                  color={WIN_PROB_COLOR_B}
+                />
+              </Progress.Root>
             </Stack>
           )}
         </Stack>
