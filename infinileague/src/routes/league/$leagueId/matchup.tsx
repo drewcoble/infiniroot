@@ -53,6 +53,14 @@ function sumStarterPoints(
 // ~73%, a 30-point lead as ~88%.
 const WIN_PROB_SCALE = 15;
 
+// One shade darker than the bare "rb"/"dst" theme colors' own default
+// (shade 6) read against this app's light background - dot-shade notation
+// so both the bar and its percentage labels below use the exact same color,
+// rather than relying on whatever shade a plain color name happens to
+// default to.
+const WIN_PROB_COLOR_A = `${POSITION_COLORS.RB}.8`;
+const WIN_PROB_COLOR_B = `${POSITION_COLORS.DST}.8`;
+
 function winProbability(projA: number, projB: number): number {
   return 1 / (1 + Math.exp(-(projA - projB) / WIN_PROB_SCALE));
 }
@@ -205,16 +213,16 @@ function MatchupPage() {
           {teamBId !== null && (
             <Stack gap={4}>
               <Group justify="space-between" wrap="nowrap">
-                <Text size="xs" fw={600} c={POSITION_COLORS.RB}>
+                <Text size="xs" fw={600} c={WIN_PROB_COLOR_A}>
                   {(winProbA * 100).toFixed(0)}%
                 </Text>
-                <Text size="xs" fw={600} c={POSITION_COLORS.DST}>
+                <Text size="xs" fw={600} c={WIN_PROB_COLOR_B}>
                   {(100 - winProbA * 100).toFixed(0)}%
                 </Text>
               </Group>
               <Progress.Root size="lg">
-                <Progress.Section value={winProbA * 100} color={POSITION_COLORS.RB} />
-                <Progress.Section value={100 - winProbA * 100} color={POSITION_COLORS.DST} />
+                <Progress.Section value={winProbA * 100} color={WIN_PROB_COLOR_A} />
+                <Progress.Section value={100 - winProbA * 100} color={WIN_PROB_COLOR_B} />
               </Progress.Root>
             </Stack>
           )}
