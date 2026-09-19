@@ -48,11 +48,11 @@ function sumStarterPoints(
 // this week's opponent on the right, lined up slot-by-slot (see
 // MatchupRosterMatchup.tsx) same layout as the Trade tab, minus the
 // selection/power-rankings machinery that's specific to building a trade.
-// Opponent is auto-detected via Sleeper's matchup_id (see convex/
-// infinileague/season/matchup.ts's getOpponentForWeek) when the season's
-// Sleeper-linked; Yahoo has no matchup sync yet (see YAHOO.md) and a bye
-// week has no real opponent either, so both fall back to a manual team
-// picker rather than blocking the page.
+// Opponent is auto-detected via Sleeper's matchup_id or Yahoo's scoreboard
+// resource (see convex/infinileague/season/matchup.ts's getOpponentForWeek) -
+// a genuine bye week (an odd team count leaves one roster with no matchup
+// some weeks) has no real opponent to detect either way, so that falls back
+// to a manual team picker rather than blocking the page.
 function MatchupPage() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;

@@ -147,6 +147,43 @@ async function fetchYahooStandingsForLeague(
   return standingsByTeamKey;
 }
 
+// Who a Yahoo-linked team is playing in a given week - endpoint
+// `/league/{leagueKey}/scoreboard;week={week}`, from general knowledge of
+// Yahoo's Fantasy API and NOT confirmed against a live response (see
+// YAHOO.md). Each "matchup" node is expected to nest exactly two "team"
+// resources under it (the pairing for that matchup); findNodesByKey digs
+// into just that one matchup's subtree rather than the whole scoreboard, so
+// it isn't fooled by every other matchup's teams appearing elsewhere in the
+// same response. Returns null for a team not found in any matchup (a bye,
+// on an odd-sized league) rather than throwing - this is a "best guess,
+// fall back to manual" lookup for infinileague's Matchup tab, not a
+// hard requirement.
+export async function fetchYahooOpponentTeamKey(
+  accessToken: string,
+  leagueKey: string,
+  week: string,
+  selfTeamKey: string,
+): Promise<string | null> {
+  const json = await fetchYahooApi<unknown>(
+    accessToken,
+    `/league/${leagueKey}/scoreboard;week=${week}`,
+  );
+  for (const matchupNode of findNodesByKey(json, "matchup")) {
+    const teamKeys = findNodesByKey(matchupNode, "team")
+      .map((node) => mergeYahooFields(node).team_key)
+      .filter((key): key is string => typeof key === "string");
+    if (!teamKeys.includes(selfTeamKey)) continue;
+    return teamKeys.find((key) => key !== selfTeamKey) ?? null;
+  }
+  // Diagnostic for an unconfirmed shape - remove once checked against a
+  // real response and this stops happening.
+  console.error(
+    "fetchYahooOpponentTeamKey: self team not found in any matchup, raw response:",
+    JSON.stringify(json),
+  );
+  return null;
+}
+
 export const fetchYahooLeagueTeams = action({
   args: { leagueKey: v.string() },
   handler: async (ctx, args): Promise<YahooTeamRow[]> => {
