@@ -72,7 +72,7 @@ function winProbability(projA: number, projB: number): number {
 // over that same window with a deliberate "still figuring this out" flip
 // through random numbers instead, landing on the real one only once it's
 // actually known.
-const WIN_PROB_ANIMATION_INTERVAL_MS = 700;
+const WIN_PROB_ANIMATION_INTERVAL_MS = 900;
 const WIN_PROB_TRANSITION_MS = 650;
 // However fast the real total arrives, the animation still flips through
 // at least this many random numbers first - a single tick wouldn't read as
