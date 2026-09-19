@@ -229,7 +229,7 @@ function MatchupPage() {
                   {(matchupReady ? 100 - winProbA * 100 : 50).toFixed(0)}%
                 </Text>
               </Group>
-              <Progress.Root size="lg">
+              <Progress.Root size="lg" transitionDuration={500}>
                 <Progress.Section
                   value={matchupReady ? winProbA * 100 : 50}
                   color={WIN_PROB_COLOR_A}
