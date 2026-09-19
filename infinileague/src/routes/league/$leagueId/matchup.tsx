@@ -73,7 +73,11 @@ function winProbability(projA: number, projB: number): number {
 // through random numbers instead, landing on the real one only once it's
 // actually known.
 const WIN_PROB_ANIMATION_INTERVAL_MS = 900;
-const WIN_PROB_TRANSITION_MS = 650;
+// Close to the interval itself (rather than notably shorter) so each glide
+// keeps moving right up until the next tick fires instead of finishing
+// early and sitting still for a beat - that dead pause read as jumpy/
+// stop-start rather than one continuous flow between numbers.
+const WIN_PROB_TRANSITION_MS = 850;
 // However fast the real total arrives, the animation still flips through
 // at least this many random numbers first - a single tick wouldn't read as
 // an animation, just a flicker before the real one.
