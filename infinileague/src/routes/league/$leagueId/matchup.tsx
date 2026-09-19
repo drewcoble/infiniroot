@@ -158,9 +158,11 @@ function MatchupPage() {
       )}
 
       <Card withBorder padding="lg">
-        <Group justify="space-between" wrap="wrap" gap="sm">
-          <Stack gap={4}>
-            <Text fw={600}>{selfTeamName}</Text>
+        <Group wrap="nowrap" align="center" gap="sm">
+          <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+            <Text fw={600} truncate="end">
+              {selfTeamName}
+            </Text>
             <Text fw={700} size="xl">
               {actualA.toFixed(1)}
             </Text>
@@ -168,11 +170,13 @@ function MatchupPage() {
               Proj {projA.toFixed(1)}
             </Text>
           </Stack>
-          <Text c="dimmed" fw={600}>
+          <Text c="dimmed" fw={600} style={{ flexShrink: 0 }}>
             VS
           </Text>
-          <Stack gap={4} align="flex-end">
-            <Text fw={600}>{teamBId !== null ? opponentName : "—"}</Text>
+          <Stack gap={4} align="flex-end" style={{ flex: 1, minWidth: 0 }}>
+            <Text fw={600} truncate="end" ta="right" style={{ maxWidth: "100%" }}>
+              {teamBId !== null ? opponentName : "—"}
+            </Text>
             <Text fw={700} size="xl">
               {teamBId !== null ? actualB.toFixed(1) : "—"}
             </Text>
