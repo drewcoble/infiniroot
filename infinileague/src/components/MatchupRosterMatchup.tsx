@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Badge, Box, Card, Group, Stack, Text } from "@mantine/core";
+import { Badge, Box, Card, Group, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { PlayerCard } from "@shared/PlayerCard";
 import type { RosVorRow, SlotLabel, TeamRosterRow } from "../types/season";
@@ -90,15 +90,23 @@ function PlayerCell({ row, teamName }: { row: TeamRosterRow | undefined; teamNam
         row={toRosVorRow(row, teamName)}
         isRookie={row.isRookie ?? false}
         showLeftLabel={false}
-        rightStats={
-          <Stack gap={0} align="flex-end">
+        // showRosteredBy off (every card in a column is already known to
+        // belong to that team - see the header above) and rightStats off in
+        // favor of footer below - same "half-width card, stats don't fit
+        // beside the name" tradeoff TradeRosterMatchup already makes, so
+        // name/team keep the row's full width instead of getting squeezed
+        // and wrapping.
+        showRosteredBy={false}
+        rightStats={null}
+        footer={
+          <Group justify="space-between" wrap="nowrap" gap={4}>
             <Text size="xs" c="dimmed">
-              {formatPoints(row.projectedPoints)} Proj
+              Proj <Text span fw={600} c="var(--mantine-color-text)">{formatPoints(row.projectedPoints)}</Text>
             </Text>
             <Text size="xs" c="dimmed">
-              {formatPoints(row.actualPoints)} Actual
+              Actual <Text span fw={600} c="var(--mantine-color-text)">{formatPoints(row.actualPoints)}</Text>
             </Text>
-          </Stack>
+          </Group>
         }
       />
     </Cell>

@@ -155,7 +155,7 @@ export function PlayerCard({
               {row.positionRank > 0 ? row.positionRank : ""}
             </Badge>
             {row.team && (
-              <Text c="dimmed" size="xs">
+              <Text c="dimmed" size="xs" truncate style={{ minWidth: 0 }}>
                 {row.team}
               </Text>
             )}
