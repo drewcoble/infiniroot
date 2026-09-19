@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Card, Group, Loader, Select, Stack, Text, Title } from "@mantine/core";
+import { Alert, Card, Group, Loader, Progress, Select, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
@@ -42,6 +42,18 @@ function sumStarterPoints(
     if (!row.slot || !STARTER_SLOTS.has(row.slot)) return total;
     return total + (row[field] ?? 0);
   }, 0);
+}
+
+// Rough pregame win read off the two teams' projected totals - a logistic
+// curve on the point differential, not a real variance model (no per-player
+// score distributions are computed anywhere in this codebase), just enough
+// to turn "who's projected ahead" into a percentage instead of a bare point
+// gap. WIN_PROB_SCALE tunes how fast it saturates: a 15-point lead reads as
+// ~73%, a 30-point lead as ~88%.
+const WIN_PROB_SCALE = 15;
+
+function winProbability(projA: number, projB: number): number {
+  return 1 / (1 + Math.exp(-(projA - projB) / WIN_PROB_SCALE));
 }
 
 // Head-to-head view of this week's matchup: your own roster on the left,
@@ -133,6 +145,8 @@ function MatchupPage() {
   const projB = sumStarterPoints(teamBRoster.rows, "projectedPoints");
   const actualB = sumStarterPoints(teamBRoster.rows, "actualPoints");
 
+  const winProbA = winProbability(projA, projB);
+
   return (
     <Stack gap="md">
       <Title order={3}>Matchup</Title>
@@ -158,33 +172,52 @@ function MatchupPage() {
       )}
 
       <Card withBorder padding="lg">
-        <Group wrap="nowrap" align="center" gap="sm">
-          <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-            <Text fw={600} truncate="end">
-              {selfTeamName}
+        <Stack gap="md">
+          <Group wrap="nowrap" align="center" gap="sm">
+            <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+              <Text fw={600} truncate="end">
+                {selfTeamName}
+              </Text>
+              <Text fw={700} size="xl">
+                {actualA.toFixed(1)}
+              </Text>
+              <Text size="xs" c="dimmed">
+                Proj {projA.toFixed(1)}
+              </Text>
+            </Stack>
+            <Text c="dimmed" fw={600} style={{ flexShrink: 0 }}>
+              VS
             </Text>
-            <Text fw={700} size="xl">
-              {actualA.toFixed(1)}
-            </Text>
-            <Text size="xs" c="dimmed">
-              Proj {projA.toFixed(1)}
-            </Text>
-          </Stack>
-          <Text c="dimmed" fw={600} style={{ flexShrink: 0 }}>
-            VS
-          </Text>
-          <Stack gap={4} align="flex-end" style={{ flex: 1, minWidth: 0 }}>
-            <Text fw={600} truncate="end" ta="right" style={{ maxWidth: "100%" }}>
-              {teamBId !== null ? opponentName : "—"}
-            </Text>
-            <Text fw={700} size="xl">
-              {teamBId !== null ? actualB.toFixed(1) : "—"}
-            </Text>
-            <Text size="xs" c="dimmed">
-              {teamBId !== null ? `Proj ${projB.toFixed(1)}` : ""}
-            </Text>
-          </Stack>
-        </Group>
+            <Stack gap={4} align="flex-end" style={{ flex: 1, minWidth: 0 }}>
+              <Text fw={600} truncate="end" ta="right" style={{ maxWidth: "100%" }}>
+                {teamBId !== null ? opponentName : "—"}
+              </Text>
+              <Text fw={700} size="xl">
+                {teamBId !== null ? actualB.toFixed(1) : "—"}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {teamBId !== null ? `Proj ${projB.toFixed(1)}` : ""}
+              </Text>
+            </Stack>
+          </Group>
+
+          {teamBId !== null && (
+            <Stack gap={4}>
+              <Group justify="space-between" wrap="nowrap">
+                <Text size="xs" fw={600} c="blue">
+                  {(winProbA * 100).toFixed(0)}%
+                </Text>
+                <Text size="xs" fw={600} c="orange">
+                  {(100 - winProbA * 100).toFixed(0)}%
+                </Text>
+              </Group>
+              <Progress.Root size="lg">
+                <Progress.Section value={winProbA * 100} color="blue" />
+                <Progress.Section value={100 - winProbA * 100} color="orange" />
+              </Progress.Root>
+            </Stack>
+          )}
+        </Stack>
       </Card>
 
       <Stack gap={8}>
