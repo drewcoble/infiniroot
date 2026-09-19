@@ -65,6 +65,16 @@ function winProbability(projA: number, projB: number): number {
   return 1 / (1 + Math.exp(-(projA - projB) / WIN_PROB_SCALE));
 }
 
+// While the opponent's roster is still loading, projB reads as a flat 0
+// (sumStarterPoints' undefined-rows fallback) - plugged straight into
+// winProbability that skews the bar to a false ~100% until the real
+// roster lands and it snaps to the true number. The animation below papers
+// over that same window with a deliberate "still figuring this out" flip
+// through random numbers instead, landing on the real one only once it's
+// actually known.
+const WIN_PROB_ANIMATION_INTERVAL_MS = 900;
+const WIN_PROB_TRANSITION_MS = 650;
+
 // Head-to-head view of this week's matchup: your own roster on the left,
 // this week's opponent on the right, lined up slot-by-slot (see
 // MatchupRosterMatchup.tsx) same layout as the Trade tab, minus the
@@ -123,6 +133,42 @@ function MatchupPage() {
   const teamARoster = useTeamRoster(teamAId, week);
   const teamBRoster = useTeamRoster(teamBId, week);
 
+  const projA = sumStarterPoints(teamARoster.rows, "projectedPoints");
+  const actualA = sumStarterPoints(teamARoster.rows, "actualPoints");
+  const projB = sumStarterPoints(teamBRoster.rows, "projectedPoints");
+  const actualB = sumStarterPoints(teamBRoster.rows, "actualPoints");
+  const winProbA = winProbability(projA, projB);
+
+  // The real winProbA above isn't trustworthy until both rosters are in -
+  // matchupReady gates both effects below on that, not just on an opponent
+  // being picked.
+  const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
+
+  const [displayedWinProbA, setDisplayedWinProbA] = useState(50);
+
+  // Genuinely random every tick (not a handful of fixed "random-looking"
+  // values on a loop) so the flip never reads as a repeating pattern -
+  // starts at 50 the moment loading begins, then a fresh Math.random() every
+  // interval until the real total lands.
+  useEffect(() => {
+    if (teamBId === null || matchupReady) return;
+    setDisplayedWinProbA(50);
+    const interval = setInterval(() => {
+      setDisplayedWinProbA(35 + Math.random() * 30);
+    }, WIN_PROB_ANIMATION_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [teamBId, matchupReady]);
+
+  // Once the real number is known, this is the only other place
+  // displayedWinProbA ever gets set - the Progress bar's own
+  // transitionDuration (see WIN_PROB_TRANSITION_MS) is what makes the jump
+  // from wherever the animation left off to this real value read as a
+  // smooth glide rather than a snap.
+  useEffect(() => {
+    if (!matchupReady) return;
+    setDisplayedWinProbA(winProbA * 100);
+  }, [matchupReady, winProbA]);
+
   if (nflState === undefined || standings === undefined) {
     return <Loader />;
   }
@@ -148,13 +194,6 @@ function MatchupPage() {
   const teamBOptions = standings
     .filter((row) => row.teamId !== teamAId)
     .map((row) => ({ value: row.teamId, label: row.name }));
-
-  const projA = sumStarterPoints(teamARoster.rows, "projectedPoints");
-  const actualA = sumStarterPoints(teamARoster.rows, "actualPoints");
-  const projB = sumStarterPoints(teamBRoster.rows, "projectedPoints");
-  const actualB = sumStarterPoints(teamBRoster.rows, "actualPoints");
-
-  const winProbA = winProbability(projA, projB);
 
   return (
     <Stack gap="md">
@@ -214,15 +253,15 @@ function MatchupPage() {
             <Stack gap={4}>
               <Group justify="space-between" wrap="nowrap">
                 <Text size="xs" fw={600} c={WIN_PROB_COLOR_A}>
-                  {(winProbA * 100).toFixed(0)}%
+                  {displayedWinProbA.toFixed(0)}%
                 </Text>
                 <Text size="xs" fw={600} c={WIN_PROB_COLOR_B}>
-                  {(100 - winProbA * 100).toFixed(0)}%
+                  {(100 - displayedWinProbA).toFixed(0)}%
                 </Text>
               </Group>
-              <Progress.Root size="lg">
-                <Progress.Section value={winProbA * 100} color={WIN_PROB_COLOR_A} />
-                <Progress.Section value={100 - winProbA * 100} color={WIN_PROB_COLOR_B} />
+              <Progress.Root size="lg" transitionDuration={WIN_PROB_TRANSITION_MS}>
+                <Progress.Section value={displayedWinProbA} color={WIN_PROB_COLOR_A} />
+                <Progress.Section value={100 - displayedWinProbA} color={WIN_PROB_COLOR_B} />
               </Progress.Root>
             </Stack>
           )}
