@@ -75,6 +75,10 @@ function winProbability(projA: number, projB: number): number {
 const WIN_PROB_ANIMATION_INTERVAL_MS = 900;
 const WIN_PROB_TRANSITION_MS = 650;
 
+function randomWinProb(): number {
+  return 35 + Math.random() * 30;
+}
+
 // Head-to-head view of this week's matchup: your own roster on the left,
 // this week's opponent on the right, lined up slot-by-slot (see
 // MatchupRosterMatchup.tsx) same layout as the Trade tab, minus the
@@ -144,17 +148,17 @@ function MatchupPage() {
   // being picked.
   const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
 
-  const [displayedWinProbA, setDisplayedWinProbA] = useState(50);
+  const [displayedWinProbA, setDisplayedWinProbA] = useState(() => randomWinProb());
 
   // Genuinely random every tick (not a handful of fixed "random-looking"
   // values on a loop) so the flip never reads as a repeating pattern -
-  // starts at 50 the moment loading begins, then a fresh Math.random() every
-  // interval until the real total lands.
+  // including the starting value itself, so it doesn't land on the same
+  // spot every time loading begins.
   useEffect(() => {
     if (teamBId === null || matchupReady) return;
-    setDisplayedWinProbA(50);
+    setDisplayedWinProbA(randomWinProb());
     const interval = setInterval(() => {
-      setDisplayedWinProbA(35 + Math.random() * 30);
+      setDisplayedWinProbA(randomWinProb());
     }, WIN_PROB_ANIMATION_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [teamBId, matchupReady]);
