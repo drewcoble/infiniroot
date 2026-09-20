@@ -101,6 +101,10 @@ export interface TeamRosterRow {
   // Absent only when the team isn't Sleeper-linked (no per-week matchup
   // source to read a starting lineup from at all).
   slot?: SlotLabel;
+  // Live/actual points scored this week - Sleeper's players_points or
+  // Yahoo's player_points.total (see the two branches above). Absent for a
+  // team linked to neither provider, or a player/week neither returned a
+  // value for.
   actualPoints?: number;
   // Absent whenever this week simply hasn't been projected yet.
   projectedPoints?: number;
@@ -153,6 +157,10 @@ export const getTeamRosterForWeek = action({
     // Sleeper's native player id, and only ever has entries for players
     // actually rostered (no empty-slot placeholders, see above).
     let yahooSlotByFpid: Map<number, SlotLabel> | undefined;
+    // Yahoo counterpart to actualPointsBySleeperId below - keyed by fpid
+    // (resolved from Yahoo's player_key the same way yahooSlotByFpid is)
+    // rather than Sleeper's native player id.
+    let actualPointsByFpid: Map<number, number> | undefined;
     const actualPointsBySleeperId = new Map<string, number>();
 
     if (isSleeperLinked && team.sleeperRosterId && season.sleeperLeagueId) {
@@ -232,14 +240,20 @@ export const getTeamRosterForWeek = action({
       // (`;week=`, same `;status=W` pattern convex/infinidraft/yahoo/waivers.ts
       // uses) - each player node carries a `selected_position` field for
       // that week (starting slot, "BN", or "IR"/"IR+" - see
-      // YAHOO_SELECTED_POSITION_MAP above). NOT confirmed against a live
-      // response - see YAHOO.md. No fixed-slot-count source exists here
-      // (unlike Sleeper's roster_positions), so this only ever produces
-      // rows for players actually rostered this week.
+      // YAHOO_SELECTED_POSITION_MAP above). Chaining `/players/stats;type=week;week=`
+      // onto the same request additionally nests a `player_points` field
+      // (field-list pattern, `{coverage_type, week, total}`) onto each player
+      // node - `total` is this app's own league scoring already applied by
+      // Yahoo, the per-player counterpart to Sleeper's players_points, and
+      // (per general knowledge of the Fantasy Sports API) updates live during
+      // games the same way the scoreboard's team_points does. NOT confirmed
+      // against a live response - see YAHOO.md. No fixed-slot-count source
+      // exists here (unlike Sleeper's roster_positions), so this only ever
+      // produces rows for players actually rostered this week.
       const rosterJson = await withYahooToken(ctx, league.ownerId, (accessToken) =>
         fetchYahooApi<unknown>(
           accessToken,
-          `/team/${team.yahooTeamKey}/roster;week=${args.week}`,
+          `/team/${team.yahooTeamKey}/roster;week=${args.week}/players/stats;type=week;week=${args.week}`,
         ),
       );
       const rosterEntries = findNodesByKey(rosterJson, "player")
@@ -258,6 +272,11 @@ export const getTeamRosterForWeek = action({
             typeof selectedPositionFields.position === "string"
               ? selectedPositionFields.position
               : undefined;
+          const pointsFields = mergeYahooFields(fields.player_points);
+          const actualPoints =
+            pointsFields.total !== undefined && pointsFields.total !== null
+              ? Number(pointsFields.total)
+              : undefined;
           if (!playerKey || typeof fullName !== "string" || typeof position !== "string") {
             return null;
           }
@@ -267,6 +286,7 @@ export const getTeamRosterForWeek = action({
             position,
             teamAbbr,
             slot: positionCode ? YAHOO_SELECTED_POSITION_MAP[positionCode] : undefined,
+            actualPoints: Number.isFinite(actualPoints) ? actualPoints : undefined,
           };
         })
         .filter((e): e is NonNullable<typeof e> => e !== null);
@@ -275,6 +295,17 @@ export const getTeamRosterForWeek = action({
         // a real response and this stops happening.
         console.error(
           "getTeamRosterForWeek (Yahoo): no players or no slots resolved, raw response:",
+          JSON.stringify(rosterJson),
+        );
+      }
+      if (rosterEntries.length > 0 && rosterEntries.every((e) => e.actualPoints === undefined)) {
+        // Diagnostic for an unconfirmed shape - remove once checked against
+        // a real response and this stops happening. Not necessarily a bug on
+        // its own (a week with no games played yet reads 0 the same as
+        // "missing", per Sleeper's own behavior) - worth checking the raw
+        // player_points shape if this fires during a live game window.
+        console.error(
+          "getTeamRosterForWeek (Yahoo): no player_points resolved, raw response:",
           JSON.stringify(rosterJson),
         );
       }
@@ -293,11 +324,13 @@ export const getTeamRosterForWeek = action({
       const fpidByPlayerKey = new Map(resolved.map((r) => [r.playerKey, r.fpid]));
 
       yahooSlotByFpid = new Map();
+      actualPointsByFpid = new Map();
       for (const entry of rosterEntries) {
         const fpid = fpidByPlayerKey.get(entry.playerKey);
         if (fpid === undefined) continue;
         fpids.push(fpid);
         if (entry.slot !== undefined) yahooSlotByFpid.set(fpid, entry.slot);
+        if (entry.actualPoints !== undefined) actualPointsByFpid.set(fpid, entry.actualPoints);
       }
     } else {
       // Not Sleeper- or Yahoo-linked - no per-week matchup source at all,
@@ -354,9 +387,7 @@ export const getTeamRosterForWeek = action({
           ? { injury: { status: injury.status, statusShort: injury.statusShort } }
           : {}),
         ...(slot !== undefined ? { slot } : {}),
-        ...(isSleeperLinked && actualPoints !== undefined
-          ? { actualPoints }
-          : {}),
+        ...(actualPoints !== undefined ? { actualPoints } : {}),
         ...(projectedPoints !== undefined ? { projectedPoints } : {}),
       };
     }
@@ -372,7 +403,9 @@ export const getTeamRosterForWeek = action({
           return filled ?? { slot };
         })
       : fpids
-          .map((fpid) => buildFilledRow(fpid, yahooSlotByFpid?.get(fpid), undefined))
+          .map((fpid) =>
+            buildFilledRow(fpid, yahooSlotByFpid?.get(fpid), actualPointsByFpid?.get(fpid)),
+          )
           .filter((row): row is TeamRosterRow => row !== null);
 
     // Same canonical order as infinidraft's My Team tab - see SLOT_ORDER_RANK.
