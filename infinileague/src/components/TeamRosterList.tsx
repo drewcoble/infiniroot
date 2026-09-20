@@ -21,7 +21,7 @@ function slotLabel(slot: SlotLabel | undefined): string {
 }
 
 function formatPoints(points: number | undefined): string {
-  return points === undefined ? "—" : points.toFixed(1);
+  return points === undefined ? "—" : points.toFixed(2);
 }
 
 // A filled roster row has no rosVOR fields of its own (this is a weekly
