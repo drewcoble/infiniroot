@@ -23,6 +23,12 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
+const SCORING_LABELS: Record<LinkedSeason["scoring"], string> = {
+  STD: "0 PPR",
+  HALF: "0.5 PPR",
+  PPR: "1 PPR",
+};
+
 // infinileague's dashboard - shows every provider-linked league the user
 // has (via api.leagues.listLinkedSeasons, which excludes seasons built from
 // scratch in infinidraft - see that query's own comment), grouped by
@@ -95,7 +101,7 @@ function Dashboard() {
                         </Text>
                         <Text size="sm" c="dimmed">
                           {latest.year} · {latest.teamCount} teams ·{" "}
-                          {latest.scoring}
+                          {SCORING_LABELS[latest.scoring]}
                         </Text>
                       </Stack>
                       <Button component="span" variant="light" fullWidth>
