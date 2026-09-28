@@ -33,13 +33,16 @@ export function PlayerSeasonGameLog({
     isOpen ? { fpid, season } : "skip",
   );
 
-  // A week can have more than one recorded change (see the schema comment
-  // on injurySnapshots) - grouped and sorted oldest-first so the "first"
+  // A week can have more than one snapshot (see the schema comment on
+  // injurySnapshots) - grouped and sorted oldest-first so the "first"
   // entry for a week is the one closest to that week's earliest games
   // (e.g. a Thursday designation), not whatever happened to be fetched last.
+  // "cleared" rows (recovered) are left out - a week that only has one of
+  // those should show no badge, same as a week that was never injured.
   const snapshotsByWeek = useMemo(() => {
     const map = new Map<string, NonNullable<typeof injurySnapshots>>();
     for (const snapshot of injurySnapshots ?? []) {
+      if (snapshot.kind === "cleared") continue;
       const list = map.get(snapshot.week) ?? [];
       list.push(snapshot);
       map.set(snapshot.week, list);

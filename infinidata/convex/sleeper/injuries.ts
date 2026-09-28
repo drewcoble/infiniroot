@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { action, internalAction, ActionCtx } from "../_generated/server";
-import { api } from "../_generated/api";
+import { internal } from "../_generated/api";
+import type { ApplyInjuryFetchResult } from "../injuries";
 import { fetchCurrentNflWeek } from "./state";
 import {
   currentSeason,
@@ -22,16 +23,13 @@ const VALID_SLEEPER_POSITIONS = new Set(Object.values(POSITION_SLUGS));
 // (Sleeper has no dedicated injury endpoint - injury_status/injury_body_part/
 // injury_notes just ride along on every player record there), but skips that
 // file's players/projections/rankings/providerProjections upserts entirely -
-// this only ever writes convex/injuries.ts + convex/injurySnapshots.ts. That
-// keeps each run cheap enough to justify the 15-minute cadence in
-// convex/crons.ts, instead of the once-a-day cost of the full sync.
+// this only hands the parsed rows to convex/injuries.ts's applyInjuryFetch,
+// which writes nothing unless something actually changed. That keeps each
+// run cheap enough to justify the 15-minute cadence in convex/crons.ts.
 async function fetchInjuriesHandler(
   ctx: ActionCtx,
   args: { week?: string; season?: string },
-): Promise<{
-  injuries: { upserted: number; removed: number };
-  snapshots: { inserted: number; checked: number };
-}> {
+): Promise<ApplyInjuryFetchResult> {
   const week = args.week ?? (await fetchCurrentNflWeek());
   const season = args.season ?? currentSeason();
   // The app's "0" (season-long) sentinel maps to omitting the week path
@@ -51,13 +49,10 @@ async function fetchInjuriesHandler(
     statusShort: string;
     injuryType: string;
     comment: string;
-    irWeeks: number[];
-    probabilityOfPlaying: number | null;
     practice1: string | null;
     practice2: string | null;
     practice3: string | null;
     practiceReportInjuryType: string | null;
-    updatedAt: number;
   }> = [];
 
   for (const record of records) {
@@ -88,35 +83,18 @@ async function fetchInjuriesHandler(
       statusShort: INJURY_STATUS_SHORT[status] ?? status,
       injuryType: record.player?.injury_body_part ?? "",
       comment: record.player?.injury_notes ?? "",
-      irWeeks: [],
-      probabilityOfPlaying: null,
       practice1: null,
       practice2: null,
       practice3: null,
       practiceReportInjuryType: null,
-      updatedAt: Date.now(),
     });
   }
 
-  const injuriesResult = await ctx.runMutation(api.injuries.upsertInjuries, {
+  return await ctx.runMutation(internal.injuries.applyInjuryFetch, {
+    season,
+    week,
     rows: injuryRows,
   });
-  const snapshotsResult = await ctx.runMutation(
-    api.injurySnapshots.recordSnapshots,
-    {
-      season,
-      week,
-      rows: injuryRows.map((row) => ({
-        fpid: row.fpid,
-        status: row.status,
-        statusShort: row.statusShort,
-        injuryType: row.injuryType,
-        comment: row.comment,
-      })),
-    },
-  );
-
-  return { injuries: injuriesResult, snapshots: snapshotsResult };
 }
 
 export const fetchInjuries = action({

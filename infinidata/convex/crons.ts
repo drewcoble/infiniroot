@@ -55,16 +55,16 @@ crons.cron(
 // into its own frequent cron - a stale "Questionable" tag has real fantasy
 // consequences (start/sit, waiver claims) well before the next daily sync
 // would catch it. Reuses the same Sleeper "projections" endpoint (no
-// dedicated injury endpoint exists), but writes only convex/injuries.ts +
-// convex/injurySnapshots.ts (see sleeper/injuries.ts), skipping the fetch
-// above's much heavier players/projections/rankings/providerProjections
-// writes - that's what makes running every 15 minutes cheap enough. Payload
-// is ~2MB/run regardless of cadence (one combined-position call, no
-// per-player pagination), well within Sleeper's own informal rate-limit
-// guidance (see sleeper/client.ts) even at this frequency. recordSnapshots
-// is itself a no-op write for any player whose status hasn't changed since
-// its last snapshot, so this cadence doesn't inflate injurySnapshots history
-// - it only shrinks how long a real change takes to be captured.
+// dedicated injury endpoint exists), but writes only the injury tables (see
+// sleeper/injuries.ts), skipping the fetch above's much heavier players/
+// projections/rankings/providerProjections writes. Payload is ~2MB/run
+// regardless of cadence (one combined-position call, no per-player
+// pagination), well within Sleeper's own informal rate-limit guidance (see
+// sleeper/client.ts) even at this frequency. convex/injuries.ts's
+// applyInjuryFetch writes nothing for a player whose Sleeper data hasn't
+// changed, so a quiet run is write-free (no re-run of every query reading
+// the injuries table) and this cadence doesn't inflate injurySnapshots
+// history - it only shrinks how long a real change takes to be captured.
 crons.interval(
   'fetch injury updates',
   { minutes: 15 },

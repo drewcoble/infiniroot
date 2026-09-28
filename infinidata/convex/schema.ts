@@ -441,9 +441,17 @@ export default defineSchema({
       "sixPointPassTds",
     ]),
 
-  // From /nfl/injuries. Current-status only (the endpoint has no season/week)
-  // - one row per currently-injured player, deleted when they drop off the
-  // API's list (recovered), mirroring how upsertProjections handles removals.
+  // Sleeper's injury_status et al (see convex/sleeper/injuries.ts). Current-
+  // status only - one row per currently-injured player, deleted when they
+  // drop off Sleeper's list (recovered). Only ever written when the
+  // Sleeper-sourced fields actually change (see convex/injuries.ts's
+  // applyInjuryFetch): every query reading this table re-runs on any write,
+  // and the 15-minute injury cron would otherwise touch every row each run.
+  // updatedAt is when this row's Sleeper data last changed; fetchedAt is
+  // when the player first appeared on the list for this stint. irWeeks and
+  // probabilityOfPlaying are derived judgments, never Sleeper data - reset
+  // to empty whenever the underlying injury changes so a stale value never
+  // outlives the situation it described.
   injuries: defineTable({
     fpid: v.number(),
     status: v.string(),
@@ -460,16 +468,14 @@ export default defineSchema({
     fetchedAt: v.number(),
   }).index("by_fpid", ["fpid"]),
 
-  // Append-only history of injury-status *changes*, captured going forward
-  // from whenever this table was introduced - Sleeper's injury_status field
-  // (above) is a "right now" value with no historical archive, so past
-  // seasons can never be backfilled here. A new row is only inserted when a
-  // player's status actually differs from their most-recently-stored row
-  // (see convex/injurySnapshots.ts's recordSnapshots) - deliberately NOT
-  // one-row-per-fetch, since the daily fetch cadence spans every team's
-  // Thursday/Sunday/Monday games within a single week number, and
-  // overwriting by week could silently clobber an earlier-in-the-week
-  // designation with unrelated later information.
+  // Append-only injury-status history, captured going forward from whenever
+  // this table was introduced - Sleeper's injury_status field (above) is a
+  // "right now" value with no historical archive, so past seasons can never
+  // be backfilled here. Written by convex/injuries.ts's applyInjuryFetch,
+  // never one-row-per-fetch and never overwritten (a week spans every
+  // team's Thursday/Sunday/Monday games, so overwriting by week could
+  // silently clobber an earlier-in-the-week designation). See `kind` for
+  // the three reasons a row gets appended.
   injurySnapshots: defineTable({
     fpid: v.number(),
     season: v.string(),
@@ -482,9 +488,25 @@ export default defineSchema({
     injuryType: v.string(),
     comment: v.string(),
     fetchedAt: v.number(),
+    // "change": status/injuryType actually changed, or a new injury. Rows
+    //   written before this field existed were all changes - treat absent
+    //   as "change".
+    // "carryForward": still on the list when a new week began, nothing
+    //   changed - gives every injured week its own row, so "status in week
+    //   N" is a direct lookup. NOT a new injury event: anything asking
+    //   "when did this start?" (e.g. lib/playerValue.ts's injury-boost
+    //   freshness) must skip these.
+    // "cleared": dropped off Sleeper's injured list (recovered) - status is
+    //   "Active" and the injury fields are empty.
+    kind: v.optional(
+      v.union(
+        v.literal("change"),
+        v.literal("carryForward"),
+        v.literal("cleared"),
+      ),
+    ),
   })
-    // "This player's most-recently-stored snapshot" - the change-detection
-    // check in recordSnapshots (query this, order desc, take first()).
+    // "This player's most-recently-stored snapshot(s)", newest first.
     .index("by_fpid", ["fpid"])
     // "Every change this player had during one season" - the game log's
     // read (src/components/PlayerSeasonGameLog.tsx), grouped by week
@@ -525,6 +547,16 @@ export default defineSchema({
     .index("by_team", ["team"])
     // "Where does this fpid currently sit" - a player detail modal lookup.
     .index("by_fpid", ["fpid"]),
+
+  // Single row: the season/week the injury cron last processed - how
+  // applyInjuryFetch (convex/injuries.ts) notices a new week has begun and
+  // writes that week's "carryForward" snapshots exactly once, instead of
+  // re-checking every player's latest snapshot on every 15-minute run.
+  injurySyncState: defineTable({
+    season: v.string(),
+    week: v.string(),
+    updatedAt: v.number(),
+  }),
 
   // Live NFL week/season snapshot, refreshed daily alongside the rest of
   // fetchAllData (see convex/sleeper/state.ts's fetchNflSeasonState and
