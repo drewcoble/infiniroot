@@ -25,15 +25,28 @@ export function requireYahooEnv() {
   return { clientId, clientSecret, redirectUri };
 }
 
+// All three frontend apps share this one Convex deployment (and the same
+// Yahoo app registration), but each needs the OAuth round trip to land back
+// on its own origin - see startYahooAuth/consumeOAuthState in ./oauth.ts for
+// where this discriminator is stashed across the redirect.
+export type YahooOAuthApp = "infinidraft" | "infinileague" | "infinifaab";
+
+const APP_BASE_URL_ENV_VAR: Record<YahooOAuthApp, string> = {
+  infinidraft: "APP_BASE_URL",
+  infinileague: "APP_BASE_URL_INFINILEAGUE",
+  infinifaab: "APP_BASE_URL_INFINIFAAB",
+};
+
 // Where the /yahoo/callback HTTP route (convex/http.ts) sends the browser
-// back to once the OAuth round trip is done - the frontend's own origin,
-// which is NOT the same as this Convex deployment's .convex.site domain.
-// See YAHOO.md for what to set this to in each environment.
-export function requireAppBaseUrl(): string {
-  const value = processEnv?.APP_BASE_URL?.trim();
+// back to once the OAuth round trip is done - the originating frontend's own
+// origin, which is NOT the same as this Convex deployment's .convex.site
+// domain. See YAHOO.md for what to set this to in each environment.
+export function requireAppBaseUrl(app: YahooOAuthApp): string {
+  const envVar = APP_BASE_URL_ENV_VAR[app];
+  const value = processEnv?.[envVar]?.trim();
   if (!value) {
     throw new Error(
-      "APP_BASE_URL is not set - see YAHOO.md at the project root.",
+      `${envVar} is not set - see YAHOO.md at the project root.`,
     );
   }
   return value.replace(/\/$/, "");

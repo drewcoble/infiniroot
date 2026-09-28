@@ -188,7 +188,7 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
     setError(null);
     setConnectingYahoo(true);
     try {
-      const { authorizeUrl } = await startYahooAuth({ seasonId });
+      const { authorizeUrl } = await startYahooAuth({ app: "infinidraft", seasonId });
       window.location.href = authorizeUrl;
     } catch (err) {
       setError(

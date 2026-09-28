@@ -90,3 +90,30 @@ export const updateAuctionSettings = mutation({
     }
   },
 });
+
+// Single-field counterpart to updateAuctionSettings above, for the dashboard
+// league card's quick "Enable auction" action (infinifaab's index.tsx) -
+// letting a commissioner flip this on without first opening the full
+// Settings tab and re-submitting every schedule field. Seeds the rest of the
+// row from DEFAULT_SETTINGS the first time, same as getAuctionSettings's own
+// fallback, so a season that's never had a faAuctionSettings row gets sane
+// defaults instead of a partial one.
+export const setAuctionEnabled = mutation({
+  args: { seasonId: v.id("seasons"), enabled: v.boolean() },
+  handler: async (ctx, args): Promise<void> => {
+    await requireSeasonOwner(ctx, args.seasonId);
+    const existing = await ctx.db
+      .query("faAuctionSettings")
+      .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { enabled: args.enabled });
+    } else {
+      await ctx.db.insert("faAuctionSettings", {
+        seasonId: args.seasonId,
+        ...DEFAULT_SETTINGS,
+        enabled: args.enabled,
+      });
+    }
+  },
+});

@@ -22,7 +22,7 @@ function slotLabel(slot: SlotLabel | undefined): string {
 }
 
 function formatPoints(points: number | undefined): string {
-  return points === undefined ? "—" : points.toFixed(1);
+  return points === undefined ? "—" : points.toFixed(2);
 }
 
 // Excludes IR/TAXI (not part of this week's scored lineup either way) but

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Menu } from "@mantine/core";
-import { Check, Database, Plus, ShieldCheck } from "lucide-react";
+import { Check, Database, Import, Plus, ShieldCheck } from "lucide-react";
 import { AppHeader as SharedAppHeader } from "@shared/AppHeader";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { useCurrentUser } from "@shared-core/useCurrentUser";
@@ -51,7 +51,13 @@ export function AppHeader() {
             leftSection={<Plus size={16} />}
             onClick={() => void navigate({ to: "/connect-sleeper" })}
           >
-            Connect League
+            Connect Sleeper League
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<Import size={16} />}
+            onClick={() => void navigate({ to: "/connect-yahoo" })}
+          >
+            Import from Yahoo
           </Menu.Item>
         </>
       }

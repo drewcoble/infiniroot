@@ -31,11 +31,15 @@ http.route({
     const url = new URL(request.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
-    const appBaseUrl = requireAppBaseUrl();
+    // No app signal is available yet for these two early-bailout cases
+    // (malformed callback, or a state row too stale/missing to read) - fall
+    // back to infinidraft's own origin, same as before this app-aware
+    // redirect existed.
+    const fallbackBaseUrl = requireAppBaseUrl("infinidraft");
 
     if (!code || !state) {
       return Response.redirect(
-        `${appBaseUrl}/?yahooError=${encodeURIComponent("Missing code or state from Yahoo.")}`,
+        `${fallbackBaseUrl}/?yahooError=${encodeURIComponent("Missing code or state from Yahoo.")}`,
         302,
       );
     }
@@ -46,11 +50,12 @@ http.route({
     );
     if (!stateRow) {
       return Response.redirect(
-        `${appBaseUrl}/?yahooError=${encodeURIComponent("This Yahoo connection attempt expired - try again.")}`,
+        `${fallbackBaseUrl}/?yahooError=${encodeURIComponent("This Yahoo connection attempt expired - try again.")}`,
         302,
       );
     }
 
+    const appBaseUrl = requireAppBaseUrl(stateRow.app);
     const target = yahooRedirectTarget(appBaseUrl, stateRow.seasonId);
     try {
       const tokens = await exchangeYahooCode(code);

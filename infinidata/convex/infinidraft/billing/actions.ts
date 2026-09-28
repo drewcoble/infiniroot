@@ -26,7 +26,7 @@ export const startCheckout = action({
       ctx.runQuery(internal.infinidraft.billing.queries.getSubscriptionRow, { userId }),
       ctx.runQuery(api.users.getCurrentUserForDataFetch, {}),
     ]);
-    const appBaseUrl = requireAppBaseUrl();
+    const appBaseUrl = requireAppBaseUrl("infinidraft");
     const session = await createCheckoutSession({
       userId,
       ...(subscription?.stripeCustomerId
@@ -63,7 +63,7 @@ export const openBillingPortal = action({
     if (!subscription?.stripeCustomerId) {
       throw new Error("No billing account found for this user yet.");
     }
-    const appBaseUrl = requireAppBaseUrl();
+    const appBaseUrl = requireAppBaseUrl("infinidraft");
     const session = await createPortalSession({
       customerId: subscription.stripeCustomerId,
       returnUrl: `${appBaseUrl}${args.returnPath}`,

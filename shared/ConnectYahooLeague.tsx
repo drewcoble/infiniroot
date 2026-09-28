@@ -2,10 +2,8 @@ import { useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import {
   Alert,
-  Badge,
   Button,
   Card,
-  Checkbox,
   Group,
   Loader,
   Radio,
@@ -16,42 +14,46 @@ import {
   Title,
 } from "@mantine/core";
 import { api } from "@infinidata/api";
-import type { Id } from "@infinidata/dataModel";
-import {
-  DEFAULT_FORM,
-  type LeagueSettingsFormValues,
-} from "../../../constants/leagueSettings";
-import { SettingsForm } from "./SettingsForm";
-import { getErrorMessage } from "@shared/errors";
-import { SNAKE_DRAFT_ENABLED } from "../../../lib/featureFlags";
+import { getErrorMessage } from "./errors";
 
-interface YahooLeagueImportWizardProps {
-  onImported: (id: Id<"seasons">) => void;
+// Trimmed rewrite of infinidraft's YahooLeagueImportWizard.tsx (~330 lines
+// there, built around a full draft-settings review form and a keeper-
+// history import - both meaningless here, same reasoning as
+// ConnectSleeperLeague.tsx's trimming of infinidraft's Sleeper wizard.
+// Unlike Sleeper, Yahoo needs an OAuth-connect step first (every Yahoo API
+// call needs a token scoped to a signed-in Yahoo account) - see
+// convex/infinidraft/yahoo/oauth.ts.
+//
+// draftType/salaryCap below are throwaway filler, same rationale as
+// ConnectSleeperLeague.tsx's FILLER_* constants. scoring/teScoring/
+// sixPointPassTds/rosterSlots/flexPositions/superflexPositions/leagueType
+// are real values detected from Yahoo (previewYahooImport returns
+// teScoring/sixPointPassTds directly, unlike Sleeper's preview) and matter -
+// they feed the value math these apps are for.
+const FILLER_SALARY_CAP = 200;
+
+interface ConnectYahooLeagueProps {
+  app: "infinileague" | "infinifaab";
+  onConnected: (seasonId: string) => void;
   onCancel: () => void;
 }
 
-// Yahoo counterpart to LeagueImportWizard.tsx - same three-step shape (pick
-// a real league, review/edit the mapped settings + team names/self-
-// selection, optional prior-season keeper import) but fronted by a
-// "connect your Yahoo account first" step, since (unlike Sleeper) every
-// Yahoo API call needs an OAuth token (see convex/yahoo/oauth.ts). Team/
-// scoring mapping (convex/yahoo/leagueSettingsMapping.ts) and the whole
-// prior-season keeper-price chain (convex/yahoo/league.ts's
-// previewYahooImport) are unverified against a real live league - see
-// YAHOO.md.
-export function YahooLeagueImportWizard({
-  onImported,
+export function ConnectYahooLeague({
+  app,
+  onConnected,
   onCancel,
-}: YahooLeagueImportWizardProps) {
+}: ConnectYahooLeagueProps) {
   const yahooStatus = useQuery(api.infinidraft.yahoo.oauth.getConnectionStatus, {});
   const startYahooAuth = useAction(api.infinidraft.yahoo.oauth.startYahooAuth);
   const listMyYahooLeagues = useAction(api.infinidraft.yahoo.league.listMyYahooLeagues);
   const previewYahooImport = useAction(api.infinidraft.yahoo.league.previewYahooImport);
   const createLeague = useMutation(api.leagues.createLeague);
   const initializeSeasonTeams = useMutation(
-    api.infinidraft.draft.teams.initializeSeasonTeams,
+    api.infinileague.season.teams.initializeSeasonTeams,
   );
-  const importHistory = useMutation(api.leagues.importPreviousSeasonHistory);
+  const syncYahooLeagueRoster = useAction(
+    api.infinidraft.yahoo.league.syncYahooLeagueRoster,
+  );
 
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -72,8 +74,6 @@ export function YahooLeagueImportWizard({
 
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
   const [selfTeamKey, setSelfTeamKey] = useState("");
-  const [importKeeperHistory, setImportKeeperHistory] = useState(true);
-  const [form, setForm] = useState<LeagueSettingsFormValues>(DEFAULT_FORM);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -84,10 +84,10 @@ export function YahooLeagueImportWizard({
     try {
       // No seasonId to redirect back to - this league doesn't exist yet.
       // The OAuth round trip lands back on "/" (see convex/http.ts's
-      // yahooRedirectTarget), so the wizard's in-progress state is lost;
-      // the user re-opens "+ New League > Import from Yahoo" afterward,
-      // same limitation noted in the UI below.
-      const { authorizeUrl } = await startYahooAuth({ app: "infinidraft" });
+      // yahooRedirectTarget), so this wizard's in-progress state is lost;
+      // the user re-opens "Import from Yahoo" afterward - same limitation
+      // infinidraft's own wizard already accepts.
+      const { authorizeUrl } = await startYahooAuth({ app });
       window.location.href = authorizeUrl;
     } catch (err) {
       setConnectError(getErrorMessage(err, "Failed to start Yahoo connect."));
@@ -123,27 +123,6 @@ export function YahooLeagueImportWizard({
       setSelfTeamKey(
         currentUserTeam?.teamKey ?? result.teams[0]?.teamKey ?? "",
       );
-      setForm({
-        name: result.name,
-        teamCount: result.teamCount,
-        // previewYahooImport doesn't detect the linked league's own draft
-        // type yet (SNAKE_DRAFT.md §6 - only the previous season's is ever
-        // looked at, and only to seed keeper price history) - defaults to
-        // auction same as every import today, adjustable after import.
-        draftType: DEFAULT_FORM.draftType,
-        // Detected from Yahoo's own scoring_type field (see
-        // convex/infinidraft/yahoo/league.ts's previewYahooImport) - still
-        // adjustable on this review step below before creating.
-        leagueType: result.leagueType,
-        salaryCap: DEFAULT_FORM.salaryCap,
-        scoring: result.scoring,
-        teScoring: result.teScoring,
-        sixPointPassTds: result.sixPointPassTds,
-        rosterSlots: result.rosterSlots,
-        flexPositions: result.flexPositions,
-        superflexPositions: result.superflexPositions,
-        useKeepers: DEFAULT_FORM.useKeepers,
-      });
     } catch (err) {
       setLoadError(getErrorMessage(err, "Failed to load league."));
     } finally {
@@ -151,58 +130,50 @@ export function YahooLeagueImportWizard({
     }
   };
 
-  const handleCreate = async () => {
+  const handleConnectLeague = async () => {
     if (!preview || !selectedLeagueKey) return;
     setSaving(true);
     setSaveError(null);
     try {
-      const newId = await createLeague({
-        name: form.name,
-        teamCount: form.teamCount,
-        // Clamped at the actual write path - see LeagueImportWizard.tsx's
-        // matching comment (Yahoo draft-type detection isn't built either).
-        draftType: SNAKE_DRAFT_ENABLED ? form.draftType : "auction",
-        leagueType: form.leagueType,
-        salaryCap: form.salaryCap,
-        scoring: form.scoring,
-        teScoring: form.teScoring,
-        sixPointPassTds: form.sixPointPassTds,
-        rosterSlots: form.rosterSlots,
-        flexPositions: form.flexPositions,
-        superflexPositions: form.superflexPositions,
+      const seasonId = await createLeague({
+        name: preview.name,
+        teamCount: preview.teamCount,
+        // Yahoo import never detects draft type (SNAKE_DRAFT.md §6) - same
+        // as infinidraft's own wizard, not shown/read back here anyway.
+        draftType: "auction",
+        leagueType: preview.leagueType,
+        salaryCap: FILLER_SALARY_CAP,
+        scoring: preview.scoring,
+        teScoring: preview.teScoring,
+        sixPointPassTds: preview.sixPointPassTds,
+        rosterSlots: preview.rosterSlots,
+        flexPositions: preview.flexPositions,
+        superflexPositions: preview.superflexPositions,
         yahooLeagueKey: selectedLeagueKey,
       });
 
       const selfTeam = preview.teams.find((t) => t.teamKey === selfTeamKey);
       const opponents = preview.teams.filter((t) => t.teamKey !== selfTeamKey);
       await initializeSeasonTeams({
-        seasonId: newId,
+        seasonId,
         selfName: (selfTeam ? teamNames[selfTeam.teamKey] : undefined) ?? "Me",
         opponentNames: opponents.map((t) => teamNames[t.teamKey] ?? t.teamName),
         ...(selfTeam ? { selfYahooTeamKey: selfTeam.teamKey } : {}),
         opponentYahooTeamKeys: opponents.map((t) => t.teamKey),
       });
 
-      if (importKeeperHistory && preview.previousSeason) {
-        await importHistory({
-          newSeasonId: newId,
-          season: preview.previousSeason.season,
-          yahooLeagueKey: selectedLeagueKey,
-          ...(selfTeamKey ? { selfOwnerId: selfTeamKey } : {}),
-          teams: preview.previousSeason.teams.map((t) => ({
-            ownerId: t.ownerId,
-            teamName: t.teamName,
-            players: t.players.map((p) => ({
-              fpid: p.fpid,
-              ...(p.price !== undefined ? { price: p.price } : {}),
-            })),
-          })),
-        });
+      // Best-effort - a failed first sync shouldn't block getting into the
+      // new league; the league page's own staleness check will just
+      // trigger another attempt on entry (same as ConnectSleeperLeague.tsx).
+      try {
+        await syncYahooLeagueRoster({ seasonId });
+      } catch {
+        // Swallowed - see comment above.
       }
 
-      onImported(newId);
+      onConnected(seasonId);
     } catch (err) {
-      setSaveError(getErrorMessage(err, "Failed to import league."));
+      setSaveError(getErrorMessage(err, "Failed to connect league."));
     } finally {
       setSaving(false);
     }
@@ -280,7 +251,7 @@ export function YahooLeagueImportWizard({
 
       <Card withBorder padding="md">
         <Stack gap="sm">
-          <Text fw={500}>Teams</Text>
+          <Text fw={500}>Which team is yours?</Text>
           <Radio.Group value={selfTeamKey} onChange={setSelfTeamKey}>
             <Stack gap={6}>
               {preview.teams.map((team) => (
@@ -303,31 +274,16 @@ export function YahooLeagueImportWizard({
         </Stack>
       </Card>
 
-      {preview.previousSeason && (
-        <Checkbox
-          label={`Also import ${preview.previousSeason.season}'s roster for keeper suggestions${
-            preview.previousSeason.isAuction
-              ? ""
-              : " (no auction prices found - eligibility only)"
-          }`}
-          checked={importKeeperHistory}
-          onChange={(e) => setImportKeeperHistory(e.currentTarget.checked)}
-        />
-      )}
+      {saveError && <Alert color="red">{saveError}</Alert>}
 
-      <SettingsForm
-        form={form}
-        onChange={setForm}
-        error={saveError}
-        isSaving={saving}
-        onSave={() => void handleCreate()}
-        onCancel={onCancel}
-        saveLabel="Create League"
-        compact
-      />
-      <Badge variant="light" color="yellow" w="fit-content">
-        Yahoo import is unverified against a real league - see YAHOO.md
-      </Badge>
+      <Group>
+        <Button onClick={() => void handleConnectLeague()} loading={saving}>
+          Connect League
+        </Button>
+        <Button variant="subtle" onClick={onCancel} disabled={saving}>
+          Cancel
+        </Button>
+      </Group>
     </Stack>
   );
 }
