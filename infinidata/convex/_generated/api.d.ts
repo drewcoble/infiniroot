@@ -107,6 +107,7 @@ import type * as scoring from "../scoring.js";
 import type * as seasonTeams from "../seasonTeams.js";
 import type * as sleeper_client from "../sleeper/client.js";
 import type * as sleeper_draftSync from "../sleeper/draftSync.js";
+import type * as sleeper_injuries from "../sleeper/injuries.js";
 import type * as sleeper_league from "../sleeper/league.js";
 import type * as sleeper_leagueSettingsMapping from "../sleeper/leagueSettingsMapping.js";
 import type * as sleeper_playerLinks from "../sleeper/playerLinks.js";
@@ -229,6 +230,7 @@ declare const fullApi: ApiFromModules<{
   seasonTeams: typeof seasonTeams;
   "sleeper/client": typeof sleeper_client;
   "sleeper/draftSync": typeof sleeper_draftSync;
+  "sleeper/injuries": typeof sleeper_injuries;
   "sleeper/league": typeof sleeper_league;
   "sleeper/leagueSettingsMapping": typeof sleeper_leagueSettingsMapping;
   "sleeper/playerLinks": typeof sleeper_playerLinks;

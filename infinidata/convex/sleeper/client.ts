@@ -46,6 +46,40 @@ export const DEF_TEAM_FPIDS: Record<string, number> = Object.fromEntries(
   DEF_TEAMS.map((team, index) => [team, 90001 + index]),
 );
 
+// Shared shapes for the "projections" endpoint's player records - used by
+// both sleeper/projections.ts (players/projections/rankings) and
+// sleeper/injuries.ts (injury_status et al), since both parse the same
+// per-position payload fetchSleeper("projections", ...) returns.
+export interface SleeperPlayer {
+  first_name?: string;
+  last_name?: string;
+  position?: string;
+  team?: string | null;
+  injury_status?: string;
+  injury_body_part?: string;
+  injury_notes?: string;
+  years_exp?: number;
+}
+
+export interface SleeperProjectionRecord {
+  player_id: string;
+  team: string | null;
+  stats?: Record<string, number | undefined>;
+  player?: SleeperPlayer;
+}
+
+// Sleeper's injury_status values, mapped to the short badge codes the UI
+// already renders (see convex/injuries.ts / PlayersTable.tsx).
+export const INJURY_STATUS_SHORT: Record<string, string> = {
+  Questionable: "Q",
+  Doubtful: "D",
+  Out: "O",
+  IR: "IR",
+  PUP: "PUP",
+  Suspended: "SUS",
+  "Non-Football Injury": "NFI",
+};
+
 // "projections" -> pre-game estimates (category: "proj" in the response).
 // "stats" -> actual results after games are played (category: "stat").
 // Same query shape either way, just a different path prefix.

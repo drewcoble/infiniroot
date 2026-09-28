@@ -75,9 +75,11 @@ async function refreshCachedComputations(
   }
 }
 
-// Runs every working data-fetch: players/projections/rankings/injuries/
-// player-points/espn-links/espn-values all come from Sleeper and ESPN (see
-// convex/sleeper/ and convex/espn/). Delegates to each source's *Internal
+// Runs every working data-fetch: players/projections/rankings/player-points/
+// espn-links/espn-values all come from Sleeper and ESPN (see convex/sleeper/
+// and convex/espn/). Injuries are handled by their own, more frequent cron
+// (see convex/sleeper/injuries.ts and convex/crons.ts) rather than this one.
+// Delegates to each source's *Internal
 // action variant (not the public, requireSuperAdmin-gated one) - this
 // function's own callers (fetchAll below, or fetchAllInternal from the
 // cron) already decide once whether a human-auth check applies, so

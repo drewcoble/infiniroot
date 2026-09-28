@@ -3,11 +3,11 @@ import { internal } from './_generated/api'
 
 const crons = cronJobs()
 
-// Refetch draft projections + players/rankings/injuries/player-points (all
-// Sleeper) once a day. No `week` arg - fetchAllInternal
-// auto-detects the current NFL week via Sleeper's state endpoint on every
-// run (cron args are static at deploy time, so a hardcoded value here would
-// never update on its own).
+// Refetch draft projections + players/rankings/player-points (all Sleeper)
+// once a day. No `week` arg - fetchAllInternal auto-detects the current NFL
+// week via Sleeper's state endpoint on every run (cron args are static at
+// deploy time, so a hardcoded value here would never update on its own).
+// Injuries are NOT part of this anymore - see the dedicated cron below.
 //
 // Calls fetchAllInternal, NOT the public api.fetchAllData.fetchAll - a
 // cron-triggered call has no signed-in user (ctx.auth.getUserIdentity() is
@@ -48,6 +48,27 @@ crons.cron(
   'fetch tank01 nfl schedule',
   '0 */6 * * *',
   internal.tank01.schedule.fetchScheduleInternal,
+  {},
+)
+
+// Sleeper's injury_status et al, split out from the once-a-day fetch above
+// into its own frequent cron - a stale "Questionable" tag has real fantasy
+// consequences (start/sit, waiver claims) well before the next daily sync
+// would catch it. Reuses the same Sleeper "projections" endpoint (no
+// dedicated injury endpoint exists), but writes only convex/injuries.ts +
+// convex/injurySnapshots.ts (see sleeper/injuries.ts), skipping the fetch
+// above's much heavier players/projections/rankings/providerProjections
+// writes - that's what makes running every 15 minutes cheap enough. Payload
+// is ~2MB/run regardless of cadence (one combined-position call, no
+// per-player pagination), well within Sleeper's own informal rate-limit
+// guidance (see sleeper/client.ts) even at this frequency. recordSnapshots
+// is itself a no-op write for any player whose status hasn't changed since
+// its last snapshot, so this cadence doesn't inflate injurySnapshots history
+// - it only shrinks how long a real change takes to be captured.
+crons.interval(
+  'fetch injury updates',
+  { minutes: 15 },
+  internal.sleeper.injuries.fetchInjuriesInternal,
   {},
 )
 
