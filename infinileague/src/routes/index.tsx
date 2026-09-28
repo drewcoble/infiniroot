@@ -12,7 +12,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { Plus } from "lucide-react";
+import { Import, Plus } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
@@ -57,11 +57,22 @@ function Dashboard() {
         ) : leagueGroups.length === 0 ? (
           <Stack gap="md" py="xl" align="center">
             <Text c="dimmed">No leagues connected yet.</Text>
-            <Link to="/connect-sleeper">
-              <Button component="span" leftSection={<Plus size={16} />}>
-                Connect League
-              </Button>
-            </Link>
+            <Group>
+              <Link to="/connect-sleeper">
+                <Button component="span" leftSection={<Plus size={16} />}>
+                  Connect Sleeper League
+                </Button>
+              </Link>
+              <Link to="/connect-yahoo">
+                <Button
+                  component="span"
+                  variant="default"
+                  leftSection={<Import size={16} />}
+                >
+                  Import from Yahoo
+                </Button>
+              </Link>
+            </Group>
           </Stack>
         ) : (
           <>
@@ -72,7 +83,16 @@ function Dashboard() {
                   variant="default"
                   leftSection={<Plus size={16} />}
                 >
-                  Connect League
+                  Connect Sleeper League
+                </Button>
+              </Link>
+              <Link to="/connect-yahoo">
+                <Button
+                  component="span"
+                  variant="default"
+                  leftSection={<Import size={16} />}
+                >
+                  Import from Yahoo
                 </Button>
               </Link>
             </Group>

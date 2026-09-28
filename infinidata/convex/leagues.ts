@@ -247,6 +247,30 @@ async function seasonWithLeagueName(
   };
 }
 
+// Extra fields listMyAuctionSeasons alone joins on top of
+// SeasonWithLeagueName, for infinifaab's dashboard cards: auctionEnabled
+// lets a card show/gate on the weekly auction's on/off state without every
+// card opening its own getAuctionSettings subscription, and isOwner (unlike
+// SeasonWithLeagueName's own comment, which says listMyAuctionSeasons leaves
+// it unset) lets the card decide whether to show a real "Enable" control or
+// a read-only "ask your commissioner" message.
+export interface SeasonWithAuctionInfo extends SeasonWithLeagueName {
+  isOwner: boolean;
+  auctionEnabled: boolean;
+}
+
+async function withAuctionInfo(
+  ctx: QueryCtx,
+  base: SeasonWithLeagueName,
+  isOwner: boolean,
+): Promise<SeasonWithAuctionInfo> {
+  const settings = await ctx.db
+    .query("faAuctionSettings")
+    .withIndex("by_season", (q) => q.eq("seasonId", base._id))
+    .unique();
+  return { ...base, isOwner, auctionEnabled: settings?.enabled ?? false };
+}
+
 // infinifaab's dashboard/league-switcher query - same provider-linked
 // filter as listLinkedSeasons (free agency needs synced rosters), but a
 // broader access check: a season qualifies if the caller owns its league
@@ -257,13 +281,13 @@ async function seasonWithLeagueName(
 // which listLinkedSeasons/infinileague never will).
 export const listMyAuctionSeasons = query({
   args: {},
-  handler: async (ctx): Promise<SeasonWithLeagueName[]> => {
+  handler: async (ctx): Promise<SeasonWithAuctionInfo[]> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("You must be signed in.");
     }
 
-    const result: SeasonWithLeagueName[] = [];
+    const result: SeasonWithAuctionInfo[] = [];
     const seenSeasonIds = new Set<Doc<"seasons">["_id"]>();
 
     const ownedLeagues = await ctx.db
@@ -283,7 +307,9 @@ export const listMyAuctionSeasons = query({
           continue;
         }
         seenSeasonIds.add(season._id);
-        result.push(await seasonWithLeagueName(ctx, season, league));
+        result.push(
+          await withAuctionInfo(ctx, await seasonWithLeagueName(ctx, season, league), true),
+        );
       }
     }
 
@@ -298,7 +324,9 @@ export const listMyAuctionSeasons = query({
       if (!season) continue;
       const league = await ctx.db.get(season.leagueId);
       if (!league) continue;
-      result.push(await seasonWithLeagueName(ctx, season, league));
+      result.push(
+        await withAuctionInfo(ctx, await seasonWithLeagueName(ctx, season, league), false),
+      );
     }
 
     return result;

@@ -14,6 +14,8 @@ export interface LinkedSeason {
   name: string;
   teamCount: number;
   scoring: "STD" | "HALF" | "PPR";
+  isOwner: boolean;
+  auctionEnabled: boolean;
 }
 
 // Every season across every league the signed-in user can run an auction

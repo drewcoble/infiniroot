@@ -6,12 +6,13 @@ import { resolveDraftType } from "../../draftType";
 
 // infinileague's own version of infinidraft's initializeSeasonTeams
 // (convex/infinidraft/draft/teams.ts) - trimmed to just what
-// ConnectSleeperLeague.tsx needs (no Yahoo import path, no manual-setup
-// case; infinileague only ever bootstraps teams from a Sleeper league it's
-// connecting to). Kept as its own thin mutation rather than sharing
-// infinidraft's, so a future change to infinidraft's draft-day team setup
-// flow can't break infinileague's connect flow and vice versa - the actual
-// row-insertion logic they share lives in convex/lib/seasonTeams.ts.
+// ConnectSleeperLeague.tsx/ConnectYahooLeague.tsx need (no manual-setup
+// case; infinileague/infinifaab only ever bootstrap teams from a Sleeper or
+// Yahoo league they're connecting to - infinifaab has no mutation of its
+// own and calls this same one). Kept as its own thin mutation rather than
+// sharing infinidraft's, so a future change to infinidraft's draft-day team
+// setup flow can't break these apps' connect flows and vice versa - the
+// actual row-insertion logic they share lives in convex/lib/seasonTeams.ts.
 const sleeperLinkValidator = v.object({
   sleeperRosterId: v.string(),
   sleeperOwnerId: v.string(),
@@ -25,6 +26,10 @@ export const initializeSeasonTeams = mutation({
     selfSleeperLink: v.optional(sleeperLinkValidator),
     opponentSleeperLinks: v.optional(
       v.array(v.union(sleeperLinkValidator, v.null())),
+    ),
+    selfYahooTeamKey: v.optional(v.string()),
+    opponentYahooTeamKeys: v.optional(
+      v.array(v.union(v.string(), v.null())),
     ),
   },
   handler: async (ctx, args) => {
@@ -54,6 +59,8 @@ export const initializeSeasonTeams = mutation({
       opponentNames: args.opponentNames,
       selfSleeperLink: args.selfSleeperLink,
       opponentSleeperLinks: args.opponentSleeperLinks,
+      selfYahooTeamKey: args.selfYahooTeamKey,
+      opponentYahooTeamKeys: args.opponentYahooTeamKeys,
     });
   },
 });

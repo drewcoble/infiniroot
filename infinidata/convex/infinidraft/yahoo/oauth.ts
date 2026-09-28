@@ -9,7 +9,17 @@ import {
 } from "../../_generated/server";
 import { internal } from "../../_generated/api";
 import { Id } from "../../_generated/dataModel";
-import { buildYahooAuthorizeUrl, refreshYahooTokens } from "./client";
+import {
+  buildYahooAuthorizeUrl,
+  refreshYahooTokens,
+  type YahooOAuthApp,
+} from "./client";
+
+const yahooOAuthAppValidator = v.union(
+  v.literal("infinidraft"),
+  v.literal("infinileague"),
+  v.literal("infinifaab"),
+);
 
 // A stored state row older than this is treated as invalid (abandoned OAuth
 // attempt, or someone replaying a stale URL) - consumeOAuthState deletes it
@@ -36,6 +46,7 @@ export const createOAuthState = internalMutation({
     state: v.string(),
     userId: v.id("users"),
     seasonId: v.optional(v.id("seasons")),
+    app: v.optional(yahooOAuthAppValidator),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("yahooOAuthState", { ...args, createdAt: Date.now() });
@@ -50,7 +61,10 @@ export const consumeOAuthState = internalMutation({
   handler: async (
     ctx,
     args,
-  ): Promise<{ userId: Id<"users">; seasonId: Id<"seasons"> | undefined } | null> => {
+  ): Promise<
+    | { userId: Id<"users">; seasonId: Id<"seasons"> | undefined; app: YahooOAuthApp }
+    | null
+  > => {
     const row = await ctx.db
       .query("yahooOAuthState")
       .withIndex("by_state", (q) => q.eq("state", args.state))
@@ -58,7 +72,7 @@ export const consumeOAuthState = internalMutation({
     if (!row) return null;
     await ctx.db.delete(row._id);
     if (Date.now() - row.createdAt > STATE_MAX_AGE_MS) return null;
-    return { userId: row.userId, seasonId: row.seasonId };
+    return { userId: row.userId, seasonId: row.seasonId, app: row.app ?? "infinidraft" };
   },
 });
 
@@ -109,10 +123,14 @@ export const getConnectionStatus = query({
 });
 
 // Kicks off the OAuth round trip - generates a one-time state, stashes it
-// (and optionally which league's Settings page to return to), and returns
-// the Yahoo authorize URL for the frontend to redirect the browser to.
+// (which app to return to, and optionally which league's Settings page),
+// and returns the Yahoo authorize URL for the frontend to redirect the
+// browser to.
 export const startYahooAuth = action({
-  args: { seasonId: v.optional(v.id("seasons")) },
+  args: {
+    seasonId: v.optional(v.id("seasons")),
+    app: v.optional(yahooOAuthAppValidator),
+  },
   handler: async (ctx, args): Promise<{ authorizeUrl: string }> => {
     const userId: Id<"users"> = await ctx.runQuery(
       internal.infinidraft.yahoo.oauth.requireSignedInUserId,
@@ -122,6 +140,7 @@ export const startYahooAuth = action({
     await ctx.runMutation(internal.infinidraft.yahoo.oauth.createOAuthState, {
       state,
       userId,
+      app: args.app ?? "infinidraft",
       ...(args.seasonId ? { seasonId: args.seasonId } : {}),
     });
     return { authorizeUrl: buildYahooAuthorizeUrl(state) };
