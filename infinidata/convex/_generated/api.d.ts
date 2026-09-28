@@ -90,6 +90,7 @@ import type * as lib_playerValue from "../lib/playerValue.js";
 import type * as lib_rosterSlots from "../lib/rosterSlots.js";
 import type * as lib_seasonTeams from "../lib/seasonTeams.js";
 import type * as lib_timezone from "../lib/timezone.js";
+import type * as matchupStats from "../matchupStats.js";
 import type * as nflSchedule from "../nflSchedule.js";
 import type * as nflState from "../nflState.js";
 import type * as playerNameMatch from "../playerNameMatch.js";
@@ -212,6 +213,7 @@ declare const fullApi: ApiFromModules<{
   "lib/rosterSlots": typeof lib_rosterSlots;
   "lib/seasonTeams": typeof lib_seasonTeams;
   "lib/timezone": typeof lib_timezone;
+  matchupStats: typeof matchupStats;
   nflSchedule: typeof nflSchedule;
   nflState: typeof nflState;
   playerNameMatch: typeof playerNameMatch;

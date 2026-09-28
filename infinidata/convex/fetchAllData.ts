@@ -6,6 +6,10 @@ import { fetchCurrentNflWeek, fetchNflSeasonState } from "./sleeper/state";
 import { ALL_SCORING_CONFIGS, scoringConfigFromSeason } from "./scoring";
 import { BLENDED_POSITIONS } from "./positions";
 
+// Every real NFL week, 1-18 - same bound as weeksToFetch below and
+// convex/sleeper/playerPoints.ts's own WEEKS constant.
+const WEEKS_IN_SEASON = Array.from({ length: 18 }, (_, i) => String(i + 1));
+
 // Prefetches every remaining week's projections, not just the current one,
 // so a team page browsing ahead (see infinileague's team page) isn't
 // looking at a week the nightly cron never populated - it otherwise only
@@ -168,6 +172,19 @@ async function fetchAllHandler(
   // rankings/playerSeasonStats data they're derived from has changed - see
   // convex/valueGaps.ts and convex/draftValues.ts's cache comments.
   await refreshCachedComputations(ctx, { week, season });
+
+  // Defense-vs-position matchup stats (convex/matchupStats.ts), self-healing
+  // across the whole season every day from whatever projections/playerPoints/
+  // nflGames data now exists - same "one scheduled job per week" pattern as
+  // weeksToFetch above (and for the same reason: one week failing or being
+  // slow shouldn't block the other 17, or lengthen this cron's own run).
+  for (const matchupWeek of WEEKS_IN_SEASON) {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.matchupStats.refreshTeamMatchupStatsForWeek,
+      { season, week: matchupWeek },
+    );
+  }
 }
 
 // One future week's Sleeper fetch -> ESPN fetch -> blend pipeline, run as

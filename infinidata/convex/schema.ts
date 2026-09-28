@@ -930,6 +930,44 @@ export default defineSchema({
     estimatedEndAt: v.number(),
   }).index("by_season_week", ["season", "week"]),
 
+  // Defense-vs-position matchup strength: for one team's defense, in one
+  // season/week/position, the summed projected (from `projections`) and
+  // actual (from `playerPoints`) production of the opponent's players at
+  // that position - see convex/matchupStats.ts for the aggregation. `stats`
+  // is the summed (not averaged) raw per-category box score, same shape as
+  // projections.stats/playerPoints.stats, so a passing-vs-rushing QB split
+  // or rushing-vs-receiving RB split can be read off pass_yd/rush_yd/rec_yd
+  // etc. without needing separate rows per sub-position. Recomputed from
+  // scratch (delete+reinsert) per (season, week, position) every time it
+  // refreshes, so it's always self-healing - never patched field-by-field.
+  teamMatchupStats: defineTable({
+    team: v.string(), // defending team, e.g. "IND"
+    opponent: v.string(), // offense faced that week, e.g. "KC"
+    season: v.string(),
+    week: v.string(),
+    position: positionValidator,
+    projectedPointsStd: v.number(),
+    projectedPointsHalf: v.number(),
+    projectedPointsPpr: v.number(),
+    projectedStats: v.record(v.string(), v.number()),
+    projectedPlayerCount: v.number(),
+    // 0 means this week hasn't been played yet (playerPoints has no rows
+    // for it), not "opponent scored nothing" - see matchupStats.ts.
+    actualPointsStd: v.number(),
+    actualPointsHalf: v.number(),
+    actualPointsPpr: v.number(),
+    actualStats: v.record(v.string(), v.number()),
+    actualPlayerCount: v.number(),
+    updatedAt: v.number(),
+  })
+    // Primary: one team+position's trend across a season (e.g. "IND's
+    // matchup strength vs RBs, week by week").
+    .index("by_team_position_season", ["team", "position", "season"])
+    // League-wide "toughest matchups this week" view.
+    .index("by_position_season_week", ["position", "season", "week"])
+    // One team's full positional breakdown for a single week.
+    .index("by_team_season_week", ["team", "season", "week"]),
+
   // The eligibility source of truth for infinifaab's whole Players board on
   // a YAHOO-linked season only now - a row exists only while a player is
   // still on waivers there (convex/infinidraft/yahoo/waivers.ts polls
