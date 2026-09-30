@@ -12,7 +12,7 @@ const TIMELINE_LABELS: Record<string, string> = {
   none: "No games missed",
   this_week: "Misses ≤ 1 game",
   few_weeks: "2–4 weeks",
-  extended: "5+ weeks / IR",
+  extended: "5+ weeks",
   season: "Season-ending",
 };
 
@@ -47,7 +47,9 @@ export function JevInjuryAssessment({ injuryId }: { injuryId: Id<"injuries"> }) 
     }
   };
 
-  const { availability, timeline, fantasy_action, aggravation_risk } = result?.answers ?? {};
+  const { availability, limitation, timeline, fantasy_action, aggravation_risk } = result?.answers ?? {};
+  // limitation assumes the player plays, so it's noise when they won't.
+  const willNotPlay = availability?.type === "score" && Math.round(availability.score) === 0;
 
   return (
     <Stack gap={6} mt="xs" pt="xs" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
@@ -93,6 +95,19 @@ export function JevInjuryAssessment({ injuryId }: { injuryId: Id<"injuries"> }) 
               </Text>
               <Text size="xs" c="dimmed">
                 conf {pct(availability.confidence)}
+              </Text>
+            </Group>
+          )}
+          {limitation?.type === "score" && !willNotPlay && (
+            <Group gap={6}>
+              <Text size="xs" fw={600} c="dimmed">
+                If active:
+              </Text>
+              <Text size="xs">
+                {limitation.legend[String(Math.round(limitation.score))]} ({limitation.score.toFixed(2)} / 3)
+              </Text>
+              <Text size="xs" c="dimmed">
+                conf {pct(limitation.confidence)}
               </Text>
             </Group>
           )}

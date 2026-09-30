@@ -22,6 +22,20 @@ const QUESTIONS: Record<string, JevQuestion> = {
       "Will play with no limitation",
     ],
   },
+  // Conditional on playing, so it's separate from availability (whether they
+  // play) and fantasy_action (which blends both). Ordered levels, not a
+  // percentage, so any projection multiplier stays our own math.
+  limitation: {
+    type: "score",
+    instructions:
+      "Assume `player` does play in their team's next game. How much is `injury` likely to reduce their fantasy production compared to a fully healthy week (snaps, touches/targets, effectiveness)?",
+    criteria: [
+      "Severely limited - decoy or heavily reduced role",
+      "Noticeably limited - reduced snaps or touches",
+      "Slightly limited",
+      "No meaningful impact",
+    ],
+  },
   timeline: {
     type: "choice",
     instructions:
