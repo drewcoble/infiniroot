@@ -23,8 +23,10 @@ const QUESTIONS: Record<string, JevQuestion> = {
     ],
   },
   // Conditional on playing, so it's separate from availability (whether they
-  // play) and fantasy_action (which blends both). Ordered levels, not a
-  // percentage, so any projection multiplier stays our own math.
+  // play). Ordered levels, not a percentage, so any projection multiplier
+  // stays our own math. (No start/sit/drop question: Jev lacks player value
+  // and roster context, so its answers just restated the Sleeper status -
+  // derive any action in code from these answers instead.)
   limitation: {
     type: "score",
     instructions:
@@ -46,18 +48,6 @@ const QUESTIONS: Record<string, JevQuestion> = {
       few_weeks: "Misses roughly 2-4 weeks",
       extended: "Misses 5+ weeks but is expected back before the season ends",
       season: "Out for the rest of the season, including any fantasy playoffs",
-    },
-  },
-  fantasy_action: {
-    type: "choice",
-    instructions:
-      "In a redraft (no keepers) season-long fantasy football league, what should a manager who rosters `player` do this week given `injury`?",
-    criteria: {
-      start: "Start with confidence",
-      start_risky: "Start, but with real downside risk from the injury",
-      bench: "Bench this week, keep rostered",
-      stash_ir: "Move to an IR slot and hold - expected back in time to help this season",
-      drop: "Safe to drop - not expected to contribute again this season",
     },
   },
   aggravation_risk: {

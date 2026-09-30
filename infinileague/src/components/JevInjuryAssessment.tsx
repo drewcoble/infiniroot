@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Badge, Button, Code, Collapse, Group, Stack, Text } from "@mantine/core";
+import { Button, Code, Collapse, Group, Stack, Text } from "@mantine/core";
 import { Sparkles } from "lucide-react";
 import { api } from "@infinidata/api";
 import type { Id } from "@infinidata/dataModel";
@@ -14,14 +14,6 @@ const TIMELINE_LABELS: Record<string, string> = {
   few_weeks: "2–4 weeks",
   extended: "5+ weeks",
   season: "Season-ending",
-};
-
-const ACTION_LABELS: Record<string, string> = {
-  start: "Start",
-  start_risky: "Start (risky)",
-  bench: "Bench",
-  stash_ir: "Stash on IR",
-  drop: "Drop",
 };
 
 const pct = (value: number) => `${Math.round(value * 100)}%`;
@@ -47,7 +39,7 @@ export function JevInjuryAssessment({ injuryId }: { injuryId: Id<"injuries"> }) 
     }
   };
 
-  const { availability, limitation, timeline, fantasy_action, aggravation_risk } = result?.answers ?? {};
+  const { availability, limitation, timeline, aggravation_risk } = result?.answers ?? {};
   // limitation assumes the player plays, so it's noise when they won't.
   const willNotPlay = availability?.type === "score" && Math.round(availability.score) === 0;
 
@@ -119,20 +111,6 @@ export function JevInjuryAssessment({ injuryId }: { injuryId: Id<"injuries"> }) 
               <Text size="xs">{TIMELINE_LABELS[timeline.choice] ?? timeline.choice}</Text>
               <Text size="xs" c="dimmed">
                 p {pct(timeline.probabilities[timeline.choice] ?? 0)} · conf {pct(timeline.confidence)}
-              </Text>
-            </Group>
-          )}
-          {fantasy_action?.type === "choice" && (
-            <Group gap={6}>
-              <Text size="xs" fw={600} c="dimmed">
-                Action:
-              </Text>
-              <Badge size="xs" variant="light">
-                {ACTION_LABELS[fantasy_action.choice] ?? fantasy_action.choice}
-              </Badge>
-              <Text size="xs" c="dimmed">
-                p {pct(fantasy_action.probabilities[fantasy_action.choice] ?? 0)} · conf{" "}
-                {pct(fantasy_action.confidence)}
               </Text>
             </Group>
           )}
