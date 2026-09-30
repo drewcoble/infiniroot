@@ -46,7 +46,8 @@ export interface FaabSuggestionRow {
   rationale: string | null;
   // Set when this row's value includes an injury-driven backup boost (see
   // playerValue.ts's findInjuryBoosts) - surfaced so the UI can explain an
-  // otherwise-surprising number rather than just asserting it.
+  // otherwise-surprising number rather than just asserting it. Kept separate
+  // from rationale (not appended to it) so the UI can give it its own line.
   boostReason: string | null;
 }
 
@@ -461,10 +462,6 @@ export async function computeFaabSuggestions(
           suggestedBid = Math.min(Math.max(Math.round(marketValue * fit.multiplier), 1), ceiling, remainingFaabForTeam);
           rationale = fit.rationale;
         }
-      }
-
-      if (row.boostReason) {
-        rationale = rationale ? `${rationale} - ${row.boostReason}` : row.boostReason;
       }
 
       suggestions.push({

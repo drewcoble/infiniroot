@@ -98,16 +98,25 @@ function FreeAgentsPage() {
       </Group>
       <Stack gap={8}>
         {rows.map((row) => {
+          // Injury note gets its own untruncated line - it's the longest
+          // text here and the one that explains a surprising number.
           const bidFooter = (
-            <Group gap={8} wrap="nowrap">
-              <Text size="sm" fw={700}>
-                {`$${row.suggestedBid ?? row.marketValue}`}
-              </Text>
-              <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
-                {`Market $${row.marketValue}`}
-                {row.rationale ? ` · ${row.rationale}` : ""}
-              </Text>
-            </Group>
+            <Stack gap={2}>
+              <Group gap={8} wrap="nowrap">
+                <Text size="sm" fw={700}>
+                  {`$${row.suggestedBid ?? row.marketValue}`}
+                </Text>
+                <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
+                  {`Market $${row.marketValue}`}
+                  {row.rationale ? ` · ${row.rationale}` : ""}
+                </Text>
+              </Group>
+              {row.boostReason && (
+                <Text size="xs" c="dimmed">
+                  {row.boostReason}
+                </Text>
+              )}
+            </Stack>
           );
 
           const rosVorRow = rosVorByFpid.get(row.fpid);
