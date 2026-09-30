@@ -31,7 +31,7 @@ import {
   filterRelevantPlayers,
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { buildStandardValueByFpid } from "../../lib/standardValues";
 import { compareSortValues, type SortDir } from "../../lib/tableSort";
 import { buildBlendedAdpByFpid, buildOurRankByFpid } from "../../lib/valueRank";

@@ -32,7 +32,7 @@ import { optimalAssignPicksToSlots } from "../../lib/slotAssignment";
 import {
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import {
   computeTeamBudgetStats,
   resolveTeamSalaryCap,

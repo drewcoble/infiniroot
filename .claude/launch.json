@@ -4,8 +4,24 @@
     {
       "name": "infinifaab",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "infinifaab"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "infinifaab"
+      ],
       "port": 5052
+    },
+    {
+      "name": "infinileague",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "infinileague"
+      ],
+      "port": 5051
     }
   ]
 }

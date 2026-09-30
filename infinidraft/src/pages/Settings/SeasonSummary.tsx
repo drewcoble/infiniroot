@@ -16,7 +16,7 @@ import { PlayerDetailModal } from "../../components/PlayerDetailModal";
 import {
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 
 interface SeasonSummaryProps {
   seasonId: Id<"seasons">;

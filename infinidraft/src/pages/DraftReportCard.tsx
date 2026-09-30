@@ -32,7 +32,7 @@ import {
 import { PlayerDetailModal } from "../components/PlayerDetailModal";
 import { RookieBadge } from "@shared/RookieBadge";
 import { UpgradePrompt } from "../components/UpgradePrompt";
-import { scoringConfigFromSeason } from "../lib/relevantPlayers";
+import { scoringConfigFromSeason } from "@shared/relevantPlayers";
 import { WEEK } from "../constants/general";
 import { useRookieFpids } from "../hooks/useRookieFpids";
 

@@ -29,7 +29,7 @@ import { POSITION_COLORS } from "@shared/positionColors";
 import {
   filterRelevantPlayers,
   pointsForScoringConfig,
-} from "../../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { WEEK } from "../../../constants/general";
 import { DEFAULT_KEEPER_RULES } from "../../../constants/leagueSettings";
 import type { KeeperRules } from "../../../lib/keeperCost";

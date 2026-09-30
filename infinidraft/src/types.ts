@@ -9,9 +9,11 @@ export const POSITIONS: readonly Position[] = [
   "K",
 ];
 
-export type ScoringFormat = "STD" | "HALF" | "PPR";
-
-export type TeScoringFormat = "NONE" | "HALF" | "FULL";
+export type {
+  ScoringConfig,
+  ScoringFormat,
+  TeScoringFormat,
+} from "@shared/relevantPlayers";
 
 // Mirrors convex/draftType.ts's DraftType - duplicated rather than imported,
 // same convention as ScoringFormat/TeScoringFormat above (both plain literal
@@ -22,12 +24,6 @@ export type DraftTypeFormat = "auction" | "snake" | "linear";
 // DraftTypeFormat above. Independent axis from draft type: a guillotine
 // league still picks auction/snake/linear.
 export type LeagueTypeFormat = "redraft" | "guillotine";
-
-export interface ScoringConfig {
-  scoring: ScoringFormat;
-  teScoring: TeScoringFormat;
-  sixPointPassTds: boolean;
-}
 
 // The canonical shape of one row from draftValues.getDraftValues - shared by
 // PlayersTable and the Draft Room instead of each declaring it inline.

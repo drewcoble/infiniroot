@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import {
   ActionIcon,
@@ -17,34 +17,54 @@ import {
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { api } from "@infinidata/api";
 import type { Doc, Id } from "@infinidata/dataModel";
-import { POSITIONS, type Position, type ScoringConfig } from "../../types";
-import { POSITION_COLORS } from "@shared/positionColors";
-import { injuryColor } from "@shared/injuryColor";
+import { useRookieFpids } from "@shared-core/useRookieFpids";
+import { POSITION_COLORS, type Position } from "./positionColors";
+import { injuryColor } from "./injuryColor";
 import {
   filterRelevantPlayers,
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
-import { PlayerDetailModal } from "../../components/PlayerDetailModal";
-import { PositionFilterBar } from "@shared/PositionFilterBar";
-import { RookieBadge } from "@shared/RookieBadge";
-import { POSITION_FILTER_BAR_HEIGHT } from "@shared/constants";
-import { useRookieFpids } from "../../hooks/useRookieFpids";
+  type ScoringConfig,
+} from "./relevantPlayers";
+import { PositionFilterBar } from "./PositionFilterBar";
+import { RookieBadge } from "./RookieBadge";
+import { POSITION_FILTER_BAR_HEIGHT } from "./constants";
+
+const POSITIONS: readonly Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
+
+export interface InjuryReportPlayerDetailProps {
+  fpid: number | null;
+  onClose: () => void;
+  scoringConfig: ScoringConfig;
+  season: string;
+}
 
 interface InjuryReportProps {
   week: string;
   seasonId: Id<"seasons"> | undefined;
-  // Mobile fixed offset for PositionFilterBar - this page is mounted from
-  // both the Setup app (nothing else docked under the header) and the Draft
-  // Room (DraftTopBar's MobileStatsRow already docked there), so each route
-  // passes its own correct value rather than this component guessing.
+  // Mobile fixed offset for PositionFilterBar - what's docked under the
+  // header differs per mount (infinidraft's Draft Room adds its
+  // MobileStatsRow, infinileague has nothing extra), so each route passes
+  // its own correct value rather than this component guessing.
   filterBarTop: number;
+  // Each app's own player detail modal (infinidraft's PlayerDetailModal is
+  // draft-specific - targets/avoids, draft values - so it can't live in
+  // shared). Omitted = player names render as plain text, not links.
+  renderPlayerDetail?: (props: InjuryReportPlayerDetailProps) => ReactNode;
+  // Extra app-specific content appended to a row's expanded detail (e.g.
+  // infinileague's Jev assessment). Only mounted while the row is expanded.
+  renderExpandedExtra?: (row: {
+    injury: Doc<"injuries">;
+    player: Doc<"projections">;
+  }) => ReactNode;
 }
 
 export function InjuryReport({
   week,
   seasonId,
   filterBarTop,
+  renderPlayerDetail,
+  renderExpandedExtra,
 }: InjuryReportProps) {
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([
     ...POSITIONS,
@@ -226,17 +246,21 @@ export function InjuryReport({
                         </Table.Td>
                         <Table.Td>
                           <Group gap={6} wrap="nowrap">
-                            <Anchor
-                              component="button"
-                              type="button"
-                              size="sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setSelectedFpid(injury.fpid);
-                              }}
-                            >
-                              {player.name}
-                            </Anchor>
+                            {renderPlayerDetail ? (
+                              <Anchor
+                                component="button"
+                                type="button"
+                                size="sm"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedFpid(injury.fpid);
+                                }}
+                              >
+                                {player.name}
+                              </Anchor>
+                            ) : (
+                              <Text size="sm">{player.name}</Text>
+                            )}
                             {rookieFpids.has(player.fpid) && <RookieBadge />}
                           </Group>
                         </Table.Td>
@@ -329,6 +353,7 @@ export function InjuryReport({
                                 </Group>
                               </Stack>
                             </SimpleGrid>
+                            {renderExpandedExtra?.({ injury, player })}
                           </Table.Td>
                         </Table.Tr>
                       )}
@@ -341,14 +366,12 @@ export function InjuryReport({
         )}
       </Card>
 
-      <PlayerDetailModal
-        fpid={selectedFpid}
-        onClose={() => setSelectedFpid(null)}
-        week={week}
-        scoringConfig={scoringConfig}
-        season={thisSeason}
-        seasonId={seasonId}
-      />
+      {renderPlayerDetail?.({
+        fpid: selectedFpid,
+        onClose: () => setSelectedFpid(null),
+        scoringConfig,
+        season: thisSeason,
+      })}
     </Stack>
   );
 }

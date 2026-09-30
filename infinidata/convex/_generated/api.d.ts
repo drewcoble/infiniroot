@@ -68,6 +68,7 @@ import type * as infinileague_auction_players from "../infinileague/auction/play
 import type * as infinileague_auction_settings from "../infinileague/auction/settings.js";
 import type * as infinileague_auction_waiverPlayersData from "../infinileague/auction/waiverPlayersData.js";
 import type * as infinileague_auction_waiverSync from "../infinileague/auction/waiverSync.js";
+import type * as infinileague_injuryAssessment from "../infinileague/injuryAssessment.js";
 import type * as infinileague_season_eliminationWatch from "../infinileague/season/eliminationWatch.js";
 import type * as infinileague_season_faabValues from "../infinileague/season/faabValues.js";
 import type * as infinileague_season_matchup from "../infinileague/season/matchup.js";
@@ -78,6 +79,7 @@ import type * as infinileague_season_teamRoster from "../infinileague/season/tea
 import type * as infinileague_season_teams from "../infinileague/season/teams.js";
 import type * as injuries from "../injuries.js";
 import type * as injurySnapshots from "../injurySnapshots.js";
+import type * as jev_client from "../jev/client.js";
 import type * as leagueType from "../leagueType.js";
 import type * as leagues from "../leagues.js";
 import type * as lib_access from "../lib/access.js";
@@ -191,6 +193,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/auction/settings": typeof infinileague_auction_settings;
   "infinileague/auction/waiverPlayersData": typeof infinileague_auction_waiverPlayersData;
   "infinileague/auction/waiverSync": typeof infinileague_auction_waiverSync;
+  "infinileague/injuryAssessment": typeof infinileague_injuryAssessment;
   "infinileague/season/eliminationWatch": typeof infinileague_season_eliminationWatch;
   "infinileague/season/faabValues": typeof infinileague_season_faabValues;
   "infinileague/season/matchup": typeof infinileague_season_matchup;
@@ -201,6 +204,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/teams": typeof infinileague_season_teams;
   injuries: typeof injuries;
   injurySnapshots: typeof injurySnapshots;
+  "jev/client": typeof jev_client;
   leagueType: typeof leagueType;
   leagues: typeof leagues;
   "lib/access": typeof lib_access;

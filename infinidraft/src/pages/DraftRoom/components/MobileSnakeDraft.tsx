@@ -19,7 +19,7 @@ import { WEEK } from "../../../constants/general";
 import { getErrorMessage } from "@shared/errors";
 import { formatSignedNumber, keeperValueColor } from "../../../lib/keeperValue";
 import { positionColorOrDefault } from "@shared/positionColors";
-import { scoringConfigFromSeason } from "../../../lib/relevantPlayers";
+import { scoringConfigFromSeason } from "@shared/relevantPlayers";
 import { buildStandardValueByFpid } from "../../../lib/standardValues";
 import { compareSortValues, type SortDir } from "../../../lib/tableSort";
 import {

@@ -19,7 +19,7 @@ import { TeamSlotDetail } from "../../components/TeamSlotDetail";
 import {
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { WEEK } from "../../constants/general";
 import {
   POSITION_ORDER,

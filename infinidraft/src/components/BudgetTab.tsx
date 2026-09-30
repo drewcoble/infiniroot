@@ -21,7 +21,7 @@ import {
 } from "../lib/budgetPresets";
 import { categoryForSlot } from "../lib/budgetCategories";
 import { resolveTeamSalaryCap } from "../lib/teamBudget";
-import { scoringConfigFromSeason } from "../lib/relevantPlayers";
+import { scoringConfigFromSeason } from "@shared/relevantPlayers";
 import {
   unallocatedBadgeColor,
   unallocatedBadgeLabel,

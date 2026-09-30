@@ -21,7 +21,7 @@ import { SortArrow } from "@shared/SortArrow";
 import { getErrorMessage } from "@shared/errors";
 import { formatSignedNumber, keeperValueColor } from "../../lib/keeperValue";
 import { positionColorOrDefault } from "@shared/positionColors";
-import { scoringConfigFromSeason } from "../../lib/relevantPlayers";
+import { scoringConfigFromSeason } from "@shared/relevantPlayers";
 import { formatSleeperDraftSchedule } from "../../lib/sleeperDraftSchedule";
 import { buildStandardValueByFpid } from "../../lib/standardValues";
 import { compareSortValues, type SortDir } from "../../lib/tableSort";

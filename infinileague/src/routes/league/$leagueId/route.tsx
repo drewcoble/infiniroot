@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
   CircleUserRound,
+  HeartPulse,
   LayoutGrid,
   Ticket,
   Trophy,
@@ -29,6 +30,7 @@ type TabValue =
   | "freeAgents"
   | "players"
   | "depthCharts"
+  | "injuries"
   | "trade";
 
 interface TabItem {
@@ -123,6 +125,13 @@ function LeagueLayout() {
       params: { leagueId },
     },
     {
+      value: "injuries",
+      label: "Injuries",
+      icon: HeartPulse,
+      to: "/league/$leagueId/injuries",
+      params: { leagueId },
+    },
+    {
       value: "trade",
       label: "Trade",
       icon: ArrowLeftRight,
@@ -152,9 +161,11 @@ function LeagueLayout() {
               ? "players"
               : location.pathname === `/league/${leagueId}/depthCharts`
                 ? "depthCharts"
-                : location.pathname === `/league/${leagueId}/trade`
-                  ? "trade"
-                  : undefined;
+                : location.pathname === `/league/${leagueId}/injuries`
+                  ? "injuries"
+                  : location.pathname === `/league/${leagueId}/trade`
+                    ? "trade"
+                    : undefined;
 
   return (
     <PageContainer pb={{ base: 100, sm: "xl" }}>

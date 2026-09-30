@@ -12,7 +12,7 @@ import { PlayerDetailModal } from "../../components/PlayerDetailModal";
 import {
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { SlotTable } from "./components/SlotTable";
 import { getErrorMessage } from "@shared/errors";
 
