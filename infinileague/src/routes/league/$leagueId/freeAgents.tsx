@@ -12,7 +12,7 @@ export const Route = createFileRoute("/league/$leagueId/freeAgents")({
 });
 
 function sortValueFor(row: FaabSuggestionRow): number | undefined {
-  return row.suggestedBid ?? undefined;
+  return row.suggestedBid ?? row.marketValue;
 }
 
 // Migrated from infinidraft's src/pages/Season/FreeAgentsTab.tsx (now
@@ -101,10 +101,11 @@ function FreeAgentsPage() {
           const bidFooter = (
             <Group gap={8} wrap="nowrap">
               <Text size="sm" fw={700}>
-                {row.suggestedBid !== null ? `$${row.suggestedBid}` : "—"}
+                {`$${row.suggestedBid ?? row.marketValue}`}
               </Text>
               <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
-                {row.rationale ?? "No suggestion available"}
+                {`Market $${row.marketValue}`}
+                {row.rationale ? ` · ${row.rationale}` : ""}
               </Text>
             </Group>
           );

@@ -109,13 +109,15 @@ export interface FaabSuggestionRow {
   valueOverReplacement: number;
   // Demand across the whole league, not just the viewer - how many teams
   // have a real roster gap this player would fill, and the single largest
-  // gap among them. 0/0 means nobody actually needs this player right now.
+  // gap among them. 0/0 means nobody would start this player right now.
   demandCount: number;
   topDemandValue: number;
+  // League-wide expected winning bid in dollars - the same for every team.
+  marketValue: number;
   // myValue/suggestedBid/rationale are only populated when the query was
-  // called with a teamId - null otherwise (see FreeAgentsTab, which always
-  // passes the viewer's own team once known). Priced against THAT team's
-  // own value/budget, never a share of the league's combined FAAB.
+  // called with a teamId - null otherwise (see freeAgents.tsx, which always
+  // passes the viewer's own team once known). suggestedBid is marketValue
+  // adjusted for that team's fit (starter vs depth) and remaining budget.
   myValue: number | null;
   suggestedBid: number | null;
   rationale: string | null;
