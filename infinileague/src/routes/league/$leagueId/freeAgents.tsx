@@ -99,25 +99,32 @@ function FreeAgentsPage() {
       <Stack gap={8}>
         {rows.map((row) => {
           // Injury note gets its own untruncated line - it's the longest
-          // text here and the one that explains a surprising number.
-          const bidFooter = (
-            <Stack gap={2}>
-              <Group gap={8} wrap="nowrap">
-                <Text size="sm" fw={700}>
-                  {`$${row.suggestedBid ?? row.marketValue}`}
-                </Text>
-                <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
-                  {`Market $${row.marketValue}`}
-                  {row.rationale ? ` · ${row.rationale}` : ""}
-                </Text>
-              </Group>
-              {row.boostReason && (
-                <Text size="xs" c="dimmed">
-                  {row.boostReason}
-                </Text>
-              )}
-            </Stack>
-          );
+          // text here and the one that explains a surprising number. A
+          // $0/$0 bid line is just noise, so it's dropped - and with no
+          // injury note either, the footer (and PlayerCard's divider above
+          // it) goes entirely.
+          const showBidLine = (row.suggestedBid ?? row.marketValue) > 0 || row.marketValue > 0;
+          const bidFooter =
+            showBidLine || row.boostReason ? (
+              <Stack gap={2}>
+                {showBidLine && (
+                  <Group gap={8} wrap="nowrap">
+                    <Text size="sm" fw={700}>
+                      {`$${row.suggestedBid ?? row.marketValue}`}
+                    </Text>
+                    <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
+                      {`Market $${row.marketValue}`}
+                      {row.rationale ? ` · ${row.rationale}` : ""}
+                    </Text>
+                  </Group>
+                )}
+                {row.boostReason && (
+                  <Text size="xs" c="dimmed">
+                    {row.boostReason}
+                  </Text>
+                )}
+              </Stack>
+            ) : undefined;
 
           const rosVorRow = rosVorByFpid.get(row.fpid);
           if (rosVorRow) {
