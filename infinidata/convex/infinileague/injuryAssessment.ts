@@ -24,25 +24,26 @@ const QUESTIONS: Record<string, JevQuestion> = {
   },
   timeline: {
     type: "choice",
-    instructions: "How much time is `player` likely to miss because of `injury`?",
+    instructions:
+      "How much time is `player` likely to miss because of `injury`? Judge from the injury itself (body part, surgery, severity) and where `nfl.week` falls in the season, not from IR status alone - IR is a roster designation, not a timeline.",
     criteria: {
       none: "No games missed",
       this_week: "Misses at most the next game",
       few_weeks: "Misses roughly 2-4 weeks",
-      extended: "Misses 5+ weeks or lands on injured reserve",
-      season: "Season-ending",
+      extended: "Misses 5+ weeks but is expected back before the season ends",
+      season: "Out for the rest of the season, including any fantasy playoffs",
     },
   },
   fantasy_action: {
     type: "choice",
     instructions:
-      "In a season-long fantasy football league, what should a manager who rosters `player` do this week given `injury`?",
+      "In a redraft (no keepers) season-long fantasy football league, what should a manager who rosters `player` do this week given `injury`?",
     criteria: {
       start: "Start with confidence",
       start_risky: "Start, but with real downside risk from the injury",
       bench: "Bench this week, keep rostered",
-      stash_ir: "Move to an IR slot and hold",
-      drop: "Safe to drop - out too long to be worth a roster spot",
+      stash_ir: "Move to an IR slot and hold - expected back in time to help this season",
+      drop: "Safe to drop - not expected to contribute again this season",
     },
   },
   aggravation_risk: {
