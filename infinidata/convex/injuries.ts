@@ -11,7 +11,7 @@ export const getInjuries = query({
 
 // Every field Sleeper itself supplies - the only fields compared to decide
 // whether a row changed. updatedAt/fetchedAt are ours, and irWeeks/
-// probabilityOfPlaying are derived judgments (see the injuries schema
+// probabilityOfPlaying/assessment are derived judgments (see the injuries schema
 // comment), so none of those can count as "Sleeper says something new".
 const SOURCE_FIELDS = [
   "status",
@@ -134,6 +134,7 @@ export const applyInjuryFetch = internalMutation({
           ...source,
           irWeeks: [],
           probabilityOfPlaying: null,
+          assessment: undefined,
           updatedAt: now,
         });
         updated += 1;

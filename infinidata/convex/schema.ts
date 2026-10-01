@@ -3,6 +3,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { positionValidator } from "./positions";
 import { scoringValidator, teScoringValidator } from "./scoring";
+import { injuryAssessmentValidator } from "./jev/validators";
 import { draftTypeValidator } from "./draftType";
 import { leagueTypeValidator } from "./leagueType";
 
@@ -448,10 +449,13 @@ export default defineSchema({
   // applyInjuryFetch): every query reading this table re-runs on any write,
   // and the 15-minute injury cron would otherwise touch every row each run.
   // updatedAt is when this row's Sleeper data last changed; fetchedAt is
-  // when the player first appeared on the list for this stint. irWeeks and
-  // probabilityOfPlaying are derived judgments, never Sleeper data - reset
-  // to empty whenever the underlying injury changes so a stale value never
-  // outlives the situation it described.
+  // when the player first appeared on the list for this stint. irWeeks,
+  // probabilityOfPlaying and assessment are derived judgments, never Sleeper
+  // data - reset to empty whenever the underlying injury changes so a stale
+  // value never outlives the situation it described. probabilityOfPlaying
+  // and assessment are written together by the injury cron's Jev pass (see
+  // convex/infinileague/injuryAssessment.ts); probabilityOfPlaying is the
+  // headline "plays next game" figure, assessment the rest of Jev's read.
   injuries: defineTable({
     fpid: v.number(),
     status: v.string(),
@@ -460,6 +464,7 @@ export default defineSchema({
     comment: v.string(),
     irWeeks: v.array(v.number()),
     probabilityOfPlaying: v.union(v.number(), v.null()),
+    assessment: v.optional(injuryAssessmentValidator),
     practice1: v.union(v.string(), v.null()),
     practice2: v.union(v.string(), v.null()),
     practice3: v.union(v.string(), v.null()),

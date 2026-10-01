@@ -90,11 +90,22 @@ async function fetchInjuriesHandler(
     });
   }
 
-  return await ctx.runMutation(internal.injuries.applyInjuryFetch, {
+  const result = await ctx.runMutation(internal.injuries.applyInjuryFetch, {
     season,
     week,
     rows: injuryRows,
   });
+
+  // Jev pass for rows with no assessment yet (new/changed ones were just
+  // reset) plus carried-forward rows, whose Sleeper data didn't change but
+  // whose week context did. Scheduled rather than awaited so the fetch itself
+  // stays fast, and a Jev outage can't fail it.
+  await ctx.scheduler.runAfter(
+    0,
+    internal.infinileague.injuryAssessment.assessPending,
+    { forceFpids: result.carriedForwardFpids },
+  );
+  return result;
 }
 
 export const fetchInjuries = action({

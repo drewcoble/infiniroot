@@ -19,7 +19,7 @@ function InjuriesRoute() {
       week={SEASON_WEEK}
       seasonId={leagueId as Id<"seasons">}
       filterBarTop={MOBILE_HEADER_HEIGHT}
-      renderExpandedExtra={({ injury }) => <JevInjuryAssessment injuryId={injury._id} />}
+      renderExpandedExtra={({ injury }) => <JevInjuryAssessment injury={injury} />}
     />
   );
 }

@@ -1,12 +1,6 @@
-import { useState } from "react";
-import { useAction } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
-import { Button, Code, Collapse, Group, Stack, Text } from "@mantine/core";
+import { Group, Stack, Text } from "@mantine/core";
 import { Sparkles } from "lucide-react";
-import { api } from "@infinidata/api";
-import type { Id } from "@infinidata/dataModel";
-
-type JevResult = FunctionReturnType<typeof api.infinileague.injuryAssessment.assessInjury>;
+import type { Doc } from "@infinidata/dataModel";
 
 const TIMELINE_LABELS: Record<string, string> = {
   none: "No games missed",
@@ -18,129 +12,80 @@ const TIMELINE_LABELS: Record<string, string> = {
 
 const pct = (value: number) => `${Math.round(value * 100)}%`;
 
-// POC: live call to Jev (see convex/infinileague/injuryAssessment.ts) on
-// click, nothing cached - every "Ask Jev" is a fresh request.
-export function JevInjuryAssessment({ injuryId }: { injuryId: Id<"injuries"> }) {
-  const assessInjury = useAction(api.infinileague.injuryAssessment.assessInjury);
-  const [result, setResult] = useState<JevResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showRaw, setShowRaw] = useState(false);
+// Read-only view of the assessment the injury cron stores on the row (see
+// convex/infinileague/injuryAssessment.ts). Prob. of playing itself is
+// already shown by the shared InjuryReport from probabilityOfPlaying.
+export function JevInjuryAssessment({ injury }: { injury: Doc<"injuries"> }) {
+  const assessment = injury.assessment;
 
-  const run = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setResult(await assessInjury({ injuryId }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!assessment) {
+    return (
+      <Text size="xs" c="dimmed" mt="xs">
+        Jev assessment pending - runs on the next injury refresh.
+      </Text>
+    );
+  }
 
-  const { availability, plays_next_game, limitation, timeline, aggravation_risk } = result?.answers ?? {};
+  const { availability, limitation, timeline, aggravationRisk, ruleOverride } = assessment;
   // limitation assumes the player plays, so it's noise when they won't.
-  const willNotPlay = availability?.type === "score" && Math.round(availability.score) === 0;
+  const willNotPlay = injury.probabilityOfPlaying === 0;
 
   return (
-    <Stack gap={6} mt="xs" pt="xs" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
-      <Group gap="xs" justify="space-between">
-        <Group gap={6}>
-          <Sparkles size={14} />
-          <Text size="xs" fw={600}>
-            Jev
-          </Text>
-          {result && (
-            <Text size="xs" c="dimmed">
-              {result.model} · {result.usage.input_tokens + result.usage.output_tokens} tokens
-            </Text>
-          )}
-        </Group>
-        <Group gap={4}>
-          {result && (
-            <Button size="compact-xs" variant="subtle" color="gray" onClick={() => setShowRaw((s) => !s)}>
-              {showRaw ? "Hide raw" : "Raw"}
-            </Button>
-          )}
-          <Button size="compact-xs" variant="light" loading={loading} onClick={run}>
-            {result ? "Re-run" : "Ask Jev"}
-          </Button>
-        </Group>
-      </Group>
-
-      {error && (
-        <Text size="xs" c="red">
-          {error}
+    <Stack gap={4} mt="xs" pt="xs" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+      <Group gap={6}>
+        <Sparkles size={14} />
+        <Text size="xs" fw={600}>
+          Jev
         </Text>
+        <Text size="xs" c="dimmed">
+          {new Date(assessment.assessedAt).toLocaleString()}
+          {ruleOverride ? ` · prob. set by rule: ${ruleOverride}` : ""}
+        </Text>
+      </Group>
+      {availability && (
+        <Group gap={6}>
+          <Text size="xs" fw={600} c="dimmed">
+            Availability:
+          </Text>
+          <Text size="xs">
+            {availability.label} ({availability.score.toFixed(2)} / 4)
+          </Text>
+          <Text size="xs" c="dimmed">
+            conf {pct(availability.confidence)}
+          </Text>
+        </Group>
       )}
-
-      {result && (
-        <Stack gap={4}>
-          {availability?.type === "score" && (
-            <Group gap={6}>
-              <Text size="xs" fw={600} c="dimmed">
-                Availability:
-              </Text>
-              <Text size="xs">
-                {availability.legend[String(Math.round(availability.score))]} ({availability.score.toFixed(2)} / 4)
-              </Text>
-              <Text size="xs" c="dimmed">
-                conf {pct(availability.confidence)}
-              </Text>
-            </Group>
-          )}
-          {plays_next_game?.type === "noul" && (
-            <Group gap={6}>
-              <Text size="xs" fw={600} c="dimmed">
-                Prob. of playing:
-              </Text>
-              <Text size="xs">{pct(plays_next_game.noul)}</Text>
-              {result?.overrides.plays_next_game && (
-                <Text size="xs" c="dimmed">
-                  rule: {result.overrides.plays_next_game}
-                </Text>
-              )}
-            </Group>
-          )}
-          {limitation?.type === "score" && !willNotPlay && (
-            <Group gap={6}>
-              <Text size="xs" fw={600} c="dimmed">
-                If active:
-              </Text>
-              <Text size="xs">
-                {limitation.legend[String(Math.round(limitation.score))]} ({limitation.score.toFixed(2)} / 3)
-              </Text>
-              <Text size="xs" c="dimmed">
-                conf {pct(limitation.confidence)}
-              </Text>
-            </Group>
-          )}
-          {timeline?.type === "choice" && (
-            <Group gap={6}>
-              <Text size="xs" fw={600} c="dimmed">
-                Timeline:
-              </Text>
-              <Text size="xs">{TIMELINE_LABELS[timeline.choice] ?? timeline.choice}</Text>
-              <Text size="xs" c="dimmed">
-                p {pct(timeline.probabilities[timeline.choice] ?? 0)} · conf {pct(timeline.confidence)}
-              </Text>
-            </Group>
-          )}
-          {aggravation_risk?.type === "noul" && (
-            <Group gap={6}>
-              <Text size="xs" fw={600} c="dimmed">
-                Re-aggravation-prone:
-              </Text>
-              <Text size="xs">{pct(aggravation_risk.noul)}</Text>
-            </Group>
-          )}
-          <Collapse in={showRaw}>
-            <Code block fz={10}>
-              {JSON.stringify(result, null, 2)}
-            </Code>
-          </Collapse>
-        </Stack>
+      {limitation && !willNotPlay && (
+        <Group gap={6}>
+          <Text size="xs" fw={600} c="dimmed">
+            If active:
+          </Text>
+          <Text size="xs">
+            {limitation.label} ({limitation.score.toFixed(2)} / 3)
+          </Text>
+          <Text size="xs" c="dimmed">
+            conf {pct(limitation.confidence)}
+          </Text>
+        </Group>
+      )}
+      {timeline && (
+        <Group gap={6}>
+          <Text size="xs" fw={600} c="dimmed">
+            Timeline:
+          </Text>
+          <Text size="xs">{TIMELINE_LABELS[timeline.choice] ?? timeline.choice}</Text>
+          <Text size="xs" c="dimmed">
+            p {pct(timeline.probability)} · conf {pct(timeline.confidence)}
+          </Text>
+        </Group>
+      )}
+      {aggravationRisk !== undefined && (
+        <Group gap={6}>
+          <Text size="xs" fw={600} c="dimmed">
+            Re-aggravation-prone:
+          </Text>
+          <Text size="xs">{pct(aggravationRisk)}</Text>
+        </Group>
       )}
     </Stack>
   );

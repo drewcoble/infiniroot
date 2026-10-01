@@ -1,18 +1,25 @@
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
-import { action, internalQuery } from "../_generated/server";
+import {
+  internalAction,
+  internalMutation,
+  internalQuery,
+  type ActionCtx,
+} from "../_generated/server";
 import { internal } from "../_generated/api";
-import { askJev, type JevQuestion, type JevResponse } from "../jev/client";
+import type { Id } from "../_generated/dataModel";
+import { injuryAssessmentValidator } from "../jev/validators";
+import { askJev, type JevAnswer, type JevQuestion } from "../jev/client";
 import { BYE_WEEKS_2026 } from "../nflSchedule";
 
 // Sleeper designations that mean the player cannot play next game. These are
-// roster/availability facts, not semantic judgments, so assessInjury sets
+// roster/availability facts, not semantic judgments, so assessOne sets
 // plays_next_game to 0 for them in code instead of trusting the model.
 const CANNOT_PLAY_STATUSES = new Set(["IR", "Out", "PUP", "Suspended", "Non-Football Injury"]);
 
-// POC: asks Jev for semantic judgments about one injury, on demand from the
-// Injuries page (nothing cached/stored yet, so every expand is a live call -
-// easier to iterate on the questions below). Deliberately only questions Jev
+// Asks Jev for semantic judgments about injuries, run only from the injury
+// cron (sleeper/injuries.ts schedules assessPending after every fetch) and
+// stored on the injuries row - see the injuries schema comment. Deliberately
+// only questions Jev
 // is good at - reading status/practice/comment text - and no numeric math
 // (see Jev's jaggedness notes: it isn't a calculator).
 const QUESTIONS: Record<string, JevQuestion> = {
@@ -185,25 +192,123 @@ export const getInjuryState = internalQuery({
   },
 });
 
-export const assessInjury = action({
-  args: { injuryId: v.id("injuries") },
-  handler: async (
-    ctx,
-    args,
-  ): Promise<JevResponse & { overrides: Record<string, string> }> => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in.");
-    const state = await ctx.runQuery(
-      internal.infinileague.injuryAssessment.getInjuryState,
-      args,
-    );
-    const response = await askJev(state, QUESTIONS);
-    // Hard rule: a player on IR/Out/PUP/etc. can't play, whatever the model says.
-    const status = state.injury.status;
-    if (CANNOT_PLAY_STATUSES.has(status) && response.answers.plays_next_game?.type === "noul") {
-      response.answers.plays_next_game = { type: "noul", noul: 0 };
-      return { ...response, overrides: { plays_next_game: `Status "${status}"` } };
+// Bounds one run's Jev spend/time (e.g. the first run after deploy, when
+// every existing row is unassessed). Anything past it is picked up by the
+// next 15-minute tick.
+const MAX_PER_RUN = 40;
+const CONCURRENCY = 5;
+
+// Rows still needing an assessment: never assessed (new/changed rows have it
+// reset by applyInjuryFetch, and a failed Jev call leaves it unset to retry
+// next tick), plus forceFpids - rows whose Sleeper data didn't change but
+// whose context did (a new week's history/schedule).
+export const listPending = internalQuery({
+  args: { forceFpids: v.array(v.number()) },
+  handler: async (ctx, args) => {
+    const force = new Set(args.forceFpids);
+    const rows = await ctx.db.query("injuries").collect();
+    return rows
+      .filter((row) => !row.assessment || force.has(row.fpid))
+      .map((row) => ({ id: row._id, updatedAt: row.updatedAt }));
+  },
+});
+
+const scoreOf = (answer: JevAnswer | undefined) =>
+  answer?.type === "score"
+    ? {
+        score: answer.score,
+        label: answer.legend[String(Math.round(answer.score))] ?? "",
+        confidence: answer.confidence,
+      }
+    : undefined;
+
+// Patches only if the row hasn't changed since it was assessed - a change
+// during the Jev call resets the row, and this result would describe the old
+// injury.
+export const storeAssessment = internalMutation({
+  args: {
+    injuryId: v.id("injuries"),
+    expectedUpdatedAt: v.number(),
+    probabilityOfPlaying: v.number(),
+    assessment: injuryAssessmentValidator,
+  },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.injuryId);
+    if (!row || row.updatedAt !== args.expectedUpdatedAt) return false;
+    await ctx.db.patch(args.injuryId, {
+      probabilityOfPlaying: args.probabilityOfPlaying,
+      assessment: args.assessment,
+    });
+    return true;
+  },
+});
+
+async function assessOne(
+  ctx: ActionCtx,
+  target: { id: Id<"injuries">; updatedAt: number },
+): Promise<void> {
+  const state = await ctx.runQuery(
+    internal.infinileague.injuryAssessment.getInjuryState,
+    { injuryId: target.id },
+  );
+  const response = await askJev(state, QUESTIONS);
+  const { plays_next_game, availability, limitation, timeline, aggravation_risk } =
+    response.answers;
+
+  // Hard rule: a player on IR/Out/PUP/etc. can't play, whatever the model says.
+  const status = state.injury.status;
+  const ruleOverride = CANNOT_PLAY_STATUSES.has(status) ? `Status "${status}"` : undefined;
+  const modelProbability = plays_next_game?.type === "noul" ? plays_next_game.noul : null;
+  const probabilityOfPlaying = ruleOverride ? 0 : modelProbability;
+  if (probabilityOfPlaying === null) {
+    throw new Error("Jev returned no plays_next_game answer.");
+  }
+
+  await ctx.runMutation(internal.infinileague.injuryAssessment.storeAssessment, {
+    injuryId: target.id,
+    expectedUpdatedAt: target.updatedAt,
+    probabilityOfPlaying,
+    assessment: {
+      assessedAt: Date.now(),
+      model: response.model,
+      ruleOverride,
+      availability: scoreOf(availability),
+      limitation: scoreOf(limitation),
+      timeline:
+        timeline?.type === "choice"
+          ? {
+              choice: timeline.choice,
+              probability: timeline.probabilities[timeline.choice] ?? 0,
+              confidence: timeline.confidence,
+            }
+          : undefined,
+      aggravationRisk: aggravation_risk?.type === "noul" ? aggravation_risk.noul : undefined,
+    },
+  });
+}
+
+export const assessPending = internalAction({
+  args: { forceFpids: v.array(v.number()) },
+  handler: async (ctx, args): Promise<{ assessed: number; failed: number }> => {
+    const pending = (
+      await ctx.runQuery(internal.infinileague.injuryAssessment.listPending, args)
+    ).slice(0, MAX_PER_RUN);
+
+    let assessed = 0;
+    let failed = 0;
+    for (let i = 0; i < pending.length; i += CONCURRENCY) {
+      const results = await Promise.allSettled(
+        pending.slice(i, i + CONCURRENCY).map((target) => assessOne(ctx, target)),
+      );
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          assessed += 1;
+        } else {
+          failed += 1;
+          console.error("assessPending: Jev assessment failed", result.reason);
+        }
+      }
     }
-    return { ...response, overrides: {} };
+    return { assessed, failed };
   },
 });
