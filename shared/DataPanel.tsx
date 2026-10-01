@@ -15,7 +15,7 @@ import {
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "./errors";
 
-type ActionKey = "sync" | "playerPoints";
+type ActionKey = "sync" | "injuries" | "playerPoints";
 
 interface ActionState {
   isRunning: boolean;
@@ -40,14 +40,16 @@ const WEEK_OPTIONS = [
   })),
 ];
 
-// Down to 2 buttons (was 6 - players/rankings/injuries, ESPN id links, ESPN
-// values, blend, and value caches were all separate steps that had to be run
-// in a specific order to actually update anything - see this file's own git
-// history). fetchAllData.fetchAll now runs that whole pipeline itself in the
-// right order (it's also what the nightly cron calls - see convex/crons.ts),
-// so "Sync all data" is just that. Player points stays separate since it's
-// the one action here with a genuinely different scope - actual per-week
-// results for a specific (optionally past) season, not this week's
+// 3 buttons (was 6 - players/rankings, ESPN id links, ESPN values, blend, and
+// value caches were all separate steps that had to be run in a specific order
+// to actually update anything - see this file's own git history).
+// fetchAllData.fetchAll now runs that whole pipeline itself in the right
+// order (it's also what the nightly cron calls - see convex/crons.ts), so
+// "Sync all data" is just that. Injuries are NOT part of it anymore - they
+// have their own 15-minute cron (see convex/sleeper/injuries.ts), so they get
+// their own manual button too. Player points stays separate since it's the
+// one action here with a genuinely different scope - actual per-week results
+// for a specific (optionally past) season, not this week's
 // projections/rankings.
 //
 // Lives in shared (not any one app) because the sync it triggers is
@@ -56,6 +58,7 @@ const WEEK_OPTIONS = [
 // infinidraft does - see AdminDataPanel.tsx.
 export function DataPanel() {
   const fetchAll = useAction(api.fetchAllData.fetchAll);
+  const fetchInjuries = useAction(api.sleeper.injuries.fetchInjuries);
   const fetchPlayerPoints = useAction(
     api.sleeper.playerPoints.fetchAllPlayerPoints,
   );
@@ -80,6 +83,7 @@ export function DataPanel() {
 
   const [states, setStates] = useState<Record<ActionKey, ActionState>>({
     sync: IDLE_STATE,
+    injuries: IDLE_STATE,
     playerPoints: IDLE_STATE,
   });
 
@@ -91,17 +95,23 @@ export function DataPanel() {
   const actions: Array<{
     key: ActionKey;
     label: string;
-    description: string;
+    description?: string;
     run: () => Promise<unknown>;
     successMessage: string | ((result: unknown) => string);
   }> = [
     {
       key: "sync",
       label: "Sync all data",
-      description:
-        "Runs the full pipeline for the selected week: players, projections (Sleeper + ESPN blended), ADP/rankings, injuries, and the value-gap/$-value caches. Same job the nightly cron runs - for an in-season week, it also schedules background jobs to backfill every later week.",
       run: () => fetchAll({ week }),
       successMessage: `Synced for week "${week}".`,
+    },
+    {
+      key: "injuries",
+      label: "Fetch injuries",
+      description:
+        "Current Sleeper injury statuses. Same job as the 15-minute injury cron; only writes rows that actually changed.",
+      run: () => fetchInjuries({}),
+      successMessage: "Injuries refreshed.",
     },
     {
       key: "playerPoints",
@@ -148,18 +158,6 @@ export function DataPanel() {
 
   return (
     <Stack gap="md" py="sm">
-      <Select
-        label="Week"
-        description={
-          'Which week "Sync all data" below fetches. Defaults to the detected current NFL week; "Fetch player points" is unaffected (it covers every week of a season at once).'
-        }
-        data={WEEK_OPTIONS}
-        value={week}
-        onChange={(value) => value && setWeek(value)}
-        allowDeselect={false}
-        w={260}
-      />
-
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         {actions.map((action) => {
           const state = states[action.key];
@@ -168,11 +166,22 @@ export function DataPanel() {
               <Stack gap="sm" justify="space-between" h="100%">
                 <Stack gap={4}>
                   <Text fw={500}>{action.label}</Text>
-                  <Text size="sm" c="dimmed">
-                    {action.description}
-                  </Text>
+                  {action.description && (
+                    <Text size="sm" c="dimmed">
+                      {action.description}
+                    </Text>
+                  )}
                 </Stack>
                 <Stack gap="xs">
+                  {action.key === "sync" && (
+                    <Select
+                      label="Week"
+                      data={WEEK_OPTIONS}
+                      value={week}
+                      onChange={(value) => value && setWeek(value)}
+                      allowDeselect={false}
+                    />
+                  )}
                   {action.key === "playerPoints" && (
                     <TextInput
                       placeholder="Year (optional)"
