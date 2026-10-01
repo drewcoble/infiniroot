@@ -96,6 +96,11 @@ export function JevInjuryAssessment({ injuryId }: { injuryId: Id<"injuries"> }) 
                 Prob. of playing:
               </Text>
               <Text size="xs">{pct(plays_next_game.noul)}</Text>
+              {result?.overrides.plays_next_game && (
+                <Text size="xs" c="dimmed">
+                  rule: {result.overrides.plays_next_game}
+                </Text>
+              )}
             </Group>
           )}
           {limitation?.type === "score" && !willNotPlay && (
