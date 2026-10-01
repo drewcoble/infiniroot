@@ -22,6 +22,13 @@ const QUESTIONS: Record<string, JevQuestion> = {
       "Will play with no limitation",
     ],
   },
+  // Direct probability of playing, so any "prob. of playing" figure comes
+  // straight from Jev instead of weights we'd invent over `availability`.
+  plays_next_game: {
+    type: "noul",
+    instructions:
+      "Will `player` play in their team's next game, based on `injury`?",
+  },
   // Conditional on playing, so it's separate from availability (whether they
   // play). Ordered levels, not a percentage, so any projection multiplier
   // stays our own math. (No start/sit/drop question: Jev lacks player value

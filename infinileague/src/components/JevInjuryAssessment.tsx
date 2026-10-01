@@ -39,7 +39,7 @@ export function JevInjuryAssessment({ injuryId }: { injuryId: Id<"injuries"> }) 
     }
   };
 
-  const { availability, limitation, timeline, aggravation_risk } = result?.answers ?? {};
+  const { availability, plays_next_game, limitation, timeline, aggravation_risk } = result?.answers ?? {};
   // limitation assumes the player plays, so it's noise when they won't.
   const willNotPlay = availability?.type === "score" && Math.round(availability.score) === 0;
 
@@ -88,6 +88,14 @@ export function JevInjuryAssessment({ injuryId }: { injuryId: Id<"injuries"> }) 
               <Text size="xs" c="dimmed">
                 conf {pct(availability.confidence)}
               </Text>
+            </Group>
+          )}
+          {plays_next_game?.type === "noul" && (
+            <Group gap={6}>
+              <Text size="xs" fw={600} c="dimmed">
+                Prob. of playing:
+              </Text>
+              <Text size="xs">{pct(plays_next_game.noul)}</Text>
             </Group>
           )}
           {limitation?.type === "score" && !willNotPlay && (
