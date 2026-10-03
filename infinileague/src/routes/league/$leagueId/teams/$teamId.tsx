@@ -110,7 +110,7 @@ function TeamPage() {
 
   return (
     <Stack gap="md">
-      <Card withBorder padding="lg">
+      <Card padding="lg">
         <Group justify="space-between" wrap="wrap" gap="sm">
           <Stack gap={4}>
             <Title order={3}>{team.name}</Title>
@@ -141,7 +141,7 @@ function TeamPage() {
           />
 
           {roster !== undefined && (
-            <Card withBorder padding="xs">
+            <Card padding="xs">
               <Group gap="lg">
                 <Stack gap={0} align="center">
                   <Text size="xs" c="dimmed" tt="uppercase">

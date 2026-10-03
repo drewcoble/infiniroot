@@ -577,7 +577,7 @@ export function PlayersTable({ week, selectedLeagueId }: PlayersTableProps) {
           </Box>
         )}
 
-      <Card withBorder padding={0}>
+      <Card padding={0}>
         {allProjections === undefined ||
         allRankings === undefined ||
         isInitialValuesLoad ? (

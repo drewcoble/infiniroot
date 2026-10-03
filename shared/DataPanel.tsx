@@ -162,7 +162,7 @@ export function DataPanel() {
         {actions.map((action) => {
           const state = states[action.key];
           return (
-            <Card key={action.key} withBorder padding="md">
+            <Card key={action.key} padding="md">
               <Stack gap="sm" justify="space-between" h="100%">
                 <Stack gap={4}>
                   <Text fw={500}>{action.label}</Text>

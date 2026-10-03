@@ -68,7 +68,7 @@ export function PositionRadarChart({
           if (!entry) return null;
           const point = entry.payload as { category: string; rank: number };
           return (
-            <Paper withBorder shadow="sm" p="xs">
+            <Paper shadow="sm" p="xs">
               <Text size="sm" fw={700}>
                 {point.category}
               </Text>

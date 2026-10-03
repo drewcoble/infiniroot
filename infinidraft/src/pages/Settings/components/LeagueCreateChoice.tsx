@@ -18,7 +18,7 @@ export function LeagueCreateChoice({
   return (
     <Stack gap="md" py="sm" maw={500}>
       <Title order={4}>New League</Title>
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Group justify="space-between" wrap="nowrap">
           <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
             <Text fw={500}>Custom Setup</Text>
@@ -33,7 +33,7 @@ export function LeagueCreateChoice({
           </Button>
         </Group>
       </Card>
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Group justify="space-between" wrap="nowrap">
           <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
             <Text fw={500}>Import from Sleeper</Text>
@@ -48,7 +48,7 @@ export function LeagueCreateChoice({
           </Button>
         </Group>
       </Card>
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Group justify="space-between" wrap="nowrap">
           <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
             <Text fw={500}>Import from Yahoo</Text>

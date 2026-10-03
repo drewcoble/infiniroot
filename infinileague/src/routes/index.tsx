@@ -110,7 +110,6 @@ function Dashboard() {
                   }}
                 >
                   <Card
-                    withBorder
                     padding="lg"
                     style={{ cursor: "pointer", height: "100%" }}
                   >

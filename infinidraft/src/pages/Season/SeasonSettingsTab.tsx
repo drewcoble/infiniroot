@@ -306,7 +306,7 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
       />
 
       {provider === "sleeper" ? (
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Stack gap="sm">
             <Text fw={500}>Sleeper league</Text>
             <Group gap="xs" wrap="nowrap">
@@ -353,7 +353,7 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
           </Stack>
         </Card>
       ) : (
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Stack gap="sm">
             <Text fw={500}>Yahoo league</Text>
             {!yahooStatus?.connected ? (
@@ -407,7 +407,7 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
       )}
 
       {isLinked && (
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Stack gap="sm">
             <Group justify="space-between">
               <Text fw={500}>Map teams</Text>
@@ -452,7 +452,7 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
         </Card>
       )}
 
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap="sm">
           <Text fw={500}>FAAB budget</Text>
           <Group gap="xs" wrap="nowrap">

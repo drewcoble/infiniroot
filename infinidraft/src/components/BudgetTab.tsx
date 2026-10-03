@@ -573,7 +573,7 @@ export function BudgetTab({ seasonId, mode }: BudgetTabProps) {
             </Group>
             {usingGenericValues && <GenericValuesNotice />}
 
-            <Card withBorder padding="md">
+            <Card padding="md">
               <Stack gap="md">
                 <CategoryBreakdown
                   categoryTotals={categoryTotals}

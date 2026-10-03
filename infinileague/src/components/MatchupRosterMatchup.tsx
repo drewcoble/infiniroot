@@ -66,7 +66,7 @@ function Cell({ children }: { children: ReactNode }) {
 
 function PlaceholderCard({ empty }: { empty?: boolean }) {
   return (
-    <Card withBorder padding="xs" radius="md" style={{ minHeight: 44 }}>
+    <Card padding="xs" radius="md" style={{ minHeight: 44 }}>
       {!empty && (
         <Text size="sm" c="dimmed">
           —

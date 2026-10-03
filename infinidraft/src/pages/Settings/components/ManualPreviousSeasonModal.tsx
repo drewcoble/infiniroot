@@ -405,7 +405,7 @@ export function ManualPreviousSeasonModal({
         <ScrollArea.Autosize mah={420}>
           <Stack gap="sm">
             {teams.map((team) => (
-              <Card key={team.key} withBorder padding="sm">
+              <Card key={team.key} padding="sm">
                 <Stack gap={6}>
                   <Group gap={6}>
                     <Text size="sm" fw={600}>

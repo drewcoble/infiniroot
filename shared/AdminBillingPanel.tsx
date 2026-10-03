@@ -92,7 +92,7 @@ export function AdminBillingPanel() {
         <Title order={2}>Admin: Comp Access</Title>
       </Group>
 
-      <Card withBorder padding="lg">
+      <Card padding="lg">
         <Stack gap="sm">
           <Group align="flex-end">
             <TextInput

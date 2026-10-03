@@ -121,7 +121,6 @@ export function SeasonSummary({ seasonId }: SeasonSummaryProps) {
           return (
             <Card
               key={team._id}
-              withBorder
               padding="md"
               onClick={() => toggleExpanded(team._id)}
               style={{ cursor: "pointer" }}

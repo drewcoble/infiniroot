@@ -55,7 +55,7 @@ function CollapsibleCard({
 }) {
   const [opened, { toggle }] = useDisclosure(false);
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap={8}>
         <UnstyledButton onClick={toggle} aria-expanded={opened}>
           <Group justify="space-between" wrap="nowrap">
@@ -158,7 +158,7 @@ export function BudgetSidePanel({
         )}
       </CollapsibleCard>
 
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap={6}>
           <Text size="sm" fw={500} tt="uppercase" c="dimmed">
             Sanity checks

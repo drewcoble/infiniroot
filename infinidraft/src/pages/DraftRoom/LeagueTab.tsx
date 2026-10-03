@@ -263,7 +263,6 @@ export function LeagueTab({ seasonId, teams, selfTeamId }: LeagueTabProps) {
           }) => (
             <Card
               key={team._id}
-              withBorder
               padding="md"
               onClick={() => toggleExpanded(team._id)}
               style={{ cursor: "pointer" }}

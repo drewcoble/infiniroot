@@ -132,7 +132,7 @@ export function MyTeamTab({ seasonId, selfTeamId }: MyTeamTabProps) {
 
   return (
     <Stack gap="md" py="sm">
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap="sm">
           {stats && (
             <Group gap="lg">
@@ -170,7 +170,7 @@ export function MyTeamTab({ seasonId, selfTeamId }: MyTeamTabProps) {
       </Card>
 
       {isAuction && (
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Stack gap="sm">
             <Text size="sm" fw={500}>
               Where the money went
@@ -198,7 +198,7 @@ export function MyTeamTab({ seasonId, selfTeamId }: MyTeamTabProps) {
         </Card>
       )}
 
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap="sm">
           <Text size="sm" fw={500}>
             Bench - {benchFilled} of {benchSlots.length} filled

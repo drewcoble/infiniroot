@@ -105,7 +105,7 @@ export function PlayerCard({
 }: PlayerCardProps) {
   return (
     <Card
-      withBorder
+      withBorder={row.isOnMyTeam || selectable?.selected}
       padding="xs"
       radius="md"
       onClick={selectable?.onToggle}

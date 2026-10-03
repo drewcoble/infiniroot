@@ -172,7 +172,7 @@ export function SettingsForm({
           Scoring, roster, and keeper rules are locked.
         </LockedNotice>
       )}
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap="md">
           <Title order={5}>League Basics</Title>
           <Grid gutter="md">
@@ -308,7 +308,7 @@ export function SettingsForm({
 
       <SimpleGrid cols={{ base: 1, md: compact ? 1 : 2 }} spacing="md">
         <Stack gap="md">
-          <Card withBorder padding="md">
+          <Card padding="md">
             <Stack gap="md">
               <Title order={5}>Scoring</Title>
               <Stack gap={6}>
@@ -366,7 +366,7 @@ export function SettingsForm({
           </Card>
 
           {useKeepersControl && (
-            <Card withBorder padding="md">
+            <Card padding="md">
               <Stack gap="md">
                 <Title order={5}>Keepers</Title>
                 <Stack gap={4}>
@@ -401,7 +401,7 @@ export function SettingsForm({
           )}
         </Stack>
 
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Stack gap="md">
             <Title order={5}>Roster</Title>
             <Stack gap={6}>

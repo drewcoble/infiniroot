@@ -122,7 +122,7 @@ function LeagueCard({ season }: { season: LinkedSeason }) {
   };
 
   const body = (
-    <Card withBorder padding="lg" style={{ height: "100%" }}>
+    <Card padding="lg" style={{ height: "100%" }}>
       <Stack gap="sm" justify="space-between" h="100%">
         <Stack gap={4}>
           <Group justify="space-between" wrap="nowrap">

@@ -225,7 +225,7 @@ function TradePage() {
       </Stack>
 
       {teamBId !== null && tradeImpact === undefined && (
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Title order={5} mb="xs">
             Post-trade power rankings
           </Title>
@@ -249,7 +249,7 @@ function TradePage() {
           visibleFrom/hiddenFrom, never both. */}
       {teamBId !== null && tradeImpact !== undefined && (
         <>
-          <Card withBorder padding="md" visibleFrom="sm">
+          <Card padding="md" visibleFrom="sm">
             <Title order={5} mb="xs">
               Post-trade power rankings
             </Title>

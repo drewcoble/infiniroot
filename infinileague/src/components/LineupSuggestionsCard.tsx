@@ -20,7 +20,7 @@ export function LineupSuggestionsCard({ rows }: LineupSuggestionsCardProps) {
   if (suggestions.length === 0) return null;
 
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Text size="sm" fw={500}>
           Suggested lineup adjustments

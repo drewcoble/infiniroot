@@ -278,7 +278,7 @@ export function YahooLeagueImportWizard({
         </Alert>
       )}
 
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap="sm">
           <Text fw={500}>Teams</Text>
           <Radio.Group value={selfTeamKey} onChange={setSelfTeamKey}>

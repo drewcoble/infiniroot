@@ -347,7 +347,7 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
           {actionError}
         </Text>
       )}
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Group justify="space-between" align="center" wrap="wrap" gap="sm">
           <Stack gap={0}>
             <Text size="sm" c="dimmed">
@@ -384,7 +384,7 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
       </Card>
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Stack gap="sm">
             <Text size="sm" fw={500}>
               Available players
@@ -501,7 +501,7 @@ export function SnakeDraftTab({ seasonId, teams }: SnakeDraftTabProps) {
           </Stack>
         </Card>
 
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Stack gap="sm">
             <Text size="sm" fw={500}>
               Recent picks

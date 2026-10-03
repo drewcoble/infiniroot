@@ -8,7 +8,7 @@ interface StatTileProps {
 
 export function StatTile({ label, value, valueColor = "inherit" }: StatTileProps) {
   return (
-    <Card withBorder padding="sm" h="100%">
+    <Card padding="sm" h="100%">
       <Text size="xs" c="dimmed" tt="uppercase">
         {label}
       </Text>

@@ -61,7 +61,7 @@ export function TeamCard({
 }: TeamCardProps) {
   return (
     <Card
-      withBorder
+      withBorder={highlighted}
       padding="xs"
       radius="md"
       onClick={onToggleExpand}

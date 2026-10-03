@@ -200,7 +200,7 @@ export function InjuryReport({
         )}
       </Group>
 
-      <Card withBorder padding={0}>
+      <Card padding={0}>
         {isLoading ? (
           <Center py="xl">
             <Loader />

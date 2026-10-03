@@ -166,7 +166,7 @@ export function SleeperKeeperSuggestions({
   if (!sleeperLeagueId) return null;
 
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Group justify="space-between" wrap="nowrap">
           <Text size="sm" fw={500}>

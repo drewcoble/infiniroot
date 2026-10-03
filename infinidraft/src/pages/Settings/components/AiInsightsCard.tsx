@@ -88,7 +88,7 @@ export function AiInsightsCard({
   if (report.status === "requires_upgrade") {
     return (
       <>
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Stack gap="sm">
             <Group gap={6}>
               <Sparkles size={18} />
@@ -119,7 +119,7 @@ export function AiInsightsCard({
 
   if (report.data === null) {
     return (
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Group gap="xs">
           <Loader size="xs" />
           <Text size="sm" c="dimmed">
@@ -131,7 +131,7 @@ export function AiInsightsCard({
   }
 
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Group gap={6}>
           <Sparkles size={18} />

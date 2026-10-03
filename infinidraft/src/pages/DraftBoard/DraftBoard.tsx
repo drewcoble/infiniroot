@@ -398,7 +398,6 @@ export function DraftBoard({ seasonId }: DraftBoardProps) {
             {teamSummaries.map(({ team, stats, slots, bySlot }) => (
               <Card
                 key={team._id}
-                withBorder
                 padding="xs"
                 radius="lg"
                 bd={

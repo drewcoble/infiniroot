@@ -104,7 +104,6 @@ function Dashboard() {
     return (
       <EnterLeagueLink key={latest.leagueId} leagueId={latest._id}>
         <Card
-          withBorder
           padding="lg"
           style={{
             cursor: "pointer",
