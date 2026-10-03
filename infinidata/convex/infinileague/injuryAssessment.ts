@@ -264,6 +264,9 @@ async function assessOne(
     throw new Error("Jev returned no plays_next_game answer.");
   }
 
+  const availabilityScore = scoreOf(availability);
+  const limitationScore = scoreOf(limitation);
+
   await ctx.runMutation(internal.infinileague.injuryAssessment.storeAssessment, {
     injuryId: target.id,
     expectedUpdatedAt: target.updatedAt,
@@ -271,18 +274,24 @@ async function assessOne(
     assessment: {
       assessedAt: Date.now(),
       model: response.model,
-      ruleOverride,
-      availability: scoreOf(availability),
-      limitation: scoreOf(limitation),
-      timeline:
-        timeline?.type === "choice"
-          ? {
+      // Optional fields are spread in only when present - the validator's
+      // optional fields don't accept an explicit undefined under
+      // exactOptionalPropertyTypes.
+      ...(ruleOverride !== undefined ? { ruleOverride } : {}),
+      ...(availabilityScore ? { availability: availabilityScore } : {}),
+      ...(limitationScore ? { limitation: limitationScore } : {}),
+      ...(timeline?.type === "choice"
+        ? {
+            timeline: {
               choice: timeline.choice,
               probability: timeline.probabilities[timeline.choice] ?? 0,
               confidence: timeline.confidence,
-            }
-          : undefined,
-      aggravationRisk: aggravation_risk?.type === "noul" ? aggravation_risk.noul : undefined,
+            },
+          }
+        : {}),
+      ...(aggravation_risk?.type === "noul"
+        ? { aggravationRisk: aggravation_risk.noul }
+        : {}),
     },
   });
 }
