@@ -117,7 +117,7 @@ export function DataPanel() {
       key: "playerPoints",
       label: "Fetch player points",
       description:
-        "Actual scored fantasy points, per week. Leave the year blank for the current season (also covered by \"Sync all data\") - fill it in to backfill a past season.",
+        "Actual scored fantasy points, re-checking all 18 weeks (\"Sync all data\" and the daily cron only re-check the last 3). Only writes rows that changed. Leave the year blank for the current season, or fill it in to backfill a past season.",
       run: () =>
         fetchPlayerPoints(
           playerPointsYear.trim() ? { year: playerPointsYear.trim() } : {},
