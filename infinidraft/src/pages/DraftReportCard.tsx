@@ -32,7 +32,7 @@ import {
 import { PlayerDetailModal } from "../components/PlayerDetailModal";
 import { RookieBadge } from "@shared/RookieBadge";
 import { UpgradePrompt } from "../components/UpgradePrompt";
-import { scoringConfigFromSeason } from "../lib/relevantPlayers";
+import { scoringConfigFromSeason } from "@shared/relevantPlayers";
 import { WEEK } from "../constants/general";
 import { useRookieFpids } from "../hooks/useRookieFpids";
 
@@ -211,7 +211,7 @@ export function DraftReportCard({ seasonId }: DraftReportCardProps) {
   return (
     <Stack gap="lg">
       <Title order={2}>{settings.name} Report Card</Title>
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap={4}>
           <Title order={4}>Recap</Title>
           <Text size="sm">{data.aiSummary ?? buildLeagueSummary(data)}</Text>
@@ -345,7 +345,7 @@ function ReportCardTeaser({ isAuction }: { isAuction: boolean }) {
         aria-hidden
       >
         <Stack gap="lg">
-          <Card withBorder padding="md">
+          <Card padding="md">
             <Stack gap={4}>
               <Title order={4}>Recap</Title>
               <Text size="sm">
@@ -357,7 +357,7 @@ function ReportCardTeaser({ isAuction }: { isAuction: boolean }) {
           </Card>
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
             {TEASER_TEAMS.map((team) => (
-              <Card key={team.name} withBorder padding="md">
+              <Card key={team.name} padding="md">
                 <Stack gap={6}>
                   <Group justify="space-between">
                     <Text fw={700}>{team.name}</Text>
@@ -421,7 +421,7 @@ function PickCallouts({
   const resolveSurplus =
     getSurplus ?? ((pick) => (isAuction ? pick.surplus : pick.adpSurplus));
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="xs">
         <Title order={5}>{title}</Title>
         {picks.length === 0 && (
@@ -479,7 +479,7 @@ function RosterAwardCard({
   color: string;
 }) {
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap={4}>
         <Title order={5}>{title}</Title>
         <Text size="xs" c="dimmed">
@@ -547,7 +547,7 @@ function PositionalRadarChart({
             rank: number;
           };
           return (
-            <Paper withBorder shadow="sm" p="xs">
+            <Paper shadow="sm" p="xs">
               <Text size="sm" fw={700}>
                 {point.category}
               </Text>
@@ -592,7 +592,6 @@ function TeamReportCard({
   const formatValue = isAuction ? formatSigned : formatSignedNumber;
   return (
     <Card
-      withBorder
       padding="md"
       onClick={onToggle}
       style={{ cursor: "pointer" }}

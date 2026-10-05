@@ -42,7 +42,7 @@ function ResultsTab() {
         <Stack key={cycleId} gap={8}>
           <Title order={5}>{new Date(closesAt).toLocaleDateString()}</Title>
           {rows.map((row) => (
-            <Card key={`${cycleId}-${row.fpid}`} withBorder padding="xs" radius="md">
+            <Card key={`${cycleId}-${row.fpid}`} padding="xs" radius="md">
               <Group justify="space-between" wrap="nowrap">
                 <Text size="sm" fw={500} truncate style={{ flex: 1 }}>
                   {row.playerName ?? `Player #${row.fpid}`}

@@ -32,7 +32,7 @@ import { optimalAssignPicksToSlots } from "../../lib/slotAssignment";
 import {
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import {
   computeTeamBudgetStats,
   resolveTeamSalaryCap,
@@ -398,7 +398,6 @@ export function DraftBoard({ seasonId }: DraftBoardProps) {
             {teamSummaries.map(({ team, stats, slots, bySlot }) => (
               <Card
                 key={team._id}
-                withBorder
                 padding="xs"
                 radius="lg"
                 bd={

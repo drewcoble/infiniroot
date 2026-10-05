@@ -68,6 +68,7 @@ import type * as infinileague_auction_players from "../infinileague/auction/play
 import type * as infinileague_auction_settings from "../infinileague/auction/settings.js";
 import type * as infinileague_auction_waiverPlayersData from "../infinileague/auction/waiverPlayersData.js";
 import type * as infinileague_auction_waiverSync from "../infinileague/auction/waiverSync.js";
+import type * as infinileague_injuryAssessment from "../infinileague/injuryAssessment.js";
 import type * as infinileague_season_eliminationWatch from "../infinileague/season/eliminationWatch.js";
 import type * as infinileague_season_faabValues from "../infinileague/season/faabValues.js";
 import type * as infinileague_season_matchup from "../infinileague/season/matchup.js";
@@ -78,6 +79,7 @@ import type * as infinileague_season_teamRoster from "../infinileague/season/tea
 import type * as infinileague_season_teams from "../infinileague/season/teams.js";
 import type * as injuries from "../injuries.js";
 import type * as injurySnapshots from "../injurySnapshots.js";
+import type * as jev_client from "../jev/client.js";
 import type * as leagueType from "../leagueType.js";
 import type * as leagues from "../leagues.js";
 import type * as lib_access from "../lib/access.js";
@@ -107,8 +109,10 @@ import type * as scoring from "../scoring.js";
 import type * as seasonTeams from "../seasonTeams.js";
 import type * as sleeper_client from "../sleeper/client.js";
 import type * as sleeper_draftSync from "../sleeper/draftSync.js";
+import type * as sleeper_injuries from "../sleeper/injuries.js";
 import type * as sleeper_league from "../sleeper/league.js";
 import type * as sleeper_leagueSettingsMapping from "../sleeper/leagueSettingsMapping.js";
+import type * as sleeper_livePoints from "../sleeper/livePoints.js";
 import type * as sleeper_playerLinks from "../sleeper/playerLinks.js";
 import type * as sleeper_playerPoints from "../sleeper/playerPoints.js";
 import type * as sleeper_projections from "../sleeper/projections.js";
@@ -190,6 +194,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/auction/settings": typeof infinileague_auction_settings;
   "infinileague/auction/waiverPlayersData": typeof infinileague_auction_waiverPlayersData;
   "infinileague/auction/waiverSync": typeof infinileague_auction_waiverSync;
+  "infinileague/injuryAssessment": typeof infinileague_injuryAssessment;
   "infinileague/season/eliminationWatch": typeof infinileague_season_eliminationWatch;
   "infinileague/season/faabValues": typeof infinileague_season_faabValues;
   "infinileague/season/matchup": typeof infinileague_season_matchup;
@@ -200,6 +205,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/teams": typeof infinileague_season_teams;
   injuries: typeof injuries;
   injurySnapshots: typeof injurySnapshots;
+  "jev/client": typeof jev_client;
   leagueType: typeof leagueType;
   leagues: typeof leagues;
   "lib/access": typeof lib_access;
@@ -229,8 +235,10 @@ declare const fullApi: ApiFromModules<{
   seasonTeams: typeof seasonTeams;
   "sleeper/client": typeof sleeper_client;
   "sleeper/draftSync": typeof sleeper_draftSync;
+  "sleeper/injuries": typeof sleeper_injuries;
   "sleeper/league": typeof sleeper_league;
   "sleeper/leagueSettingsMapping": typeof sleeper_leagueSettingsMapping;
+  "sleeper/livePoints": typeof sleeper_livePoints;
   "sleeper/playerLinks": typeof sleeper_playerLinks;
   "sleeper/playerPoints": typeof sleeper_playerPoints;
   "sleeper/projections": typeof sleeper_projections;

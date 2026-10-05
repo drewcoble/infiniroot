@@ -96,7 +96,7 @@ export function KeeperCardList({
         );
 
         return (
-          <Card key={team._id} withBorder padding="md">
+          <Card key={team._id} padding="md">
             <Stack gap={2} mb={6}>
               <Text size="sm" fw={600}>
                 {team.name}

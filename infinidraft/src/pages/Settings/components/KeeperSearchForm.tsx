@@ -251,7 +251,7 @@ export function KeeperSearchForm({
       )}
 
       {selectedCandidate && (
-        <Card withBorder padding="sm" radius="md">
+        <Card padding="sm" radius="md">
           <Stack gap="sm">
             <Group gap={6} wrap="nowrap">
               <Anchor

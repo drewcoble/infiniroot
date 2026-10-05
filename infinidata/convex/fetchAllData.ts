@@ -13,6 +13,24 @@ import { BLENDED_POSITIONS } from "./positions";
 // own bound - see infinileague/src/routes/.../teams/$teamId.tsx) and
 // skipped entirely for the "0" season-long sentinel (pre/off-season, or an
 // explicit draft-mode backfill), which has no "next week" to speak of.
+// Weeks whose actual points the daily run re-fetches: the current week
+// plus the two before it, so late games and the NFL's stat corrections
+// (typically settled within a week or so) still land, without re-pulling
+// and re-checking every completed week of the season every day. Undefined
+// (meaning all 18) outside the regular season - fetchCurrentNflWeek's "0" -
+// so offseason/post-season runs keep the old full sweep, which is cheap
+// there since upsertPlayerPoints skips unchanged rows.
+const RECENT_POINTS_WEEKS = 3;
+function recentPointsWeeks(week: string): string[] | undefined {
+  const weekNum = Number(week);
+  if (!Number.isInteger(weekNum) || weekNum <= 0) return undefined;
+  const weeks = [];
+  for (let w = Math.max(weekNum - RECENT_POINTS_WEEKS + 1, 1); w <= weekNum; w += 1) {
+    weeks.push(String(w));
+  }
+  return weeks;
+}
+
 function weeksToFetch(week: string): string[] {
   const weekNum = Number(week);
   if (!Number.isInteger(weekNum) || weekNum <= 0) return [week];
@@ -75,9 +93,11 @@ async function refreshCachedComputations(
   }
 }
 
-// Runs every working data-fetch: players/projections/rankings/injuries/
-// player-points/espn-links/espn-values all come from Sleeper and ESPN (see
-// convex/sleeper/ and convex/espn/). Delegates to each source's *Internal
+// Runs every working data-fetch: players/projections/rankings/player-points/
+// espn-links/espn-values all come from Sleeper and ESPN (see convex/sleeper/
+// and convex/espn/). Injuries are handled by their own, more frequent cron
+// (see convex/sleeper/injuries.ts and convex/crons.ts) rather than this one.
+// Delegates to each source's *Internal
 // action variant (not the public, requireSuperAdmin-gated one) - this
 // function's own callers (fetchAll below, or fetchAllInternal from the
 // cron) already decide once whether a human-auth check applies, so
@@ -100,6 +120,17 @@ async function fetchAllHandler(
     week: String(nflState.week),
     seasonType: nflState.seasonType,
   });
+  const liveWeek = nflState.seasonType === "regular" ? String(nflState.week) : "0";
+
+  // Whether this run targets the live week/season (always true for the
+  // cron, which passes neither arg). A manual fetch of any other week (the
+  // admin panel's week picker) only refreshes that week's own data - the
+  // shared caches below (rosProjTotalSets, every league's rosVor,
+  // valueGapSets, draftValueSets) all mean "as of the current week", so
+  // rebuilding them against a different week would quietly serve wrong
+  // rest-of-season numbers until the next daily run.
+  const isLiveTarget =
+    week === liveWeek && (args.season === undefined || args.season === currentSeason());
 
   // Self-healing: idempotent no-op after the first run ever, but makes sure
   // the system-owned generic league (convex/genericLeague.ts) always exists
@@ -151,7 +182,7 @@ async function fetchAllHandler(
   // function doesn't sit blocked on 17 more weeks' worth of external fetches
   // before it can get to that remaining work either. playerLinks has already
   // run by this point (above), so none of these need to repeat it themselves.
-  for (const futureWeek of weeksToFetch(week).slice(1)) {
+  for (const futureWeek of isLiveTarget ? weeksToFetch(week).slice(1) : []) {
     await ctx.scheduler.runAfter(
       0,
       internal.fetchAllData.fetchWeekProjectionsInternal,
@@ -159,15 +190,32 @@ async function fetchAllHandler(
     );
   }
 
+  // A past-season backfill (args.season set) still sweeps every week -
+  // recentPointsWeeks only makes sense relative to the live season.
+  const pointsWeeks = args.season ? undefined : recentPointsWeeks(week);
   await ctx.runAction(
     internal.sleeper.playerPoints.fetchAllPlayerPointsInternal,
-    { ...(args.season ? { year: args.season } : {}) },
+    {
+      ...(args.season ? { year: args.season } : {}),
+      ...(pointsWeeks ? { weeks: pointsWeeks } : {}),
+    },
   );
+
+  // playerPoints now has every finished week's numbers, so any live
+  // in-game document for a week other than the current one is stale -
+  // outside the regular season ("0") that's all of them.
+  await ctx.runMutation(internal.sleeper.livePoints.pruneLiveWeekPoints, {
+    season: nflState.season,
+    week: liveWeek,
+  });
 
   // Refresh the valueGaps/draftValues caches now that the projections/
   // rankings/playerSeasonStats data they're derived from has changed - see
-  // convex/valueGaps.ts and convex/draftValues.ts's cache comments.
-  await refreshCachedComputations(ctx, { week, season });
+  // convex/valueGaps.ts and convex/draftValues.ts's cache comments. Live
+  // week only - see isLiveTarget above.
+  if (isLiveTarget) {
+    await refreshCachedComputations(ctx, { week, season });
+  }
 }
 
 // One future week's Sleeper fetch -> ESPN fetch -> blend pipeline, run as
@@ -225,21 +273,21 @@ export const fetchAllInternal = internalAction({
   handler: fetchAllHandler,
 });
 
-// Cache-only counterpart to fetchAll - recomputes the valueGaps/draftValues
-// caches from whatever projections/rankings/playerSeasonStats data already
-// exists, without calling Sleeper. For manually repairing the cache (e.g. it
-// was never seeded because the daily cron hasn't run yet) without waiting
-// for or forcing a full external refetch.
+// Cache-only counterpart to fetchAll - recomputes the shared caches
+// (valueGapSets, rosProjTotalSets, every league's rosVor, draftValueSets)
+// from whatever projections/rankings/playerSeasonStats data already
+// exists, without fetching anything external beyond Sleeper's week. For
+// manually repairing or seeding the caches (e.g. after a cache table
+// change, or before the daily cron has run) without a full refetch. Always
+// the live week/season - same reason fetchAllHandler's isLiveTarget
+// guards these caches.
 export const refreshCaches = action({
-  args: {
-    week: v.optional(v.string()),
-    season: v.optional(v.string()),
-  },
-  handler: async (ctx, args): Promise<void> => {
+  args: {},
+  handler: async (ctx): Promise<void> => {
     await requireSuperAdmin(ctx);
 
-    const week = args.week ?? (await fetchCurrentNflWeek());
-    const season = args.season ?? currentSeason();
+    const week = await fetchCurrentNflWeek();
+    const season = currentSeason();
 
     await refreshCachedComputations(ctx, { week, season });
   },

@@ -14,7 +14,7 @@ import type { Doc } from "@infinidata/dataModel";
 import type { PlayerTag, ScoringConfig, ValueGap } from "../../../types";
 import { POSITION_COLORS } from "@shared/positionColors";
 import { injuryColor } from "@shared/injuryColor";
-import { pointsForScoringConfig } from "../../../lib/relevantPlayers";
+import { pointsForScoringConfig } from "@shared/relevantPlayers";
 import type { ConsistencyLabel } from "../../../lib/consistency";
 import type { StandardValueRow } from "../../../lib/standardValues";
 import { playerTagStyle } from "../../../lib/playerTagStyle";

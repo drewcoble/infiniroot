@@ -3,6 +3,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { positionValidator } from "./positions";
 import { scoringValidator, teScoringValidator } from "./scoring";
+import { injuryAssessmentValidator } from "./jev/validators";
 import { draftTypeValidator } from "./draftType";
 import { leagueTypeValidator } from "./leagueType";
 
@@ -441,9 +442,20 @@ export default defineSchema({
       "sixPointPassTds",
     ]),
 
-  // From /nfl/injuries. Current-status only (the endpoint has no season/week)
-  // - one row per currently-injured player, deleted when they drop off the
-  // API's list (recovered), mirroring how upsertProjections handles removals.
+  // Sleeper's injury_status et al (see convex/sleeper/injuries.ts). Current-
+  // status only - one row per currently-injured player, deleted when they
+  // drop off Sleeper's list (recovered). Only ever written when the
+  // Sleeper-sourced fields actually change (see convex/injuries.ts's
+  // applyInjuryFetch): every query reading this table re-runs on any write,
+  // and the 15-minute injury cron would otherwise touch every row each run.
+  // updatedAt is when this row's Sleeper data last changed; fetchedAt is
+  // when the player first appeared on the list for this stint. irWeeks,
+  // probabilityOfPlaying and assessment are derived judgments, never Sleeper
+  // data - reset to empty whenever the underlying injury changes so a stale
+  // value never outlives the situation it described. probabilityOfPlaying
+  // and assessment are written together by the injury cron's Jev pass (see
+  // convex/infinileague/injuryAssessment.ts); probabilityOfPlaying is the
+  // headline "plays next game" figure, assessment the rest of Jev's read.
   injuries: defineTable({
     fpid: v.number(),
     status: v.string(),
@@ -452,6 +464,7 @@ export default defineSchema({
     comment: v.string(),
     irWeeks: v.array(v.number()),
     probabilityOfPlaying: v.union(v.number(), v.null()),
+    assessment: v.optional(injuryAssessmentValidator),
     practice1: v.union(v.string(), v.null()),
     practice2: v.union(v.string(), v.null()),
     practice3: v.union(v.string(), v.null()),
@@ -460,16 +473,14 @@ export default defineSchema({
     fetchedAt: v.number(),
   }).index("by_fpid", ["fpid"]),
 
-  // Append-only history of injury-status *changes*, captured going forward
-  // from whenever this table was introduced - Sleeper's injury_status field
-  // (above) is a "right now" value with no historical archive, so past
-  // seasons can never be backfilled here. A new row is only inserted when a
-  // player's status actually differs from their most-recently-stored row
-  // (see convex/injurySnapshots.ts's recordSnapshots) - deliberately NOT
-  // one-row-per-fetch, since the daily fetch cadence spans every team's
-  // Thursday/Sunday/Monday games within a single week number, and
-  // overwriting by week could silently clobber an earlier-in-the-week
-  // designation with unrelated later information.
+  // Append-only injury-status history, captured going forward from whenever
+  // this table was introduced - Sleeper's injury_status field (above) is a
+  // "right now" value with no historical archive, so past seasons can never
+  // be backfilled here. Written by convex/injuries.ts's applyInjuryFetch,
+  // never one-row-per-fetch and never overwritten (a week spans every
+  // team's Thursday/Sunday/Monday games, so overwriting by week could
+  // silently clobber an earlier-in-the-week designation). See `kind` for
+  // the three reasons a row gets appended.
   injurySnapshots: defineTable({
     fpid: v.number(),
     season: v.string(),
@@ -482,9 +493,25 @@ export default defineSchema({
     injuryType: v.string(),
     comment: v.string(),
     fetchedAt: v.number(),
+    // "change": status/injuryType actually changed, or a new injury. Rows
+    //   written before this field existed were all changes - treat absent
+    //   as "change".
+    // "carryForward": still on the list when a new week began, nothing
+    //   changed - gives every injured week its own row, so "status in week
+    //   N" is a direct lookup. NOT a new injury event: anything asking
+    //   "when did this start?" (e.g. lib/playerValue.ts's injury-boost
+    //   freshness) must skip these.
+    // "cleared": dropped off Sleeper's injured list (recovered) - status is
+    //   "Active" and the injury fields are empty.
+    kind: v.optional(
+      v.union(
+        v.literal("change"),
+        v.literal("carryForward"),
+        v.literal("cleared"),
+      ),
+    ),
   })
-    // "This player's most-recently-stored snapshot" - the change-detection
-    // check in recordSnapshots (query this, order desc, take first()).
+    // "This player's most-recently-stored snapshot(s)", newest first.
     .index("by_fpid", ["fpid"])
     // "Every change this player had during one season" - the game log's
     // read (src/components/PlayerSeasonGameLog.tsx), grouped by week
@@ -525,6 +552,16 @@ export default defineSchema({
     .index("by_team", ["team"])
     // "Where does this fpid currently sit" - a player detail modal lookup.
     .index("by_fpid", ["fpid"]),
+
+  // Single row: the season/week the injury cron last processed - how
+  // applyInjuryFetch (convex/injuries.ts) notices a new week has begun and
+  // writes that week's "carryForward" snapshots exactly once, instead of
+  // re-checking every player's latest snapshot on every 15-minute run.
+  injurySyncState: defineTable({
+    season: v.string(),
+    week: v.string(),
+    updatedAt: v.number(),
+  }),
 
   // Live NFL week/season snapshot, refreshed daily alongside the rest of
   // fetchAllData (see convex/sleeper/state.ts's fetchNflSeasonState and
@@ -930,6 +967,34 @@ export default defineSchema({
     estimatedEndAt: v.number(),
   }).index("by_season_week", ["season", "week"]),
 
+  // Live in-game fantasy points for one (season, week) - a single wide
+  // document, not a row per player, rewritten whole by the 5-minute poll
+  // in convex/sleeper/livePoints.ts while any game is live (one write per
+  // poll that changed anything, and one read for the Players tab's board).
+  // Display-only: playerPoints/playerSeasonStats (daily sync) stay the
+  // source of truth for everything else. `players` only holds players
+  // who've actually played so far (Sleeper's gp > 0), and is an array
+  // rather than an fpid-keyed object to stay clear of Convex's per-object
+  // field limit. rec/passTd are the only stats bonusPoints needs (TE
+  // premium, 6pt passing TDs). Pruned by the daily sync once the NFL week
+  // moves on (see fetchAllData.ts).
+  liveWeekPoints: defineTable({
+    season: v.string(),
+    week: v.string(),
+    updatedAt: v.number(),
+    players: v.array(
+      v.object({
+        fpid: v.number(),
+        position: positionValidator,
+        ptsStd: v.number(),
+        ptsHalf: v.number(),
+        ptsPpr: v.number(),
+        rec: v.number(),
+        passTd: v.number(),
+      }),
+    ),
+  }).index("by_season_week", ["season", "week"]),
+
   // The eligibility source of truth for infinifaab's whole Players board on
   // a YAHOO-linked season only now - a row exists only while a player is
   // still on waivers there (convex/infinidraft/yahoo/waivers.ts polls
@@ -1204,6 +1269,9 @@ export default defineSchema({
     .index("by_season_week", ["seasonId", "week"])
     .index("by_season_fpid", ["seasonId", "fpid"]),
 
+  // LEGACY - superseded by rosProjTotalSets below; nothing reads or
+  // writes this any more. Kept defined only until its rows are cleared
+  // (rosProjTotals.clearRosProjTotals), then this definition can be deleted.
   // Shared, league-independent cache of each player's summed rest-of-season
   // projection - one row per (position, scoring, teScoring, sixPointPassTds,
   // fpid), rebuilt daily by convex/rosProjTotals.ts's refreshRosProjTotals
@@ -1251,6 +1319,40 @@ export default defineSchema({
       "teScoring",
       "sixPointPassTds",
     ]),
+
+  // Shared, league-independent cache of each player's summed rest-of-season
+  // projection, rebuilt daily by convex/rosProjTotals.ts's
+  // refreshRosProjTotals from every remaining week's `projections` rows -
+  // convex/rosVor.ts reads this instead of re-summing every remaining week
+  // per league. One wide document per (position, scoring combo), since
+  // that's exactly the unit gatherRosProjTotals reads and the refresh
+  // rebuilds: ~108 documents in all, each rewritten only when its totals
+  // actually changed, instead of a row per player per combo. A bye week
+  // naturally contributes nothing (no projections row exists for that
+  // fpid/week), so weeksIncluded is bye-aware with no special-casing.
+  rosProjTotalSets: defineTable({
+    position: positionValidator,
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+    // The week these sums start from (inclusive) through week 18 -
+    // bookkeeping only; a stale value means the daily cron hasn't run
+    // since the week advanced.
+    asOfWeek: v.string(),
+    totals: v.array(
+      v.object({
+        fpid: v.number(),
+        totalPoints: v.number(),
+        weeksIncluded: v.number(),
+      }),
+    ),
+    computedAt: v.number(),
+  }).index("by_position_scoring_teScoring_sixPointPassTds", [
+    "position",
+    "scoring",
+    "teScoring",
+    "sixPointPassTds",
+  ]),
 
   // One row per app user (not per league) - connecting a Yahoo account is a
   // one-time action that then lets that user link any of their Yahoo leagues
@@ -1494,6 +1596,9 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_draft", ["draftId"]),
 
+  // LEGACY - superseded by valueGapSets below; nothing reads or
+  // writes this any more. Kept defined only until its rows are cleared
+  // (valueGaps.clearValueGaps), then this definition can be deleted.
   // Precomputed cache of convex/valueGaps.ts's getAllValueGaps result, keyed
   // by the same (week, scoring, lastSeason) triple the query is called with.
   // That computation reads full projections/rankings/playerSeasonStats docs
@@ -1540,6 +1645,52 @@ export default defineSchema({
     "lastSeason",
   ]),
 
+  // Precomputed cache of convex/valueGaps.ts's getAllValueGaps result, one
+  // document per (week, scoring combo, lastSeason) - the exact unit the
+  // query reads and the daily refresh rebuilds, so a refresh is a single
+  // write (skipped when nothing changed) rather than deleting and
+  // re-inserting a row per flagged player. That computation reads full
+  // projections/rankings/playerSeasonStats docs across 4 positions, which
+  // every open PlayersTable/PlayersLeftTab/PlayerDetailModal subscription
+  // used to redo from scratch - getAllValueGaps reads this first and only
+  // falls back to a live recompute when the combo's document is missing.
+  valueGapSets: defineTable({
+    week: v.string(),
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+    lastSeason: v.string(),
+    rows: v.array(
+      v.object({
+        fpid: v.number(),
+        position: positionValidator,
+        direction: v.union(
+          v.literal("undervalued"),
+          v.literal("overvalued"),
+          v.literal("breakout"),
+          v.literal("falloff"),
+        ),
+        gap: v.number(),
+        lastYearPpg: v.number(),
+        lastYearGames: v.number(),
+        lastYearRank: v.number(),
+        projRank: v.number(),
+        adpRank: v.number(),
+        poolSize: v.number(),
+      }),
+    ),
+    computedAt: v.number(),
+  }).index("by_week_scoring_teScoring_sixPointPassTds_lastSeason", [
+    "week",
+    "scoring",
+    "teScoring",
+    "sixPointPassTds",
+    "lastSeason",
+  ]),
+
+  // LEGACY - superseded by draftValueSets below; nothing reads or
+  // writes this any more. Kept defined only until its rows are cleared
+  // (draftValues.clearDraftValues), then this definition can be deleted.
   // Precomputed cache of convex/draftValues.ts's getDraftValues result, keyed
   // by (draftId, week, scoring) - same reasoning as valueGaps above: that
   // computation reads every active position's full projections docs (the
@@ -1575,6 +1726,47 @@ export default defineSchema({
     // prefix to clear all of them at once - unaffected by teScoring/
     // sixPointPassTds joining the index, since that prefix-delete never adds
     // further .eq()s beyond draftId.
+  }).index("by_draft_week_scoring_teScoring_sixPointPassTds", [
+    "draftId",
+    "week",
+    "scoring",
+    "teScoring",
+    "sixPointPassTds",
+  ]),
+
+  // Precomputed cache of convex/draftValues.ts's getDraftValues result, one
+  // document per (draftId, week, scoring combo) holding the whole board -
+  // the exact unit every reader loads and the refresh rebuilds, so a daily
+  // refresh is a single write (skipped when nothing changed) instead of
+  // deleting and re-inserting a row per player. That computation reads
+  // every active position's full projections docs plus keepers. Refreshed
+  // once daily by refreshDraftValues (one call per real draft, at that
+  // league's own scoring format - see fetchAllData.ts), and deleted
+  // whenever something that changes the computation happens off the daily
+  // cycle (a keeper added/removed, or season settings edited - see
+  // invalidateDraftValues). getDraftValues reads this first and only falls
+  // back to a live recompute when the document is missing.
+  draftValueSets: defineTable({
+    draftId: v.id("drafts"),
+    week: v.string(),
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+    rows: v.array(
+      v.object({
+        fpid: v.number(),
+        name: v.string(),
+        team: v.union(v.string(), v.null()),
+        position: positionValidator,
+        points: v.number(),
+        positionRank: v.number(),
+        replacementPoints: v.number(),
+        usedFallback: v.boolean(),
+        valueOverReplacement: v.number(),
+        dollarValue: v.number(),
+      }),
+    ),
+    computedAt: v.number(),
   }).index("by_draft_week_scoring_teScoring_sixPointPassTds", [
     "draftId",
     "week",

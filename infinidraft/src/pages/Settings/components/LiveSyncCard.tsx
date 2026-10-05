@@ -48,7 +48,7 @@ export function LiveSyncCard({
   localError,
 }: LiveSyncCardProps) {
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Group justify="space-between">
           <Text fw={500}>{title}</Text>

@@ -47,7 +47,7 @@ export function UpgradePrompt({
 
   return (
     <Center py="xl">
-      <Card withBorder padding="lg" maw={420}>
+      <Card padding="lg" maw={420}>
         {content}
       </Card>
     </Center>

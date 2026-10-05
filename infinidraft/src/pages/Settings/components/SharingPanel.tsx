@@ -69,7 +69,7 @@ export function SharingPanel({ seasonId }: SharingPanelProps) {
   };
 
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Title order={5}>Sharing</Title>
         <Text size="sm" c="dimmed">

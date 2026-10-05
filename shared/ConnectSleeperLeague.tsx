@@ -246,7 +246,7 @@ export function ConnectSleeperLeague({
     <Stack gap="lg" py="sm" maw={560}>
       <Title order={4}>Connect a Sleeper League</Title>
 
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap="sm">
           <Text fw={500}>Which team is yours?</Text>
           <Radio.Group value={selfOwnerId} onChange={setSelfOwnerId}>

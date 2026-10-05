@@ -129,7 +129,7 @@ export function BillingPage() {
           </Group>
 
           {isActive ? (
-            <Card withBorder padding="lg">
+            <Card padding="lg">
               <Stack gap="sm">
                 <Group justify="space-between">
                   <Title order={4}>Pro plan</Title>
@@ -185,7 +185,7 @@ export function BillingPage() {
               </Stack>
             </Card>
           ) : (
-            <Card withBorder padding="lg">
+            <Card padding="lg">
               <Stack gap="sm">
                 <Group justify="space-between" align="flex-end">
                   <Title order={4}>Pro</Title>

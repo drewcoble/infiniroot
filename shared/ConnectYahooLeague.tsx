@@ -249,7 +249,7 @@ export function ConnectYahooLeague({
         </Alert>
       )}
 
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap="sm">
           <Text fw={500}>Which team is yours?</Text>
           <Radio.Group value={selfTeamKey} onChange={setSelfTeamKey}>

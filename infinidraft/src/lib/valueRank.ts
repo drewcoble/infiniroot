@@ -1,5 +1,5 @@
 import type { Position, ScoringFormat } from "../types";
-import { adpForScoring, RELEVANT_ADP_CEILING } from "./relevantPlayers";
+import { adpForScoring, RELEVANT_ADP_CEILING } from "@shared/relevantPlayers";
 import type { StandardValueRow } from "./standardValues";
 
 // Shared "pool everyone by dollarValue descending" primitive - originally

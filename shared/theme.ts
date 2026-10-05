@@ -113,6 +113,20 @@ export const theme = createTheme({
         // changes again.
         radius: "12px",
         shadow: "sm",
+        // Cards read as surfaces via background + shadow alone, no border.
+        // Matches Mantine's own default, but explicit for the same
+        // anti-drift reason as radius above - call sites used to pass
+        // `withBorder` everywhere (an explicit prop always wins over a
+        // defaultProp), so those were stripped out to actually pick this
+        // default up. A card can still opt back in when the border means
+        // something (e.g. PlayerCard/TeamCard's highlight border).
+        withBorder: false,
+      },
+    },
+    Paper: {
+      defaultProps: {
+        // Same as Card above.
+        withBorder: false,
       },
     },
     // Badges (position tags, injury status, K/keeper tags, league status,

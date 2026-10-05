@@ -8,7 +8,7 @@ import { GenericValuesNotice } from "../../components/GenericValuesNotice";
 import {
   filterRelevantPlayers,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { buildStandardValueByFpid } from "../../lib/standardValues";
 import { computeNominationSuggestions } from "../../lib/nominationStrategies";
 import { WEEK } from "../../constants/general";

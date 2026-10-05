@@ -30,22 +30,24 @@ export interface FaabSuggestionRow {
   // Demand across the whole league, not just the requester - how many teams
   // have a real roster gap this player would fill, and the single largest
   // gap among them (a rough "what would the winning bid look like" read).
-  // 0/0 means nobody actually needs this player right now, whatever their
-  // raw rosValue is - see computeFaabSuggestions' header comment for why
-  // that's the point, not a bug.
+  // 0/0 means nobody would start this player right now - it lowers his
+  // market value (see demandMultiplier) but doesn't zero it.
   demandCount: number;
   topDemandValue: number;
+  // League-wide expected winning bid in dollars - the same for every team.
+  // See computeFaabSuggestions' header comment for how it's priced.
+  marketValue: number;
   // myValue/suggestedBid/rationale are only populated when args.teamId is
-  // given - the value/bid FROM THAT TEAM's own perspective and own
-  // remaining budget, never a share of the league's combined FAAB (see
-  // this file's header comment for why the old model did that and why it
-  // was wrong).
+  // given. myValue is that team's own starting-lineup upgrade in points (0
+  // when he'd only be depth); suggestedBid is marketValue adjusted for that
+  // team's fit (see teamFit) and capped at its remaining budget.
   myValue: number | null;
   suggestedBid: number | null;
   rationale: string | null;
   // Set when this row's value includes an injury-driven backup boost (see
   // playerValue.ts's findInjuryBoosts) - surfaced so the UI can explain an
-  // otherwise-surprising number rather than just asserting it.
+  // otherwise-surprising number rather than just asserting it. Kept separate
+  // from rationale (not appended to it) so the UI can give it its own line.
   boostReason: string | null;
 }
 
@@ -206,20 +208,78 @@ function weakestStarterByPosition(assignedSlots: Map<string, ValuedPlayer>): Par
   return weakest;
 }
 
-// How much of MY OWN value to actually offer, scaled by competitive
-// pressure from other teams that also have a gap here - no competing team
-// means I can lowball far below my own valuation; a rival valuing this
-// player as much or more than me means I likely need to approach my own
-// ceiling to win it. Starting curve, not calibrated against real bid
-// outcomes yet.
-function competitionFraction(myValue: number, rivalDemandValues: number[]): number {
-  if (myValue <= 0) return 0;
-  const competingRivals = rivalDemandValues.filter((v) => v > 0);
-  if (competingRivals.length === 0) return 0.15;
-  const strongestRival = Math.max(...competingRivals);
-  const pressure = Math.min(strongestRival / myValue, 1);
-  const rivalCountBump = Math.min((competingRivals.length - 1) * 0.05, 0.15);
-  return Math.min(0.15 + 0.7 * pressure + rivalCountBump, 0.9);
+// ---- League-wide market value ----
+
+// The "free" level at a position: the free agent still left once every team
+// has taken one. Anyone at or below this is a $0 pickup - there's always
+// another like him - so market value is priced off rosValue ABOVE this
+// floor, not above the league's worst starter (valueOverReplacement's
+// anchor, which most free agents sit below by definition).
+function waiverFloorFor(freeAgents: PlayerValueEntry[], teamCount: number): number {
+  if (freeAgents.length === 0) return 0;
+  return freeAgents[Math.min(Math.max(teamCount, 1), freeAgents.length) - 1]!.rosValue;
+}
+
+// Share of a typical team's remaining budget a player is worth, before
+// demand. Scaled by how far above the waiver floor he is relative to a
+// fringe starter (the full-pool replacement level) - so a player who'd be
+// the league's last starter for the rest of the season is worth
+// FRINGE_STARTER_BUDGET_SHARE, better than that grows super-linearly (true
+// difference-makers are scarce), bench depth gets a small but non-zero
+// share. Both sides of the ratio carry the same remainingWeeks, so it's
+// time-invariant - the shrinking remaining budgets are what make late-season
+// prices fall. Starting numbers, not calibrated against real bid outcomes
+// yet.
+const FRINGE_STARTER_BUDGET_SHARE = 0.15;
+const MARKET_CURVE_EXPONENT = 1.2;
+const MAX_BUDGET_SHARE = 0.5;
+
+function marketBudgetShare(aboveFloor: number, waiverFloor: number, starterReplacement: number): number {
+  if (aboveFloor <= 0) return 0;
+  // Guards a flat position (floor ~= fringe starter) from blowing the ratio
+  // up - a small gap there means the whole position is fungible, not that
+  // every free agent is a star.
+  const starterGap = Math.max(starterReplacement - waiverFloor, 0.15 * Math.abs(starterReplacement), 1);
+  return Math.min(FRINGE_STARTER_BUDGET_SHARE * (aboveFloor / starterGap) ** MARKET_CURVE_EXPONENT, MAX_BUDGET_SHARE);
+}
+
+// How hard the league will bid, from how many teams would actually start
+// this player. Nobody needing him doesn't zero him out (depth/stash/injury
+// cover still has value, and needs change weekly) - it just means he likely
+// goes below his base price.
+function demandMultiplier(demandCount: number): number {
+  if (demandCount === 0) return 0.7;
+  if (demandCount === 1) return 0.85;
+  return Math.min(1 + (demandCount - 2) * 0.05, 1.2);
+}
+
+// Adjusts league market value to the requesting team's own situation -
+// above market when he'd start for them (they're one of the teams driving
+// the price), below it when he'd be depth, but never to $0 just because
+// they're already covered at the position.
+function teamFit(
+  pos: Position,
+  myUpgrade: number,
+  weakestStarter: number | undefined,
+  aboveFloor: number,
+): { multiplier: number; rationale: string } {
+  if (weakestStarter === undefined) {
+    return { multiplier: 1.2, rationale: `No ${pos} in your starting lineup` };
+  }
+  if (myUpgrade > 0) {
+    return {
+      multiplier: 1 + 0.3 * Math.min(myUpgrade / Math.max(aboveFloor, 1), 1),
+      rationale: `Would start for you at ${pos}`,
+    };
+  }
+  return { multiplier: 0.5, rationale: `Depth for you at ${pos}` };
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1]! + sorted[mid]!) / 2 : sorted[mid]!;
 }
 
 // K/DST get a hard discount the VOR-over-replacement math above would never
@@ -231,7 +291,8 @@ function competitionFraction(myValue: number, rivalDemandValues: number[]): numb
 // explicit dampener + hard ceiling on the DOLLAR amount only - rosValue/
 // demandCount/myValue upstream stay undamped, since "this DST has a great
 // matchup" is still real, useful signal for the rationale/demand columns,
-// it just shouldn't translate into real budget. Tuned to roughly: K almost
+// it just shouldn't translate into real budget. Applied to market value, so
+// it carries through to every team's suggested bid. Tuned to roughly: K almost
 // always $0-1, DST streaming $1-2 with a rare standout up around $5-6 -
 // starting numbers, not calibrated against real bid outcomes yet.
 const BID_DAMPENER_BY_POSITION: Partial<Record<Position, number>> = {
@@ -249,19 +310,22 @@ const BID_CEILING_BY_POSITION: Partial<Record<Position, number>> = {
 // draft-day auction engine (convex/draftValues.ts): same VOR-over-
 // replacement idea, same weight-and-split-a-pot allocation. That's wrong
 // for FAAB - a live auction really is one shared pot split in real time,
-// but FAAB is independent blind bidding from each team's own budget, so a
-// player should only carry value where a specific team has a specific gap,
-// priced against THAT team's own remaining budget - never a share of the
-// league's combined FAAB. This version instead: (1) values each player off
-// a recency/volume-aware momentum read on top of their forward projection
-// rather than a flat season-to-date average - normally read straight from
+// but FAAB is independent blind bidding from each team's own budget, so it
+// could price a player above any single team's entire remaining budget. A
+// later version went the other way and priced bids purely off the
+// requesting team's own starting-lineup gap - which zeroed out anyone who
+// wouldn't start for that team, however valuable to the rest of the league.
+//
+// This version: (1) values each player off a recency/volume-aware momentum
+// read on top of their forward projection - normally read straight from
 // convex/rosVor.ts's daily cache rather than recomputed live (see
 // loadCachedPlayerValues) - (2) includes a time-boxed value bump for a free
-// agent plausibly inheriting a just-injured teammate's workload, (3)
-// computes demand by comparing that value against every team's own actual
-// current weakest starter, and (4) prices a suggested bid off the
-// requesting team's own value and budget, scaled by how much competing
-// demand exists elsewhere in the league.
+// agent plausibly inheriting a just-injured teammate's workload, (3) prices
+// a league-wide market value from how far he sits above the waiver floor,
+// as a share of a typical team's remaining budget, scaled by how many teams
+// would actually start him and capped at the second-deepest wallet, and (4)
+// adjusts that market value to the requesting team's own fit (starter vs
+// depth) and budget for its suggested bid.
 //
 // Lives here rather than directly in convex/infinileague/season/faabValues.ts
 // (its only consumer, now that infinidraft's own Free Agents tab has moved
@@ -340,15 +404,30 @@ export async function computeFaabSuggestions(
     freeAgentsByPosition.set(pos, rows);
   }
 
+  const remainingFaabByTeam = new Map(
+    teams.map((team) => [
+      team._id,
+      Math.max((team.faabBudgetOverride ?? settings.faabBudget ?? 0) - (team.faabSpent ?? 0), 0),
+    ]),
+  );
+  const remainingBudgets = [...remainingFaabByTeam.values()];
+  // Market is priced against a typical team's wallet, not the league's
+  // combined FAAB, and capped at the second-deepest wallet - the most anyone
+  // has to pay to beat every other team's max possible bid.
+  const typicalRemainingBudget = median(remainingBudgets);
+  const marketCap = [...remainingBudgets].sort((a, b) => b - a)[Math.min(1, remainingBudgets.length - 1)] ?? 0;
+  const teamCount = teams.length || settings.teamCount;
+
   const requestingTeam = args.teamId ? teams.find((team) => team._id === args.teamId) : undefined;
-  const remainingFaabForTeam = requestingTeam
-    ? Math.max((requestingTeam.faabBudgetOverride ?? settings.faabBudget ?? 0) - (requestingTeam.faabSpent ?? 0), 0)
-    : 0;
+  const remainingFaabForTeam = requestingTeam ? (remainingFaabByTeam.get(requestingTeam._id) ?? 0) : 0;
 
   const suggestions: FaabSuggestionRow[] = [];
   for (const pos of activePositions) {
     if (args.position && args.position !== pos) continue;
     const rows = freeAgentsByPosition.get(pos) ?? [];
+    const waiverFloor = waiverFloorFor(rows, teamCount);
+    const dampener = BID_DAMPENER_BY_POSITION[pos] ?? 1;
+    const ceiling = BID_CEILING_BY_POSITION[pos] ?? Infinity;
     rows.forEach((row, index) => {
       const demandValuesByTeam = teams.map((team) => {
         const weakest = weakestStarterByTeam.get(team._id)?.[pos];
@@ -357,30 +436,32 @@ export async function computeFaabSuggestions(
       const demandCount = demandValuesByTeam.filter((d) => d.value > 0).length;
       const topDemandValue = demandValuesByTeam.reduce((max, d) => Math.max(max, d.value), 0);
 
+      // valueOverReplacement is rosValue minus this position's fringe-starter
+      // level, so that level falls straight out of any row.
+      const starterReplacement = row.rosValue - row.valueOverReplacement;
+      const aboveFloor = row.rosValue - waiverFloor;
+      const share = marketBudgetShare(aboveFloor, waiverFloor, starterReplacement);
+      let marketValue = Math.round(
+        Math.min(typicalRemainingBudget * share * demandMultiplier(demandCount) * dampener, ceiling, marketCap),
+      );
+      // Anyone genuinely above the waiver floor is worth at least a minimum
+      // bid, however thin the rest of the math makes him.
+      if (share > 0 && marketValue === 0 && marketCap >= 1) marketValue = 1;
+
       let myValue: number | null = null;
       let suggestedBid: number | null = null;
       let rationale: string | null = null;
       if (requestingTeam) {
         myValue = demandValuesByTeam.find((d) => d.teamId === requestingTeam._id)?.value ?? 0;
-        const rivalDemands = demandValuesByTeam.filter((d) => d.teamId !== requestingTeam._id).map((d) => d.value);
-        const dampener = BID_DAMPENER_BY_POSITION[pos] ?? 1;
-        const ceiling = BID_CEILING_BY_POSITION[pos] ?? Infinity;
-        suggestedBid = Math.round(
-          Math.min(myValue * competitionFraction(myValue, rivalDemands) * dampener, ceiling, remainingFaabForTeam),
-        );
-
-        const weakest = weakestStarterByTeam.get(requestingTeam._id)?.[pos];
-        if (myValue <= 0) {
-          rationale = weakest === undefined ? `No rostered ${pos} on your team, but still no real upgrade` : `${pos} already well-staffed on your team`;
-        } else if (weakest === undefined) {
-          rationale = `No rostered ${pos} on your team right now`;
+        if (marketValue === 0) {
+          suggestedBid = 0;
+          rationale = "Waiver-level - no bid needed";
         } else {
-          rationale = `Upgrades your current ${pos}`;
+          const weakest = weakestStarterByTeam.get(requestingTeam._id)?.[pos];
+          const fit = teamFit(pos, myValue, weakest, aboveFloor);
+          suggestedBid = Math.min(Math.max(Math.round(marketValue * fit.multiplier), 1), ceiling, remainingFaabForTeam);
+          rationale = fit.rationale;
         }
-      }
-
-      if (row.boostReason) {
-        rationale = rationale ? `${rationale} - ${row.boostReason}` : row.boostReason;
       }
 
       suggestions.push({
@@ -393,6 +474,7 @@ export async function computeFaabSuggestions(
         valueOverReplacement: row.valueOverReplacement,
         demandCount,
         topDemandValue,
+        marketValue,
         myValue,
         suggestedBid,
         rationale,

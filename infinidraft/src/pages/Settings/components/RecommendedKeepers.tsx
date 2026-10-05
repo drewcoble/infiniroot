@@ -292,7 +292,7 @@ export function RecommendedKeepers({
   // savings bar).
   if (!priceHistory || Object.keys(priceHistory).length === 0) {
     return (
-      <Card withBorder padding="md">
+      <Card padding="md">
         <Stack gap="sm">
           <Text size="sm" fw={500}>
             Recommended Keepers
@@ -314,7 +314,7 @@ export function RecommendedKeepers({
   }
 
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Group justify="space-between" wrap="nowrap">
           <Text size="sm" fw={500}>

@@ -79,7 +79,7 @@ export function RecommendedNominations({
   const rows = results[strategy];
 
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Group justify="space-between" wrap="wrap" gap="xs">
           <Text size="sm" fw={500}>

@@ -15,6 +15,7 @@ export * from "./NumberStepper";
 export * from "./PageContainer";
 export * from "./PlayerCard";
 export * from "./PositionFilterBar";
+export * from "./RemoveLeagueModal";
 export * from "./RookieBadge";
 export * from "./SignedOutHeader";
 export * from "./SortArrow";

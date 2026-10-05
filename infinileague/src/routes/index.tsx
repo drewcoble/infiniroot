@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 // useConvexAuth from convex/react, not @convex-dev/auth/react's - see
 // __root.tsx's comment on the same import.
 import { useConvexAuth, useQuery } from "convex/react";
 import {
+  ActionIcon,
   Button,
   Card,
   Center,
@@ -12,11 +14,12 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { Import, Plus } from "lucide-react";
+import { Import, Plus, Trash2 } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
+import { RemoveLeagueModal } from "@shared/RemoveLeagueModal";
 import type { LinkedSeason } from "../types/season";
 
 export const Route = createFileRoute("/")({
@@ -40,6 +43,10 @@ function Dashboard() {
   const seasonsList: LinkedSeason[] | undefined = useQuery(
     api.leagues.listLinkedSeasons,
     isAuthenticated ? {} : "skip",
+  );
+
+  const [removingSeason, setRemovingSeason] = useState<LinkedSeason | null>(
+    null,
   );
 
   const leagueGroups = groupSeasonsByLeague(seasonsList ?? []).sort((a, b) =>
@@ -110,15 +117,30 @@ function Dashboard() {
                   }}
                 >
                   <Card
-                    withBorder
                     padding="lg"
                     style={{ cursor: "pointer", height: "100%" }}
                   >
                     <Stack gap="sm" justify="space-between" h="100%">
                       <Stack gap={4}>
-                        <Text fw={600} lineClamp={2}>
-                          {latest.name}
-                        </Text>
+                        <Group justify="space-between" wrap="nowrap" align="flex-start">
+                          <Text fw={600} lineClamp={2}>
+                            {latest.name}
+                          </Text>
+                          {/* preventDefault/stopPropagation keep this click
+                              from also following the card's own Link. */}
+                          <ActionIcon
+                            variant="subtle"
+                            color="gray"
+                            aria-label="Remove league"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setRemovingSeason(latest);
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </ActionIcon>
+                        </Group>
                         <Text size="sm" c="dimmed">
                           {latest.year} · {latest.teamCount} teams ·{" "}
                           {SCORING_LABELS[latest.scoring]}
@@ -135,6 +157,10 @@ function Dashboard() {
           </>
         )}
       </Stack>
+      <RemoveLeagueModal
+        season={removingSeason}
+        onClose={() => setRemovingSeason(null)}
+      />
     </PageContainer>
   );
 }

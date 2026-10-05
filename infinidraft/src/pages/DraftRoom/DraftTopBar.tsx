@@ -17,7 +17,7 @@ import {
   filterRelevantPlayers,
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { buildStandardValueByFpid } from "../../lib/standardValues";
 import { expandRosterSlots } from "../../lib/rosterSlots";
 import { assignSlotForPick } from "../../lib/slotAssignment";

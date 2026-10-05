@@ -1,9 +1,16 @@
-import type {
-  Position,
-  ScoringFormat,
-  ScoringConfig,
-  TeScoringFormat,
-} from "../types";
+import type { Position } from "./positionColors";
+
+// Canonical home of the scoring-format types - infinidraft's src/types.ts
+// re-exports these rather than declaring its own copies.
+export type ScoringFormat = "STD" | "HALF" | "PPR";
+
+export type TeScoringFormat = "NONE" | "HALF" | "FULL";
+
+export interface ScoringConfig {
+  scoring: ScoringFormat;
+  teScoring: TeScoringFormat;
+  sixPointPassTds: boolean;
+}
 
 export function pointsForScoring(
   row: { pointsStd: number; pointsHalf: number; pointsPpr: number },

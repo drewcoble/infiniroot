@@ -711,7 +711,7 @@ export function LeagueDetails({
       )}
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-        <Card withBorder padding="md">
+        <Card padding="md">
           <Stack gap="md">
             <Group justify="space-between" align="center">
               <Text size="md" fw={500}>
@@ -821,7 +821,7 @@ export function LeagueDetails({
           </Stack>
         </Card>
 
-        <Card withBorder padding="md">
+        <Card padding="md">
           {draftTeams === undefined ? (
             <Stack gap={6}>
               <Text size="md" fw={500}>

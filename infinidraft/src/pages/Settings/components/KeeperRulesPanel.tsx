@@ -29,7 +29,7 @@ import { POSITION_COLORS } from "@shared/positionColors";
 import {
   filterRelevantPlayers,
   pointsForScoringConfig,
-} from "../../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { WEEK } from "../../../constants/general";
 import { DEFAULT_KEEPER_RULES } from "../../../constants/leagueSettings";
 import type { KeeperRules } from "../../../lib/keeperCost";
@@ -448,7 +448,7 @@ export function KeeperRulesPanel({ settings }: KeeperRulesPanelProps) {
 
   const body = (
     <>
-      <Card withBorder padding="sm">
+      <Card padding="sm">
         <Group gap="sm" wrap="wrap">
           <Stack gap={4}>
             <Text size="sm" fw={500}>
@@ -496,7 +496,7 @@ export function KeeperRulesPanel({ settings }: KeeperRulesPanelProps) {
         </Group>
       </Card>
 
-      <Card withBorder padding="sm">
+      <Card padding="sm">
         <Stack gap="xs">
           <Text size="md" fw={500}>
             Default rule
@@ -672,7 +672,7 @@ export function KeeperRulesPanel({ settings }: KeeperRulesPanelProps) {
             // instead of leaving it looking functional but doing nothing.
             const isSaved = liveTier !== undefined;
             return (
-              <Card key={tier.id} withBorder padding="sm">
+              <Card key={tier.id} padding="sm">
                 <Stack gap="xs">
                   <Group gap="sm" wrap="wrap" align="flex-end">
                     <TextInput

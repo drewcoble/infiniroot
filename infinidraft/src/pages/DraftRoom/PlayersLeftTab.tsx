@@ -33,7 +33,7 @@ import {
 import {
   filterRelevantPlayers,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { recommendationFor, groupByTier } from "../../lib/draftRecommendation";
 import { POSITION_COLORS } from "@shared/positionColors";
 import { buildStandardValueByFpid } from "../../lib/standardValues";

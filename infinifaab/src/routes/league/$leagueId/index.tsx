@@ -38,7 +38,7 @@ function DashboardTab() {
   return (
     <Stack gap={8}>
       {rows.map((row, index) => (
-        <Card key={row.teamId} withBorder padding="xs" radius="md">
+        <Card key={row.teamId} padding="xs" radius="md">
           <Group wrap="nowrap" gap="sm">
             <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
               {index + 1}

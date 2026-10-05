@@ -158,7 +158,7 @@ function DepthChartsPage() {
                     // forcing PlayerCard's PPG/rank fields, which don't
                     // exist for this player.
                     return (
-                      <Card key={row.fpid} withBorder padding="xs" radius="md">
+                      <Card key={row.fpid} padding="xs" radius="md">
                         <Group wrap="nowrap" gap="sm">
                           <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
                             {row.depthPosition}

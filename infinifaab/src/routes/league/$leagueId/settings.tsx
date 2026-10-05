@@ -128,7 +128,7 @@ function SettingsTab() {
 
   return (
     <Stack gap="lg">
-      <Card withBorder padding="md" radius="md">
+      <Card padding="md" radius="md">
         <Stack gap="sm">
           <Title order={5}>Auction schedule</Title>
           <Switch
@@ -294,7 +294,7 @@ function SettingsTab() {
       </Card>
 
       {isCommissioner && (
-        <Card withBorder padding="md" radius="md">
+        <Card padding="md" radius="md">
           <Stack gap="sm">
             <Title order={5}>Invite team owners</Title>
             <Text size="sm" c="dimmed">
@@ -354,7 +354,7 @@ function InviteRow({ row, onGenerate, onRevoke, onRemoveMember }: InviteRowProps
   };
 
   return (
-    <Card withBorder padding="xs" radius="md">
+    <Card padding="xs" radius="md">
       <Stack gap={6}>
         <Group justify="space-between" wrap="nowrap">
           <Text size="sm" fw={500} truncate>

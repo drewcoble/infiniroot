@@ -8,27 +8,10 @@ import {
   fetchSleeper,
   POSITION_SLUGS,
   requireSuperAdmin,
+  SleeperProjectionRecord,
 } from "./client";
 
 type Position = (typeof POSITIONS)[number];
-
-interface SleeperPlayer {
-  first_name?: string;
-  last_name?: string;
-  position?: string;
-  team?: string | null;
-  injury_status?: string;
-  injury_body_part?: string;
-  injury_notes?: string;
-  years_exp?: number;
-}
-
-interface SleeperProjectionRecord {
-  player_id: string;
-  team: string | null;
-  stats?: Record<string, number | undefined>;
-  player?: SleeperPlayer;
-}
 
 const SLEEPER_TO_OUR_POSITION: Record<string, Position> = {
   QB: "QB",
@@ -37,19 +20,6 @@ const SLEEPER_TO_OUR_POSITION: Record<string, Position> = {
   TE: "TE",
   DEF: "DST",
   K: "K",
-};
-
-
-// Sleeper's injury_status values, mapped to the short badge codes the UI
-// already renders (see convex/injuries.ts / PlayersTable.tsx).
-const INJURY_STATUS_SHORT: Record<string, string> = {
-  Questionable: "Q",
-  Doubtful: "D",
-  Out: "O",
-  IR: "IR",
-  PUP: "PUP",
-  Suspended: "SUS",
-  "Non-Football Injury": "NFI",
 };
 
 type FetchProjectionsResult = Record<
@@ -102,24 +72,6 @@ async function fetchProjectionsHandler(
     >
   > = {};
 
-  // Collected across every position (the injuries table has no
-  // position/week partition), derived for free from the same player
-  // objects this fetch already parses - no separate injuries call needed.
-  const injuryRows: Array<{
-    fpid: number;
-    status: string;
-    statusShort: string;
-    injuryType: string;
-    comment: string;
-    irWeeks: number[];
-    probabilityOfPlaying: number | null;
-    practice1: string | null;
-    practice2: string | null;
-    practice3: string | null;
-    practiceReportInjuryType: string | null;
-    updatedAt: number;
-  }> = [];
-
   for (const position of POSITIONS) {
     const sleeperSlug = POSITION_SLUGS[position];
     const positionRecords = bySleeperPosition.get(sleeperSlug) ?? [];
@@ -154,24 +106,6 @@ async function fetchProjectionsHandler(
       // only affects individual players.
       if (position !== "DST" && !record.team) {
         continue;
-      }
-
-      const status = record.player?.injury_status;
-      if (status) {
-        injuryRows.push({
-          fpid,
-          status,
-          statusShort: INJURY_STATUS_SHORT[status] ?? status,
-          injuryType: record.player?.injury_body_part ?? "",
-          comment: record.player?.injury_notes ?? "",
-          irWeeks: [],
-          probabilityOfPlaying: null,
-          practice1: null,
-          practice2: null,
-          practice3: null,
-          practiceReportInjuryType: null,
-          updatedAt: Date.now(),
-        });
       }
 
       const name =
@@ -269,19 +203,6 @@ async function fetchProjectionsHandler(
       rankings: rankingsResult,
     };
   }
-
-  await ctx.runMutation(api.injuries.upsertInjuries, { rows: injuryRows });
-  await ctx.runMutation(api.injurySnapshots.recordSnapshots, {
-    season,
-    week: args.week,
-    rows: injuryRows.map((row) => ({
-      fpid: row.fpid,
-      status: row.status,
-      statusShort: row.statusShort,
-      injuryType: row.injuryType,
-      comment: row.comment,
-    })),
-  });
 
   return results as FetchProjectionsResult;
 }

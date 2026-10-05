@@ -21,7 +21,7 @@ import type { ScoringConfig } from "../types";
 import { POSITION_COLORS } from "@shared/positionColors";
 import { injuryColor } from "@shared/injuryColor";
 import { formatStatKey } from "../lib/playerFormatting";
-import { adpForScoring, pointsForScoringConfig } from "../lib/relevantPlayers";
+import { adpForScoring, pointsForScoringConfig } from "@shared/relevantPlayers";
 import { ValueGapIcon } from "../pages/Settings/components/ValueGapIcon";
 import { GenericValueBadge } from "./GenericValueBadge";
 import { RookieBadge } from "@shared/RookieBadge";

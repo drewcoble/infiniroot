@@ -253,7 +253,7 @@ function PlayersTab() {
       )}
 
       {isCommissioner && (
-        <Card withBorder padding="md" radius="md">
+        <Card padding="md" radius="md">
           <Stack gap="sm">
             <Title order={5}>Start a bid cycle for specific players</Title>
             <Text size="sm" c="dimmed">

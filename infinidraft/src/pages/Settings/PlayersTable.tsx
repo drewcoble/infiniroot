@@ -31,7 +31,7 @@ import {
   filterRelevantPlayers,
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { buildStandardValueByFpid } from "../../lib/standardValues";
 import { compareSortValues, type SortDir } from "../../lib/tableSort";
 import { buildBlendedAdpByFpid, buildOurRankByFpid } from "../../lib/valueRank";
@@ -577,7 +577,7 @@ export function PlayersTable({ week, selectedLeagueId }: PlayersTableProps) {
           </Box>
         )}
 
-      <Card withBorder padding={0}>
+      <Card padding={0}>
         {allProjections === undefined ||
         allRankings === undefined ||
         isInitialValuesLoad ? (

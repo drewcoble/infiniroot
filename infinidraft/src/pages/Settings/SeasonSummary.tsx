@@ -16,7 +16,7 @@ import { PlayerDetailModal } from "../../components/PlayerDetailModal";
 import {
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 
 interface SeasonSummaryProps {
   seasonId: Id<"seasons">;
@@ -121,7 +121,6 @@ export function SeasonSummary({ seasonId }: SeasonSummaryProps) {
           return (
             <Card
               key={team._id}
-              withBorder
               padding="md"
               onClick={() => toggleExpanded(team._id)}
               style={{ cursor: "pointer" }}

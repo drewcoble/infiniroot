@@ -44,7 +44,7 @@ export function TargetsTable({
   standardValueByFpid,
 }: ShortlistTableProps) {
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Text size="sm" fw={500}>
           Targets

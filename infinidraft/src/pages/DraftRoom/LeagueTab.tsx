@@ -19,7 +19,7 @@ import { TeamSlotDetail } from "../../components/TeamSlotDetail";
 import {
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { WEEK } from "../../constants/general";
 import {
   POSITION_ORDER,
@@ -263,7 +263,6 @@ export function LeagueTab({ seasonId, teams, selfTeamId }: LeagueTabProps) {
           }) => (
             <Card
               key={team._id}
-              withBorder
               padding="md"
               onClick={() => toggleExpanded(team._id)}
               style={{ cursor: "pointer" }}

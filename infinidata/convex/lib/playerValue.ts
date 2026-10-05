@@ -295,12 +295,21 @@ export async function findInjuryBoosts(
     const injuredForm = args.forms.get(injured.fpid);
     if (!injuredForm) continue; // no team/position to match teammates against
 
-    const latestSnapshot = await ctx.db
+    // When the injury started, not when it was last seen - a weekly
+    // "carryForward" row (see the injurySnapshots schema comment) would
+    // otherwise restart the freshness clock every week and keep a
+    // long-term injury's boost alive all season. Carry-forwards are at most
+    // one per week, so this walk stays short.
+    let latestChange: { fetchedAt: number } | null = null;
+    for await (const snapshot of ctx.db
       .query("injurySnapshots")
       .withIndex("by_fpid", (q) => q.eq("fpid", injured.fpid))
-      .order("desc")
-      .first();
-    if (!latestSnapshot || now - latestSnapshot.fetchedAt > BOOST_FRESHNESS_MS) continue;
+      .order("desc")) {
+      if (snapshot.kind === "carryForward") continue;
+      latestChange = snapshot;
+      break;
+    }
+    if (!latestChange || now - latestChange.fetchedAt > BOOST_FRESHNESS_MS) continue;
 
     const boostedWeeks = estimatedBoostWeeks(injured.status, injured.comment);
     if (boostedWeeks <= 0) continue;

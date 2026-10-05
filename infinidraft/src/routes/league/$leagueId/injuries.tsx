@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { Id } from "@infinidata/dataModel";
-import { InjuryReport } from "../../../pages/InjuryReport/InjuryReport";
+import { InjuryReport } from "@shared/InjuryReport";
 import { MOBILE_STATS_ROW_HEIGHT, WEEK } from "../../../constants/general";
 import { MOBILE_HEADER_HEIGHT } from "@shared/constants";
 import { useDraftPhase } from "../../../hooks/useDraftPhase";
+import { PlayerDetailModal } from "../../../components/PlayerDetailModal";
 
 export const Route = createFileRoute("/league/$leagueId/injuries")({
   component: InjuriesRoute,
@@ -21,6 +22,9 @@ function InjuriesRoute() {
       filterBarTop={
         MOBILE_HEADER_HEIGHT + (phase?.isStarted ? MOBILE_STATS_ROW_HEIGHT : 0)
       }
+      renderPlayerDetail={(props) => (
+        <PlayerDetailModal {...props} week={WEEK} seasonId={seasonId} />
+      )}
     />
   );
 }

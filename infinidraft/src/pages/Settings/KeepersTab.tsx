@@ -8,7 +8,7 @@ import {
   filterRelevantPlayers,
   pointsForScoringConfig,
   scoringConfigFromSeason,
-} from "../../lib/relevantPlayers";
+} from "@shared/relevantPlayers";
 import { assignSlotForPick } from "../../lib/slotAssignment";
 import { WEEK } from "../../constants/general";
 import { PlayerDetailModal } from "../../components/PlayerDetailModal";

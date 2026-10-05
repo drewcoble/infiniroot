@@ -115,7 +115,7 @@ export function PickSlotsPanel({
   if (teams.length === 0 || maxRounds < 1) return null;
 
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Text size="md" fw={500}>
           Traded &amp; Forfeited Picks

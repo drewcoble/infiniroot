@@ -186,7 +186,7 @@ function MatchupPage() {
         />
       )}
 
-      <Card withBorder padding="lg">
+      <Card padding="lg">
         <Stack gap="md">
           <Group wrap="nowrap" align="center" gap="sm">
             <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>

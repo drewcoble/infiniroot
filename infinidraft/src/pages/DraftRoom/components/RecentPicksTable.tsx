@@ -32,7 +32,7 @@ export function RecentPicksTable({
   trackConsecutiveYears,
 }: RecentPicksTableProps) {
   return (
-    <Card withBorder padding="md">
+    <Card padding="md">
       <Stack gap="sm">
         <Text size="sm" fw={500}>
           Recent picks

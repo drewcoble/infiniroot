@@ -82,7 +82,7 @@ export function TeamRosterList({ rows, teamName }: TeamRosterListProps) {
             }
           />
         ) : (
-          <Card key={`empty-${row.slot}-${index}`} withBorder padding="xs" radius="md">
+          <Card key={`empty-${row.slot}-${index}`} padding="xs" radius="md">
             <Group wrap="nowrap" gap="sm">
               <Badge size="sm" variant="light" color={positionColorOrDefault(row.slot ?? "")}>
                 {slotLabel(row.slot)}

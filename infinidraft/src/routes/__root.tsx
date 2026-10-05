@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import {
   createRootRoute,
   Outlet,
@@ -20,7 +20,6 @@ import { AuthPanel } from "@shared/AuthPanel";
 import { PageContainer } from "@shared/PageContainer";
 import { RouteErrorFallback } from "@shared/RouteErrorFallback";
 import { SignedOutHeader } from "@shared/SignedOutHeader";
-import { getConfiguredSuperAdminEmails } from "../lib/superAdmin";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -31,10 +30,6 @@ function RootComponent() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const ensureUser = useMutation(api.users.ensureCurrentUser);
-  const configuredSuperAdminEmails = useMemo(
-    () => getConfiguredSuperAdminEmails(),
-    [],
-  );
   // The TV board (/board/$leagueId) and the Report Card (/reportCard/
   // $leagueId) are readonly pages meant to be shared with anyone via link
   // (e.g. cast on a TV during a live auction, or dropped in the league
@@ -48,9 +43,9 @@ function RootComponent() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      void ensureUser({ allowlistedEmails: configuredSuperAdminEmails });
+      void ensureUser({});
     }
-  }, [ensureUser, isAuthenticated, configuredSuperAdminEmails]);
+  }, [ensureUser, isAuthenticated]);
 
   if (isPublicRoute) {
     return <Outlet />;
