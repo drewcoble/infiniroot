@@ -13,6 +13,24 @@ import { BLENDED_POSITIONS } from "./positions";
 // own bound - see infinileague/src/routes/.../teams/$teamId.tsx) and
 // skipped entirely for the "0" season-long sentinel (pre/off-season, or an
 // explicit draft-mode backfill), which has no "next week" to speak of.
+// Weeks whose actual points the daily run re-fetches: the current week
+// plus the two before it, so late games and the NFL's stat corrections
+// (typically settled within a week or so) still land, without re-pulling
+// and re-checking every completed week of the season every day. Undefined
+// (meaning all 18) outside the regular season - fetchCurrentNflWeek's "0" -
+// so offseason/post-season runs keep the old full sweep, which is cheap
+// there since upsertPlayerPoints skips unchanged rows.
+const RECENT_POINTS_WEEKS = 3;
+function recentPointsWeeks(week: string): string[] | undefined {
+  const weekNum = Number(week);
+  if (!Number.isInteger(weekNum) || weekNum <= 0) return undefined;
+  const weeks = [];
+  for (let w = Math.max(weekNum - RECENT_POINTS_WEEKS + 1, 1); w <= weekNum; w += 1) {
+    weeks.push(String(w));
+  }
+  return weeks;
+}
+
 function weeksToFetch(week: string): string[] {
   const weekNum = Number(week);
   if (!Number.isInteger(weekNum) || weekNum <= 0) return [week];
@@ -161,9 +179,15 @@ async function fetchAllHandler(
     );
   }
 
+  // A past-season backfill (args.season set) still sweeps every week -
+  // recentPointsWeeks only makes sense relative to the live season.
+  const pointsWeeks = args.season ? undefined : recentPointsWeeks(week);
   await ctx.runAction(
     internal.sleeper.playerPoints.fetchAllPlayerPointsInternal,
-    { ...(args.season ? { year: args.season } : {}) },
+    {
+      ...(args.season ? { year: args.season } : {}),
+      ...(pointsWeeks ? { weeks: pointsWeeks } : {}),
+    },
   );
 
   // Refresh the valueGaps/draftValues caches now that the projections/

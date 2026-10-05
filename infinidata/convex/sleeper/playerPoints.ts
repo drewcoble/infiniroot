@@ -40,9 +40,10 @@ const WEEKS = Array.from({ length: 18 }, (_, i) => String(i + 1));
  */
 async function fetchAllPlayerPointsHandler(
   ctx: ActionCtx,
-  args: { year?: string },
+  args: { year?: string; weeks?: string[] },
 ): Promise<Record<string, { inserted: number; updated: number }>> {
   const year = args.year ?? currentSeason();
+  const weeks = args.weeks ?? WEEKS;
   const totals: Record<string, { inserted: number; updated: number }> = {};
 
   // Sleeper's weekly stats payload includes plenty of players we've never
@@ -54,7 +55,7 @@ async function fetchAllPlayerPointsHandler(
     await ctx.runQuery(internal.players.listKnownFpids, {}),
   );
 
-  for (const week of WEEKS) {
+  for (const week of weeks) {
     const records: SleeperStatsRecord[] = await fetchSleeper(
       "stats",
       year,
@@ -187,9 +188,12 @@ export const fetchAllPlayerPoints = action({
 // Cron-safe counterpart with no human-auth check - see the matching comment
 // on fetchProjectionsInternal in convex/sleeper/projections.ts for why this
 // is needed. Only fetchAllData.fetchAllInternal calls this.
+// `weeks` narrows the fetch (fetchAllData's daily run passes only the
+// last few weeks - see recentPointsWeeks there); omitted means all 18.
 export const fetchAllPlayerPointsInternal = internalAction({
   args: {
     year: v.optional(v.string()),
+    weeks: v.optional(v.array(v.string())),
   },
   handler: fetchAllPlayerPointsHandler,
 });

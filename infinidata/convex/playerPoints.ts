@@ -309,6 +309,18 @@ export const upsertPlayerPoints = mutation({
         .filter((q) => q.eq(q.field("scoring"), args.scoring))
         .first();
 
+      // The daily fetch re-sends every recent week's full payload, nearly
+      // all of it unchanged since the last run - skip the write entirely
+      // (not just applySeasonStatsDelta's own no-op) so an unchanged row
+      // costs one read, and doesn't wake every query reading playerPoints.
+      if (
+        existing &&
+        existing.points === row.points &&
+        statsEqual(existing.stats, row.stats)
+      ) {
+        continue;
+      }
+
       const oldPoints = existing?.points ?? 0;
       const oldCounted = existing !== null && oldPoints > 0;
       const newCounted = row.points > 0;
