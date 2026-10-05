@@ -1,6 +1,5 @@
 // Build-time flags for integrations not ready to expose in production yet -
-// read from Vite env vars (see DEPLOY.md), same convention as
-// VITE_SUPER_ADMIN_EMAILS (src/lib/superAdmin.ts). These only ever gate
+// read from Vite env vars (see DEPLOY.md). These only ever gate
 // which UI entry points render; the underlying Stripe backend code and
 // routes stay fully functional everywhere (including prod) so a deploy
 // can still reach them directly if needed.

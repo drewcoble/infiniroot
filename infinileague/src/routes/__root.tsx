@@ -19,8 +19,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   // Upserts the shared userProfiles row on sign-in - same call infinidraft's
-  // own __root.tsx makes. No allowlistedEmails arg: super-admin is an
-  // infinidraft-only concept (billing/admin tooling), irrelevant here.
+  // own __root.tsx makes.
   const ensureUser = useMutation(api.users.ensureCurrentUser);
   useEffect(() => {
     if (isAuthenticated) {

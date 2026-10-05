@@ -4,52 +4,8 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { MutationCtx, QueryCtx } from "./_generated/server";
 
-const processEnv = (
-  globalThis as typeof globalThis & {
-    process?: { env?: Record<string, string | undefined> };
-  }
-).process?.env;
-
 function normalizeEmail(value?: string | null) {
   return value?.trim().toLowerCase() ?? "";
-}
-
-function getAllowedSuperAdminEmails(overrideEmails?: string[] | null) {
-  const fromEnv = [
-    processEnv?.SUPER_ADMIN_EMAILS,
-    processEnv?.VITE_SUPER_ADMIN_EMAILS,
-    processEnv?.CONVEX_SUPER_ADMIN_EMAILS,
-  ]
-    .filter((value): value is string => Boolean(value))
-    .flatMap((value) =>
-      value
-        .split(",")
-        .map((item) => item.trim().toLowerCase())
-        .filter(Boolean),
-    );
-
-  const fromOverride = (overrideEmails ?? [])
-    .map((item) => normalizeEmail(item))
-    .filter(Boolean);
-
-  return [...new Set([...fromEnv, ...fromOverride])];
-}
-
-function getRoleForIdentity(
-  email: string | null | undefined,
-  existingRole: string | null | undefined,
-  overrideEmails?: string[] | null,
-) {
-  const normalizedEmail = normalizeEmail(email);
-  const allowedEmails = getAllowedSuperAdminEmails(overrideEmails);
-
-  if (allowedEmails.includes(normalizedEmail)) {
-    return "super-admin" as const;
-  }
-
-  return existingRole === "super-admin"
-    ? ("super-admin" as const)
-    : ("user" as const);
 }
 
 // The users table (from authTables) is the source of truth for email/name.
@@ -131,11 +87,19 @@ export const getCurrentUser = query({
   },
 });
 
+// Upserts the caller's userProfiles row on sign-in. Never grants a role:
+// super-admin is only ever set by editing a userProfiles row directly (e.g.
+// in the Convex dashboard) - an existing role is just carried over, and a
+// new profile always starts as "user". allowlistedEmails is IGNORED - it's
+// only still accepted so browsers holding an older bundle (which sent it)
+// don't fail argument validation; remove it once those have cycled out.
+// It used to be merged into a super-admin allowlist, which let any
+// signed-in caller grant themselves super-admin by passing their own email.
 export const ensureCurrentUser = mutation({
   args: {
     allowlistedEmails: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("You must be signed in.");
@@ -156,11 +120,7 @@ export const ensureCurrentUser = mutation({
       identity.tokenIdentifier,
       email,
     );
-    const role = getRoleForIdentity(
-      email,
-      existing?.role ?? null,
-      args.allowlistedEmails,
-    );
+    const role = existing?.role === "super-admin" ? "super-admin" : "user";
 
     if (existing) {
       const needsUpdate =
@@ -216,65 +176,6 @@ export const getCurrentUserForDataFetch = query({
       identity.tokenIdentifier,
       authUser?.email ?? null,
     );
-  },
-});
-
-export const promoteCurrentUserToSuperAdmin = mutation({
-  args: {
-    allowlistedEmails: v.optional(v.array(v.string())),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in.");
-    }
-
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("You must be signed in.");
-    }
-
-    const authUser = await getAuthUser(ctx, userId);
-    const email = authUser?.email ?? null;
-    const currentUser = await getCurrentUserDoc(
-      ctx,
-      userId,
-      identity.tokenIdentifier,
-      email,
-    );
-    const normalizedEmail = normalizeEmail(email ?? currentUser?.email);
-    const allowedEmails = getAllowedSuperAdminEmails(args.allowlistedEmails);
-
-    if (
-      currentUser?.role !== "super-admin" &&
-      !allowedEmails.includes(normalizedEmail)
-    ) {
-      throw new Error(
-        "Your email is not allowlisted as a super-admin. Add it to VITE_SUPER_ADMIN_EMAILS in .env.local (or SUPER_ADMIN_EMAILS in the Convex environment) and restart the app.",
-      );
-    }
-
-    if (!currentUser) {
-      const newUserId = await ctx.db.insert("userProfiles", {
-        userId,
-        tokenIdentifier: identity.tokenIdentifier,
-        name: authUser?.name ?? email ?? "User",
-        email,
-        role: "super-admin",
-        createdAt: Date.now(),
-      });
-      return await ctx.db.get(newUserId);
-    }
-
-    await ctx.db.patch(currentUser._id, {
-      userId,
-      tokenIdentifier: identity.tokenIdentifier,
-      email: email ?? currentUser.email,
-      name: authUser?.name ?? email ?? currentUser.name,
-      role: "super-admin",
-    });
-
-    return await ctx.db.get(currentUser._id);
   },
 });
 
