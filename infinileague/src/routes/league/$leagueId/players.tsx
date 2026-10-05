@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
@@ -29,6 +29,39 @@ const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 // live since every card is the same fixed shape (see PlayerCard's own
 // comment).
 const PLAYER_CARD_HEIGHT = 71;
+
+// "rank" is each view's own VOR ranking (weekRank/rosRank) - the default.
+// The two PPG sorts are the same in either view: they reorder by a raw
+// per-game rate rather than the view's VOR value.
+type SortKey = "rank" | "actualPpg" | "rosPpg";
+
+const SORT_LABELS: Record<Exclude<SortKey, "rank">, string> = {
+  actualPpg: "PPG",
+  rosPpg: "ROS PPG",
+};
+
+// Overall + positional ranks for a PPG sort, so the left label and the
+// position badge ("RB12") always describe the order the list is actually
+// in - the backend's rosRank/positionRank are rosVOR ranks and would read
+// out of order once the list is sorted by something else. Computed over
+// the full board (not the position-filtered subset), matching how the
+// backend's own ranks are global. Ties break on the view's own rank so the
+// order is stable.
+function rankByMetric(
+  rows: RosVorRow[],
+  metric: Exclude<SortKey, "rank">,
+  tieBreak: (row: RosVorRow) => number,
+): Map<number, { overall: number; position: number }> {
+  const sorted = [...rows].sort((a, b) => b[metric] - a[metric] || tieBreak(a) - tieBreak(b));
+  const positionCounts = new Map<RosVorRow["position"], number>();
+  const ranks = new Map<number, { overall: number; position: number }>();
+  sorted.forEach((row, index) => {
+    const position = (positionCounts.get(row.position) ?? 0) + 1;
+    positionCounts.set(row.position, position);
+    ranks.set(row.fpid, { overall: index + 1, position });
+  });
+  return ranks;
+}
 
 // Every rosterable player in the league (rostered or free agent), ranked by
 // rosVOR - the full board convex/rosVor.ts computes, not just the free
@@ -78,9 +111,23 @@ function PlayersPage() {
   // same ranking it always has unless the viewer opts into "This Week."
   const [metric, setMetric] = useState<"week" | "ros">("ros");
   const isWeekMode = metric === "week";
+  const [sortKey, setSortKey] = useState<SortKey>("rank");
+
+  // Memoized since the window virtualizer re-renders this component on
+  // every scroll frame - no need to re-rank 800+ players each time.
+  const metricRanks = useMemo(() => {
+    if (!rows || sortKey === "rank") return null;
+    return rankByMetric(rows, sortKey, (row) => (isWeekMode ? row.weekRank : row.rosRank));
+  }, [rows, sortKey, isWeekMode]);
+
   const filteredRows = (rows ?? [])
     .filter((row) => selectedPositions.includes(row.position))
-    .sort((a, b) => (isWeekMode ? a.weekRank - b.weekRank : a.rosRank - b.rosRank));
+    .sort((a, b) => {
+      if (metricRanks) {
+        return (metricRanks.get(a.fpid)?.overall ?? 0) - (metricRanks.get(b.fpid)?.overall ?? 0);
+      }
+      return isWeekMode ? a.weekRank - b.weekRank : a.rosRank - b.rosRank;
+    });
 
   const listRef = useRef<HTMLDivElement>(null);
   const virtualizer = useWindowVirtualizer({
@@ -144,6 +191,22 @@ function PlayersPage() {
           { label: "Rest of Season", value: "ros" },
         ]}
       />
+      <Group gap="sm" wrap="nowrap">
+        <Text size="sm" c="dimmed">
+          Sort by
+        </Text>
+        <SegmentedControl
+          size="xs"
+          style={{ flex: 1 }}
+          value={sortKey}
+          onChange={(value) => setSortKey(value as SortKey)}
+          data={[
+            { label: "Rank", value: "rank" },
+            { label: SORT_LABELS.actualPpg, value: "actualPpg" },
+            { label: SORT_LABELS.rosPpg, value: "rosPpg" },
+          ]}
+        />
+      </Group>
       <PositionFilterBar
         positions={ALL_POSITIONS}
         selected={selectedPositions}
@@ -154,6 +217,17 @@ function PlayersPage() {
         {virtualizer.getVirtualItems().map((item) => {
           const row = filteredRows[item.index];
           if (!row) return null;
+          const sortRank = metricRanks?.get(row.fpid);
+          const leftLabel = sortRank
+            ? String(sortRank.overall)
+            : isWeekMode
+              ? String(row.weekRank)
+              : undefined;
+          const positionRank = sortRank
+            ? sortRank.position
+            : isWeekMode
+              ? row.weekPositionRank
+              : row.positionRank;
           return (
             <div
               key={row.fpid}
@@ -167,15 +241,25 @@ function PlayersPage() {
               }}
             >
               <PlayerCard
-                row={isWeekMode ? { ...row, positionRank: row.weekPositionRank } : row}
+                row={{ ...row, positionRank }}
                 isRookie={rookieFpidSet.has(row.fpid)}
+                {...(leftLabel ? { leftLabel } : {})}
                 {...(isWeekMode
                   ? {
-                      leftLabel: String(row.weekRank),
+                      // This Week normally shows just the projection; when
+                      // sorted by a PPG, the sorted value rides along under
+                      // it so the order is legible.
                       rightStats: (
-                        <Text size="xs" c="dimmed">
-                          {row.weekPpg.toFixed(1)} Proj
-                        </Text>
+                        <>
+                          <Text size="xs" c="dimmed">
+                            {row.weekPpg.toFixed(1)} Proj
+                          </Text>
+                          {sortKey !== "rank" && (
+                            <Text size="xs" c="dimmed">
+                              {row[sortKey].toFixed(1)} {SORT_LABELS[sortKey]}
+                            </Text>
+                          )}
+                        </>
                       ),
                     }
                   : {})}
