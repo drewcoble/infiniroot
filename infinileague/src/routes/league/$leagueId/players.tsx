@@ -191,7 +191,7 @@ function PlayersPage() {
   // expensive than FAAB's one-shot fallback). An empty board here almost
   // always means the cron hasn't run for this league/week yet, not that
   // there are genuinely zero players - worth saying so explicitly rather
-  // than silently rendering nothing under a "0 players" header.
+  // than silently rendering an empty list.
   if (rows.length === 0) {
     return (
       <Stack align="center" py="xl" gap={4}>
@@ -210,12 +210,7 @@ function PlayersPage() {
           POSITION_FILTER_BAR_HEIGHT's comment for why this is a real
           spacer element rather than a `pt` prop on this Stack. */}
       <Box hiddenFrom="sm" h={POSITION_FILTER_BAR_HEIGHT} />
-      <Group justify="space-between" wrap="wrap" align="center">
-        <Title order={3}>Players — {isWeekMode ? `Week ${nflState.week}` : "Rest of Season"}</Title>
-        <Text c="dimmed" size="sm">
-          {filteredRows.length} of {rows.length} players
-        </Text>
-      </Group>
+      <Title order={3}>Players — {isWeekMode ? `Week ${nflState.week}` : "Rest of Season"}</Title>
       <SegmentedControl
         value={metric}
         onChange={(value) => setMetric(value as "week" | "ros")}
