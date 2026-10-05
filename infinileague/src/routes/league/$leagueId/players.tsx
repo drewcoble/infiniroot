@@ -210,12 +210,12 @@ function PlayersPage() {
           POSITION_FILTER_BAR_HEIGHT's comment for why this is a real
           spacer element rather than a `pt` prop on this Stack. */}
       <Box hiddenFrom="sm" h={POSITION_FILTER_BAR_HEIGHT} />
-      <Title order={3}>Players — {isWeekMode ? `Week ${nflState.week}` : "Rest of Season"}</Title>
+      <Title order={3}>Players</Title>
       <SegmentedControl
         value={metric}
         onChange={(value) => setMetric(value as "week" | "ros")}
         data={[
-          { label: "This Week", value: "week" },
+          { label: `Week ${nflState.week}`, value: "week" },
           { label: "Rest of Season", value: "ros" },
         ]}
       />
