@@ -167,6 +167,10 @@ export interface RosVorRow {
   weekRank: number;
   weekPpg: number;
   weekPositionRank: number;
+  // Actual points scored this week in the league's scoring - absent until
+  // there's a stats row for that week (game not played yet, bye, or the
+  // daily Sleeper stats fetch hasn't picked it up).
+  weekPoints?: number;
   rosteredByTeamName: string | null;
   // Absent means not currently injured - mirrors TeamRosterRow's injury
   // field below, same convex/injuries.ts source (Sleeper-derived).

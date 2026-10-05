@@ -31,28 +31,42 @@ const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 const PLAYER_CARD_HEIGHT = 71;
 
 // "rank" is each view's own VOR ranking (weekRank/rosRank) - the default.
-// The two PPG sorts are the same in either view: they reorder by a raw
-// per-game rate rather than the view's VOR value.
-type SortKey = "rank" | "actualPpg" | "rosPpg";
+// "actual"/"projected" map to a different raw stat per view (see
+// SORT_FIELDS), so a choice carries over sensibly when switching views.
+type SortKey = "rank" | "actual" | "projected";
+type SortField = "weekPoints" | "weekPpg" | "actualPpg" | "rosPpg";
 
-const SORT_LABELS: Record<Exclude<SortKey, "rank">, string> = {
-  actualPpg: "PPG",
-  rosPpg: "ROS PPG",
+const SORT_FIELDS: Record<"week" | "ros", Record<Exclude<SortKey, "rank">, SortField>> = {
+  week: { actual: "weekPoints", projected: "weekPpg" },
+  ros: { actual: "actualPpg", projected: "rosPpg" },
 };
 
-// Overall + positional ranks for a PPG sort, so the left label and the
+const SORT_LABELS: Record<"week" | "ros", Record<Exclude<SortKey, "rank">, string>> = {
+  week: { actual: "Actual", projected: "Proj" },
+  ros: { actual: "PPG", projected: "ROS PPG" },
+};
+
+// Same formatting as My Team's weekly Proj/Actual (TeamRosterList.tsx).
+function formatPoints(points: number | undefined): string {
+  return points === undefined ? "—" : points.toFixed(2);
+}
+
+// Overall + positional ranks for a stat sort, so the left label and the
 // position badge ("RB12") always describe the order the list is actually
 // in - the backend's rosRank/positionRank are rosVOR ranks and would read
 // out of order once the list is sorted by something else. Computed over
 // the full board (not the position-filtered subset), matching how the
 // backend's own ranks are global. Ties break on the view's own rank so the
-// order is stable.
+// order is stable; a player with no weekPoints yet (game not played) sorts
+// as 0.
 function rankByMetric(
   rows: RosVorRow[],
-  metric: Exclude<SortKey, "rank">,
+  field: SortField,
   tieBreak: (row: RosVorRow) => number,
 ): Map<number, { overall: number; position: number }> {
-  const sorted = [...rows].sort((a, b) => b[metric] - a[metric] || tieBreak(a) - tieBreak(b));
+  const sorted = [...rows].sort(
+    (a, b) => (b[field] ?? 0) - (a[field] ?? 0) || tieBreak(a) - tieBreak(b),
+  );
   const positionCounts = new Map<RosVorRow["position"], number>();
   const ranks = new Map<number, { overall: number; position: number }>();
   sorted.forEach((row, index) => {
@@ -117,8 +131,10 @@ function PlayersPage() {
   // every scroll frame - no need to re-rank 800+ players each time.
   const metricRanks = useMemo(() => {
     if (!rows || sortKey === "rank") return null;
-    return rankByMetric(rows, sortKey, (row) => (isWeekMode ? row.weekRank : row.rosRank));
-  }, [rows, sortKey, isWeekMode]);
+    return rankByMetric(rows, SORT_FIELDS[metric][sortKey], (row) =>
+      isWeekMode ? row.weekRank : row.rosRank,
+    );
+  }, [rows, sortKey, metric, isWeekMode]);
 
   const filteredRows = (rows ?? [])
     .filter((row) => selectedPositions.includes(row.position))
@@ -202,8 +218,8 @@ function PlayersPage() {
           onChange={(value) => setSortKey(value as SortKey)}
           data={[
             { label: "Rank", value: "rank" },
-            { label: SORT_LABELS.actualPpg, value: "actualPpg" },
-            { label: SORT_LABELS.rosPpg, value: "rosPpg" },
+            { label: SORT_LABELS[metric].actual, value: "actual" },
+            { label: SORT_LABELS[metric].projected, value: "projected" },
           ]}
         />
       </Group>
@@ -246,19 +262,17 @@ function PlayersPage() {
                 {...(leftLabel ? { leftLabel } : {})}
                 {...(isWeekMode
                   ? {
-                      // This Week normally shows just the projection; when
-                      // sorted by a PPG, the sorted value rides along under
-                      // it so the order is legible.
+                      // This week's own numbers rather than the default
+                      // season-long PPG/ROS PPG stack - same Proj-over-
+                      // Actual layout as My Team (TeamRosterList.tsx).
                       rightStats: (
                         <>
                           <Text size="xs" c="dimmed">
-                            {row.weekPpg.toFixed(1)} Proj
+                            {formatPoints(row.weekPpg)} Proj
                           </Text>
-                          {sortKey !== "rank" && (
-                            <Text size="xs" c="dimmed">
-                              {row[sortKey].toFixed(1)} {SORT_LABELS[sortKey]}
-                            </Text>
-                          )}
+                          <Text size="xs" c="dimmed">
+                            {formatPoints(row.weekPoints)} Actual
+                          </Text>
                         </>
                       ),
                     }

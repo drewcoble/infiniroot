@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
 import { POSITIONS, positionValidator } from "./positions";
-import { scoringConfigFromSeason } from "./scoring";
+import { bonusPoints, scoringConfigFromSeason } from "./scoring";
 import { requireSeasonOwner } from "./lib/access";
 import { computeReplacementLevels, findInjuryBoosts, forwardRate, gatherPlayerForms, momentumMultiplier, type ValuedPlayer } from "./lib/playerValue";
 import { gatherRosProjTotals } from "./rosProjTotals";
@@ -44,6 +44,12 @@ export interface RosVorRow {
   // positionRank (rosVor-based) is - the week-mode counterpart to
   // positionRank for infinileague's Players tab toggle.
   weekPositionRank: number;
+  // Actual fantasy points scored in the requested week, in this league's
+  // scoring (base format + TE premium / 6pt passing TD bonus) - absent
+  // when there's no playerPoints row for that week yet (game not played,
+  // bye, or the daily Sleeper stats fetch hasn't picked it up). Only
+  // populated by getRosVorBoard; powers the Players tab's This Week view.
+  weekPoints?: number;
   // The fantasy team's own name (not the NFL team abbreviation above) -
   // null means this player is a free agent. Only populated by
   // getRosVorBoard, which joins against rosterPlayers/seasonTeams for
@@ -324,7 +330,12 @@ export const getRosVorBoard = query({
   handler: async (ctx, args): Promise<RosVorRow[]> => {
     await requireSeasonOwner(ctx, args.seasonId);
 
-    const [rows, rosteredRows, teams, injuries] = await Promise.all([
+    const [settings, nflState] = await Promise.all([
+      ctx.db.get(args.seasonId),
+      ctx.db.query("nflState").first(),
+    ]);
+
+    const [rows, rosteredRows, teams, injuries, weekPointsRows] = await Promise.all([
       ctx.db
         .query("rosVorSnapshots")
         .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
@@ -338,7 +349,28 @@ export const getRosVorBoard = query({
         .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
         .collect(),
       ctx.db.query("injuries").collect(),
+      // Same nflState.season refreshRosVor's own playerPoints reads use -
+      // the board's week is always a current-season week.
+      settings && nflState
+        ? ctx.db
+            .query("playerPoints")
+            .withIndex("by_season_week_fpid", (q) =>
+              q.eq("season", nflState.season).eq("week", args.week),
+            )
+            .collect()
+        : Promise.resolve([]),
     ]);
+    const weekPointsByFpid = new Map<number, number>();
+    if (settings) {
+      const scoringConfig = scoringConfigFromSeason(settings);
+      for (const row of weekPointsRows) {
+        if (row.scoring !== scoringConfig.scoring) continue;
+        weekPointsByFpid.set(
+          row.fpid,
+          row.points + bonusPoints({ position: row.position, stats: row.stats ?? {} }, scoringConfig),
+        );
+      }
+    }
     const teamNameById = new Map(teams.map((team) => [team._id, team.name]));
     const teamNameByFpid = new Map(rosteredRows.map((row) => [row.fpid, teamNameById.get(row.teamId) ?? null]));
     const teamIdByFpid = new Map(rosteredRows.map((row) => [row.fpid, row.teamId]));
@@ -374,6 +406,7 @@ export const getRosVorBoard = query({
       .sort((a, b) => a.rosRank - b.rosRank)
       .map((row) => {
         const injury = injuryByFpid.get(row.fpid);
+        const weekPoints = weekPointsByFpid.get(row.fpid);
         return {
           fpid: row.fpid,
           name: row.name,
@@ -390,6 +423,7 @@ export const getRosVorBoard = query({
           weekRank: row.weekRank ?? 0,
           weekPpg: row.weekPpg ?? 0,
           weekPositionRank: weekPositionRankByFpid.get(row.fpid) ?? 0,
+          ...(weekPoints !== undefined ? { weekPoints } : {}),
           rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
           isOnMyTeam: args.teamId !== undefined && teamIdByFpid.get(row.fpid) === args.teamId,
           ...(injury ? { injury: { status: injury.status, statusShort: injury.statusShort } } : {}),
