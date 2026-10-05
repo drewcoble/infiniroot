@@ -6,6 +6,8 @@ import {
   MutationCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
+import { sameJson } from "./lib/sameJson";
 import { POSITIONS } from "./positions";
 import {
   scoringConfigValidator,
@@ -353,6 +355,26 @@ async function computeValueGaps(
   return output;
 }
 
+// The cached document for one (week, scoring combo, lastSeason) - see
+// schema.ts's valueGapSets. A document with an empty `rows` is a real
+// "no gaps flagged" result, not a cache miss.
+async function getValueGapSet(
+  ctx: QueryCtx | MutationCtx,
+  args: { week: string; scoringConfig: ScoringConfig; lastSeason: string },
+): Promise<Doc<"valueGapSets"> | null> {
+  return await ctx.db
+    .query("valueGapSets")
+    .withIndex("by_week_scoring_teScoring_sixPointPassTds_lastSeason", (q) =>
+      q
+        .eq("week", args.week)
+        .eq("scoring", args.scoringConfig.scoring)
+        .eq("teScoring", args.scoringConfig.teScoring)
+        .eq("sixPointPassTds", args.scoringConfig.sixPointPassTds)
+        .eq("lastSeason", args.lastSeason),
+    )
+    .unique();
+}
+
 export const getAllValueGaps = query({
   args: {
     week: v.string(),
@@ -360,31 +382,8 @@ export const getAllValueGaps = query({
     lastSeason: v.string(),
   },
   handler: async (ctx, args) => {
-    const cached = await ctx.db
-      .query("valueGaps")
-      .withIndex("by_week_scoring_teScoring_sixPointPassTds_lastSeason", (q) =>
-        q
-          .eq("week", args.week)
-          .eq("scoring", args.scoringConfig.scoring)
-          .eq("teScoring", args.scoringConfig.teScoring)
-          .eq("sixPointPassTds", args.scoringConfig.sixPointPassTds)
-          .eq("lastSeason", args.lastSeason),
-      )
-      .collect();
-    if (cached.length > 0) {
-      return cached.map((row): ValueGapRow => ({
-        fpid: row.fpid,
-        position: row.position,
-        direction: row.direction,
-        gap: row.gap,
-        lastYearPpg: row.lastYearPpg,
-        lastYearGames: row.lastYearGames,
-        lastYearRank: row.lastYearRank,
-        projRank: row.projRank,
-        adpRank: row.adpRank,
-        poolSize: row.poolSize,
-      }));
-    }
+    const cached = await getValueGapSet(ctx, args);
+    if (cached) return cached.rows;
 
     // Cache miss (the daily refresh hasn't covered this exact combo yet) -
     // fall back to the live computation so the result is still correct.
@@ -393,7 +392,8 @@ export const getAllValueGaps = query({
 });
 
 // Recomputes getAllValueGaps for one (week, scoring, lastSeason) combo and
-// replaces its cached rows - called from fetchAllData once a day, after the
+// rewrites its cached document, skipping the write entirely when the
+// result hasn't changed (so open subscriptions don't re-run) - called from fetchAllData once a day, after the
 // projections/rankings/playerSeasonStats data it reads has been refreshed.
 // Also called directly (not via the mutation wrapper below) by
 // ensureValueGapsCached, so a brand-new league's scoring format gets seeded
@@ -404,26 +404,20 @@ export async function refreshValueGapsForCombo(
 ) {
   const rows = await computeValueGaps(ctx, args);
 
-  const existing = await ctx.db
-    .query("valueGaps")
-    .withIndex("by_week_scoring_teScoring_sixPointPassTds_lastSeason", (q) =>
-      q
-        .eq("week", args.week)
-        .eq("scoring", args.scoringConfig.scoring)
-        .eq("teScoring", args.scoringConfig.teScoring)
-        .eq("sixPointPassTds", args.scoringConfig.sixPointPassTds)
-        .eq("lastSeason", args.lastSeason),
-    )
-    .collect();
-  for (const row of existing) await ctx.db.delete(row._id);
+  const existing = await getValueGapSet(ctx, args);
+  if (existing && sameJson(existing.rows, rows)) return;
 
-  for (const row of rows) {
-    await ctx.db.insert("valueGaps", {
-      ...row,
-      week: args.week,
-      lastSeason: args.lastSeason,
-      ...args.scoringConfig,
-    });
+  const doc = {
+    week: args.week,
+    lastSeason: args.lastSeason,
+    ...args.scoringConfig,
+    rows,
+    computedAt: Date.now(),
+  };
+  if (existing) {
+    await ctx.db.replace(existing._id, doc);
+  } else {
+    await ctx.db.insert("valueGapSets", doc);
   }
 }
 
@@ -446,29 +440,14 @@ export async function ensureValueGapsCached(
   ctx: MutationCtx,
   args: { week: string; scoringConfig: ScoringConfig; lastSeason: string },
 ) {
-  const cached = await ctx.db
-    .query("valueGaps")
-    .withIndex("by_week_scoring_teScoring_sixPointPassTds_lastSeason", (q) =>
-      q
-        .eq("week", args.week)
-        .eq("scoring", args.scoringConfig.scoring)
-        .eq("teScoring", args.scoringConfig.teScoring)
-        .eq("sixPointPassTds", args.scoringConfig.sixPointPassTds)
-        .eq("lastSeason", args.lastSeason),
-    )
-    .first();
-  if (cached) return;
+  if (await getValueGapSet(ctx, args)) return;
   await refreshValueGapsForCombo(ctx, args);
 }
 
-// One-off migration helper: wipes every valueGaps row so it can be reseeded
-// with the new required teScoring/sixPointPassTds fields (added when TE
-// Premium/6pt passing TDs shipped) - existing rows predate those fields and
-// would fail schema validation otherwise. Same wipe-and-rebuild precedent as
-// convex/playerPoints.ts's clearSeasonStats. Safe to run any time after
-// that: getAllValueGaps' cache-miss fallback (computeValueGaps) keeps every
-// read correct while the cache is empty, and refreshCaches (or the next
-// daily cron) reseeds it.
+// One-off cleanup for the LEGACY row-per-player valueGaps table (replaced
+// by valueGapSets - see schema.ts): deletes every row so that table's
+// definition can be removed. Nothing reads it any more, so this is safe to
+// run any time.
 export const clearValueGaps = internalMutation({
   args: { cursor: v.optional(v.string()) },
   handler: async (ctx, args) => {

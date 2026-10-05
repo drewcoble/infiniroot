@@ -947,7 +947,7 @@ async function deleteOneSeason(ctx: MutationCtx, seasonId: Id<"seasons">) {
       await ctx.db.delete(row._id);
     }
     for (const row of await ctx.db
-      .query("draftValues")
+      .query("draftValueSets")
       .withIndex("by_draft_week_scoring_teScoring_sixPointPassTds", (q) =>
         q.eq("draftId", draft._id),
       )

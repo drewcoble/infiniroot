@@ -1,15 +1,16 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internalAction, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { POSITIONS, positionValidator } from "./positions";
+import type { Doc } from "./_generated/dataModel";
 import {
   ALL_SCORING_CONFIGS,
   pointsForScoringConfig,
-  scoringValidator,
-  teScoringValidator,
+  scoringConfigValidator,
   type ScoringConfig,
 } from "./scoring";
+import { sameJson } from "./lib/sameJson";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -17,26 +18,12 @@ function comboKey(config: ScoringConfig): string {
   return `${config.scoring}|${config.teScoring}|${config.sixPointPassTds}`;
 }
 
-// Rows this run computed, ready to upsert - one per (fpid, position, combo).
-interface RosProjTotalRow {
-  fpid: number;
-  position: Position;
-  scoring: ScoringConfig["scoring"];
-  teScoring: ScoringConfig["teScoring"];
-  sixPointPassTds: boolean;
-  totalPoints: number;
-  weeksIncluded: number;
-}
-
-const rosProjTotalRowValidator = v.object({
+const totalEntryValidator = v.object({
   fpid: v.number(),
-  position: positionValidator,
-  scoring: scoringValidator,
-  teScoring: teScoringValidator,
-  sixPointPassTds: v.boolean(),
   totalPoints: v.number(),
   weeksIncluded: v.number(),
 });
+type TotalEntry = Infer<typeof totalEntryValidator>;
 
 // Rebuilds the whole rosProjTotals cache (every position, every scoring
 // combo) from every remaining week's own `projections` rows - called once
@@ -52,7 +39,7 @@ const rosProjTotalRowValidator = v.object({
 // fpid, so it simply never contributes to the sum.
 export const refreshRosProjTotals = internalAction({
   args: { week: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<void> => {
     // Same off-season/pre-draft sentinel guard as convex/rosVor.ts's
     // refreshRosVor - no "remaining weeks" concept for week 0, and nothing
     // for a week already past 18.
@@ -87,106 +74,97 @@ export const refreshRosProjTotals = internalAction({
       }
     }
 
-    const finalRows: RosProjTotalRow[] = [];
-    for (const entry of totalsByFpidPosition.values()) {
-      for (const config of ALL_SCORING_CONFIGS) {
-        const totals = entry.byCombo.get(comboKey(config));
+    // One document's worth of totals per (position, combo) - every
+    // position is written for every combo, including empty ones, so a
+    // position with no remaining projections (off-season, past week 18)
+    // has its stale document deleted rather than left behind.
+    for (const config of ALL_SCORING_CONFIGS) {
+      const key = comboKey(config);
+      const byPosition = new Map<Position, TotalEntry[]>(POSITIONS.map((pos) => [pos, []]));
+      for (const entry of totalsByFpidPosition.values()) {
+        const totals = entry.byCombo.get(key);
         if (!totals) continue;
-        finalRows.push({
-          fpid: entry.fpid,
-          position: entry.position,
-          scoring: config.scoring,
-          teScoring: config.teScoring,
-          sixPointPassTds: config.sixPointPassTds,
-          totalPoints: totals.totalPoints,
-          weeksIncluded: totals.weeksIncluded,
-        });
+        byPosition.get(entry.position)!.push({ fpid: entry.fpid, ...totals });
       }
-    }
-
-    // Chunked writes, same discipline convex/sleeper/playerPoints.ts's fix
-    // for this exact failure mode established - each chunk's mutation call
-    // does its own point lookup + patch/insert per row, bounded well under
-    // the per-transaction limits regardless of how big finalRows is.
-    const CHUNK_SIZE = 200;
-    for (let i = 0; i < finalRows.length; i += CHUNK_SIZE) {
-      await ctx.runMutation(internal.rosProjTotals.applyRosProjTotalsChunk, {
+      await ctx.runMutation(internal.rosProjTotals.applyRosProjTotalSets, {
         week: args.week,
-        rows: finalRows.slice(i, i + CHUNK_SIZE),
+        scoringConfig: config,
+        // Sorted so an unchanged rebuild compares equal to what's stored.
+        sets: [...byPosition].map(([position, totals]) => ({
+          position,
+          totals: totals.sort((a, b) => a.fpid - b.fpid),
+        })),
       });
     }
-
-    // Sweeps out anything this run didn't touch (a player who no longer has
-    // a projection this week, etc.) - paginated and self-rescheduling, same
-    // pattern convex/valueGaps.ts's clearValueGaps uses, rather than an
-    // upfront delete-everything pass (which would race the writes above and
-    // re-introduce the same too-many-reads problem at table-wide scale).
-    await ctx.runMutation(internal.rosProjTotals.pruneStaleRosProjTotals, {
-      currentWeek: args.week,
-    });
   },
 });
 
-// Upserts one chunk of rows - point lookup (by the full compound key) per
-// row rather than a blind insert, so a rerun of the same week patches
-// existing rows in place instead of duplicating them.
-export const applyRosProjTotalsChunk = internalMutation({
-  args: { week: v.string(), rows: v.array(rosProjTotalRowValidator) },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    for (const row of args.rows) {
-      const existing = await ctx.db
-        .query("rosProjTotals")
-        .withIndex("by_fpid_position_scoring_teScoring_sixPointPassTds", (q) =>
-          q
-            .eq("fpid", row.fpid)
-            .eq("position", row.position)
-            .eq("scoring", row.scoring)
-            .eq("teScoring", row.teScoring)
-            .eq("sixPointPassTds", row.sixPointPassTds),
-        )
-        .unique();
-      const fields = {
-        totalPoints: row.totalPoints,
-        weeksIncluded: row.weeksIncluded,
+// Writes one scoring combo's per-position documents - each only when its
+// totals actually changed (so rosVor's reads and subscriptions aren't woken
+// by a no-op), and deleted when a position has no totals at all. asOfWeek
+// changing counts as a change, so the bookkeeping stays current.
+export const applyRosProjTotalSets = internalMutation({
+  args: {
+    week: v.string(),
+    scoringConfig: scoringConfigValidator,
+    sets: v.array(v.object({ position: positionValidator, totals: v.array(totalEntryValidator) })),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    for (const { position, totals } of args.sets) {
+      const existing = await getRosProjTotalSet(ctx, { position, scoringConfig: args.scoringConfig });
+      if (totals.length === 0) {
+        if (existing) await ctx.db.delete(existing._id);
+        continue;
+      }
+      if (existing && existing.asOfWeek === args.week && sameJson(existing.totals, totals)) continue;
+      const doc = {
+        position,
+        ...args.scoringConfig,
         asOfWeek: args.week,
-        computedAt: now,
+        totals,
+        computedAt: Date.now(),
       };
       if (existing) {
-        await ctx.db.patch(existing._id, fields);
+        await ctx.db.replace(existing._id, doc);
       } else {
-        await ctx.db.insert("rosProjTotals", {
-          fpid: row.fpid,
-          position: row.position,
-          scoring: row.scoring,
-          teScoring: row.teScoring,
-          sixPointPassTds: row.sixPointPassTds,
-          ...fields,
-        });
+        await ctx.db.insert("rosProjTotalSets", doc);
       }
     }
   },
 });
 
-// Deletes any row whose asOfWeek doesn't match the week that was just
-// refreshed - every row touched by applyRosProjTotalsChunk above gets
-// asOfWeek stamped to the current run, so anything left behind is stale by
-// definition. Paginated, self-rescheduling continuation - same reasoning as
-// convex/valueGaps.ts's clearValueGaps (a full-table scan-and-delete can
-// easily exceed the per-transaction read limit once this cache has real
-// volume).
-export const pruneStaleRosProjTotals = internalMutation({
-  args: { currentWeek: v.string(), cursor: v.optional(v.string()) },
+async function getRosProjTotalSet(
+  ctx: QueryCtx | MutationCtx,
+  args: { position: Position; scoringConfig: ScoringConfig },
+): Promise<Doc<"rosProjTotalSets"> | null> {
+  return await ctx.db
+    .query("rosProjTotalSets")
+    .withIndex("by_position_scoring_teScoring_sixPointPassTds", (q) =>
+      q
+        .eq("position", args.position)
+        .eq("scoring", args.scoringConfig.scoring)
+        .eq("teScoring", args.scoringConfig.teScoring)
+        .eq("sixPointPassTds", args.scoringConfig.sixPointPassTds),
+    )
+    .unique();
+}
+
+// One-off cleanup for the LEGACY row-per-player rosProjTotals table
+// (replaced by rosProjTotalSets - see schema.ts): deletes every row so that
+// table's definition can be removed. Nothing reads it any more, so this is
+// safe to run any time. Paginated and self-rescheduling, same as
+// convex/valueGaps.ts's clearValueGaps.
+export const clearRosProjTotals = internalMutation({
+  args: { cursor: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const result = await ctx.db
       .query("rosProjTotals")
-      .paginate({ cursor: args.cursor ?? null, numItems: 200 });
+      .paginate({ cursor: args.cursor ?? null, numItems: 500 });
     for (const row of result.page) {
-      if (row.asOfWeek !== args.currentWeek) await ctx.db.delete(row._id);
+      await ctx.db.delete(row._id);
     }
     if (!result.isDone) {
-      await ctx.scheduler.runAfter(0, internal.rosProjTotals.pruneStaleRosProjTotals, {
-        currentWeek: args.currentWeek,
+      await ctx.scheduler.runAfter(0, internal.rosProjTotals.clearRosProjTotals, {
         cursor: result.continueCursor,
       });
     }
@@ -205,18 +183,9 @@ export async function gatherRosProjTotals(
 ): Promise<Map<number, { totalPoints: number; weeksIncluded: number }>> {
   const totals = new Map<number, { totalPoints: number; weeksIncluded: number }>();
   for (const position of args.activePositions) {
-    const rows = await ctx.db
-      .query("rosProjTotals")
-      .withIndex("by_position_scoring_teScoring_sixPointPassTds", (q) =>
-        q
-          .eq("position", position)
-          .eq("scoring", args.scoringConfig.scoring)
-          .eq("teScoring", args.scoringConfig.teScoring)
-          .eq("sixPointPassTds", args.scoringConfig.sixPointPassTds),
-      )
-      .collect();
-    for (const row of rows) {
-      totals.set(row.fpid, { totalPoints: row.totalPoints, weeksIncluded: row.weeksIncluded });
+    const set = await getRosProjTotalSet(ctx, { position, scoringConfig: args.scoringConfig });
+    for (const entry of set?.totals ?? []) {
+      totals.set(entry.fpid, { totalPoints: entry.totalPoints, weeksIncluded: entry.weeksIncluded });
     }
   }
   return totals;

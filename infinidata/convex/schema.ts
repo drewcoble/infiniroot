@@ -1269,6 +1269,9 @@ export default defineSchema({
     .index("by_season_week", ["seasonId", "week"])
     .index("by_season_fpid", ["seasonId", "fpid"]),
 
+  // LEGACY - superseded by rosProjTotalSets below; nothing reads or
+  // writes this any more. Kept defined only until its rows are cleared
+  // (rosProjTotals.clearRosProjTotals), then this definition can be deleted.
   // Shared, league-independent cache of each player's summed rest-of-season
   // projection - one row per (position, scoring, teScoring, sixPointPassTds,
   // fpid), rebuilt daily by convex/rosProjTotals.ts's refreshRosProjTotals
@@ -1316,6 +1319,40 @@ export default defineSchema({
       "teScoring",
       "sixPointPassTds",
     ]),
+
+  // Shared, league-independent cache of each player's summed rest-of-season
+  // projection, rebuilt daily by convex/rosProjTotals.ts's
+  // refreshRosProjTotals from every remaining week's `projections` rows -
+  // convex/rosVor.ts reads this instead of re-summing every remaining week
+  // per league. One wide document per (position, scoring combo), since
+  // that's exactly the unit gatherRosProjTotals reads and the refresh
+  // rebuilds: ~108 documents in all, each rewritten only when its totals
+  // actually changed, instead of a row per player per combo. A bye week
+  // naturally contributes nothing (no projections row exists for that
+  // fpid/week), so weeksIncluded is bye-aware with no special-casing.
+  rosProjTotalSets: defineTable({
+    position: positionValidator,
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+    // The week these sums start from (inclusive) through week 18 -
+    // bookkeeping only; a stale value means the daily cron hasn't run
+    // since the week advanced.
+    asOfWeek: v.string(),
+    totals: v.array(
+      v.object({
+        fpid: v.number(),
+        totalPoints: v.number(),
+        weeksIncluded: v.number(),
+      }),
+    ),
+    computedAt: v.number(),
+  }).index("by_position_scoring_teScoring_sixPointPassTds", [
+    "position",
+    "scoring",
+    "teScoring",
+    "sixPointPassTds",
+  ]),
 
   // One row per app user (not per league) - connecting a Yahoo account is a
   // one-time action that then lets that user link any of their Yahoo leagues
@@ -1559,6 +1596,9 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_draft", ["draftId"]),
 
+  // LEGACY - superseded by valueGapSets below; nothing reads or
+  // writes this any more. Kept defined only until its rows are cleared
+  // (valueGaps.clearValueGaps), then this definition can be deleted.
   // Precomputed cache of convex/valueGaps.ts's getAllValueGaps result, keyed
   // by the same (week, scoring, lastSeason) triple the query is called with.
   // That computation reads full projections/rankings/playerSeasonStats docs
@@ -1605,6 +1645,52 @@ export default defineSchema({
     "lastSeason",
   ]),
 
+  // Precomputed cache of convex/valueGaps.ts's getAllValueGaps result, one
+  // document per (week, scoring combo, lastSeason) - the exact unit the
+  // query reads and the daily refresh rebuilds, so a refresh is a single
+  // write (skipped when nothing changed) rather than deleting and
+  // re-inserting a row per flagged player. That computation reads full
+  // projections/rankings/playerSeasonStats docs across 4 positions, which
+  // every open PlayersTable/PlayersLeftTab/PlayerDetailModal subscription
+  // used to redo from scratch - getAllValueGaps reads this first and only
+  // falls back to a live recompute when the combo's document is missing.
+  valueGapSets: defineTable({
+    week: v.string(),
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+    lastSeason: v.string(),
+    rows: v.array(
+      v.object({
+        fpid: v.number(),
+        position: positionValidator,
+        direction: v.union(
+          v.literal("undervalued"),
+          v.literal("overvalued"),
+          v.literal("breakout"),
+          v.literal("falloff"),
+        ),
+        gap: v.number(),
+        lastYearPpg: v.number(),
+        lastYearGames: v.number(),
+        lastYearRank: v.number(),
+        projRank: v.number(),
+        adpRank: v.number(),
+        poolSize: v.number(),
+      }),
+    ),
+    computedAt: v.number(),
+  }).index("by_week_scoring_teScoring_sixPointPassTds_lastSeason", [
+    "week",
+    "scoring",
+    "teScoring",
+    "sixPointPassTds",
+    "lastSeason",
+  ]),
+
+  // LEGACY - superseded by draftValueSets below; nothing reads or
+  // writes this any more. Kept defined only until its rows are cleared
+  // (draftValues.clearDraftValues), then this definition can be deleted.
   // Precomputed cache of convex/draftValues.ts's getDraftValues result, keyed
   // by (draftId, week, scoring) - same reasoning as valueGaps above: that
   // computation reads every active position's full projections docs (the
@@ -1640,6 +1726,47 @@ export default defineSchema({
     // prefix to clear all of them at once - unaffected by teScoring/
     // sixPointPassTds joining the index, since that prefix-delete never adds
     // further .eq()s beyond draftId.
+  }).index("by_draft_week_scoring_teScoring_sixPointPassTds", [
+    "draftId",
+    "week",
+    "scoring",
+    "teScoring",
+    "sixPointPassTds",
+  ]),
+
+  // Precomputed cache of convex/draftValues.ts's getDraftValues result, one
+  // document per (draftId, week, scoring combo) holding the whole board -
+  // the exact unit every reader loads and the refresh rebuilds, so a daily
+  // refresh is a single write (skipped when nothing changed) instead of
+  // deleting and re-inserting a row per player. That computation reads
+  // every active position's full projections docs plus keepers. Refreshed
+  // once daily by refreshDraftValues (one call per real draft, at that
+  // league's own scoring format - see fetchAllData.ts), and deleted
+  // whenever something that changes the computation happens off the daily
+  // cycle (a keeper added/removed, or season settings edited - see
+  // invalidateDraftValues). getDraftValues reads this first and only falls
+  // back to a live recompute when the document is missing.
+  draftValueSets: defineTable({
+    draftId: v.id("drafts"),
+    week: v.string(),
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+    rows: v.array(
+      v.object({
+        fpid: v.number(),
+        name: v.string(),
+        team: v.union(v.string(), v.null()),
+        position: positionValidator,
+        points: v.number(),
+        positionRank: v.number(),
+        replacementPoints: v.number(),
+        usedFallback: v.boolean(),
+        valueOverReplacement: v.number(),
+        dollarValue: v.number(),
+      }),
+    ),
+    computedAt: v.number(),
   }).index("by_draft_week_scoring_teScoring_sixPointPassTds", [
     "draftId",
     "week",

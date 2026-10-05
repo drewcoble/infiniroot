@@ -17,6 +17,7 @@ import {
 import { Doc, Id } from "./_generated/dataModel";
 import type { RosterSlotCounts } from "./lib/rosterSlots";
 import { hasProAccess } from "./lib/entitlements";
+import { sameJson } from "./lib/sameJson";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -453,26 +454,24 @@ async function computeDraftValues(
   });
 }
 
-// Shared by both branches of getDraftValues below - a cached draftValues
-// row and a freshly computeDraftValues-derived DraftValueRow have the same
-// fields plus system ones (_id, _creationTime, draftId, ...) the caller
-// never wants, so both paths funnel through this instead of duplicating the
-// pick-list.
-function mapCachedDraftValueRows(
-  cached: Doc<"draftValues">[],
-): DraftValueRow[] {
-  return cached.map((row) => ({
-    fpid: row.fpid,
-    name: row.name,
-    team: row.team,
-    position: row.position,
-    points: row.points,
-    positionRank: row.positionRank,
-    replacementPoints: row.replacementPoints,
-    usedFallback: row.usedFallback,
-    valueOverReplacement: row.valueOverReplacement,
-    dollarValue: row.dollarValue,
-  }));
+// The cached board for one (draftId, week, scoring combo) - see schema.ts's
+// draftValueSets. Null means a cache miss (never computed, or just
+// invalidated), which callers fall back to computeDraftValues for.
+async function getDraftValueSet(
+  ctx: QueryCtx | MutationCtx,
+  args: { draftId: Id<"drafts">; week: string; scoringConfig: ScoringConfig },
+): Promise<Doc<"draftValueSets"> | null> {
+  return await ctx.db
+    .query("draftValueSets")
+    .withIndex("by_draft_week_scoring_teScoring_sixPointPassTds", (q) =>
+      q
+        .eq("draftId", args.draftId)
+        .eq("week", args.week)
+        .eq("scoring", args.scoringConfig.scoring)
+        .eq("teScoring", args.scoringConfig.teScoring)
+        .eq("sixPointPassTds", args.scoringConfig.sixPointPassTds),
+    )
+    .unique();
 }
 
 // Resolves the system-owned generic league's real draft (see convex/
@@ -532,21 +531,8 @@ export async function getRealDraftValues(
   ctx: QueryCtx | MutationCtx,
   args: { draftId: Id<"drafts">; week: string; scoringConfig: ScoringConfig },
 ): Promise<DraftValueRow[]> {
-  const cached = await ctx.db
-    .query("draftValues")
-    .withIndex("by_draft_week_scoring_teScoring_sixPointPassTds", (q) =>
-      q
-        .eq("draftId", args.draftId)
-        .eq("week", args.week)
-        .eq("scoring", args.scoringConfig.scoring)
-        .eq("teScoring", args.scoringConfig.teScoring)
-        .eq("sixPointPassTds", args.scoringConfig.sixPointPassTds),
-    )
-    .collect();
-
-  return cached.length > 0
-    ? mapCachedDraftValueRows(cached)
-    : await computeDraftValues(ctx, args);
+  const cached = await getDraftValueSet(ctx, args);
+  return cached ? cached.rows : await computeDraftValues(ctx, args);
 }
 
 // Public, frontend-facing entry point - takes a seasonId (what every route/
@@ -578,20 +564,9 @@ async function getGenericDraftValueRows(
 ): Promise<DraftValueRow[]> {
   const { draftId, scoringConfig } = await getGenericDraftAndScoring(ctx);
 
-  const cached = await ctx.db
-    .query("draftValues")
-    .withIndex("by_draft_week_scoring_teScoring_sixPointPassTds", (q) =>
-      q
-        .eq("draftId", draftId)
-        .eq("week", week)
-        .eq("scoring", scoringConfig.scoring)
-        .eq("teScoring", scoringConfig.teScoring)
-        .eq("sixPointPassTds", scoringConfig.sixPointPassTds),
-    )
-    .collect();
-
-  return cached.length > 0
-    ? mapCachedDraftValueRows(cached)
+  const cached = await getDraftValueSet(ctx, { draftId, week, scoringConfig });
+  return cached
+    ? cached.rows
     : await computeDraftValues(ctx, { draftId, week, scoringConfig });
 }
 
@@ -769,7 +744,8 @@ async function estimateKeeperValues(
 }
 
 // Recomputes getDraftValues for one (draftId, week, scoring) combo and
-// replaces its cached rows - called once daily per draft from fetchAllData
+// rewrites its cached document, skipping the write entirely when the board
+// hasn't changed (so open draft boards don't re-run) - called once daily per draft from fetchAllData
 // (after the projections/rankings it reads have refreshed), and on-demand by
 // invalidateDraftValues below (a keeper change or settings edit) so the
 // cache doesn't have to wait for the next day to catch up. Also called
@@ -788,26 +764,20 @@ export async function refreshDraftValuesForLeague(
 ) {
   const rows = await computeDraftValues(ctx, args);
 
-  const existing = await ctx.db
-    .query("draftValues")
-    .withIndex("by_draft_week_scoring_teScoring_sixPointPassTds", (q) =>
-      q
-        .eq("draftId", args.draftId)
-        .eq("week", args.week)
-        .eq("scoring", args.scoringConfig.scoring)
-        .eq("teScoring", args.scoringConfig.teScoring)
-        .eq("sixPointPassTds", args.scoringConfig.sixPointPassTds),
-    )
-    .collect();
-  for (const row of existing) await ctx.db.delete(row._id);
+  const existing = await getDraftValueSet(ctx, args);
+  if (existing && sameJson(existing.rows, rows)) return;
 
-  for (const row of rows) {
-    await ctx.db.insert("draftValues", {
-      ...row,
-      draftId: args.draftId,
-      week: args.week,
-      ...args.scoringConfig,
-    });
+  const doc = {
+    draftId: args.draftId,
+    week: args.week,
+    ...args.scoringConfig,
+    rows,
+    computedAt: Date.now(),
+  };
+  if (existing) {
+    await ctx.db.replace(existing._id, doc);
+  } else {
+    await ctx.db.insert("draftValueSets", doc);
   }
 }
 
@@ -836,23 +806,18 @@ export async function invalidateDraftValues(
   draftId: Id<"drafts">,
 ) {
   const cached = await ctx.db
-    .query("draftValues")
+    .query("draftValueSets")
     .withIndex("by_draft_week_scoring_teScoring_sixPointPassTds", (q) =>
       q.eq("draftId", draftId),
     )
     .collect();
-  for (const row of cached) await ctx.db.delete(row._id);
+  for (const doc of cached) await ctx.db.delete(doc._id);
 }
 
-// One-off migration helper: wipe draftValues so it can be reseeded with the
-// new required teScoring/sixPointPassTds fields (added when TE Premium/6pt
-// passing TDs shipped) - existing rows predate those fields and would fail
-// schema validation otherwise. Same wipe-and-rebuild precedent as convex/
-// playerPoints.ts's clearSeasonStats / convex/valueGaps.ts's clearValueGaps.
-// Safe to run any time after that: getDraftValues' cache-miss fallback keeps
-// every read correct while the cache is empty, and refreshCaches (or the
-// next daily cron) reseeds it - including the generic league's own row,
-// which is just another real draft as far as this table is concerned.
+// One-off cleanup for the LEGACY row-per-player draftValues table
+// (replaced by draftValueSets - see schema.ts): deletes every row so that
+// table's definition can be removed. Nothing reads it any more, so this is
+// safe to run any time.
 export const clearDraftValues = internalMutation({
   args: { cursor: v.optional(v.string()) },
   handler: async (ctx, args) => {
