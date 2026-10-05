@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { positionValidator, POSITIONS } from "./positions";
+import { statsEqual } from "./lib/statsEqual";
 
 export const getProjections = query({
   args: { position: positionValidator, week: v.string() },
@@ -70,6 +71,22 @@ export const upsertProjections = mutation({
       const match = existingByFpid.get(row.fpid);
 
       if (match) {
+        // Skip unchanged rows - the daily sync re-blends every remaining
+        // week, most of it identical to what's stored. This also means the
+        // previous* lookback below now holds the value from before the
+        // last real change, not just yesterday's fetch - so a projection
+        // spike stays detectable (lib/playerValue.ts's findInjuryBoosts)
+        // instead of being wiped by a no-op rewrite the next day.
+        if (
+          match.name === row.name &&
+          match.team === row.team &&
+          match.pointsStd === row.pointsStd &&
+          match.pointsPpr === row.pointsPpr &&
+          match.pointsHalf === row.pointsHalf &&
+          statsEqual(match.stats, row.stats)
+        ) {
+          continue;
+        }
         await ctx.db.patch(match._id, {
           name: row.name,
           team: row.team,

@@ -7,6 +7,7 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { positionValidator, POSITIONS } from "./positions";
+import { statsEqual } from "./lib/statsEqual";
 import {
   bonusPoints,
   scoringConfigValidator,
@@ -32,16 +33,6 @@ const BONUS_VARIANTS: Array<Pick<ScoringConfig, "teScoring" | "sixPointPassTds">
   TE_SCORINGS.flatMap((teScoring) =>
     [false, true].map((sixPointPassTds) => ({ teScoring, sixPointPassTds })),
   );
-
-function statsEqual(
-  a: Record<string, number> | undefined,
-  b: Record<string, number> | undefined,
-): boolean {
-  const aKeys = Object.keys(a ?? {});
-  const bKeys = Object.keys(b ?? {});
-  if (aKeys.length !== bKeys.length) return false;
-  return aKeys.every((key) => a![key] === b?.[key]);
-}
 
 // Downside semi-deviation of per-game points for one bonus variant: squared
 // shortfalls below `mean` only (games at or above the mean contribute 0).

@@ -67,6 +67,14 @@ export const upsertRankings = mutation({
       const match = existingByFpid.get(row.fpid);
 
       if (match) {
+        // Skip unchanged rows - see upsertProjections' matching comment.
+        if (
+          match.adpStd === row.adpStd &&
+          match.adpPpr === row.adpPpr &&
+          match.adpHalf === row.adpHalf
+        ) {
+          continue;
+        }
         await ctx.db.patch(match._id, {
           adpStd: row.adpStd,
           adpPpr: row.adpPpr,

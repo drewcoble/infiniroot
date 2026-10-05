@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { positionValidator } from "./positions";
+import { statsEqual } from "./lib/statsEqual";
 
 const providerValidator = v.union(v.literal("sleeper"), v.literal("espn"));
 
@@ -47,6 +48,9 @@ export const upsertProviderProjections = mutation({
       const match = existingByFpid.get(row.fpid);
 
       if (match) {
+        // Skip unchanged rows - the daily sync re-sends every remaining
+        // week's full payload, most of it identical to what's stored.
+        if (statsEqual(match.stats, row.stats)) continue;
         await ctx.db.patch(match._id, { stats: row.stats, fetchedAt: now });
       } else {
         await ctx.db.insert("providerProjections", {
