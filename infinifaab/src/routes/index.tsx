@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  ActionIcon,
   Badge,
   Button,
   Card,
@@ -11,11 +12,12 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { Import, Plus } from "lucide-react";
+import { Import, Plus, Trash2 } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
 import { getErrorMessage } from "@shared/errors";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
+import { RemoveLeagueModal } from "@shared/RemoveLeagueModal";
 import { useMyAuctionSeasons, type LinkedSeason } from "@shared-core/useMyAuctionSeasons";
 import { useSetAuctionEnabled } from "@shared-core/useSetAuctionEnabled";
 import type { GenericId as Id } from "convex/values";
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/")({
 // other two apps' own dashboards.
 function Dashboard() {
   const seasonsList = useMyAuctionSeasons();
+  const [removingSeason, setRemovingSeason] = useState<LinkedSeason | null>(null);
 
   const leagueGroups = groupSeasonsByLeague(seasonsList ?? []).sort((a, b) =>
     a.latest.name.localeCompare(b.latest.name),
@@ -87,12 +90,17 @@ function Dashboard() {
             </Group>
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
               {leagueGroups.map(({ latest }) => (
-                <LeagueCard key={latest.leagueId} season={latest} />
+                <LeagueCard
+                  key={latest.leagueId}
+                  season={latest}
+                  onRemove={() => setRemovingSeason(latest)}
+                />
               ))}
             </SimpleGrid>
           </>
         )}
       </Stack>
+      <RemoveLeagueModal season={removingSeason} onClose={() => setRemovingSeason(null)} />
     </PageContainer>
   );
 }
@@ -103,8 +111,10 @@ function Dashboard() {
 // the Settings tab a user could easily miss (which is exactly what caused
 // confusion: browsing a "live" board that was actually turned off). Owners
 // get an inline enable button right here; non-owners just see why the card
-// isn't clickable yet.
-function LeagueCard({ season }: { season: LinkedSeason }) {
+// isn't clickable yet. Only owners get the remove button - deleteLeague is
+// owner-only, and an invited member removing it would wipe it for the whole
+// league anyway.
+function LeagueCard({ season, onRemove }: { season: LinkedSeason; onRemove: () => void }) {
   const setAuctionEnabled = useSetAuctionEnabled();
   const [enabling, setEnabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,9 +139,27 @@ function LeagueCard({ season }: { season: LinkedSeason }) {
             <Text fw={600} lineClamp={2}>
               {season.name}
             </Text>
-            <Badge color={season.auctionEnabled ? "green" : "gray"} variant="light">
-              {season.auctionEnabled ? "Auction on" : "Auction off"}
-            </Badge>
+            <Group gap={4} wrap="nowrap">
+              <Badge color={season.auctionEnabled ? "green" : "gray"} variant="light">
+                {season.auctionEnabled ? "Auction on" : "Auction off"}
+              </Badge>
+              {season.isOwner && (
+                // preventDefault/stopPropagation keep this click from also
+                // following the card's Link (when the auction is on).
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  aria-label="Remove league"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onRemove();
+                  }}
+                >
+                  <Trash2 size={16} />
+                </ActionIcon>
+              )}
+            </Group>
           </Group>
           <Text size="sm" c="dimmed">
             {season.year} · {season.teamCount} teams · {season.scoring}

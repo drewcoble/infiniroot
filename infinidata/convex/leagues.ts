@@ -3,10 +3,12 @@ import {
   mutation,
   query,
   internalQuery,
+  internalMutation,
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel";
 import { positionValidator } from "./positions";
 import {
@@ -954,19 +956,162 @@ async function deleteOneSeason(ctx: MutationCtx, seasonId: Id<"seasons">) {
       .collect()) {
       await ctx.db.delete(row._id);
     }
+    for (const row of await ctx.db
+      .query("draftPickSlots")
+      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .collect()) {
+      await ctx.db.delete(row._id);
+    }
+    for (const row of await ctx.db
+      .query("draftSyncStatus")
+      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .collect()) {
+      await ctx.db.delete(row._id);
+    }
+    for (const row of await ctx.db
+      .query("draftReportSummaries")
+      .withIndex("by_draft_week_scoring", (q) => q.eq("draftId", draft._id))
+      .collect()) {
+      await ctx.db.delete(row._id);
+    }
+    for (const row of await ctx.db
+      .query("draftReportCardSnapshots")
+      .withIndex("by_draft_week_scoring", (q) => q.eq("draftId", draft._id))
+      .collect()) {
+      await ctx.db.delete(row._id);
+    }
     await ctx.db.delete(draft._id);
   }
 
+  // infinileague/infinifaab's small per-season rows - deleted right here
+  // (not left to purgeSeasonData below) so nothing keeps acting on a
+  // deleted season in the meantime: faAuctionSettings is what the auction
+  // crons (cycles.ts's ensureAuctionCycles, waiverSync.ts) scan, and
+  // leagueTeamMembers/Invites are what grant someone access to it.
+  for (const row of await ctx.db
+    .query("faAuctionSettings")
+    .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+    .collect()) {
+    await ctx.db.delete(row._id);
+  }
+  for (const row of await ctx.db
+    .query("leagueTeamMembers")
+    .withIndex("by_season_user", (q) => q.eq("seasonId", seasonId))
+    .collect()) {
+    await ctx.db.delete(row._id);
+  }
+  for (const team of teams) {
+    for (const row of await ctx.db
+      .query("leagueTeamInvites")
+      .withIndex("by_team", (q) => q.eq("teamId", team._id))
+      .collect()) {
+      await ctx.db.delete(row._id);
+    }
+  }
+  for (const row of await ctx.db
+    .query("powerRankingSnapshots")
+    .withIndex("by_season_week", (q) => q.eq("seasonId", seasonId))
+    .collect()) {
+    await ctx.db.delete(row._id);
+  }
+
   await ctx.db.delete(seasonId);
+  // The big per-season history tables (rosVorSnapshots alone is a row per
+  // player per week) can blow past a single mutation's write limit mid-
+  // season, so they're cleared in batches in the background instead.
+  await ctx.scheduler.runAfter(0, internal.leagues.purgeSeasonData, {
+    seasonId,
+  });
 }
+
+const PURGE_BATCH_SIZE = 500;
+
+// Background half of deleteOneSeason - deletes up to PURGE_BATCH_SIZE rows
+// from the first of these tables that still has any for the season, then
+// reschedules itself until they're all empty. Nothing reads these rows
+// without first loading their (already deleted) season, so it's fine for
+// them to linger for the few seconds this takes.
+export const purgeSeasonData = internalMutation({
+  args: { seasonId: v.id("seasons") },
+  handler: async (ctx, { seasonId }) => {
+    const batches = [
+      () =>
+        ctx.db
+          .query("rosVorSnapshots")
+          .withIndex("by_season_week", (q) => q.eq("seasonId", seasonId))
+          .take(PURGE_BATCH_SIZE),
+      () =>
+        ctx.db
+          .query("waiverPlayers")
+          .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+          .take(PURGE_BATCH_SIZE),
+      () =>
+        ctx.db
+          .query("preDraftInsights")
+          .withIndex("by_season_week_scoring", (q) => q.eq("seasonId", seasonId))
+          .take(PURGE_BATCH_SIZE),
+      () =>
+        ctx.db
+          .query("faAuctionBids")
+          .withIndex("by_season_team", (q) => q.eq("seasonId", seasonId))
+          .take(PURGE_BATCH_SIZE),
+      () =>
+        ctx.db
+          .query("faAuctionFpidCycles")
+          .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+          .take(PURGE_BATCH_SIZE),
+      () =>
+        ctx.db
+          .query("faAuctionProcessedDrops")
+          .withIndex("by_season_txn_fpid", (q) => q.eq("seasonId", seasonId))
+          .take(PURGE_BATCH_SIZE),
+    ];
+    for (const batch of batches) {
+      const rows = await batch();
+      if (rows.length === 0) continue;
+      for (const row of rows) {
+        await ctx.db.delete(row._id);
+      }
+      await ctx.scheduler.runAfter(0, internal.leagues.purgeSeasonData, {
+        seasonId,
+      });
+      return null;
+    }
+
+    // faAuctionState has no season index, so it's cleared per cycle, one
+    // cycle per run.
+    const cycle = await ctx.db
+      .query("faAuctionCycles")
+      .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+      .first();
+    if (cycle) {
+      const stateRows = await ctx.db
+        .query("faAuctionState")
+        .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
+        .take(PURGE_BATCH_SIZE);
+      for (const row of stateRows) {
+        await ctx.db.delete(row._id);
+      }
+      if (stateRows.length < PURGE_BATCH_SIZE) {
+        await ctx.db.delete(cycle._id);
+      }
+      await ctx.scheduler.runAfter(0, internal.leagues.purgeSeasonData, {
+        seasonId,
+      });
+    }
+    return null;
+  },
+});
 
 // Permanently deletes a league AND every season in its history - a league
 // here means the whole multi-season history, not just the one season the
 // user happened to have selected, so there's no "prior season became
-// disconnected" leftover to worry about. Called from the League Details
-// page's Delete League button, whose confirmation modal lists every season
-// this will take with it (fetched via listSeasonLineage) since this can't be
-// undone.
+// disconnected" leftover to worry about. Called from infinidraft's League
+// Details page's Delete League button, whose confirmation modal lists every
+// season this will take with it (fetched via listSeasonLineage) since this
+// can't be undone, and from infinileague/infinifaab's dashboard cards (see
+// shared/RemoveLeagueModal.tsx) - one league row backs all three apps, so
+// removing it anywhere removes it everywhere.
 export const deleteLeague = mutation({
   args: { id: v.id("seasons") },
   handler: async (ctx, args) => {
@@ -977,6 +1122,18 @@ export const deleteLeague = mutation({
       .collect();
     for (const season of seasons) {
       await deleteOneSeason(ctx, season._id);
+    }
+    for (const row of await ctx.db
+      .query("leagueInvites")
+      .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+      .collect()) {
+      await ctx.db.delete(row._id);
+    }
+    for (const row of await ctx.db
+      .query("leagueCollaborators")
+      .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+      .collect()) {
+      await ctx.db.delete(row._id);
     }
     await ctx.db.delete(league._id);
     return null;
