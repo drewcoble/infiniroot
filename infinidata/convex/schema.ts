@@ -967,6 +967,34 @@ export default defineSchema({
     estimatedEndAt: v.number(),
   }).index("by_season_week", ["season", "week"]),
 
+  // Live in-game fantasy points for one (season, week) - a single wide
+  // document, not a row per player, rewritten whole by the 5-minute poll
+  // in convex/sleeper/livePoints.ts while any game is live (one write per
+  // poll that changed anything, and one read for the Players tab's board).
+  // Display-only: playerPoints/playerSeasonStats (daily sync) stay the
+  // source of truth for everything else. `players` only holds players
+  // who've actually played so far (Sleeper's gp > 0), and is an array
+  // rather than an fpid-keyed object to stay clear of Convex's per-object
+  // field limit. rec/passTd are the only stats bonusPoints needs (TE
+  // premium, 6pt passing TDs). Pruned by the daily sync once the NFL week
+  // moves on (see fetchAllData.ts).
+  liveWeekPoints: defineTable({
+    season: v.string(),
+    week: v.string(),
+    updatedAt: v.number(),
+    players: v.array(
+      v.object({
+        fpid: v.number(),
+        position: positionValidator,
+        ptsStd: v.number(),
+        ptsHalf: v.number(),
+        ptsPpr: v.number(),
+        rec: v.number(),
+        passTd: v.number(),
+      }),
+    ),
+  }).index("by_season_week", ["season", "week"]),
+
   // The eligibility source of truth for infinifaab's whole Players board on
   // a YAHOO-linked season only now - a row exists only while a player is
   // still on waivers there (convex/infinidraft/yahoo/waivers.ts polls

@@ -12,7 +12,7 @@ import {
 
 type Position = (typeof POSITIONS)[number];
 
-interface SleeperStatsRecord {
+export interface SleeperStatsRecord {
   player_id: string;
   team: string | null;
   stats?: Record<string, number | undefined>;
@@ -29,6 +29,71 @@ const SLEEPER_TO_OUR_POSITION: Record<string, Position> = {
 };
 
 const WEEKS = Array.from({ length: 18 }, (_, i) => String(i + 1));
+
+export interface ParsedStatsRow {
+  fpid: number;
+  position: Position;
+  ptsStd: number;
+  ptsPpr: number;
+  ptsHalf: number;
+  // Raw box-score categories (pts_*/adp_* stripped) - see playerPoints'
+  // schema comment on `stats`.
+  stats: Record<string, number>;
+}
+
+// One week's Sleeper stats payload -> our fpid/position-keyed rows. Shared
+// by the daily playerPoints sync below and the live in-game poll
+// (./livePoints.ts) so both read Sleeper's records identically. Doesn't
+// filter to known fpids - callers that write per-player rows do that
+// themselves (see fetchAllPlayerPointsHandler).
+export function parseSleeperStatsRecords(records: SleeperStatsRecord[]): ParsedStatsRow[] {
+  const rows: ParsedStatsRow[] = [];
+  for (const record of records) {
+    const sleeperPosition = record.player?.position;
+    if (!sleeperPosition || !(sleeperPosition in SLEEPER_TO_OUR_POSITION)) {
+      continue;
+    }
+    // Guarded by the `in` check above; noUncheckedIndexedAccess still
+    // widens the index signature's result to include `undefined`.
+    const position: Position = SLEEPER_TO_OUR_POSITION[sleeperPosition]!;
+    const fpid =
+      position === "DST"
+        ? DEF_TEAM_FPIDS[record.team ?? ""]
+        : Number(record.player_id);
+    if (!fpid) {
+      continue;
+    }
+
+    // Skip players not currently on an NFL roster - see the matching
+    // comment in ./projections.ts for why (free agents dominate Sleeper's
+    // payload but are almost never fantasy-relevant).
+    if (position !== "DST" && !record.team) {
+      continue;
+    }
+
+    const stats = record.stats ?? {};
+    const numericStats: Record<string, number> = {};
+    for (const [key, value] of Object.entries(stats)) {
+      if (
+        typeof value === "number" &&
+        !key.startsWith("pts_") &&
+        !key.startsWith("adp_")
+      ) {
+        numericStats[key] = value;
+      }
+    }
+
+    rows.push({
+      fpid,
+      position,
+      ptsStd: stats.pts_std ?? 0,
+      ptsPpr: stats.pts_ppr ?? 0,
+      ptsHalf: stats.pts_half_ppr ?? 0,
+      stats: numericStats,
+    });
+  }
+  return rows;
+}
 
 /**
  * Actual (not projected) weekly fantasy points, from Sleeper's stats
@@ -68,63 +133,9 @@ async function fetchAllPlayerPointsHandler(
       continue;
     }
 
-    const rows: Array<{
-      fpid: number;
-      position: Position;
-      ptsStd: number;
-      ptsPpr: number;
-      ptsHalf: number;
-      stats: Record<string, number>;
-    }> = [];
-
-    for (const record of records) {
-      const sleeperPosition = record.player?.position;
-      if (!sleeperPosition || !(sleeperPosition in SLEEPER_TO_OUR_POSITION)) {
-        continue;
-      }
-      // Guarded by the `in` check above; noUncheckedIndexedAccess still
-      // widens the index signature's result to include `undefined`.
-      const position: Position = SLEEPER_TO_OUR_POSITION[sleeperPosition]!;
-      const fpid =
-        position === "DST"
-          ? DEF_TEAM_FPIDS[record.team ?? ""]
-          : Number(record.player_id);
-      if (!fpid) {
-        continue;
-      }
-
-      // Skip players not currently on an NFL roster - see the matching
-      // comment in ./projections.ts for why (free agents dominate Sleeper's
-      // payload but are almost never fantasy-relevant).
-      if (position !== "DST" && !record.team) {
-        continue;
-      }
-
-      if (!knownFpids.has(fpid)) {
-        continue;
-      }
-
-      const stats = record.stats ?? {};
-      const numericStats: Record<string, number> = {};
-      for (const [key, value] of Object.entries(stats)) {
-        if (
-          typeof value === "number" &&
-          !key.startsWith("pts_") &&
-          !key.startsWith("adp_")
-        ) {
-          numericStats[key] = value;
-        }
-      }
-
-      rows.push({
-        fpid,
-        position,
-        ptsStd: stats.pts_std ?? 0,
-        ptsPpr: stats.pts_ppr ?? 0,
-        ptsHalf: stats.pts_half_ppr ?? 0,
-        stats: numericStats,
-      });
-    }
+    const rows = parseSleeperStatsRecords(records).filter((row) =>
+      knownFpids.has(row.fpid),
+    );
 
     const scoringVariants: Array<{
       scoring: "STD" | "PPR" | "HALF";

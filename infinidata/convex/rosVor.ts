@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
 import { POSITIONS, positionValidator } from "./positions";
-import { bonusPoints, scoringConfigFromSeason } from "./scoring";
+import { bonusPoints, pointsForScoring, scoringConfigFromSeason } from "./scoring";
 import { requireSeasonOwner } from "./lib/access";
 import { computeReplacementLevels, findInjuryBoosts, forwardRate, gatherPlayerForms, momentumMultiplier, type ValuedPlayer } from "./lib/playerValue";
 import { gatherRosProjTotals } from "./rosProjTotals";
@@ -44,12 +44,6 @@ export interface RosVorRow {
   // positionRank (rosVor-based) is - the week-mode counterpart to
   // positionRank for infinileague's Players tab toggle.
   weekPositionRank: number;
-  // Actual fantasy points scored in the requested week, in this league's
-  // scoring (base format + TE premium / 6pt passing TD bonus) - absent
-  // when there's no playerPoints row for that week yet (game not played,
-  // bye, or the daily Sleeper stats fetch hasn't picked it up). Only
-  // populated by getRosVorBoard; powers the Players tab's This Week view.
-  weekPoints?: number;
   // The fantasy team's own name (not the NFL team abbreviation above) -
   // null means this player is a free agent. Only populated by
   // getRosVorBoard, which joins against rosterPlayers/seasonTeams for
@@ -330,12 +324,7 @@ export const getRosVorBoard = query({
   handler: async (ctx, args): Promise<RosVorRow[]> => {
     await requireSeasonOwner(ctx, args.seasonId);
 
-    const [settings, nflState] = await Promise.all([
-      ctx.db.get(args.seasonId),
-      ctx.db.query("nflState").first(),
-    ]);
-
-    const [rows, rosteredRows, teams, injuries, weekPointsRows] = await Promise.all([
+    const [rows, rosteredRows, teams, injuries] = await Promise.all([
       ctx.db
         .query("rosVorSnapshots")
         .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
@@ -349,28 +338,7 @@ export const getRosVorBoard = query({
         .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
         .collect(),
       ctx.db.query("injuries").collect(),
-      // Same nflState.season refreshRosVor's own playerPoints reads use -
-      // the board's week is always a current-season week.
-      settings && nflState
-        ? ctx.db
-            .query("playerPoints")
-            .withIndex("by_season_week_fpid", (q) =>
-              q.eq("season", nflState.season).eq("week", args.week),
-            )
-            .collect()
-        : Promise.resolve([]),
     ]);
-    const weekPointsByFpid = new Map<number, number>();
-    if (settings) {
-      const scoringConfig = scoringConfigFromSeason(settings);
-      for (const row of weekPointsRows) {
-        if (row.scoring !== scoringConfig.scoring) continue;
-        weekPointsByFpid.set(
-          row.fpid,
-          row.points + bonusPoints({ position: row.position, stats: row.stats ?? {} }, scoringConfig),
-        );
-      }
-    }
     const teamNameById = new Map(teams.map((team) => [team._id, team.name]));
     const teamNameByFpid = new Map(rosteredRows.map((row) => [row.fpid, teamNameById.get(row.teamId) ?? null]));
     const teamIdByFpid = new Map(rosteredRows.map((row) => [row.fpid, row.teamId]));
@@ -406,7 +374,6 @@ export const getRosVorBoard = query({
       .sort((a, b) => a.rosRank - b.rosRank)
       .map((row) => {
         const injury = injuryByFpid.get(row.fpid);
-        const weekPoints = weekPointsByFpid.get(row.fpid);
         return {
           fpid: row.fpid,
           name: row.name,
@@ -423,12 +390,64 @@ export const getRosVorBoard = query({
           weekRank: row.weekRank ?? 0,
           weekPpg: row.weekPpg ?? 0,
           weekPositionRank: weekPositionRankByFpid.get(row.fpid) ?? 0,
-          ...(weekPoints !== undefined ? { weekPoints } : {}),
           rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
           isOnMyTeam: args.teamId !== undefined && teamIdByFpid.get(row.fpid) === args.teamId,
           ...(injury ? { injury: { status: injury.status, statusShort: injury.statusShort } } : {}),
         };
       });
+  },
+});
+
+// Actual fantasy points for one week, in this season's scoring (base
+// format + TE premium / 6pt passing TD bonus) - powers the Players tab's
+// This Week view. Separate from getRosVorBoard on purpose: the live
+// document below changes every few minutes during games, and only the
+// Players tab wants that - folding it into the board would re-run the
+// whole board for every tab that uses it (Trade, Free Agents, Depth
+// Charts) on each update. A player with no entry hasn't played yet.
+export const getWeekPoints = query({
+  args: { seasonId: v.id("seasons"), week: v.string() },
+  handler: async (ctx, args): Promise<Array<{ fpid: number; points: number }>> => {
+    await requireSeasonOwner(ctx, args.seasonId);
+
+    const [settings, nflState] = await Promise.all([
+      ctx.db.get(args.seasonId),
+      ctx.db.query("nflState").first(),
+    ]);
+    if (!settings || !nflState) return [];
+    const scoringConfig = scoringConfigFromSeason(settings);
+
+    // Live in-game points (convex/sleeper/livePoints.ts) win when the
+    // 5-minute poll has written a document for this week - fresher than
+    // playerPoints (daily sync) and one read instead of ~1,800. Falls back
+    // to playerPoints otherwise (no game live yet this week, or a past week
+    // whose live copy the daily sync has already pruned). Same
+    // nflState.season refreshRosVor's own playerPoints reads use.
+    const liveWeek = await ctx.db
+      .query("liveWeekPoints")
+      .withIndex("by_season_week", (q) => q.eq("season", nflState.season).eq("week", args.week))
+      .first();
+    if (liveWeek) {
+      return liveWeek.players.map((entry) => ({
+        fpid: entry.fpid,
+        points:
+          pointsForScoring(
+            { pointsStd: entry.ptsStd, pointsHalf: entry.ptsHalf, pointsPpr: entry.ptsPpr },
+            scoringConfig.scoring,
+          ) + bonusPoints({ position: entry.position, stats: { rec: entry.rec, pass_td: entry.passTd } }, scoringConfig),
+      }));
+    }
+
+    const rows = await ctx.db
+      .query("playerPoints")
+      .withIndex("by_season_week_fpid", (q) => q.eq("season", nflState.season).eq("week", args.week))
+      .collect();
+    return rows
+      .filter((row) => row.scoring === scoringConfig.scoring)
+      .map((row) => ({
+        fpid: row.fpid,
+        points: row.points + bonusPoints({ position: row.position, stats: row.stats ?? {} }, scoringConfig),
+      }));
   },
 });
 

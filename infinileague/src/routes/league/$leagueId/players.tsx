@@ -108,7 +108,7 @@ function PlayersPage() {
   );
   const selfTeamId = standings?.find((row) => row.isSelf)?.teamId;
 
-  const rows: RosVorRow[] | undefined = useQuery(
+  const boardRows: RosVorRow[] | undefined = useQuery(
     api.rosVor.getRosVorBoard,
     isAuthenticated && nflState
       ? {
@@ -118,6 +118,23 @@ function PlayersPage() {
         }
       : "skip",
   );
+
+  // This week's actual points, live during games (see convex/rosVor.ts's
+  // getWeekPoints) - its own query rather than a board field so live
+  // updates only re-run this small query, not the whole board. Fetched in
+  // both views so switching to This Week doesn't flash empty.
+  const weekPoints = useQuery(
+    api.rosVor.getWeekPoints,
+    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
+  );
+  const rows = useMemo(() => {
+    if (!boardRows) return undefined;
+    const pointsByFpid = new Map((weekPoints ?? []).map((entry) => [entry.fpid, entry.points]));
+    return boardRows.map((row) => {
+      const points = pointsByFpid.get(row.fpid);
+      return points === undefined ? row : { ...row, weekPoints: points };
+    });
+  }, [boardRows, weekPoints]);
 
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
   // Defaults to "ros" - matches the board's own default sort

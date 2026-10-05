@@ -190,6 +190,14 @@ async function fetchAllHandler(
     },
   );
 
+  // playerPoints now has every finished week's numbers, so any live
+  // in-game document for a week other than the current one is stale -
+  // outside the regular season ("0") that's all of them.
+  await ctx.runMutation(internal.sleeper.livePoints.pruneLiveWeekPoints, {
+    season: nflState.season,
+    week: nflState.seasonType === "regular" ? String(nflState.week) : "0",
+  });
+
   // Refresh the valueGaps/draftValues caches now that the projections/
   // rankings/playerSeasonStats data they're derived from has changed - see
   // convex/valueGaps.ts and convex/draftValues.ts's cache comments.

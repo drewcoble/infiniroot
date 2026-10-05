@@ -110,4 +110,15 @@ crons.interval(
   {},
 )
 
+// Live in-game fantasy points for infinileague's Players tab (see
+// convex/sleeper/livePoints.ts). Every run first checks nflGames for a game
+// inside its kickoff window and returns immediately otherwise, so outside
+// game time this is one tiny query per run - no Sleeper call, no write.
+crons.interval(
+  'poll live player points',
+  { minutes: 5 },
+  internal.sleeper.livePoints.pollLivePointsInternal,
+  {},
+)
+
 export default crons

@@ -112,6 +112,7 @@ import type * as sleeper_draftSync from "../sleeper/draftSync.js";
 import type * as sleeper_injuries from "../sleeper/injuries.js";
 import type * as sleeper_league from "../sleeper/league.js";
 import type * as sleeper_leagueSettingsMapping from "../sleeper/leagueSettingsMapping.js";
+import type * as sleeper_livePoints from "../sleeper/livePoints.js";
 import type * as sleeper_playerLinks from "../sleeper/playerLinks.js";
 import type * as sleeper_playerPoints from "../sleeper/playerPoints.js";
 import type * as sleeper_projections from "../sleeper/projections.js";
@@ -237,6 +238,7 @@ declare const fullApi: ApiFromModules<{
   "sleeper/injuries": typeof sleeper_injuries;
   "sleeper/league": typeof sleeper_league;
   "sleeper/leagueSettingsMapping": typeof sleeper_leagueSettingsMapping;
+  "sleeper/livePoints": typeof sleeper_livePoints;
   "sleeper/playerLinks": typeof sleeper_playerLinks;
   "sleeper/playerPoints": typeof sleeper_playerPoints;
   "sleeper/projections": typeof sleeper_projections;
