@@ -15,7 +15,7 @@ import {
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "./errors";
 
-type ActionKey = "sync" | "injuries" | "playerPoints";
+type ActionKey = "sync" | "caches" | "injuries" | "playerPoints";
 
 interface ActionState {
   isRunning: boolean;
@@ -40,9 +40,11 @@ const WEEK_OPTIONS = [
   })),
 ];
 
-// 3 buttons (was 6 - players/rankings, ESPN id links, ESPN values, blend, and
+// 4 buttons (was 6 - players/rankings, ESPN id links, ESPN values, blend, and
 // value caches were all separate steps that had to be run in a specific order
-// to actually update anything - see this file's own git history).
+// to actually update anything - see this file's own git history). "Refresh
+// caches" is the one cache-only step kept on its own, for re-seeding the
+// derived caches without a full external refetch.
 // fetchAllData.fetchAll now runs that whole pipeline itself in the right
 // order (it's also what the nightly cron calls - see convex/crons.ts), so
 // "Sync all data" is just that. Injuries are NOT part of it anymore - they
@@ -58,6 +60,7 @@ const WEEK_OPTIONS = [
 // infinidraft does - see AdminDataPanel.tsx.
 export function DataPanel() {
   const fetchAll = useAction(api.fetchAllData.fetchAll);
+  const refreshCaches = useAction(api.fetchAllData.refreshCaches);
   const fetchInjuries = useAction(api.sleeper.injuries.fetchInjuries);
   const fetchPlayerPoints = useAction(
     api.sleeper.playerPoints.fetchAllPlayerPoints,
@@ -83,6 +86,7 @@ export function DataPanel() {
 
   const [states, setStates] = useState<Record<ActionKey, ActionState>>({
     sync: IDLE_STATE,
+    caches: IDLE_STATE,
     injuries: IDLE_STATE,
     playerPoints: IDLE_STATE,
   });
@@ -102,8 +106,18 @@ export function DataPanel() {
     {
       key: "sync",
       label: "Sync all data",
+      description:
+        "Full external fetch, same as the daily cron. Shared caches and every remaining week's projections only refresh when the current week is selected - any other week just refreshes that week's own data.",
       run: () => fetchAll({ week }),
       successMessage: `Synced for week "${week}".`,
+    },
+    {
+      key: "caches",
+      label: "Refresh caches",
+      description:
+        "Rebuilds the derived caches (ROS totals, every league's player values, value gaps, draft values) from data already stored - no projections/points refetch. Always the current week.",
+      run: () => refreshCaches({}),
+      successMessage: "Caches refreshed.",
     },
     {
       key: "injuries",
