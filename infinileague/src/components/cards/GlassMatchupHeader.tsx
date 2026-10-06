@@ -1,4 +1,3 @@
-import { POSITION_COLORS } from "@shared/positionColors";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -13,10 +12,20 @@ export interface MatchupHeaderTeam {
   toPlayCount: number;
 }
 
-// Same team colors the current Matchup tab's win-probability bar uses
-// (matchup.tsx's WIN_PROB_COLOR_A/B), as glass tints rather than solid fills.
-const TEAM_A_COLOR = POSITION_COLORS.RB;
-const TEAM_B_COLOR = POSITION_COLORS.DST;
+// Each win-probability segment is tinted by who's favored rather than by
+// team (there's no team-color concept): green for the favorite, red for the
+// underdog, neutral for both when it's within TOSSUP_MARGIN of 50/50 - the
+// same green/red/neutral the player cards' meters use for pace.
+const TOSSUP_MARGIN = 5;
+const FAVORED_TINT = "#4ade80";
+const UNDERDOG_TINT = "#f87171";
+const TOSSUP_TINT = "#f8fafc";
+
+function segmentTint(pct: number): string {
+  if (pct > 50 + TOSSUP_MARGIN) return FAVORED_TINT;
+  if (pct < 50 - TOSSUP_MARGIN) return UNDERDOG_TINT;
+  return TOSSUP_TINT;
+}
 
 function TeamSide({ team, align }: { team: MatchupHeaderTeam; align: "left" | "right" }) {
   return (
@@ -88,14 +97,14 @@ export function GlassMatchupHeader({
             className={classes.winSegment}
             style={{
               width: `${pctA}%`,
-              ["--pill-tint" as string]: `var(--mantine-color-${TEAM_A_COLOR}-5)`,
+              ["--pill-tint" as string]: segmentTint(pctA),
             }}
           />
           <div
             className={classes.winSegment}
             style={{
               width: `${pctB}%`,
-              ["--pill-tint" as string]: `var(--mantine-color-${TEAM_B_COLOR}-5)`,
+              ["--pill-tint" as string]: segmentTint(pctB),
             }}
           />
         </div>

@@ -712,8 +712,9 @@
   color: rgba(248, 250, 252, 0.6);
 }
 
-/* Two glass segments with a 2px gap between them - each tinted with its
-   team color the same way the pills are (--pill-tint). */
+/* Two glass segments with a 2px gap between them - each tinted by who's
+   favored (--pill-tint, see GlassMatchupHeader's segmentTint), the same
+   way the pills are tinted. */
 .winBar {
   display: flex;
   gap: 2px;
