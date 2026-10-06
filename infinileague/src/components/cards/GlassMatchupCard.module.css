@@ -730,21 +730,35 @@
 
 /* --- Full-width roster card (GlassRosterCard) -------------------------- */
 
+/* Slot chip outside the card, card taking the rest of the row. The chip
+   gets a fixed width (wide enough for "SFLEX"/"Taxi") so every card starts
+   at the same x down the list. */
+.rosterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rosterRow > .slotChip {
+  width: 54px;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.rosterRow > .card {
+  flex: 1;
+  min-width: 0;
+}
+
 .wide {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    "slot info score"
-    "slot meter meter";
+    "info score"
+    "meter meter";
   align-items: center;
   column-gap: 12px;
   row-gap: 6px;
-  padding: 10px 12px 10px 10px;
-}
-
-.wideSlot {
-  grid-area: slot;
-  align-self: center;
 }
 
 .wideInfo {

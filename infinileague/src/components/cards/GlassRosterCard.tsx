@@ -9,10 +9,12 @@ import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
 // Full-width (My Team) version of the glass player card - same pieces as
-// GlassMatchupCard, laid out for a full row on mobile: roster slot on the
-// left, full name with position/injury/game beneath it in the middle, the
-// status icon and headline points stacked on the right, and the meter
-// running the width underneath. Full names fit here, so no shortening.
+// GlassMatchupCard, laid out for a full row on mobile: the roster slot chip
+// sits outside the card on the left (like the Matchup tab's slot chips
+// between columns), and inside it the full name with position/injury/game
+// beneath, the status icon and headline points stacked on the right, and
+// the meter running the width underneath. Full names fit here, so no
+// shortening.
 export function GlassRosterCard({
   data,
   slot,
@@ -29,7 +31,8 @@ export function GlassRosterCard({
   );
 
   return (
-    <>
+    <div className={classes.rosterRow}>
+      <GlassSlotChip label={slot} />
       <div
         {...cardProps}
         className={[
@@ -44,10 +47,6 @@ export function GlassRosterCard({
           .filter(Boolean)
           .join(" ")}
       >
-        <div className={classes.wideSlot} aria-hidden>
-          <GlassSlotChip label={slot} />
-        </div>
-
         <div className={classes.wideInfo} aria-hidden>
           <div className={classes.name}>{data.name}</div>
           <div className={classes.wideDetail}>
@@ -102,22 +101,18 @@ export function GlassRosterCard({
           onClose={close}
         />
       )}
-    </>
+    </div>
   );
 }
 
 export function EmptyGlassRosterCard({ slot }: { slot: string }) {
   return (
-    <div
-      className={`${classes.card} ${classes.wide} ${classes.wideEmpty}`}
-      role="group"
-      aria-label={`${slot}, empty slot`}
-    >
-      <div className={classes.wideSlot} aria-hidden>
-        <GlassSlotChip label={slot} />
-      </div>
-      <div className={classes.wideInfo} aria-hidden>
-        <span className={classes.wideEmptyText}>Empty</span>
+    <div className={classes.rosterRow} role="group" aria-label={`${slot}, empty slot`}>
+      <GlassSlotChip label={slot} />
+      <div className={`${classes.card} ${classes.wide} ${classes.wideEmpty}`} aria-hidden>
+        <div className={classes.wideInfo}>
+          <span className={classes.wideEmptyText}>Empty</span>
+        </div>
       </div>
     </div>
   );
