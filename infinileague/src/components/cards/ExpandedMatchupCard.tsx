@@ -13,6 +13,7 @@ import {
   type GlassMatchupCardData,
   type Pace,
 } from "./cardShared";
+import { GameStatusGlyph } from "./GameStatusGlyph";
 import { PointsMeter } from "./PointsMeter";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -138,6 +139,7 @@ export function ExpandedMatchupCard({
               {data.name}
             </div>
             <div className={classes.gameLine}>
+              <GameStatusGlyph state={data.gameState} />
               {data.team} {gameLine(data)}
             </div>
           </div>

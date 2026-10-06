@@ -145,6 +145,26 @@
   text-overflow: ellipsis;
 }
 
+/* Fixed-width slot for GameStatusGlyph's icon, so game lines start at
+   the same x whatever state they're in. */
+.statusSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  margin-right: 5px;
+  vertical-align: -2px;
+}
+
+.status_final {
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.status_pre {
+  color: rgba(248, 250, 252, 0.6);
+}
+
 .dot {
   display: inline-block;
   width: 7px;
@@ -154,6 +174,11 @@
   border-radius: 50%;
   background: #4ade80;
   animation: pulse 1.6s ease-in-out infinite;
+}
+
+.statusSlot .dot {
+  margin-right: 0;
+  vertical-align: 0;
 }
 
 @keyframes pulse {
