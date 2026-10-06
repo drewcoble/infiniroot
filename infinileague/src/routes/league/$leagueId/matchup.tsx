@@ -1,8 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Loader, Select, Stack, Text, Title } from "@mantine/core";
+import {
+  ActionIcon,
+  Alert,
+  Button,
+  Group,
+  Loader,
+  Select,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
@@ -16,6 +27,7 @@ import { meterScaleMax } from "../../../components/cards/meterScale";
 import { buildShortNames } from "../../../lib/shortPlayerName";
 import {
   isAnyGameLive,
+  isGameFinal,
   liveProjection,
   remainingFraction,
   useNow,
@@ -23,7 +35,16 @@ import {
 } from "../../../lib/liveGames";
 import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
 
+// Regular-season weeks the week picker steps through.
+const REGULAR_SEASON_WEEKS = 18;
+
+// ?week=N views another week's matchup (past, or upcoming); absent = the
+// current NFL week. Anything out of range is dropped rather than erroring.
 export const Route = createFileRoute("/league/$leagueId/matchup")({
+  validateSearch: (search: Record<string, unknown>): { week?: number } => {
+    const week = Number(search.week);
+    return Number.isInteger(week) && week >= 1 && week <= REGULAR_SEASON_WEEKS ? { week } : {};
+  },
   component: MatchupPage,
 });
 
@@ -106,7 +127,14 @@ function MatchupPage() {
     if (self) setTeamAId(self.teamId);
   }, [standings, teamAId]);
 
-  const week = nflState?.week ?? null;
+  // The week being viewed - ?week= when set, otherwise the current one.
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const currentWeek = nflState?.week ?? null;
+  const week = search.week !== undefined ? String(search.week) : currentWeek;
+  const isCurrentWeek = week === currentWeek;
+  const goToWeek = (next: number) =>
+    void navigate({ search: String(next) === currentWeek ? {} : { week: next } });
 
   const getOpponentForWeek = useAction(api.infinileague.season.matchup.getOpponentForWeek);
   // undefined = not resolved yet, null = resolved but no auto-detected
@@ -130,18 +158,24 @@ function MatchupPage() {
   const [manualOpponentId, setManualOpponentId] = useState<string | null>(null);
   const teamBId = autoOpponentId ?? manualOpponentId;
 
-  // This week's slate - opponent/kickoff per NFL team, plus live game
-  // status from the 2-minute poll (see convex/sleeper/livePoints.ts).
+  // The viewed week's slate - opponent/kickoff per NFL team, plus live
+  // game status from the 2-minute poll (see convex/sleeper/livePoints.ts).
   const weekGames: WeekGame[] | undefined = useQuery(
     api.sleeper.livePoints.getWeekGames,
-    isAuthenticated && nflState ? { season: nflState.season, week: nflState.week } : "skip",
+    isAuthenticated && nflState && week ? { season: nflState.season, week } : "skip",
   );
   const gamesByTeam = useMemo(
     () => new Map((weekGames ?? []).map((game) => [game.team, game])),
     [weekGames],
   );
   const now = useNow(60 * 1000);
-  const refreshMs = isAnyGameLive(weekGames, now) ? LIVE_REFRESH_MS : null;
+  const refreshMs = isCurrentWeek && isAnyGameLive(weekGames, now) ? LIVE_REFRESH_MS : null;
+  // Every game in the viewed week is over - the header shows the result
+  // instead of a win probability.
+  const weekComplete =
+    weekGames !== undefined &&
+    weekGames.length > 0 &&
+    weekGames.every((game) => isGameFinal(game, now));
 
   const teamARoster = useTeamRoster(teamAId, week, refreshMs);
   const teamBRoster = useTeamRoster(teamBId, week, refreshMs);
@@ -150,7 +184,9 @@ function MatchupPage() {
   // ROS and projected week position ranks) - the same board the Trade tab
   // reads. Also the league-wide name pool the cards' short names are
   // collision-checked against ("Bijan Robinson" vs. "Brian Robinson Jr."
-  // never both shorten to "B. Robinson").
+  // never both shorten to "B. Robinson"). Always the current week's board,
+  // whichever week is being viewed - it's the latest season/ROS picture,
+  // and future weeks have no board yet.
   const vorRows: RosVorRow[] | undefined = useQuery(
     api.rosVor.getRosVorBoard,
     isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
@@ -164,7 +200,7 @@ function MatchupPage() {
   // game starts) - re-ranked on every live poll server-side.
   const weekRanks = useQuery(
     api.infinileague.season.matchup.getWeekPositionRanks,
-    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
+    isAuthenticated && week ? { seasonId, week } : "skip",
   );
   const weekRankByFpid = useMemo(
     () => new Map((weekRanks ?? []).map((entry) => [entry.fpid, entry.rank])),
@@ -264,7 +300,41 @@ function MatchupPage() {
 
   return (
     <Stack gap="md">
-      <Title order={3}>Matchup</Title>
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Title order={3}>Matchup</Title>
+        {week !== null && (
+          <Group gap={4} wrap="nowrap">
+            {!isCurrentWeek && currentWeek !== null && (
+              <Button
+                variant="subtle"
+                size="compact-sm"
+                onClick={() => goToWeek(Number(currentWeek))}
+              >
+                This week
+              </Button>
+            )}
+            <ActionIcon
+              variant="subtle"
+              aria-label="Previous week"
+              disabled={Number(week) <= 1}
+              onClick={() => goToWeek(Number(week) - 1)}
+            >
+              <ChevronLeft size={18} />
+            </ActionIcon>
+            <Text fw={600} style={{ minWidth: 64, textAlign: "center" }}>
+              Week {week}
+            </Text>
+            <ActionIcon
+              variant="subtle"
+              aria-label="Next week"
+              disabled={Number(week) >= REGULAR_SEASON_WEEKS}
+              onClick={() => goToWeek(Number(week) + 1)}
+            >
+              <ChevronRight size={18} />
+            </ActionIcon>
+          </Group>
+        )}
+      </Group>
 
       {opponentError && (
         <Alert color="red" withCloseButton onClose={() => setOpponentError(null)}>
@@ -290,6 +360,13 @@ function MatchupPage() {
         teamA={headerTeam(selfTeamName, teamARoster.rows, actualA, projA)}
         teamB={teamBId !== null ? headerTeam(opponentName, teamBRoster.rows, actualB, projB) : null}
         winProbA={matchupReady ? winProbA : null}
+        result={
+          weekComplete && matchupReady
+            ? actualA === actualB
+              ? "Final · Tied"
+              : `Final · ${actualA > actualB ? selfTeamName : opponentName} won by ${Math.abs(actualA - actualB).toFixed(2)}`
+            : undefined
+        }
       />
 
       <Stack gap={10}>

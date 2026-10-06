@@ -686,6 +686,14 @@
   transition: opacity 200ms ease;
 }
 
+/* A finished week's result, in the win bar's place. */
+.headerResult {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.85);
+}
+
 /* Percentages flank the bar on one line. */
 .winRow {
   display: flex;

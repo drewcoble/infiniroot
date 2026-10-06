@@ -70,14 +70,20 @@ function countsText(team: MatchupHeaderTeam): string {
 // placeholder, no win bar). `winProbA` null = opponent known but their
 // roster's still loading - the bar holds at a dimmed 50/50 rather than
 // showing a wrong number that then jumps.
+//
+// `result` (e.g. "Final · Gridiron Gurus won by 13.74") replaces the win
+// bar once every game of the week is over - a "97%" after the fact reads
+// oddly.
 export function GlassMatchupHeader({
   teamA,
   teamB,
   winProbA,
+  result,
 }: {
   teamA: MatchupHeaderTeam;
   teamB: MatchupHeaderTeam | null;
   winProbA: number | null;
+  result?: string | undefined;
 }) {
   const pctA = Math.round((winProbA ?? 0.5) * 100);
   const pctB = 100 - pctA;
@@ -90,7 +96,11 @@ export function GlassMatchupHeader({
       aria-label={
         teamB
           ? `${teamText(teamA)}; ${teamText(teamB)}` +
-            (winProbA !== null ? `; win probability ${pctA}% to ${pctB}%` : "")
+            (result
+              ? `; ${result}`
+              : winProbA !== null
+                ? `; win probability ${pctA}% to ${pctB}%`
+                : "")
           : teamText(teamA)
       }
     >
@@ -108,7 +118,9 @@ export function GlassMatchupHeader({
         )}
       </div>
 
-      {teamB && (
+      {teamB && result && <div className={classes.headerResult}>{result}</div>}
+
+      {teamB && !result && (
         <div
           className={`${classes.winRow} ${winProbA === null ? classes.headerPending : ""}`}
           aria-hidden

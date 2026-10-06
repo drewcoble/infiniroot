@@ -345,14 +345,23 @@ export const getTeamRosterForWeek = action({
       );
     }
 
-    const [players, allInjuries, byeWeeks, weekProjections] = await Promise.all([
+    const [players, byeWeeks, weekProjections] = await Promise.all([
       ctx.runQuery(api.players.getPlayersByFpids, { fpids }),
-      ctx.runQuery(api.injuries.getInjuries, {}),
       ctx.runQuery(api.nflSchedule.getByeWeeks, {}),
       ctx.runQuery(api.projections.getAllProjections, { week: args.week }),
     ]);
 
-    const injuryByFpid = new Map(allInjuries.map((row) => [row.fpid, row]));
+    // The designation for the week being viewed, not today's - see
+    // weekInjuries.ts (status at kickoff for played weeks, only IR carried
+    // into future weeks).
+    const weekInjuries = await ctx.runQuery(
+      internal.infinileague.season.weekInjuries.getInjuriesForWeek,
+      {
+        week: args.week,
+        players: players.map((player) => ({ fpid: player.fpid, team: player.team ?? null })),
+      },
+    );
+    const injuryByFpid = new Map(weekInjuries.map((row) => [row.fpid, row]));
     const projectionByFpid = new Map(
       weekProjections.map((row) => [row.fpid, row]),
     );
