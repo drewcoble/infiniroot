@@ -88,3 +88,29 @@ export function paceFor(data: GlassMatchupCardData): Pace | undefined {
   if (data.gameState === "final") return paceVsProjection(data.projectedPoints, data.actualPoints);
   return undefined;
 }
+
+// Screen readers get one sentence instead of hopping through every pill
+// and number in visual order.
+export function ariaSummary(data: GlassMatchupCardData): string {
+  const parts = [
+    data.name,
+    `${data.position}${data.positionRank > 0 ? ` ${data.positionRank}` : ""}`,
+    `${data.team} ${gameLine(data)}`,
+  ];
+  if (data.gameState === "live") parts.push("game in progress");
+  if (data.injury) parts.push(data.injury.status);
+  parts.push(`${formatPoints(data.actualPoints)} points`);
+  parts.push(`projected ${formatProj(data.projectedPoints)}`);
+  if (data.gameState === "live") {
+    const pace = paceVsProjection(data.projectedPoints, data.liveProjectedPoints);
+    const paceText =
+      pace === "ahead" ? ", ahead of projection" : pace === "behind" ? ", behind projection" : "";
+    parts.push(`on pace for ${formatProj(data.liveProjectedPoints)}${paceText}`);
+  }
+  if (data.gameState === "final") {
+    const pace = paceVsProjection(data.projectedPoints, data.actualPoints);
+    if (pace === "ahead") parts.push("beat projection");
+    if (pace === "behind") parts.push("fell short of projection");
+  }
+  return parts.join(", ");
+}

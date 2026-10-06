@@ -1,47 +1,13 @@
-import { useCallback, useRef, useState, type KeyboardEvent } from "react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault } from "@shared/positionColors";
-import {
-  formatPoints,
-  formatProj,
-  gameLine,
-  paceVsProjection,
-  pillStyle,
-  type GlassMatchupCardData,
-} from "./cardShared";
+import { ariaSummary, gameLine, pillStyle, type GlassMatchupCardData } from "./cardShared";
 import { ExpandedMatchupCard } from "./ExpandedMatchupCard";
 import { GameStatusGlyph } from "./GameStatusGlyph";
-import { PointsMeter } from "./PointsMeter";
-import { useLongPress } from "./useLongPress";
+import { PointsHeadline, PointsMeter } from "./PointsMeter";
+import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
 export type { GlassMatchupCardData } from "./cardShared";
-
-// Screen readers get one sentence instead of hopping through every pill
-// and number in visual order.
-function ariaSummary(data: GlassMatchupCardData): string {
-  const parts = [
-    data.name,
-    `${data.position}${data.positionRank > 0 ? ` ${data.positionRank}` : ""}`,
-    `${data.team} ${gameLine(data)}`,
-  ];
-  if (data.gameState === "live") parts.push("game in progress");
-  if (data.injury) parts.push(data.injury.status);
-  parts.push(`${formatPoints(data.actualPoints)} points`);
-  parts.push(`projected ${formatProj(data.projectedPoints)}`);
-  if (data.gameState === "live") {
-    const pace = paceVsProjection(data.projectedPoints, data.liveProjectedPoints);
-    const paceText =
-      pace === "ahead" ? ", ahead of projection" : pace === "behind" ? ", behind projection" : "";
-    parts.push(`on pace for ${formatProj(data.liveProjectedPoints)}${paceText}`);
-  }
-  if (data.gameState === "final") {
-    const pace = paceVsProjection(data.projectedPoints, data.actualPoints);
-    if (pace === "ahead") parts.push("beat projection");
-    if (pace === "behind") parts.push("fell short of projection");
-  }
-  return parts.join(", ");
-}
 
 // Base (collapsed) Matchup card - name, position, this week's game, and
 // the two numbers a matchup is about: actual points large, with projection
@@ -63,32 +29,14 @@ export function GlassMatchupCard({
 }) {
   const isLive = data.gameState === "live";
   const isBye = data.gameState === "bye";
-  const isPre = data.gameState === "pre";
   const positionColor = positionColorOrDefault(data.position);
 
-  const cardRef = useRef<HTMLDivElement>(null);
-  // The element the detail card anchors to, captured at open time - null
-  // while collapsed.
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const expanded = anchor !== null;
-  const open = useCallback(() => setAnchor(cardRef.current), []);
-  const close = useCallback(() => {
-    setAnchor(null);
-    cardRef.current?.focus();
-  }, []);
-  const { pressing, handlers } = useLongPress(open);
-
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      open();
-    }
-  };
+  const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(ariaSummary(data));
 
   return (
     <>
       <div
-        ref={cardRef}
+        {...cardProps}
         className={[
           classes.card,
           classes.pressable,
@@ -99,20 +47,6 @@ export function GlassMatchupCard({
         ]
           .filter(Boolean)
           .join(" ")}
-        tabIndex={0}
-        role="button"
-        aria-haspopup="dialog"
-        aria-expanded={expanded}
-        aria-label={ariaSummary(data)}
-        aria-description="Press and hold for details"
-        onKeyDown={onKeyDown}
-        // Screen readers activate with a synthetic click (detail 0) rather
-        // than a long press - let that open the details too, while a real
-        // tap (detail 1) stays a no-op so scrolling past cards is safe.
-        onClick={(event) => {
-          if (event.detail === 0) open();
-        }}
-        {...handlers}
       >
         <div className={classes.topRow} aria-hidden>
           <div className={classes.pills}>
@@ -140,23 +74,8 @@ export function GlassMatchupCard({
           </div>
         </div>
 
-        {/* Before kickoff the actual score is a meaningless 0, so the number
-            slot shows the projection instead (dimmed and labeled); once the
-            game starts it's the actual score, and the projection lives on
-            the meter's tick. */}
         <div className={classes.statsRow} aria-hidden>
-          {isBye ? (
-            <span className={classes.points}>—</span>
-          ) : isPre ? (
-            <>
-              <span className={`${classes.points} ${classes.pointsPending}`}>
-                {formatProj(data.projectedPoints)}
-              </span>
-              <span className={classes.pointsUnit}>proj</span>
-            </>
-          ) : (
-            <span className={classes.points}>{formatPoints(data.actualPoints)}</span>
-          )}
+          <PointsHeadline data={data} />
         </div>
         {!isBye && (
           <PointsMeter

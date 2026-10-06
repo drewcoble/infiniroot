@@ -10,6 +10,7 @@ import {
   GlassMatchupHeader,
   type MatchupHeaderTeam,
 } from "../../../components/cards/GlassMatchupHeader";
+import { EmptyGlassRosterCard, GlassRosterCard } from "../../../components/cards/GlassRosterCard";
 import { meterScaleMax } from "../../../components/cards/meterScale";
 import { buildShortNames } from "../../../lib/shortPlayerName";
 
@@ -199,6 +200,102 @@ const scaleMax = meterScaleMax(
   ),
 );
 
+// My Team sample - reuses the matchup sample players by name, plus a few
+// roster-only ones (kicker, defense, bench, IR) and an empty FLEX.
+function samplePlayer(name: string): GlassMatchupCardData {
+  const found = SAMPLE_ROWS.flatMap((row) => [row.a, row.b]).find((card) => card?.name === name);
+  if (!found) throw new Error(`No sample player named ${name}`);
+  return found;
+}
+
+const SAMPLE_ROSTER: { slot: string; data: GlassMatchupCardData | null }[] = [
+  { slot: "QB", data: samplePlayer("Josh Allen") },
+  { slot: "RB", data: samplePlayer("Bijan Robinson") },
+  { slot: "RB", data: samplePlayer("Brian Robinson Jr.") },
+  { slot: "WR", data: samplePlayer("Marvin Harrison Jr.") },
+  { slot: "WR", data: samplePlayer("Justin Jefferson") },
+  { slot: "TE", data: samplePlayer("Travis Kelce") },
+  { slot: "FLEX", data: null },
+  {
+    slot: "K",
+    data: {
+      name: "Brandon Aubrey",
+      position: "K",
+      positionRank: 1,
+      team: "DAL",
+      matchup: "@ NYG",
+      status: "Final",
+      gameState: "final",
+      projectedPoints: 9.2,
+      actualPoints: 9.0,
+      seasonPpg: 10.1,
+      rosPpg: 9.4,
+      weekPositionRank: 2,
+      byeWeek: 10,
+    },
+  },
+  {
+    slot: "DST",
+    data: {
+      name: "Ravens D/ST",
+      position: "DST",
+      positionRank: 4,
+      team: "BAL",
+      matchup: "vs. CIN",
+      status: "Q2 3:41",
+      gameState: "live",
+      projectedPoints: 7.5,
+      liveProjectedPoints: 10.2,
+      actualPoints: 6,
+      seasonPpg: 8.3,
+      rosPpg: 7.9,
+      weekPositionRank: 3,
+      byeWeek: 7,
+    },
+  },
+  { slot: "BN", data: samplePlayer("Jahmyr Gibbs") },
+  {
+    slot: "BN",
+    data: {
+      name: "Amon-Ra St. Brown",
+      position: "WR",
+      positionRank: 5,
+      team: "DET",
+      matchup: "vs. GB",
+      status: "Mon 8:15 PM",
+      gameState: "pre",
+      projectedPoints: 16.9,
+      actualPoints: 0,
+      seasonPpg: 17.2,
+      rosPpg: 16.5,
+      weekPositionRank: 6,
+      byeWeek: 8,
+    },
+  },
+  {
+    slot: "IR",
+    data: {
+      name: "Nick Chubb",
+      position: "RB",
+      positionRank: 41,
+      team: "CLE",
+      matchup: "@ PIT",
+      status: "Sun 1:00 PM",
+      gameState: "pre",
+      projectedPoints: 0,
+      actualPoints: 0,
+      injury: { status: "IR", statusShort: "IR" },
+      seasonPpg: 6.1,
+      rosPpg: 7.8,
+      byeWeek: 9,
+    },
+  },
+];
+
+const rosterScaleMax = meterScaleMax(
+  SAMPLE_ROSTER.flatMap((entry) => (entry.data ? [entry.data] : [])),
+);
+
 const SAMPLE_HEADER: { teamA: MatchupHeaderTeam; teamB: MatchupHeaderTeam } = {
   teamA: {
     name: "Gridiron Gurus",
@@ -271,6 +368,23 @@ function CardsPage() {
             </Box>
           </Group>
         ))}
+      </Stack>
+
+      <Text fw={600}>My Team: full-width card</Text>
+
+      <Stack gap={8}>
+        {SAMPLE_ROSTER.map((entry, index) =>
+          entry.data ? (
+            <GlassRosterCard
+              key={index}
+              data={entry.data}
+              slot={entry.slot}
+              scaleMax={rosterScaleMax}
+            />
+          ) : (
+            <EmptyGlassRosterCard key={index} slot={entry.slot} />
+          ),
+        )}
       </Stack>
     </Stack>
   );

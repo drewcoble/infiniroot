@@ -1,4 +1,9 @@
-import { paceVsProjection } from "./cardShared";
+import {
+  formatPoints,
+  formatProj,
+  paceVsProjection,
+  type GlassMatchupCardData,
+} from "./cardShared";
 import classes from "./GlassMatchupCard.module.css";
 
 // Bullet meter under the points: fill = actual points, tick = pregame
@@ -59,4 +64,23 @@ export function PointsMeter({
       )}
     </div>
   );
+}
+
+// The card's headline number. Before kickoff the actual score is a
+// meaningless 0, so it shows the projection instead (dimmed and labeled);
+// once the game starts it's the actual score, and the projection lives on
+// the meter's tick.
+export function PointsHeadline({ data }: { data: GlassMatchupCardData }) {
+  if (data.gameState === "bye") return <span className={classes.points}>—</span>;
+  if (data.gameState === "pre") {
+    return (
+      <>
+        <span className={`${classes.points} ${classes.pointsPending}`}>
+          {formatProj(data.projectedPoints)}
+        </span>
+        <span className={classes.pointsUnit}>proj</span>
+      </>
+    );
+  }
+  return <span className={classes.points}>{formatPoints(data.actualPoints)}</span>;
 }

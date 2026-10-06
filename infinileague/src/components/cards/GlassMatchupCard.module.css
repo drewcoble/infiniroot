@@ -727,3 +727,86 @@
     transition: none;
   }
 }
+
+/* --- Full-width roster card (GlassRosterCard) -------------------------- */
+
+.wide {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "slot info score"
+    "slot meter meter";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 6px;
+  padding: 10px 12px 10px 10px;
+}
+
+.wideSlot {
+  grid-area: slot;
+  align-self: center;
+}
+
+.wideInfo {
+  grid-area: info;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wideDetail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wideDetail .pill {
+  flex-shrink: 0;
+}
+
+.wideGameLine {
+  margin-left: 4px;
+}
+
+.wideScore {
+  grid-area: score;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.wideGlyph {
+  height: 20px;
+}
+
+.wideScore .statsRow {
+  margin-top: 0;
+}
+
+.wideMeter {
+  grid-area: meter;
+  min-width: 0;
+}
+
+.wideMeter .meter {
+  margin: 0 0 2px;
+}
+
+.wideEmpty {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+}
+
+.wideEmpty::before {
+  display: none;
+}
+
+.wideEmptyText {
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.6);
+}
