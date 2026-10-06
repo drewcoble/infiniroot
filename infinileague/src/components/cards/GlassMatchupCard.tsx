@@ -142,5 +142,12 @@ export function EmptyGlassCard() {
 }
 
 export function GlassSlotChip({ label }: { label: string }) {
-  return <span className={classes.slotChip}>{label}</span>;
+  return (
+    <span
+      className={`${classes.pill} ${classes.slotChip}`}
+      style={pillStyle(positionColorOrDefault(label))}
+    >
+      {label}
+    </span>
+  );
 }
