@@ -6,6 +6,7 @@ import {
   GlassSlotChip,
   type GlassMatchupCardData,
 } from "../../../components/cards/GlassMatchupCard";
+import { meterScaleMax } from "../../../components/cards/meterScale";
 import { buildShortNames } from "../../../lib/shortPlayerName";
 
 export const Route = createFileRoute("/league/$leagueId/cards")({
@@ -145,6 +146,12 @@ const shortName = buildShortNames(
   ),
 );
 
+const scaleMax = meterScaleMax(
+  SAMPLE_ROWS.flatMap((row) => [row.a, row.b]).filter(
+    (card): card is GlassMatchupCardData => card !== null,
+  ),
+);
+
 function CardsPage() {
   return (
     <Stack gap="md">
@@ -162,7 +169,11 @@ function CardsPage() {
           <Group key={index} wrap="nowrap" gap="xs" align="stretch">
             <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
               {row.a ? (
-                <GlassMatchupCard data={row.a} displayName={shortName(row.a.name)} />
+                <GlassMatchupCard
+                  data={row.a}
+                  displayName={shortName(row.a.name)}
+                  scaleMax={scaleMax}
+                />
               ) : (
                 <EmptyGlassCard />
               )}
@@ -170,7 +181,11 @@ function CardsPage() {
             <GlassSlotChip label={row.slot} />
             <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
               {row.b ? (
-                <GlassMatchupCard data={row.b} displayName={shortName(row.b.name)} />
+                <GlassMatchupCard
+                  data={row.b}
+                  displayName={shortName(row.b.name)}
+                  scaleMax={scaleMax}
+                />
               ) : (
                 <EmptyGlassCard />
               )}

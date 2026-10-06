@@ -197,11 +197,55 @@
   font-variant-numeric: tabular-nums;
 }
 
-.proj {
-  font-size: 13px;
+.pointsPending {
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.pointsUnit {
+  font-size: 11px;
   font-weight: 600;
-  color: rgba(248, 250, 252, 0.68);
-  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+/* Bullet meter - see PointsMeter. Track, fill, and ghost are all white at
+   different strengths (the card's color already belongs to the position
+   pill and the live tint); the tick is a taller solid mark so it reads
+   even where the fill passes over it. */
+.meter {
+  position: relative;
+  height: 5px;
+  margin: 4px 0 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.meterFill,
+.meterGhost {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+}
+
+.meterFill {
+  left: 0;
+  background: rgba(248, 250, 252, 0.88);
+}
+
+.meterGhost {
+  background: rgba(248, 250, 252, 0.3);
+}
+
+.meterTick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
 /* Layout only - the glass look comes from .pill, tinted by slot color. */

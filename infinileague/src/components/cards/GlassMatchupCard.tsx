@@ -55,30 +55,64 @@ function ariaSummary(data: GlassMatchupCardData): string {
   if (data.gameState === "live") parts.push("game in progress");
   if (data.injury) parts.push(data.injury.status);
   parts.push(`${formatPoints(data.actualPoints)} points`);
-  const proj = data.gameState === "live" ? data.liveProjectedPoints : data.projectedPoints;
-  parts.push(`${data.gameState === "live" ? "live projection" : "projected"} ${formatProj(proj)}`);
+  parts.push(`projected ${formatProj(data.projectedPoints)}`);
+  if (data.gameState === "live") parts.push(`on pace for ${formatProj(data.liveProjectedPoints)}`);
   return parts.join(", ");
 }
 
+// Bullet meter under the points: fill = actual points, tick = pregame
+// projection, and mid-game a faint extension from actual out to the live
+// projection (where they're on pace to finish). `scaleMax` is shared by
+// every card on the page so bar lengths compare across cards and rows - see
+// meterScale.ts.
+function PointsMeter({
+  actual,
+  projected,
+  liveProjected,
+  scaleMax,
+}: {
+  actual: number;
+  projected: number | undefined;
+  liveProjected: number | undefined;
+  scaleMax: number;
+}) {
+  const pct = (value: number) => `${Math.min(Math.max(value / scaleMax, 0), 1) * 100}%`;
+  const ghostEnd = liveProjected !== undefined && liveProjected > actual ? liveProjected : undefined;
+  return (
+    <div className={classes.meter} aria-hidden>
+      {ghostEnd !== undefined && (
+        <div
+          className={classes.meterGhost}
+          style={{ left: pct(actual), width: `calc(${pct(ghostEnd)} - ${pct(actual)})` }}
+        />
+      )}
+      {actual > 0 && <div className={classes.meterFill} style={{ width: pct(actual) }} />}
+      {projected !== undefined && (
+        <div className={classes.meterTick} style={{ left: pct(projected) }} />
+      )}
+    </div>
+  );
+}
+
 // Base (collapsed) Matchup card - name, position, this week's game, and
-// the two numbers a matchup is about: actual points large, projection
-// (live projection mid-game) small beside it. A live game shows as the
-// card's green tint plus a pulsing dot on the game clock, nothing more. Long-press expansion into a detail
-// card comes later; it's focusable now so that interaction has a keyboard
-// counterpart from the start.
-// displayName is the shortened, collision-checked name for the card face
-// (see lib/shortPlayerName.ts) - the aria summary keeps data.name in full.
+// the two numbers a matchup is about: actual points large, with projection
+// (and live projection mid-game) drawn on a meter under it. A live game
+// shows as the card's green tint plus a pulsing dot on the game clock.
+// Long-press expansion into a detail card comes later; it's focusable now
+// so that interaction has a keyboard counterpart from the start.
 export function GlassMatchupCard({
   data,
   displayName = data.name,
+  scaleMax,
 }: {
   data: GlassMatchupCardData;
   displayName?: string;
+  scaleMax: number;
 }) {
   const isLive = data.gameState === "live";
   const isBye = data.gameState === "bye";
+  const isPre = data.gameState === "pre";
   const positionColor = positionColorOrDefault(data.position);
-  const proj = isLive ? data.liveProjectedPoints : data.projectedPoints;
 
   return (
     <div
@@ -115,10 +149,32 @@ export function GlassMatchupCard({
         </div>
       </div>
 
+      {/* Before kickoff the actual score is a meaningless 0, so the number
+          slot shows the projection instead (dimmed and labeled); once the
+          game starts it's the actual score, and the projection lives on
+          the meter's tick. */}
       <div className={classes.statsRow} aria-hidden>
-        <span className={classes.points}>{isBye ? "—" : formatPoints(data.actualPoints)}</span>
-        {!isBye && <span className={classes.proj}>/ {formatProj(proj)}</span>}
+        {isBye ? (
+          <span className={classes.points}>—</span>
+        ) : isPre ? (
+          <>
+            <span className={`${classes.points} ${classes.pointsPending}`}>
+              {formatProj(data.projectedPoints)}
+            </span>
+            <span className={classes.pointsUnit}>proj</span>
+          </>
+        ) : (
+          <span className={classes.points}>{formatPoints(data.actualPoints)}</span>
+        )}
       </div>
+      {!isBye && (
+        <PointsMeter
+          actual={data.actualPoints ?? 0}
+          projected={data.projectedPoints}
+          liveProjected={isLive ? data.liveProjectedPoints : undefined}
+          scaleMax={scaleMax}
+        />
+      )}
     </div>
   );
 }
