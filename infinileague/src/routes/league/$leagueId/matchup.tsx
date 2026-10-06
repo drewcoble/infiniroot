@@ -2,22 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import {
-  ActionIcon,
-  Alert,
-  Button,
-  Group,
-  Loader,
-  Select,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { ActionIcon, Alert, Button, Group, Select, Stack, Text, Title } from "@mantine/core";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
-import { MatchupRosterMatchup } from "../../../components/MatchupRosterMatchup";
+import {
+  MatchupRosterMatchup,
+  MatchupRosterSkeleton,
+} from "../../../components/MatchupRosterMatchup";
 import { toMatchupCardData } from "../../../lib/matchupCardData";
 import {
   GlassMatchupHeader,
@@ -137,26 +130,49 @@ function MatchupPage() {
     void navigate({ search: String(next) === currentWeek ? {} : { week: next } });
 
   const getOpponentForWeek = useAction(api.infinileague.season.matchup.getOpponentForWeek);
-  // undefined = not resolved yet, null = resolved but no auto-detected
-  // opponent (not Sleeper-linked, or a bye week), a teamId = found.
-  const [autoOpponentId, setAutoOpponentId] = useState<string | null | undefined>(undefined);
+  // Tagged with the team/week it was looked up for, same as useTeamRoster -
+  // a week change reads as "still looking" immediately rather than briefly
+  // keeping last week's opponent. opponentId: null = resolved, but no
+  // auto-detected opponent (not provider-linked, or a bye week).
+  const opponentKey = teamAId !== null && week !== null ? `${teamAId}:${week}` : null;
+  const [autoOpponent, setAutoOpponent] = useState<{
+    key: string;
+    opponentId: string | null;
+  } | null>(null);
   const [opponentError, setOpponentError] = useState<string | null>(null);
   useEffect(() => {
-    if (teamAId === null || week === null) return;
-    setAutoOpponentId(undefined);
+    if (teamAId === null || week === null || opponentKey === null) return;
+    let cancelled = false;
     getOpponentForWeek({ teamId: teamAId as Id<"seasonTeams">, week })
-      .then((result) => setAutoOpponentId(result.opponentTeamId))
+      .then((result) => {
+        if (!cancelled) setAutoOpponent({ key: opponentKey, opponentId: result.opponentTeamId });
+      })
       .catch((err) => {
+        if (cancelled) return;
         setOpponentError(getErrorMessage(err, "Failed to look up this week's opponent."));
-        setAutoOpponentId(null);
+        setAutoOpponent({ key: opponentKey, opponentId: null });
       });
-  }, [teamAId, week, getOpponentForWeek]);
+    return () => {
+      cancelled = true;
+    };
+  }, [teamAId, week, opponentKey, getOpponentForWeek]);
+  // undefined = still looking up the viewed week's opponent.
+  const autoOpponentId =
+    autoOpponent !== null && autoOpponent.key === opponentKey ? autoOpponent.opponentId : undefined;
 
   // Only ever read from once autoOpponentId resolves to null (see above) -
   // the manual Select stays hidden while auto-detection is still pending so
-  // it doesn't flash on screen for the common Sleeper-linked case.
-  const [manualOpponentId, setManualOpponentId] = useState<string | null>(null);
-  const teamBId = autoOpponentId ?? manualOpponentId;
+  // it doesn't flash on screen for the common Sleeper-linked case. Kept per
+  // week, so a manual pick for one bye week doesn't follow you to others.
+  const [manualOpponent, setManualOpponent] = useState<{ week: string; teamId: string } | null>(
+    null,
+  );
+  const manualOpponentId =
+    manualOpponent !== null && manualOpponent.week === week ? manualOpponent.teamId : null;
+  const setManualOpponentId = (teamId: string | null) =>
+    setManualOpponent(teamId !== null && week !== null ? { week, teamId } : null);
+  const teamBId = autoOpponentId === undefined ? null : (autoOpponentId ?? manualOpponentId);
+  const opponentPending = autoOpponentId === undefined;
 
   // The viewed week's slate - opponent/kickoff per NFL team, plus live
   // game status from the 2-minute poll (see convex/sleeper/livePoints.ts).
@@ -279,8 +295,18 @@ function MatchupPage() {
     };
   };
 
+  // Header and rows hold their shape with glass skeletons while loading,
+  // rather than a bare spinner or blank column.
   if (nflState === undefined || standings === undefined) {
-    return <Loader />;
+    return (
+      <Stack gap="md">
+        <Title order={3}>Matchup</Title>
+        <GlassMatchupHeader teamA="loading" teamB="loading" winProbA={null} />
+        <Stack gap={10}>
+          <MatchupRosterSkeleton />
+        </Stack>
+      </Stack>
+    );
   }
 
   if (nflState === null || nflState.seasonType !== "regular") {
@@ -292,10 +318,6 @@ function MatchupPage() {
         </Text>
       </Stack>
     );
-  }
-
-  if (teamAId === null || teamARoster.rows === undefined) {
-    return <Loader />;
   }
 
   const selfTeamName = standings.find((row) => row.teamId === teamAId)?.name ?? "Your team";
@@ -364,8 +386,18 @@ function MatchupPage() {
       )}
 
       <GlassMatchupHeader
-        teamA={headerTeam(selfTeamName, teamARoster.rows, actualA, projA)}
-        teamB={teamBId !== null ? headerTeam(opponentName, teamBRoster.rows, actualB, projB) : null}
+        teamA={
+          teamARoster.rows === undefined
+            ? "loading"
+            : headerTeam(selfTeamName, teamARoster.rows, actualA, projA)
+        }
+        teamB={
+          opponentPending || (teamBId !== null && teamBRoster.rows === undefined)
+            ? "loading"
+            : teamBId !== null
+              ? headerTeam(opponentName, teamBRoster.rows, actualB, projB)
+              : null
+        }
         winProbA={matchupReady ? winProbA : null}
         result={
           weekComplete && matchupReady
@@ -377,13 +409,18 @@ function MatchupPage() {
       />
 
       <Stack gap={10}>
-        <MatchupRosterMatchup
-          teamARows={teamARoster.rows}
-          teamBRows={teamBRoster.rows}
-          toCardData={toCardData}
-          shortName={shortName}
-          scaleMax={scaleMax}
-        />
+        {teamARoster.rows === undefined ? (
+          <MatchupRosterSkeleton />
+        ) : (
+          <MatchupRosterMatchup
+            teamARows={teamARoster.rows}
+            teamBRows={teamBRoster.rows}
+            teamBLoading={opponentPending || teamBId !== null}
+            toCardData={toCardData}
+            shortName={shortName}
+            scaleMax={scaleMax}
+          />
+        )}
       </Stack>
     </Stack>
   );

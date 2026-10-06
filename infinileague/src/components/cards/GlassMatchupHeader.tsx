@@ -60,16 +60,30 @@ function countsText(team: MatchupHeaderTeam): string {
   return `${team.liveCount} live, ${team.toPlayCount} to play`;
 }
 
+// Shimmering stand-in for one side while that team's roster loads (or,
+// on the right, while the week's opponent is still being looked up).
+function TeamSideSkeleton({ align }: { align: "left" | "right" }) {
+  return (
+    <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
+      <span className={classes.skeletonBar} style={{ width: "70%", height: 14 }} />
+      <span className={classes.skeletonBar} style={{ width: "62%", height: 28, marginTop: 4 }} />
+      <span className={classes.skeletonBar} style={{ width: "48%", height: 11, marginTop: 4 }} />
+    </div>
+  );
+}
+
 // Glass version of the Matchup tab's score header: both teams' scores,
 // live projections, how many starters are still live / yet to play, and
 // the win-probability split. `winProbA` is team A's 0-1 share. No "VS" or
 // "Win probability" caption - the facing columns and the split bar with a
 // percentage at each end say both.
 //
-// `teamB` null = no opponent picked/detected yet (right side shows a
-// placeholder, no win bar). `winProbA` null = opponent known but their
-// roster's still loading - the bar holds at a dimmed 50/50 rather than
-// showing a wrong number that then jumps.
+// Either side can be "loading" (shimmering placeholder - roster still
+// loading, or for teamB the opponent still being looked up). `teamB` null
+// = resolved with no opponent (a bye week before one's picked manually):
+// right side shows a dimmed placeholder, no win bar. `winProbA` null =
+// both teams known but a roster's still loading - the bar holds at a
+// dimmed 50/50 rather than showing a wrong number that then jumps.
 //
 // `result` (e.g. "Final · Gridiron Gurus won by 13.74") replaces the win
 // bar once every game of the week is over - a "97%" after the fact reads
@@ -80,8 +94,8 @@ export function GlassMatchupHeader({
   winProbA,
   result,
 }: {
-  teamA: MatchupHeaderTeam;
-  teamB: MatchupHeaderTeam | null;
+  teamA: MatchupHeaderTeam | "loading";
+  teamB: MatchupHeaderTeam | "loading" | null;
   winProbA: number | null;
   result?: string | undefined;
 }) {
@@ -89,24 +103,34 @@ export function GlassMatchupHeader({
   const pctB = 100 - pctA;
   const teamText = (team: MatchupHeaderTeam) =>
     `${team.name} ${team.actualPoints.toFixed(2)}, projected ${team.projectedPoints.toFixed(1)}, ${countsText(team)}`;
+  const loaded = teamA !== "loading" && teamB !== "loading" && teamB !== null;
+  const ariaLabel =
+    teamA === "loading"
+      ? "Loading matchup"
+      : teamB === "loading" || teamB === null
+        ? teamText(teamA)
+        : `${teamText(teamA)}; ${teamText(teamB)}` +
+          (result
+            ? `; ${result}`
+            : winProbA !== null
+              ? `; win probability ${pctA}% to ${pctB}%`
+              : "");
   return (
     <div
       className={`${classes.card} ${classes.header}`}
       role="group"
-      aria-label={
-        teamB
-          ? `${teamText(teamA)}; ${teamText(teamB)}` +
-            (result
-              ? `; ${result}`
-              : winProbA !== null
-                ? `; win probability ${pctA}% to ${pctB}%`
-                : "")
-          : teamText(teamA)
-      }
+      aria-label={ariaLabel}
+      aria-busy={teamA === "loading" || teamB === "loading"}
     >
       <div className={classes.headerTeams} aria-hidden>
-        <TeamSide team={teamA} align="left" />
-        {teamB ? (
+        {teamA === "loading" ? (
+          <TeamSideSkeleton align="left" />
+        ) : (
+          <TeamSide team={teamA} align="left" />
+        )}
+        {teamB === "loading" ? (
+          <TeamSideSkeleton align="right" />
+        ) : teamB ? (
           <TeamSide team={teamB} align="right" />
         ) : (
           <div
@@ -118,14 +142,14 @@ export function GlassMatchupHeader({
         )}
       </div>
 
-      {teamB && result && <div className={classes.headerResult}>{result}</div>}
+      {loaded && result && <div className={classes.headerResult}>{result}</div>}
 
-      {teamB && !result && (
+      {teamB !== null && !(loaded && result) && (
         <div
-          className={`${classes.winRow} ${winProbA === null ? classes.headerPending : ""}`}
+          className={`${classes.winRow} ${!loaded || winProbA === null ? classes.headerPending : ""}`}
           aria-hidden
         >
-          <span>{pctA}%</span>
+          <span>{loaded && winProbA !== null ? `${pctA}%` : "–"}</span>
           <div className={classes.winBar}>
             <div
               className={classes.winSegment}
@@ -142,7 +166,7 @@ export function GlassMatchupHeader({
               }}
             />
           </div>
-          <span>{pctB}%</span>
+          <span>{loaded && winProbA !== null ? `${pctB}%` : "–"}</span>
         </div>
       )}
     </div>

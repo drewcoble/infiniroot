@@ -835,3 +835,39 @@
 .wideEmptyText {
   font-size: 13px;
 }
+
+/* --- Loading skeletons --------------------------------------------------- */
+
+.skeletonCard {
+  gap: 10px;
+  min-height: 118px;
+}
+
+/* A glass-tinted bar with a slow highlight sweeping across it. */
+.skeletonBar {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.07) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBar {
+    animation: none;
+  }
+}

@@ -121,6 +121,23 @@ export function EmptyGlassCard({ label = "Empty" }: { label?: string }) {
   );
 }
 
+// Loading placeholder in the base card's shape - shimmering bars where the
+// position pill, name, game line, points, and meter will land, so the page
+// keeps its layout while rosters load instead of showing blank wells.
+export function GlassSkeletonCard() {
+  return (
+    <div className={`${classes.card} ${classes.skeletonCard}`} aria-hidden>
+      <span className={classes.skeletonBar} style={{ width: 38, height: 20 }} />
+      <div>
+        <span className={classes.skeletonBar} style={{ width: "72%", height: 14 }} />
+        <span className={classes.skeletonBar} style={{ width: "52%", height: 10, marginTop: 6 }} />
+      </div>
+      <span className={classes.skeletonBar} style={{ width: "44%", height: 20 }} />
+      <span className={classes.skeletonBar} style={{ width: "100%", height: 5 }} />
+    </div>
+  );
+}
+
 export function GlassSlotChip({ label }: { label: string }) {
   return (
     <span

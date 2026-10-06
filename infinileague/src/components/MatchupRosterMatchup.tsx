@@ -2,7 +2,12 @@ import { Box, Group } from "@mantine/core";
 import type { SlotLabel, TeamRosterRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
 import type { GlassMatchupCardData } from "./cards/cardShared";
-import { EmptyGlassCard, GlassMatchupCard, GlassSlotChip } from "./cards/GlassMatchupCard";
+import {
+  EmptyGlassCard,
+  GlassMatchupCard,
+  GlassSkeletonCard,
+  GlassSlotChip,
+} from "./cards/GlassMatchupCard";
 
 function slotLabel(slot: SlotLabel | undefined): string {
   if (slot === undefined) return "";
@@ -14,9 +19,10 @@ function slotLabel(slot: SlotLabel | undefined): string {
 
 interface MatchupRosterMatchupProps {
   teamARows: TeamRosterRow[];
-  // undefined covers both "opponent not known yet" and "their roster is
-  // still loading" - either way every card on the right is a blank well.
+  // undefined = no opponent rows to show: either still on the way
+  // (teamBLoading - skeleton cards) or there's no opponent (blank wells).
   teamBRows: TeamRosterRow[] | undefined;
+  teamBLoading: boolean;
   toCardData: (row: TeamRosterRow) => GlassMatchupCardData;
   shortName: (fullName: string) => string;
   // Shared meter scale for every card on the page (see meterScale.ts).
@@ -49,6 +55,33 @@ function Cell({
   );
 }
 
+function SkeletonCell() {
+  return (
+    <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
+      <GlassSkeletonCard />
+    </Box>
+  );
+}
+
+// Rows of skeleton cards while your own roster loads (first load, or after
+// switching weeks) - a fixed count, since the roster's real length isn't
+// known yet.
+const SKELETON_ROWS = 9;
+
+export function MatchupRosterSkeleton() {
+  return (
+    <>
+      {Array.from({ length: SKELETON_ROWS }, (_, index) => (
+        <Group key={index} wrap="nowrap" gap="xs" align="stretch">
+          <SkeletonCell />
+          <GlassSlotChip label="" />
+          <SkeletonCell />
+        </Group>
+      ))}
+    </>
+  );
+}
+
 // Both teams' rosters lined up by roster slot for this week's matchup, slot
 // chip between the two columns - the glass Matchup cards (see
 // components/cards/), long-press for each player's detail card.
@@ -59,7 +92,11 @@ export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
         <Group key={index} wrap="nowrap" gap="xs" align="stretch">
           <Cell row={aRow} props={props} />
           <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
-          <Cell row={props.teamBRows ? bRow : undefined} props={props} />
+          {props.teamBRows === undefined && props.teamBLoading ? (
+            <SkeletonCell />
+          ) : (
+            <Cell row={props.teamBRows ? bRow : undefined} props={props} />
+          )}
         </Group>
       ))}
     </>
