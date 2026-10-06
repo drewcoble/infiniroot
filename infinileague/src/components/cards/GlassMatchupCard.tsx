@@ -24,14 +24,12 @@ export interface GlassMatchupCardData {
   isRookie?: boolean;
 }
 
-// Pills sit on a near-white glass surface, so they use a tinted fill with a
-// dark shade of the theme color for text - Mantine's own "light" Badge
-// variant picks its text shade for the app's dark background and washes
-// out on white.
+// Pills sit on mostly-clear glass over the dark page, so they use a light
+// shade of the theme color for text over a translucent tint of it.
 function pillStyle(color: string) {
   return {
-    color: `var(--mantine-color-${color}-9)`,
-    background: `color-mix(in srgb, var(--mantine-color-${color}-6) 18%, transparent)`,
+    color: `var(--mantine-color-${color}-2)`,
+    background: `color-mix(in srgb, var(--mantine-color-${color}-5) 28%, transparent)`,
   };
 }
 
