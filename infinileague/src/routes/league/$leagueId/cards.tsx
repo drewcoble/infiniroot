@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Box, Group, SegmentedControl, Stack, Text, Title } from "@mantine/core";
+import { Box, Group, Stack, Text, Title } from "@mantine/core";
 import {
   EmptyGlassCard,
   GlassMatchupCard,
@@ -15,8 +14,6 @@ export const Route = createFileRoute("/league/$leagueId/cards")({
 // Design sandbox for the player-card redesign - hardcoded data only, nothing
 // here reads league state or is reused by the other tabs until a design is
 // finalized.
-
-type Backdrop = "app" | "ambient";
 
 // One row per state the Matchup tab can put a card in: live vs. pregame,
 // final vs. injured, rookie vs. bye, and a filled slot vs. an empty one.
@@ -114,63 +111,31 @@ const SAMPLE_ROWS: {
   },
 ];
 
-// Glass only reads as glass when there's something behind it to blur -
-// "App" is the real page background the Matchup tab has today, "Ambient"
-// adds a soft color field so the blur and border are visible.
-const AMBIENT_BACKGROUND = [
-  "radial-gradient(circle at 15% 20%, rgba(34, 197, 94, 0.55), transparent 45%)",
-  "radial-gradient(circle at 85% 35%, rgba(59, 130, 246, 0.5), transparent 45%)",
-  "radial-gradient(circle at 40% 90%, rgba(236, 72, 153, 0.4), transparent 50%)",
-  "var(--mantine-color-body)",
-].join(", ");
-
 function CardsPage() {
-  const [backdrop, setBackdrop] = useState<Backdrop>("ambient");
-
   return (
     <Stack gap="md">
-      <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
-        <Stack gap={2}>
-          <Title order={3}>Cards</Title>
-          <Text size="sm" c="dimmed">
-            Design sandbox. Sample data only.
-          </Text>
-        </Stack>
-        <SegmentedControl
-          size="xs"
-          value={backdrop}
-          onChange={(value) => setBackdrop(value as Backdrop)}
-          data={[
-            { value: "ambient", label: "Ambient" },
-            { value: "app", label: "App bg" },
-          ]}
-          aria-label="Preview backdrop"
-        />
-      </Group>
+      <Stack gap={2}>
+        <Title order={3}>Cards</Title>
+        <Text size="sm" c="dimmed">
+          Design sandbox. Sample data only.
+        </Text>
+      </Stack>
 
       <Text fw={600}>Matchup: base card</Text>
 
-      <Box
-        p={{ base: "sm", sm: "lg" }}
-        style={{
-          borderRadius: 20,
-          background: backdrop === "ambient" ? AMBIENT_BACKGROUND : "var(--mantine-color-body)",
-        }}
-      >
-        <Stack gap={10}>
-          {SAMPLE_ROWS.map((row) => (
-            <Group key={row.slot} wrap="nowrap" gap="xs" align="stretch">
-              <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
-                {row.a ? <GlassMatchupCard data={row.a} /> : <EmptyGlassCard />}
-              </Box>
-              <GlassSlotChip label={row.slot} />
-              <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
-                {row.b ? <GlassMatchupCard data={row.b} /> : <EmptyGlassCard />}
-              </Box>
-            </Group>
-          ))}
-        </Stack>
-      </Box>
+      <Stack gap={10}>
+        {SAMPLE_ROWS.map((row) => (
+          <Group key={row.slot} wrap="nowrap" gap="xs" align="stretch">
+            <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
+              {row.a ? <GlassMatchupCard data={row.a} /> : <EmptyGlassCard />}
+            </Box>
+            <GlassSlotChip label={row.slot} />
+            <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
+              {row.b ? <GlassMatchupCard data={row.b} /> : <EmptyGlassCard />}
+            </Box>
+          </Group>
+        ))}
+      </Stack>
     </Stack>
   );
 }
