@@ -282,3 +282,265 @@
   height: 24px;
   letter-spacing: 0.04em;
 }
+
+/* --- Long-press -------------------------------------------------------- */
+
+/* Holding a card would otherwise select its text or raise iOS's callout -
+   the press is ours. touch-action keeps vertical scrolling working. */
+.pressable {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+/* "Keep holding" feedback: the card eases down while the press is held.
+   The 120ms delay keeps quick scroll touches from twitching every card
+   they pass over. */
+.pressing {
+  transform: scale(0.965);
+  transition: transform 330ms ease 120ms;
+}
+
+/* Base card while its detail card is open - still in the layout (nothing
+   shifts) and still focusable (focus returns here on close), just unseen. */
+.hidden {
+  opacity: 0;
+}
+
+/* --- Expanded detail card --------------------------------------------- */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(4, 8, 10, 0.5);
+  animation: fadeIn 160ms ease;
+}
+
+.expanded {
+  position: absolute;
+  z-index: 1001;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  /* Hidden until ExpandedMatchupCard's layout pass has placed it, then
+     grows out of the base card's corner (transform-origin set there). */
+  visibility: hidden;
+}
+
+.expanded[data-placed] {
+  visibility: visible;
+  animation: expandIn 200ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.expanded:focus-visible {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 0 0 5px rgba(96, 165, 250, 0.9),
+    0 18px 50px rgba(0, 0, 0, 0.45);
+}
+
+.expanded .pills {
+  flex-wrap: wrap;
+}
+
+@keyframes expandIn {
+  from {
+    opacity: 0.4;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pressing {
+    transform: none;
+  }
+  .scrim,
+  .expanded[data-placed] {
+    animation: none;
+  }
+}
+
+.expandedHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.expandedName {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.closeButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: -4px -4px 0 0;
+  border-radius: 50%;
+  color: #f8fafc;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.95);
+  outline-offset: 2px;
+}
+
+.liveLabel {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #86efac;
+}
+
+.expandedPoints {
+  font-size: 32px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.meterLarge {
+  height: 8px;
+  margin: 10px 0 8px;
+}
+
+.meterLarge .meterTick {
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  margin-left: -1.5px;
+}
+
+/* Legend under the large meter - each swatch is a small copy of the mark
+   it names. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.82);
+  font-variant-numeric: tabular-nums;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatchFill,
+.swatchGhost {
+  width: 14px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+/* Default swatch colors at zero specificity so the pace_/final_ classes
+   (declared earlier in this file) still win when applied alongside. */
+:where(.swatchFill) {
+  background: rgba(248, 250, 252, 0.88);
+}
+
+:where(.swatchGhost) {
+  background: rgba(248, 250, 252, 0.3);
+}
+
+.swatchTick {
+  width: 3px;
+  height: 12px;
+  border-radius: 1px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.paceLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.paceIcon_ahead {
+  color: #4ade80;
+}
+
+.paceIcon_behind {
+  color: #f87171;
+}
+
+.paceIcon_even {
+  color: rgba(248, 250, 252, 0.7);
+}
+
+/* Secondary stats as small glass tiles - same glass-on-glass treatment as
+   the pills, untinted. */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stat {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.statValue {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statLabel {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.65);
+}
