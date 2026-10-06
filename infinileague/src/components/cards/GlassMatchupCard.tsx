@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import classes from "./GlassMatchupCard.module.css";
@@ -24,13 +25,14 @@ export interface GlassMatchupCardData {
   isRookie?: boolean;
 }
 
-// Pills sit on mostly-clear glass over the dark page, so they use a light
-// shade of the theme color for text over a translucent tint of it.
+// Each pill is a small glass pane tinted by its theme color - a light shade
+// for text (the card's glass is mostly clear over the dark page), and
+// --pill-tint for the pane's tint and border (see .pill).
 function pillStyle(color: string) {
   return {
     color: `var(--mantine-color-${color}-2)`,
-    background: `color-mix(in srgb, var(--mantine-color-${color}-5) 28%, transparent)`,
-  };
+    "--pill-tint": `var(--mantine-color-${color}-4)`,
+  } as CSSProperties;
 }
 
 function formatPoints(points: number | undefined): string {
@@ -99,7 +101,7 @@ export function GlassMatchupCard({ data }: { data: GlassMatchupCardData }) {
           )}
         </div>
         {isLive && (
-          <span className={classes.statusLive}>
+          <span className={`${classes.pill} ${classes.statusLive}`}>
             <span className={classes.dot} />
             LIVE
           </span>
