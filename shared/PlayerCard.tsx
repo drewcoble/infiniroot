@@ -38,6 +38,11 @@ export interface PlayerCardRow {
 const SELECTED_BACKGROUND = "rgba(139, 69, 19, 0.15)";
 const SELECTED_BORDER = "saddlebrown";
 
+// Live-game emphasis (see the `live` prop) - the theme's green, which no
+// other card state uses, so "this player is playing right now" reads at a
+// glance without being confused with the brown "yours/selected" highlight.
+const LIVE_BORDER = "var(--mantine-color-green-6)";
+
 interface PlayerCardProps {
   row: PlayerCardRow;
   isRookie: boolean;
@@ -82,6 +87,11 @@ interface PlayerCardProps {
   // showing a nonsensical "FA" badge for an already-rostered player) is just
   // noise there.
   showRosteredBy?: boolean;
+  // Raises the card (shadow + green accent border) - the Matchup tab sets
+  // this while the player's NFL game is in progress, so active players
+  // stand out from finished/not-started ones. The brown own-roster/
+  // selected highlight still wins if both apply.
+  live?: boolean;
 }
 
 // One row of infinileague's Players tab (src/routes/league/$leagueId/
@@ -102,15 +112,18 @@ export function PlayerCard({
   rightStats,
   selectable,
   showRosteredBy = true,
+  live = false,
 }: PlayerCardProps) {
   return (
     <Card
-      withBorder={row.isOnMyTeam === true || selectable?.selected === true}
+      withBorder={live || row.isOnMyTeam === true || selectable?.selected === true}
+      {...(live ? { shadow: "md" } : {})}
       padding="xs"
       radius="md"
       onClick={selectable?.onToggle}
       style={{
         ...(selectable ? { cursor: "pointer" } : {}),
+        ...(live ? { borderColor: LIVE_BORDER } : {}),
         // isOnMyTeam (Players tab) and selectable.selected (Trade tab) share
         // the same highlight - selected takes priority if a row somehow had
         // both, which shouldn't happen today (selectable is Trade-only,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
@@ -8,6 +8,13 @@ import { getErrorMessage } from "@shared/errors";
 import { POSITION_COLORS } from "@shared/positionColors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
 import { MatchupRosterMatchup } from "../../../components/MatchupRosterMatchup";
+import {
+  isAnyGameLive,
+  liveProjection,
+  remainingFraction,
+  useNow,
+  type WeekGame,
+} from "../../../lib/liveGames";
 import type { SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/matchup")({
@@ -36,16 +43,21 @@ const STARTER_SLOTS = new Set<SlotLabel>([
 
 function sumStarterPoints(
   rows: TeamRosterRow[] | undefined,
-  field: "projectedPoints" | "actualPoints",
+  pointsFor: (row: TeamRosterRow) => number,
 ): number {
   if (!rows) return 0;
   return rows.reduce((total, row) => {
     if (!row.slot || !STARTER_SLOTS.has(row.slot)) return total;
-    return total + (row[field] ?? 0);
+    return total + pointsFor(row);
   }, 0);
 }
 
-// Rough pregame win read off the two teams' projected totals - a logistic
+// How often the rosters' actual points are re-fetched from Sleeper/Yahoo
+// while a game is being played - matches the live poll's own cadence
+// (convex/crons.ts), which is what moves the game clocks.
+const LIVE_REFRESH_MS = 2 * 60 * 1000;
+
+// Rough win read off the two teams' live-projected totals - a logistic
 // curve on the point differential, not a real variance model (no per-player
 // score distributions are computed anywhere in this codebase), just enough
 // to turn "who's projected ahead" into a percentage instead of a bare point
@@ -120,13 +132,36 @@ function MatchupPage() {
   const [manualOpponentId, setManualOpponentId] = useState<string | null>(null);
   const teamBId = autoOpponentId ?? manualOpponentId;
 
-  const teamARoster = useTeamRoster(teamAId, week);
-  const teamBRoster = useTeamRoster(teamBId, week);
+  // This week's slate - opponent/kickoff per NFL team, plus live game
+  // status from the 2-minute poll (see convex/sleeper/livePoints.ts).
+  const weekGames: WeekGame[] | undefined = useQuery(
+    api.sleeper.livePoints.getWeekGames,
+    isAuthenticated && nflState ? { season: nflState.season, week: nflState.week } : "skip",
+  );
+  const gamesByTeam = useMemo(
+    () => new Map((weekGames ?? []).map((game) => [game.team, game])),
+    [weekGames],
+  );
+  const now = useNow(60 * 1000);
+  const refreshMs = isAnyGameLive(weekGames, now) ? LIVE_REFRESH_MS : null;
 
-  const projA = sumStarterPoints(teamARoster.rows, "projectedPoints");
-  const actualA = sumStarterPoints(teamARoster.rows, "actualPoints");
-  const projB = sumStarterPoints(teamBRoster.rows, "projectedPoints");
-  const actualB = sumStarterPoints(teamBRoster.rows, "actualPoints");
+  const teamARoster = useTeamRoster(teamAId, week, refreshMs);
+  const teamBRoster = useTeamRoster(teamBId, week, refreshMs);
+
+  // Actual points so far plus each starter's projection scaled by how much
+  // of their game is left - the plain pregame projection before kickoff,
+  // the actual score once their game is final.
+  const liveProjFor = (row: TeamRosterRow) =>
+    liveProjection(
+      row.projectedPoints,
+      row.actualPoints,
+      remainingFraction(row.team ? gamesByTeam.get(row.team) : undefined, now),
+    );
+  const actualFor = (row: TeamRosterRow) => row.actualPoints ?? 0;
+  const projA = sumStarterPoints(teamARoster.rows, liveProjFor);
+  const actualA = sumStarterPoints(teamARoster.rows, actualFor);
+  const projB = sumStarterPoints(teamBRoster.rows, liveProjFor);
+  const actualB = sumStarterPoints(teamBRoster.rows, actualFor);
   const winProbA = winProbability(projA, projB);
 
   // Not trustworthy until both rosters are actually in - before that, projB
@@ -250,6 +285,8 @@ function MatchupPage() {
           teamBRows={teamBRoster.rows}
           teamAName={selfTeamName}
           teamBName={opponentName}
+          gamesByTeam={weekGames ? gamesByTeam : undefined}
+          now={now}
         />
       </Stack>
     </Stack>
