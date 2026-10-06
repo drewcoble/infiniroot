@@ -147,15 +147,12 @@
   text-overflow: ellipsis;
 }
 
-.statusLive {
-  --pill-tint: #4ade80;
-  letter-spacing: 0.06em;
-  color: #f0fdf4;
-}
-
 .dot {
+  display: inline-block;
   width: 7px;
   height: 7px;
+  margin-right: 6px;
+  vertical-align: 1px;
   border-radius: 50%;
   background: #4ade80;
   animation: pulse 1.6s ease-in-out infinite;
@@ -180,22 +177,11 @@
   }
 }
 
-.divider {
-  height: 1px;
-  margin: 2px 0;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.22) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-}
-
 .statsRow {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 2px;
 }
 
 .points {
@@ -206,28 +192,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-.pointsLabel {
-  margin-top: 3px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.68);
-}
-
 .proj {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.projValue {
   font-size: 13px;
-  font-weight: 650;
-  line-height: 1;
-}
-
-.projValueLive {
-  color: #4ade80;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Layout only - the glass look comes from .pill, tinted by slot color. */

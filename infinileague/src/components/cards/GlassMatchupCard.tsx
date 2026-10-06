@@ -61,7 +61,9 @@ function ariaSummary(data: GlassMatchupCardData): string {
 }
 
 // Base (collapsed) Matchup card - name, position, this week's game, and
-// the two numbers a matchup is about. Long-press expansion into a detail
+// the two numbers a matchup is about: actual points large, projection
+// (live projection mid-game) small beside it. A live game shows as the
+// card's green tint plus a pulsing dot on the game clock, nothing more. Long-press expansion into a detail
 // card comes later; it's focusable now so that interaction has a keyboard
 // counterpart from the start.
 export function GlassMatchupCard({ data }: { data: GlassMatchupCardData }) {
@@ -100,34 +102,19 @@ export function GlassMatchupCard({ data }: { data: GlassMatchupCardData }) {
             </span>
           )}
         </div>
-        {isLive && (
-          <span className={`${classes.pill} ${classes.statusLive}`}>
-            <span className={classes.dot} />
-            LIVE
-          </span>
-        )}
       </div>
 
       <div aria-hidden>
         <div className={classes.name}>{data.name}</div>
         <div className={classes.gameLine}>
-          {data.team} · {data.gameLine}
+          {isLive && <span className={classes.dot} />}
+          {data.gameLine}
         </div>
       </div>
 
-      <div className={classes.divider} aria-hidden />
-
       <div className={classes.statsRow} aria-hidden>
-        <div>
-          <div className={classes.points}>{isBye ? "—" : formatPoints(data.actualPoints)}</div>
-          <div className={classes.pointsLabel}>Points</div>
-        </div>
-        <div className={classes.proj}>
-          <div className={[classes.projValue, isLive && classes.projValueLive].filter(Boolean).join(" ")}>
-            {isBye ? "—" : formatProj(proj)}
-          </div>
-          <div className={classes.pointsLabel}>{isLive ? "Live proj" : "Proj"}</div>
-        </div>
+        <span className={classes.points}>{isBye ? "—" : formatPoints(data.actualPoints)}</span>
+        {!isBye && <span className={classes.proj}>/ {formatProj(proj)}</span>}
       </div>
     </div>
   );
