@@ -17,8 +17,7 @@ export interface GlassMatchupCardData {
   positionRank: number;
   team: string;
   // "vs. KC" / "@ BUF" / "BYE", and "Q3 8:12" / "Sun 4:25 PM" / "Final"
-  // (absent on a bye) - the two halves of formatGameLine's output, split so
-  // the detail card can lay them out separately.
+  // (absent on a bye) - lib/liveGames.ts's formatMatchup/formatGameStatus.
   matchup: string;
   status?: string;
   gameState: GameState;

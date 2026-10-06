@@ -1,199 +1,67 @@
-import type { ReactNode } from "react";
-import { Badge, Box, Card, Group, Text } from "@mantine/core";
-import { positionColorOrDefault } from "@shared/positionColors";
-import { PlayerCard } from "@shared/PlayerCard";
-import type { RosVorRow, SlotLabel, TeamRosterRow } from "../types/season";
+import { Box, Group } from "@mantine/core";
+import type { SlotLabel, TeamRosterRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
-import {
-  formatGameLine,
-  isGameInProgress,
-  liveProjection,
-  remainingFraction,
-  type WeekGame,
-} from "../lib/liveGames";
-
-interface MatchupRosterMatchupProps {
-  teamARows: TeamRosterRow[];
-  // undefined covers both "opponent not known yet" and "their roster is
-  // still loading" - either way every row on the right falls back to a
-  // blank placeholder card, same convention TradeRosterMatchup uses.
-  teamBRows: TeamRosterRow[] | undefined;
-  teamAName: string;
-  teamBName: string;
-  // This week's games by NFL team (see lib/liveGames.ts) - undefined while
-  // loading, in which case cards fall back to the plain team/bye line.
-  gamesByTeam: Map<string, WeekGame> | undefined;
-  now: number;
-}
+import type { GlassMatchupCardData } from "./cards/cardShared";
+import { EmptyGlassCard, GlassMatchupCard, GlassSlotChip } from "./cards/GlassMatchupCard";
 
 function slotLabel(slot: SlotLabel | undefined): string {
   if (slot === undefined) return "";
   if (slot === "BENCH") return "BN";
+  if (slot === "TAXI") return "Taxi";
   if (slot === "SUPERFLEX") return "SFLEX";
   return slot;
 }
 
-function formatPoints(points: number | undefined): string {
-  return points === undefined ? "—" : points.toFixed(2);
-}
-
-// "HOU · vs. LAR · Sun 1:00 PM" / "HOU · @ IND · Q3 8:12" / "HOU · BYE" -
-// this week's game rather than the season bye week other tabs show. Falls
-// back to that season-bye line until the week's slate has loaded (or if it
-// was never synced - an empty slate would otherwise mark everyone BYE).
-function teamLine(row: TeamRosterRow, gamesByTeam: Map<string, WeekGame> | undefined, now: number): string | null {
-  if (!gamesByTeam || gamesByTeam.size === 0 || !row.team) {
-    return row.byeWeek !== undefined ? `${row.team ?? ""} · Bye ${row.byeWeek}` : (row.team ?? null);
-  }
-  const game = gamesByTeam.get(row.team);
-  return game ? `${row.team} · ${formatGameLine(game, now)}` : `${row.team} · BYE`;
-}
-
-// A filled roster row has no rosVOR fields of its own here (this is a
-// weekly matchup roster, not the Players tab's league-wide value board) -
-// same zeroed-stand-in convention TeamRosterList.tsx's toRosVorRow uses.
-function toRosVorRow(row: TeamRosterRow, teamName: string, team: string | null): RosVorRow {
-  return {
-    fpid: row.fpid ?? 0,
-    name: row.name ?? "",
-    team,
-    position: row.position ?? "QB",
-    rosVor: 0,
-    rosRank: 0,
-    actualVor: 0,
-    actualRank: 0,
-    positionRank: 0,
-    rosPpg: 0,
-    actualPpg: 0,
-    weekVor: 0,
-    weekRank: 0,
-    weekPpg: 0,
-    weekPositionRank: 0,
-    rosteredByTeamName: teamName,
-    ...(row.injury ? { injury: row.injury } : {}),
-  };
+interface MatchupRosterMatchupProps {
+  teamARows: TeamRosterRow[];
+  // undefined covers both "opponent not known yet" and "their roster is
+  // still loading" - either way every card on the right is a blank well.
+  teamBRows: TeamRosterRow[] | undefined;
+  toCardData: (row: TeamRosterRow) => GlassMatchupCardData;
+  shortName: (fullName: string) => string;
+  // Shared meter scale for every card on the page (see meterScale.ts).
+  scaleMax: number;
 }
 
 // Same wrapper both TradeRosterMatchup and this component render every row
 // cell into - flex: 1/minWidth: 0 for an even width split, grid so the card
 // stretches to match whichever side of the row is taller.
-function Cell({ children }: { children: ReactNode }) {
-  return <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>{children}</Box>;
-}
-
-function PlaceholderCard({ empty }: { empty?: boolean }) {
-  return (
-    <Card padding="xs" radius="md" style={{ minHeight: 44 }}>
-      {!empty && (
-        <Text size="sm" c="dimmed">
-          —
-        </Text>
-      )}
-    </Card>
-  );
-}
-
-function PlayerCell({
+function Cell({
   row,
-  teamName,
-  gamesByTeam,
-  now,
+  props,
 }: {
   row: TeamRosterRow | undefined;
-  teamName: string;
-  gamesByTeam: Map<string, WeekGame> | undefined;
-  now: number;
+  props: MatchupRosterMatchupProps;
 }) {
-  if (row === undefined || row.fpid === undefined) {
-    return (
-      <Cell>
-        <PlaceholderCard empty={row === undefined} />
-      </Cell>
-    );
-  }
-  // While their game is on, the left stat is the live projection (points
-  // so far + the unplayed share of the projection) instead of the pregame
-  // one - before kickoff and after the final, the pregame projection is
-  // the more useful reference.
-  const game = row.team ? gamesByTeam?.get(row.team) : undefined;
-  // IR players' teams can be mid-game without them in it - no live
-  // emphasis or live projection for those.
-  const inProgress = row.slot !== "IR" && isGameInProgress(game, now);
-  const leftLabel = inProgress ? "Live" : "Proj";
-  const leftPoints = inProgress
-    ? liveProjection(row.projectedPoints, row.actualPoints, remainingFraction(game, now))
-    : row.projectedPoints;
   return (
-    <Cell>
-      <PlayerCard
-        row={toRosVorRow(row, teamName, teamLine(row, gamesByTeam, now))}
-        live={inProgress}
-        isRookie={row.isRookie ?? false}
-        showLeftLabel={false}
-        // showRosteredBy off (every card in a column is already known to
-        // belong to that team - see the header above) and rightStats off in
-        // favor of footer below - same "half-width card, stats don't fit
-        // beside the name" tradeoff TradeRosterMatchup already makes, so
-        // name/team keep the row's full width instead of getting squeezed
-        // and wrapping.
-        showRosteredBy={false}
-        rightStats={null}
-        footer={
-          <Group justify="space-between" wrap="nowrap" gap={4}>
-            <Text size="xs" c="dimmed">
-              <Text span {...(inProgress ? { c: "green", fw: 600 } : {})}>
-                {leftLabel}
-              </Text>{" "}
-              <Text span fw={600} c="var(--mantine-color-text)">{formatPoints(leftPoints)}</Text>
-            </Text>
-            <Text size="xs" c="dimmed">
-              Actual <Text span fw={600} c="var(--mantine-color-text)">{formatPoints(row.actualPoints)}</Text>
-            </Text>
-          </Group>
-        }
-      />
-    </Cell>
+    <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
+      {row?.fpid !== undefined ? (
+        <GlassMatchupCard
+          data={props.toCardData(row)}
+          displayName={props.shortName(row.name ?? "")}
+          slot={slotLabel(row.slot)}
+          scaleMax={props.scaleMax}
+        />
+      ) : (
+        <EmptyGlassCard label={row ? "Empty" : ""} />
+      )}
+    </Box>
   );
 }
 
-// Read-only counterpart to TradeRosterMatchup - both teams' rosters lined up
-// by roster slot for this week's matchup, slot badge between the two
-// columns. No selection here (this is "who am I playing," not a trade
-// builder), and each card shows this week's Proj/Actual points instead of
-// season-long VOR, since that's the number a matchup view is actually about.
-export function MatchupRosterMatchup({
-  teamARows,
-  teamBRows,
-  teamAName,
-  teamBName,
-  gamesByTeam,
-  now,
-}: MatchupRosterMatchupProps) {
+// Both teams' rosters lined up by roster slot for this week's matchup, slot
+// chip between the two columns - the glass Matchup cards (see
+// components/cards/), long-press for each player's detail card.
+export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
   return (
     <>
-      {alignRosterRows(teamARows, teamBRows).map(({ a: aRow, b: bRow }, index) => {
-        const slot = aRow?.slot ?? bRow?.slot;
-        return (
-          <Group key={index} wrap="nowrap" gap="xs" align="stretch">
-            <PlayerCell row={aRow} teamName={teamAName} gamesByTeam={gamesByTeam} now={now} />
-            <Badge
-              size="sm"
-              variant="light"
-              color={positionColorOrDefault(slot ?? "")}
-              style={{ flexShrink: 0, minWidth: 50, alignSelf: "center" }}
-            >
-              {slotLabel(slot)}
-            </Badge>
-            {teamBRows ? (
-              <PlayerCell row={bRow} teamName={teamBName} gamesByTeam={gamesByTeam} now={now} />
-            ) : (
-              <Cell>
-                <PlaceholderCard empty />
-              </Cell>
-            )}
-          </Group>
-        );
-      })}
+      {alignRosterRows(props.teamARows, props.teamBRows).map(({ a: aRow, b: bRow }, index) => (
+        <Group key={index} wrap="nowrap" gap="xs" align="stretch">
+          <Cell row={aRow} props={props} />
+          <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
+          <Cell row={props.teamBRows ? bRow : undefined} props={props} />
+        </Group>
+      ))}
     </>
   );
 }

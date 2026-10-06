@@ -96,6 +96,7 @@ import type * as lib_sameJson from "../lib/sameJson.js";
 import type * as lib_seasonTeams from "../lib/seasonTeams.js";
 import type * as lib_statsEqual from "../lib/statsEqual.js";
 import type * as lib_timezone from "../lib/timezone.js";
+import type * as lib_weekPoints from "../lib/weekPoints.js";
 import type * as nflSchedule from "../nflSchedule.js";
 import type * as nflState from "../nflState.js";
 import type * as playerNameMatch from "../playerNameMatch.js";
@@ -226,6 +227,7 @@ declare const fullApi: ApiFromModules<{
   "lib/seasonTeams": typeof lib_seasonTeams;
   "lib/statsEqual": typeof lib_statsEqual;
   "lib/timezone": typeof lib_timezone;
+  "lib/weekPoints": typeof lib_weekPoints;
   nflSchedule: typeof nflSchedule;
   nflState: typeof nflState;
   playerNameMatch: typeof playerNameMatch;

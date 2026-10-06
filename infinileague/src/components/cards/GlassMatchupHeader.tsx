@@ -65,52 +65,74 @@ function countsText(team: MatchupHeaderTeam): string {
 // the win-probability split. `winProbA` is team A's 0-1 share. No "VS" or
 // "Win probability" caption - the facing columns and the split bar with a
 // percentage at each end say both.
+//
+// `teamB` null = no opponent picked/detected yet (right side shows a
+// placeholder, no win bar). `winProbA` null = opponent known but their
+// roster's still loading - the bar holds at a dimmed 50/50 rather than
+// showing a wrong number that then jumps.
 export function GlassMatchupHeader({
   teamA,
   teamB,
   winProbA,
 }: {
   teamA: MatchupHeaderTeam;
-  teamB: MatchupHeaderTeam;
-  winProbA: number;
+  teamB: MatchupHeaderTeam | null;
+  winProbA: number | null;
 }) {
-  const pctA = Math.round(winProbA * 100);
+  const pctA = Math.round((winProbA ?? 0.5) * 100);
   const pctB = 100 - pctA;
+  const teamText = (team: MatchupHeaderTeam) =>
+    `${team.name} ${team.actualPoints.toFixed(2)}, projected ${team.projectedPoints.toFixed(1)}, ${countsText(team)}`;
   return (
     <div
       className={`${classes.card} ${classes.header}`}
       role="group"
       aria-label={
-        `${teamA.name} ${teamA.actualPoints.toFixed(2)}, projected ${teamA.projectedPoints.toFixed(1)}, ${countsText(teamA)}; ` +
-        `${teamB.name} ${teamB.actualPoints.toFixed(2)}, projected ${teamB.projectedPoints.toFixed(1)}, ${countsText(teamB)}; ` +
-        `win probability ${pctA}% to ${pctB}%`
+        teamB
+          ? `${teamText(teamA)}; ${teamText(teamB)}` +
+            (winProbA !== null ? `; win probability ${pctA}% to ${pctB}%` : "")
+          : teamText(teamA)
       }
     >
       <div className={classes.headerTeams} aria-hidden>
         <TeamSide team={teamA} align="left" />
-        <TeamSide team={teamB} align="right" />
+        {teamB ? (
+          <TeamSide team={teamB} align="right" />
+        ) : (
+          <div
+            className={`${classes.headerTeam} ${classes.headerTeamRight} ${classes.headerPending}`}
+          >
+            <div className={classes.headerTeamName}>Opponent</div>
+            <div className={classes.headerTotal}>—</div>
+          </div>
+        )}
       </div>
 
-      <div className={classes.winRow} aria-hidden>
-        <span>{pctA}%</span>
-        <div className={classes.winBar}>
-          <div
-            className={classes.winSegment}
-            style={{
-              width: `${pctA}%`,
-              ["--pill-tint" as string]: segmentTint(pctA),
-            }}
-          />
-          <div
-            className={classes.winSegment}
-            style={{
-              width: `${pctB}%`,
-              ["--pill-tint" as string]: segmentTint(pctB),
-            }}
-          />
+      {teamB && (
+        <div
+          className={`${classes.winRow} ${winProbA === null ? classes.headerPending : ""}`}
+          aria-hidden
+        >
+          <span>{pctA}%</span>
+          <div className={classes.winBar}>
+            <div
+              className={classes.winSegment}
+              style={{
+                width: `${pctA}%`,
+                ["--pill-tint" as string]: segmentTint(pctA),
+              }}
+            />
+            <div
+              className={classes.winSegment}
+              style={{
+                width: `${pctB}%`,
+                ["--pill-tint" as string]: segmentTint(pctB),
+              }}
+            />
+          </div>
+          <span>{pctB}%</span>
         </div>
-        <span>{pctB}%</span>
-      </div>
+      )}
     </div>
   );
 }

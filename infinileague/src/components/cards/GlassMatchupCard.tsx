@@ -105,10 +105,18 @@ export function GlassMatchupCard({
   );
 }
 
-export function EmptyGlassCard() {
+// A recessed well where a card would go. `label` is "Empty" for a real
+// unfilled roster slot; pass "" for an alignment filler (the other team has
+// more rows in that section) or a roster that's still loading.
+export function EmptyGlassCard({ label = "Empty" }: { label?: string }) {
   return (
-    <div className={`${classes.card} ${classes.empty}`} aria-label="Empty slot" role="group">
-      <span style={{ fontSize: 12 }}>Empty</span>
+    <div
+      className={`${classes.card} ${classes.empty}`}
+      role="group"
+      aria-label={label ? "Empty slot" : undefined}
+      aria-hidden={label ? undefined : true}
+    >
+      {label && <span style={{ fontSize: 12 }}>{label}</span>}
     </div>
   );
 }

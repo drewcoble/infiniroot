@@ -2,12 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Card, Group, Loader, Progress, Select, Stack, Text, Title } from "@mantine/core";
+import { Alert, Loader, Select, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
-import { POSITION_COLORS } from "@shared/positionColors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
 import { MatchupRosterMatchup } from "../../../components/MatchupRosterMatchup";
+import { toMatchupCardData } from "../../../lib/matchupCardData";
+import {
+  GlassMatchupHeader,
+  type MatchupHeaderTeam,
+} from "../../../components/cards/GlassMatchupHeader";
+import { meterScaleMax } from "../../../components/cards/meterScale";
+import { buildShortNames } from "../../../lib/shortPlayerName";
 import {
   isAnyGameLive,
   liveProjection,
@@ -15,7 +21,7 @@ import {
   useNow,
   type WeekGame,
 } from "../../../lib/liveGames";
-import type { SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
+import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/matchup")({
   component: MatchupPage,
@@ -64,14 +70,6 @@ const LIVE_REFRESH_MS = 2 * 60 * 1000;
 // gap. WIN_PROB_SCALE tunes how fast it saturates: a 15-point lead reads as
 // ~73%, a 30-point lead as ~88%.
 const WIN_PROB_SCALE = 15;
-
-// One shade darker than the bare "rb"/"dst" theme colors' own default
-// (shade 6) read against this app's light background - dot-shade notation
-// so both the bar and its percentage labels below use the exact same color,
-// rather than relying on whatever shade a plain color name happens to
-// default to.
-const WIN_PROB_COLOR_A = `${POSITION_COLORS.RB}.8`;
-const WIN_PROB_COLOR_B = `${POSITION_COLORS.DST}.8`;
 
 function winProbability(projA: number, projB: number): number {
   return 1 / (1 + Math.exp(-(projA - projB) / WIN_PROB_SCALE));
@@ -148,6 +146,41 @@ function MatchupPage() {
   const teamARoster = useTeamRoster(teamAId, week, refreshMs);
   const teamBRoster = useTeamRoster(teamBId, week, refreshMs);
 
+  // Season/ROS context for each card's detail view (season and ROS PPG,
+  // ROS and projected week position ranks) - the same board the Trade tab
+  // reads. Also the league-wide name pool the cards' short names are
+  // collision-checked against ("Bijan Robinson" vs. "Brian Robinson Jr."
+  // never both shorten to "B. Robinson").
+  const vorRows: RosVorRow[] | undefined = useQuery(
+    api.rosVor.getRosVorBoard,
+    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
+  );
+  const vorByFpid = useMemo(
+    () => new Map((vorRows ?? []).map((row) => [row.fpid, row])),
+    [vorRows],
+  );
+
+  // This week's actual position rank per player (the badge's "RB3" once a
+  // game starts) - re-ranked on every live poll server-side.
+  const weekRanks = useQuery(
+    api.infinileague.season.matchup.getWeekPositionRanks,
+    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
+  );
+  const weekRankByFpid = useMemo(
+    () => new Map((weekRanks ?? []).map((entry) => [entry.fpid, entry.rank])),
+    [weekRanks],
+  );
+
+  const shortName = useMemo(
+    () =>
+      buildShortNames([
+        ...(vorRows ?? []).map((row) => row.name),
+        ...(teamARoster.rows ?? []).flatMap((row) => (row.name ? [row.name] : [])),
+        ...(teamBRoster.rows ?? []).flatMap((row) => (row.name ? [row.name] : [])),
+      ]),
+    [vorRows, teamARoster.rows, teamBRoster.rows],
+  );
+
   // Actual points so far plus each starter's projection scaled by how much
   // of their game is left - the plain pregame projection before kickoff,
   // the actual score once their game is final.
@@ -170,6 +203,38 @@ function MatchupPage() {
   // the win-probability section below so it only ever shows once this is
   // true, rather than a wrong number that then jumps to the right one.
   const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
+
+  const toCardData = (row: TeamRosterRow) =>
+    toMatchupCardData(
+      row,
+      weekGames ? gamesByTeam : undefined,
+      now,
+      row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
+      row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
+    );
+  const filledRows = [...(teamARoster.rows ?? []), ...(teamBRoster.rows ?? [])].filter(
+    (row) => row.fpid !== undefined,
+  );
+  const scaleMax = meterScaleMax(filledRows.map(toCardData));
+
+  // Starters whose games are underway / not yet started, for the header.
+  const headerTeam = (
+    name: string,
+    rows: TeamRosterRow[] | undefined,
+    actual: number,
+    proj: number,
+  ): MatchupHeaderTeam => {
+    const states = (rows ?? [])
+      .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
+      .map((row) => toCardData(row).gameState);
+    return {
+      name,
+      actualPoints: actual,
+      projectedPoints: proj,
+      liveCount: states.filter((state) => state === "live").length,
+      toPlayCount: states.filter((state) => state === "pre").length,
+    };
+  };
 
   if (nflState === undefined || standings === undefined) {
     return <Loader />;
@@ -221,72 +286,19 @@ function MatchupPage() {
         />
       )}
 
-      <Card padding="lg">
-        <Stack gap="md">
-          <Group wrap="nowrap" align="center" gap="sm">
-            <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-              <Text fw={600} truncate="end">
-                {selfTeamName}
-              </Text>
-              <Text fw={700} size="xl">
-                {actualA.toFixed(1)}
-              </Text>
-              <Text size="xs" c="dimmed">
-                Proj {projA.toFixed(1)}
-              </Text>
-            </Stack>
-            <Text c="dimmed" fw={600} style={{ flexShrink: 0 }}>
-              VS
-            </Text>
-            <Stack gap={4} align="flex-end" style={{ flex: 1, minWidth: 0 }}>
-              <Text fw={600} truncate="end" ta="right" style={{ maxWidth: "100%" }}>
-                {teamBId !== null ? opponentName : "—"}
-              </Text>
-              <Text fw={700} size="xl">
-                {teamBId !== null ? actualB.toFixed(1) : "—"}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {teamBId !== null ? `Proj ${projB.toFixed(1)}` : ""}
-              </Text>
-            </Stack>
-          </Group>
+      <GlassMatchupHeader
+        teamA={headerTeam(selfTeamName, teamARoster.rows, actualA, projA)}
+        teamB={teamBId !== null ? headerTeam(opponentName, teamBRoster.rows, actualB, projB) : null}
+        winProbA={matchupReady ? winProbA : null}
+      />
 
-          {teamBId !== null && (
-            <Stack
-              gap={4}
-              style={{ opacity: matchupReady ? 1 : 0.4, transition: "opacity 200ms ease" }}
-            >
-              <Group justify="space-between" wrap="nowrap">
-                <Text size="xs" fw={600} c={WIN_PROB_COLOR_A}>
-                  {(matchupReady ? winProbA * 100 : 50).toFixed(0)}%
-                </Text>
-                <Text size="xs" fw={600} c={WIN_PROB_COLOR_B}>
-                  {(matchupReady ? 100 - winProbA * 100 : 50).toFixed(0)}%
-                </Text>
-              </Group>
-              <Progress.Root size="lg" transitionDuration={500}>
-                <Progress.Section
-                  value={matchupReady ? winProbA * 100 : 50}
-                  color={WIN_PROB_COLOR_A}
-                />
-                <Progress.Section
-                  value={matchupReady ? 100 - winProbA * 100 : 50}
-                  color={WIN_PROB_COLOR_B}
-                />
-              </Progress.Root>
-            </Stack>
-          )}
-        </Stack>
-      </Card>
-
-      <Stack gap={8}>
+      <Stack gap={10}>
         <MatchupRosterMatchup
           teamARows={teamARoster.rows}
           teamBRows={teamBRoster.rows}
-          teamAName={selfTeamName}
-          teamBName={opponentName}
-          gamesByTeam={weekGames ? gamesByTeam : undefined}
-          now={now}
+          toCardData={toCardData}
+          shortName={shortName}
+          scaleMax={scaleMax}
         />
       </Stack>
     </Stack>

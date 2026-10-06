@@ -680,6 +680,12 @@
   height: 13px;
 }
 
+/* Opponent not known yet / their roster still loading. */
+.headerPending {
+  opacity: 0.4;
+  transition: opacity 200ms ease;
+}
+
 /* Percentages flank the bar on one line. */
 .winRow {
   display: flex;
