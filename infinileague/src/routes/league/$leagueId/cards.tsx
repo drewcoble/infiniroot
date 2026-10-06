@@ -6,6 +6,7 @@ import {
   GlassSlotChip,
   type GlassMatchupCardData,
 } from "../../../components/cards/GlassMatchupCard";
+import { buildShortNames } from "../../../lib/shortPlayerName";
 
 export const Route = createFileRoute("/league/$leagueId/cards")({
   component: CardsPage,
@@ -17,6 +18,8 @@ export const Route = createFileRoute("/league/$leagueId/cards")({
 
 // One row per state the Matchup tab can put a card in: live vs. pregame,
 // final vs. injured, rookie vs. bye, and a filled slot vs. an empty one.
+// The second RB row pairs Bijan Robinson's teammate Brian Robinson Jr. so
+// the short-name collision guard is visible (neither shortens to "B.").
 const SAMPLE_ROWS: {
   slot: string;
   a: GlassMatchupCardData | null;
@@ -72,6 +75,29 @@ const SAMPLE_ROWS: {
     },
   },
   {
+    slot: "RB",
+    a: {
+      name: "Brian Robinson Jr.",
+      position: "RB",
+      positionRank: 28,
+      team: "ATL",
+      gameLine: "vs. TB · Final",
+      gameState: "final",
+      projectedPoints: 7.9,
+      actualPoints: 11.3,
+    },
+    b: {
+      name: "Jahmyr Gibbs",
+      position: "RB",
+      positionRank: 4,
+      team: "DET",
+      gameLine: "vs. GB · Mon 8:15 PM",
+      gameState: "pre",
+      projectedPoints: 17.6,
+      actualPoints: 0,
+    },
+  },
+  {
     slot: "WR",
     a: {
       name: "Marvin Harrison Jr.",
@@ -111,6 +137,14 @@ const SAMPLE_ROWS: {
   },
 ];
 
+// Stand-in for the league-wide player pool the real Matchup tab would check
+// collisions against - here just the sample cards themselves.
+const shortName = buildShortNames(
+  SAMPLE_ROWS.flatMap((row) => [row.a?.name, row.b?.name]).filter(
+    (name): name is string => name !== undefined,
+  ),
+);
+
 function CardsPage() {
   return (
     <Stack gap="md">
@@ -124,14 +158,22 @@ function CardsPage() {
       <Text fw={600}>Matchup: base card</Text>
 
       <Stack gap={10}>
-        {SAMPLE_ROWS.map((row) => (
-          <Group key={row.slot} wrap="nowrap" gap="xs" align="stretch">
+        {SAMPLE_ROWS.map((row, index) => (
+          <Group key={index} wrap="nowrap" gap="xs" align="stretch">
             <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
-              {row.a ? <GlassMatchupCard data={row.a} /> : <EmptyGlassCard />}
+              {row.a ? (
+                <GlassMatchupCard data={row.a} displayName={shortName(row.a.name)} />
+              ) : (
+                <EmptyGlassCard />
+              )}
             </Box>
             <GlassSlotChip label={row.slot} />
             <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
-              {row.b ? <GlassMatchupCard data={row.b} /> : <EmptyGlassCard />}
+              {row.b ? (
+                <GlassMatchupCard data={row.b} displayName={shortName(row.b.name)} />
+              ) : (
+                <EmptyGlassCard />
+              )}
             </Box>
           </Group>
         ))}

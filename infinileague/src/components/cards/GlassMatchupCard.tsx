@@ -66,7 +66,15 @@ function ariaSummary(data: GlassMatchupCardData): string {
 // card's green tint plus a pulsing dot on the game clock, nothing more. Long-press expansion into a detail
 // card comes later; it's focusable now so that interaction has a keyboard
 // counterpart from the start.
-export function GlassMatchupCard({ data }: { data: GlassMatchupCardData }) {
+// displayName is the shortened, collision-checked name for the card face
+// (see lib/shortPlayerName.ts) - the aria summary keeps data.name in full.
+export function GlassMatchupCard({
+  data,
+  displayName = data.name,
+}: {
+  data: GlassMatchupCardData;
+  displayName?: string;
+}) {
   const isLive = data.gameState === "live";
   const isBye = data.gameState === "bye";
   const positionColor = positionColorOrDefault(data.position);
@@ -100,7 +108,7 @@ export function GlassMatchupCard({ data }: { data: GlassMatchupCardData }) {
       </div>
 
       <div aria-hidden>
-        <div className={classes.name}>{data.name}</div>
+        <div className={classes.name}>{displayName}</div>
         <div className={classes.gameLine}>
           {isLive && <span className={classes.dot} />}
           {data.gameLine}
