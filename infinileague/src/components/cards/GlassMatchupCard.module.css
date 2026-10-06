@@ -9,7 +9,7 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
-  padding: 10px 12px 10px;
+  padding: 10px;
   border-radius: 16px;
   color: #f8fafc;
   background: linear-gradient(
@@ -78,11 +78,7 @@
   display: none;
 }
 
-/* Nudged 2px toward the left edge so the pill sits evenly in the card's
-   rounded corner - with the card's 12px side / 10px top padding it read as
-   inset further from the side than the top. */
 .topRow {
-  margin-left: -2px;
   display: flex;
   align-items: center;
   justify-content: space-between;
