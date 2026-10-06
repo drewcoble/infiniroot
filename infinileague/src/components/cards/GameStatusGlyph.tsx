@@ -28,10 +28,17 @@ export function GameStatusGlyph({
 // it sits with the other icons, but with the hands at kickoff in the
 // viewer's own time zone - the same zone formatGameLine prints "Sun 4:25 PM"
 // in. No kickoff known falls back to lucide's own 12:00/4:00-ish pose.
+const CLOCK_STEP_MINUTES = 15;
+
 function KickoffClock({ kickoffAt }: { kickoffAt?: number | undefined }) {
+  // Rounded to the nearest quarter hour - at 13px, 4:25's hands sit almost
+  // on top of each other, while 4:30's read clearly. The text beside it
+  // still has the exact time.
   const kickoff = kickoffAt !== undefined ? new Date(kickoffAt) : undefined;
-  const minutes = kickoff?.getMinutes() ?? 0;
-  const hours = kickoff ? (kickoff.getHours() % 12) + minutes / 60 : 4;
+  const exactMinutes = kickoff ? kickoff.getHours() * 60 + kickoff.getMinutes() : 4 * 60;
+  const totalMinutes = Math.round(exactMinutes / CLOCK_STEP_MINUTES) * CLOCK_STEP_MINUTES;
+  const minutes = totalMinutes % 60;
+  const hours = (totalMinutes / 60) % 12;
   const hand = (degrees: number, length: number) => {
     const radians = (degrees * Math.PI) / 180;
     return { x2: 12 + length * Math.sin(radians), y2: 12 - length * Math.cos(radians) };
