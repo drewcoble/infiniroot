@@ -694,11 +694,6 @@
   height: 13px;
 }
 
-.headerCount .dot {
-  width: 7px;
-  height: 7px;
-}
-
 .winLabels {
   display: flex;
   align-items: baseline;
