@@ -783,8 +783,19 @@
   justify-content: space-between;
 }
 
+/* Icon tucked into the card's top-right corner (flush with the padding
+   edge, the same inset the name has from the top) rather than centered in
+   its 20px box, which left it floating in from the corner. */
 .wideGlyph {
   height: 20px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+.wideGlyph .statusSlot {
+  width: auto;
+  height: auto;
 }
 
 .wideScore .statsRow {
