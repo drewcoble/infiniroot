@@ -131,6 +131,7 @@ function PlayerCell({
     <Cell>
       <PlayerCard
         row={toRosVorRow(row, teamName, teamLine(row, gamesByTeam, now))}
+        live={inProgress}
         isRookie={row.isRookie ?? false}
         showLeftLabel={false}
         // showRosteredBy off (every card in a column is already known to
@@ -144,7 +145,10 @@ function PlayerCell({
         footer={
           <Group justify="space-between" wrap="nowrap" gap={4}>
             <Text size="xs" c="dimmed">
-              {leftLabel} <Text span fw={600} c="var(--mantine-color-text)">{formatPoints(leftPoints)}</Text>
+              <Text span {...(inProgress ? { c: "green", fw: 600 } : {})}>
+                {leftLabel}
+              </Text>{" "}
+              <Text span fw={600} c="var(--mantine-color-text)">{formatPoints(leftPoints)}</Text>
             </Text>
             <Text size="xs" c="dimmed">
               Actual <Text span fw={600} c="var(--mantine-color-text)">{formatPoints(row.actualPoints)}</Text>
