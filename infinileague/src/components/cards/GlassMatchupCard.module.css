@@ -165,10 +165,6 @@
   height: 20px;
 }
 
-.status_final {
-  color: rgba(248, 250, 252, 0.85);
-}
-
 .status_pre {
   color: rgba(248, 250, 252, 0.6);
 }
