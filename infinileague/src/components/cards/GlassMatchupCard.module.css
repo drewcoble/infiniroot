@@ -64,17 +64,31 @@
   opacity: 0.72;
 }
 
+/* Empty slots are a recess in the page rather than a card - a well a
+   glass card would drop into. Darker than the page, shaded from the top
+   (inset shadows), a faint light catch along the bottom lip, and no blur
+   or sheen since there's no glass. Shared by both card layouts. */
+.empty,
+.wideEmpty {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    inset 0 3px 8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.07);
+  color: rgba(248, 250, 252, 0.42);
+}
+
 .empty {
   min-height: 92px;
   justify-content: center;
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px dashed rgba(255, 255, 255, 0.25);
-  box-shadow: none;
-  color: rgba(255, 255, 255, 0.6);
 }
 
-.empty::before {
+.empty::before,
+.wideEmpty::before {
   display: none;
 }
 
@@ -810,17 +824,13 @@
   margin: 0 0 2px;
 }
 
+/* Same height as a filled roster card, so an empty slot reads as the
+   space one would fill. The recessed look is shared with .empty above. */
 .wideEmpty {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px dashed rgba(255, 255, 255, 0.25);
-  box-shadow: none;
-}
-
-.wideEmpty::before {
-  display: none;
+  min-height: 80px;
+  align-content: center;
 }
 
 .wideEmptyText {
   font-size: 13px;
-  color: rgba(248, 250, 252, 0.6);
 }
