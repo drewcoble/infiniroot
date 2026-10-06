@@ -130,7 +130,7 @@ const SAMPLE_ROWS: {
       gameLine: "@ BUF · Q3 8:12",
       gameState: "live",
       projectedPoints: 11.0,
-      liveProjectedPoints: 12.3,
+      liveProjectedPoints: 11.6,
       actualPoints: 8.4,
       injury: { status: "Doubtful", statusShort: "D" },
     },

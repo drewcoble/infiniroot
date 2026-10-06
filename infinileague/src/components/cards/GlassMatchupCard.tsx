@@ -56,15 +56,41 @@ function ariaSummary(data: GlassMatchupCardData): string {
   if (data.injury) parts.push(data.injury.status);
   parts.push(`${formatPoints(data.actualPoints)} points`);
   parts.push(`projected ${formatProj(data.projectedPoints)}`);
-  if (data.gameState === "live") parts.push(`on pace for ${formatProj(data.liveProjectedPoints)}`);
+  if (data.gameState === "live") {
+    const pace = paceVsProjection(data.projectedPoints, data.liveProjectedPoints);
+    const paceText =
+      pace === "ahead" ? ", ahead of projection" : pace === "behind" ? ", behind projection" : "";
+    parts.push(`on pace for ${formatProj(data.liveProjectedPoints)}${paceText}`);
+  }
   return parts.join(", ");
+}
+
+// How far the live projection can drift from the pregame one and still
+// count as "on projection" - relative rather than a flat point count, since
+// 2 points is noise for a 24-point QB but a big swing for an 8-point kicker.
+// The floor keeps tiny projections from flipping on a single point.
+const PACE_BUFFER_SHARE = 0.1;
+const PACE_BUFFER_MIN = 1;
+
+type Pace = "ahead" | "even" | "behind";
+
+function paceVsProjection(
+  projected: number | undefined,
+  liveProjected: number | undefined,
+): Pace | undefined {
+  if (projected === undefined || liveProjected === undefined) return undefined;
+  const buffer = Math.max(projected * PACE_BUFFER_SHARE, PACE_BUFFER_MIN);
+  if (liveProjected > projected + buffer) return "ahead";
+  if (liveProjected < projected - buffer) return "behind";
+  return "even";
 }
 
 // Bullet meter under the points: fill = actual points, tick = pregame
 // projection, and mid-game a faint extension from actual out to the live
-// projection (where they're on pace to finish). `scaleMax` is shared by
-// every card on the page so bar lengths compare across cards and rows - see
-// meterScale.ts.
+// projection (where they're on pace to finish), colored by pace vs. the
+// pregame projection - green ahead, red behind, neutral within the buffer.
+// `scaleMax` is shared by every card on the page so bar lengths compare
+// across cards and rows - see meterScale.ts.
 function PointsMeter({
   actual,
   projected,
@@ -76,14 +102,19 @@ function PointsMeter({
   liveProjected: number | undefined;
   scaleMax: number;
 }) {
+  const pace = paceVsProjection(projected, liveProjected);
   const pct = (value: number) => `${Math.min(Math.max(value / scaleMax, 0), 1) * 100}%`;
-  const ghostEnd = liveProjected !== undefined && liveProjected > actual ? liveProjected : undefined;
+  const ghostEnd =
+    liveProjected !== undefined && liveProjected > actual ? liveProjected : undefined;
   return (
     <div className={classes.meter} aria-hidden>
       {ghostEnd !== undefined && (
         <div
-          className={classes.meterGhost}
-          style={{ left: pct(actual), width: `calc(${pct(ghostEnd)} - ${pct(actual)})` }}
+          className={`${classes.meterGhost} ${pace ? classes[`pace_${pace}`] : ""}`}
+          style={{
+            left: pct(actual),
+            width: `calc(${pct(ghostEnd)} - ${pct(actual)})`,
+          }}
         />
       )}
       {actual > 0 && <div className={classes.meterFill} style={{ width: pct(actual) }} />}
