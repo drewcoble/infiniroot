@@ -1,0 +1,239 @@
+/* Frosted-glass card for the Cards tab's Matchup redesign. A CSS module
+   (rather than inline styles like the rest of the app) because the glass
+   needs a pseudo-element highlight, a keyframe pulse, and a
+   reduced-motion override - none of which inline styles can express. */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 12px 10px;
+  border-radius: 16px;
+  color: #12161c;
+  background: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.86) 0%,
+    rgba(255, 255, 255, 0.7) 100%
+  );
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  outline: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+/* Specular sheen across the top third - what sells "glass" over "white
+   card". Pointer-events off so it never eats a tap. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 45%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.card > * {
+  position: relative;
+}
+
+.card:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.95),
+    0 0 0 6px rgba(37, 99, 235, 0.9),
+    0 6px 20px rgba(0, 0, 0, 0.22);
+}
+
+.live {
+  border-color: rgba(22, 163, 74, 0.85);
+  box-shadow:
+    0 0 0 1px rgba(22, 163, 74, 0.55),
+    0 8px 26px rgba(22, 163, 74, 0.28),
+    0 6px 20px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.muted {
+  opacity: 0.72;
+}
+
+.empty {
+  min-height: 92px;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.empty::before {
+  display: none;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gameLine {
+  font-size: 12px;
+  line-height: 1.25;
+  color: #3b4350;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #15803d;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(22, 163, 74, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+  .card {
+    transition: none;
+  }
+}
+
+.divider {
+  height: 1px;
+  margin: 2px 0;
+  background: linear-gradient(
+    90deg,
+    rgba(18, 22, 28, 0) 0%,
+    rgba(18, 22, 28, 0.14) 50%,
+    rgba(18, 22, 28, 0) 100%
+  );
+}
+
+.statsRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.points {
+  font-size: 22px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pointsLabel {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4b5563;
+}
+
+.proj {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.projValue {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.projValueLive {
+  color: #15803d;
+}
+
+.slotChip {
+  flex-shrink: 0;
+  align-self: center;
+  min-width: 48px;
+  height: 24px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}

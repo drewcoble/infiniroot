@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
   CircleUserRound,
+  GalleryVerticalEnd,
   HeartPulse,
   LayoutGrid,
   Ticket,
@@ -31,7 +32,8 @@ type TabValue =
   | "players"
   | "depthCharts"
   | "injuries"
-  | "trade";
+  | "trade"
+  | "cards";
 
 interface TabItem {
   value: TabValue;
@@ -138,6 +140,14 @@ function LeagueLayout() {
       to: "/league/$leagueId/trade",
       params: { leagueId },
     },
+    // Design sandbox for the player-card redesign - see cards.tsx.
+    {
+      value: "cards",
+      label: "Cards",
+      icon: GalleryVerticalEnd,
+      to: "/league/$leagueId/cards",
+      params: { leagueId },
+    },
   ];
 
   // Path-based rather than TAB_META's exact route string, since the
@@ -165,7 +175,9 @@ function LeagueLayout() {
                   ? "injuries"
                   : location.pathname === `/league/${leagueId}/trade`
                     ? "trade"
-                    : undefined;
+                    : location.pathname === `/league/${leagueId}/cards`
+                      ? "cards"
+                      : undefined;
 
   return (
     <PageContainer pb={{ base: 100, sm: "xl" }}>
