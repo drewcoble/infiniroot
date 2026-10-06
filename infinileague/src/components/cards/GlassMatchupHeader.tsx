@@ -32,33 +32,39 @@ function TeamSide({ team, align }: { team: MatchupHeaderTeam; align: "left" | "r
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
       <div className={classes.headerTeamName}>{team.name}</div>
       <div className={classes.headerTotal}>{team.actualPoints.toFixed(2)}</div>
-      <div className={classes.headerProj}>Proj {team.projectedPoints.toFixed(1)}</div>
-      {/* Same icons as the player cards' corners, so "how much is left"
-          reads in the same vocabulary. */}
-      <div className={classes.headerCounts}>
+      {/* Projection and what's left on one line - the same dot/clock as the
+          player cards' corners, so the counts need no words here (the
+          card's aria-label spells them out). */}
+      <div className={classes.headerProj}>
+        <span>Proj {team.projectedPoints.toFixed(1)}</span>
         {team.liveCount > 0 && (
           <span className={classes.headerCount}>
             <GameStatusGlyph state="live" />
-            {team.liveCount} live
+            {team.liveCount}
           </span>
         )}
         {team.toPlayCount > 0 && (
           <span className={classes.headerCount}>
             <GameStatusGlyph state="pre" />
-            {team.toPlayCount} to play
+            {team.toPlayCount}
           </span>
         )}
-        {team.liveCount === 0 && team.toPlayCount === 0 && (
-          <span className={classes.headerCount}>All final</span>
-        )}
+        {team.liveCount === 0 && team.toPlayCount === 0 && <span>Final</span>}
       </div>
     </div>
   );
 }
 
+function countsText(team: MatchupHeaderTeam): string {
+  if (team.liveCount === 0 && team.toPlayCount === 0) return "all games final";
+  return `${team.liveCount} live, ${team.toPlayCount} to play`;
+}
+
 // Glass version of the Matchup tab's score header: both teams' scores,
 // live projections, how many starters are still live / yet to play, and
-// the win-probability split. `winProbA` is team A's 0-1 share.
+// the win-probability split. `winProbA` is team A's 0-1 share. No "VS" or
+// "Win probability" caption - the facing columns and the split bar with a
+// percentage at each end say both.
 export function GlassMatchupHeader({
   teamA,
   teamB,
@@ -75,23 +81,18 @@ export function GlassMatchupHeader({
       className={`${classes.card} ${classes.header}`}
       role="group"
       aria-label={
-        `${teamA.name} ${teamA.actualPoints.toFixed(2)}, projected ${teamA.projectedPoints.toFixed(1)}; ` +
-        `${teamB.name} ${teamB.actualPoints.toFixed(2)}, projected ${teamB.projectedPoints.toFixed(1)}; ` +
+        `${teamA.name} ${teamA.actualPoints.toFixed(2)}, projected ${teamA.projectedPoints.toFixed(1)}, ${countsText(teamA)}; ` +
+        `${teamB.name} ${teamB.actualPoints.toFixed(2)}, projected ${teamB.projectedPoints.toFixed(1)}, ${countsText(teamB)}; ` +
         `win probability ${pctA}% to ${pctB}%`
       }
     >
       <div className={classes.headerTeams} aria-hidden>
         <TeamSide team={teamA} align="left" />
-        <div className={classes.headerVs}>VS</div>
         <TeamSide team={teamB} align="right" />
       </div>
 
-      <div aria-hidden>
-        <div className={classes.winLabels}>
-          <span>{pctA}%</span>
-          <span className={classes.winCaption}>Win probability</span>
-          <span>{pctB}%</span>
-        </div>
+      <div className={classes.winRow} aria-hidden>
+        <span>{pctA}%</span>
         <div className={classes.winBar}>
           <div
             className={classes.winSegment}
@@ -108,6 +109,7 @@ export function GlassMatchupHeader({
             }}
           />
         </div>
+        <span>{pctB}%</span>
       </div>
     </div>
   );
