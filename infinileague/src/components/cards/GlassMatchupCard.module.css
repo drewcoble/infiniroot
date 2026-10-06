@@ -247,6 +247,21 @@
   background: rgba(248, 113, 113, 0.65);
 }
 
+/* Final games: the fill takes the pace color, a step fainter than the live
+   extension above so settled results read as done. "even" dims the white
+   fill to the same strength so every final bar sits at one level. */
+.final_ahead {
+  background: rgba(74, 222, 128, 0.42);
+}
+
+.final_behind {
+  background: rgba(248, 113, 113, 0.45);
+}
+
+.final_even {
+  background: rgba(248, 250, 252, 0.42);
+}
+
 .meterTick {
   position: absolute;
   top: -3px;

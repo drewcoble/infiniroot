@@ -85,7 +85,7 @@ const SAMPLE_ROWS: {
       gameLine: "vs. TB · Final",
       gameState: "final",
       projectedPoints: 7.9,
-      actualPoints: 11.3,
+      actualPoints: 5.8,
     },
     b: {
       name: "Jahmyr Gibbs",

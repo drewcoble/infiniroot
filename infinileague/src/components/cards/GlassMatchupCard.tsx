@@ -62,6 +62,11 @@ function ariaSummary(data: GlassMatchupCardData): string {
       pace === "ahead" ? ", ahead of projection" : pace === "behind" ? ", behind projection" : "";
     parts.push(`on pace for ${formatProj(data.liveProjectedPoints)}${paceText}`);
   }
+  if (data.gameState === "final") {
+    const pace = paceVsProjection(data.projectedPoints, data.actualPoints);
+    if (pace === "ahead") parts.push("beat projection");
+    if (pace === "behind") parts.push("fell short of projection");
+  }
   return parts.join(", ");
 }
 
@@ -89,20 +94,27 @@ function paceVsProjection(
 // projection, and mid-game a faint extension from actual out to the live
 // projection (where they're on pace to finish), colored by pace vs. the
 // pregame projection - green ahead, red behind, neutral within the buffer.
+// Final games color the fill instead, by the final score vs. projection.
 // `scaleMax` is shared by every card on the page so bar lengths compare
 // across cards and rows - see meterScale.ts.
 function PointsMeter({
   actual,
   projected,
   liveProjected,
+  isFinal,
   scaleMax,
 }: {
   actual: number;
   projected: number | undefined;
   liveProjected: number | undefined;
+  isFinal: boolean;
   scaleMax: number;
 }) {
   const pace = paceVsProjection(projected, liveProjected);
+  // Once the game's over the fill itself takes the pace color, against the
+  // final score rather than a live projection - fainter than the live
+  // extension so a settled result doesn't compete with games still going.
+  const finalPace = isFinal ? paceVsProjection(projected, actual) : undefined;
   const pct = (value: number) => `${Math.min(Math.max(value / scaleMax, 0), 1) * 100}%`;
   const ghostEnd =
     liveProjected !== undefined && liveProjected > actual ? liveProjected : undefined;
@@ -117,7 +129,14 @@ function PointsMeter({
           }}
         />
       )}
-      {actual > 0 && <div className={classes.meterFill} style={{ width: pct(actual) }} />}
+      {actual > 0 && (
+        <div
+          className={[classes.meterFill, finalPace && classes[`final_${finalPace}`]]
+            .filter(Boolean)
+            .join(" ")}
+          style={{ width: pct(actual) }}
+        />
+      )}
       {projected !== undefined && (
         <div className={classes.meterTick} style={{ left: pct(projected) }} />
       )}
@@ -203,6 +222,7 @@ export function GlassMatchupCard({
           actual={data.actualPoints ?? 0}
           projected={data.projectedPoints}
           liveProjected={isLive ? data.liveProjectedPoints : undefined}
+          isFinal={data.gameState === "final"}
           scaleMax={scaleMax}
         />
       )}
