@@ -6,6 +6,10 @@ import {
   GlassSlotChip,
   type GlassMatchupCardData,
 } from "../../../components/cards/GlassMatchupCard";
+import {
+  GlassMatchupHeader,
+  type MatchupHeaderTeam,
+} from "../../../components/cards/GlassMatchupHeader";
 import { meterScaleMax } from "../../../components/cards/meterScale";
 import { buildShortNames } from "../../../lib/shortPlayerName";
 
@@ -195,6 +199,28 @@ const scaleMax = meterScaleMax(
   ),
 );
 
+const SAMPLE_HEADER: { teamA: MatchupHeaderTeam; teamB: MatchupHeaderTeam } = {
+  teamA: {
+    name: "Gridiron Gurus",
+    actualPoints: 112.46,
+    projectedPoints: 128.3,
+    liveCount: 2,
+    toPlayCount: 1,
+  },
+  teamB: {
+    name: "Mahomes Alone",
+    actualPoints: 98.72,
+    projectedPoints: 121.9,
+    liveCount: 1,
+    toPlayCount: 3,
+  },
+};
+
+// Same logistic curve as matchup.tsx's winProbability (WIN_PROB_SCALE 15).
+const SAMPLE_WIN_PROB_A =
+  1 /
+  (1 + Math.exp(-(SAMPLE_HEADER.teamA.projectedPoints - SAMPLE_HEADER.teamB.projectedPoints) / 15));
+
 function CardsPage() {
   return (
     <Stack gap="md">
@@ -204,6 +230,14 @@ function CardsPage() {
           Design sandbox. Sample data only.
         </Text>
       </Stack>
+
+      <Text fw={600}>Matchup: header card</Text>
+
+      <GlassMatchupHeader
+        teamA={SAMPLE_HEADER.teamA}
+        teamB={SAMPLE_HEADER.teamB}
+        winProbA={SAMPLE_WIN_PROB_A}
+      />
 
       <Text fw={600}>Matchup: base card</Text>
 
