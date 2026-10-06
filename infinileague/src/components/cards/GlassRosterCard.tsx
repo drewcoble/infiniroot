@@ -1,6 +1,12 @@
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault } from "@shared/positionColors";
-import { ariaSummary, gameLine, pillStyle, type GlassMatchupCardData } from "./cardShared";
+import {
+  ariaSummary,
+  gameLine,
+  pillStyle,
+  positionBadge,
+  type GlassMatchupCardData,
+} from "./cardShared";
 import { ExpandedMatchupCard } from "./ExpandedMatchupCard";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassSlotChip } from "./GlassMatchupCard";
@@ -51,8 +57,7 @@ export function GlassRosterCard({
           <div className={classes.name}>{data.name}</div>
           <div className={classes.wideDetail}>
             <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
-              {data.position}
-              {data.positionRank > 0 ? data.positionRank : ""}
+              {positionBadge(data)}
             </span>
             {data.injury && (
               <span

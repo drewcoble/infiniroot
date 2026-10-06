@@ -10,6 +10,7 @@ import {
   gameLine,
   paceFor,
   pillStyle,
+  positionBadge,
   type GlassMatchupCardData,
   type Pace,
 } from "./cardShared";
@@ -38,6 +39,16 @@ function paceSentence(data: GlassMatchupCardData, pace: Pace): string {
   }
   if (pace === "even") return `Finished near projection (${signed})`;
   return `Finished ${signed} ${pace === "ahead" ? "over" : "under"} projection`;
+}
+
+// This week's rank, named for which one it is: actual so far while live,
+// actual once final, the projection before kickoff.
+function weekRankStat(data: GlassMatchupCardData): { label: string; value: string } {
+  const format = (rank: number | undefined) => (rank ? `${data.position}${rank}` : "—");
+  if (data.gameState === "live")
+    return { label: "Live rank", value: format(data.weekActualPositionRank) };
+  if (data.gameState === "pre") return { label: "Proj rank", value: format(data.weekPositionRank) };
+  return { label: "Week rank", value: format(data.weekActualPositionRank) };
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -159,8 +170,7 @@ export function ExpandedMatchupCard({
 
         <div className={classes.pills}>
           <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
-            {data.position}
-            {data.positionRank > 0 ? data.positionRank : ""}
+            {positionBadge(data)}
           </span>
           {data.injury && (
             <span className={classes.pill} style={pillStyle(injuryColor(data.injury.status))}>
@@ -248,9 +258,10 @@ export function ExpandedMatchupCard({
         <div className={classes.statGrid}>
           <Stat label="Season PPG" value={formatProj(data.seasonPpg)} />
           <Stat label="ROS PPG" value={formatProj(data.rosPpg)} />
+          <Stat {...weekRankStat(data)} />
           <Stat
-            label="Week rank"
-            value={data.weekPositionRank ? `${data.position}${data.weekPositionRank}` : "—"}
+            label="ROS rank"
+            value={data.positionRank > 0 ? `${data.position}${data.positionRank}` : "—"}
           />
           <Stat label="Slot" value={slot} />
           <Stat label="Bye" value={data.byeWeek ? `Wk ${data.byeWeek}` : "—"} />

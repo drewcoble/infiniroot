@@ -35,6 +35,7 @@ const SAMPLE_ROWS: {
     slot: "QB",
     a: {
       name: "Josh Allen",
+      weekActualPositionRank: 2,
       seasonPpg: 24.1,
       rosPpg: 22.8,
       weekPositionRank: 2,
@@ -51,6 +52,7 @@ const SAMPLE_ROWS: {
     },
     b: {
       name: "Patrick Mahomes",
+      weekActualPositionRank: 14,
       seasonPpg: 19.6,
       rosPpg: 20.4,
       weekPositionRank: 8,
@@ -70,6 +72,7 @@ const SAMPLE_ROWS: {
     slot: "RB",
     a: {
       name: "Bijan Robinson",
+      weekActualPositionRank: 1,
       seasonPpg: 19.8,
       rosPpg: 18.9,
       weekPositionRank: 3,
@@ -104,6 +107,7 @@ const SAMPLE_ROWS: {
     slot: "RB",
     a: {
       name: "Brian Robinson Jr.",
+      weekActualPositionRank: 38,
       seasonPpg: 8.4,
       rosPpg: 8.0,
       weekPositionRank: 31,
@@ -167,6 +171,7 @@ const SAMPLE_ROWS: {
     slot: "FLEX",
     a: {
       name: "Travis Kelce",
+      weekActualPositionRank: 6,
       seasonPpg: 11.8,
       rosPpg: 10.9,
       weekPositionRank: 6,
@@ -220,6 +225,7 @@ const SAMPLE_ROSTER: { slot: string; data: GlassMatchupCardData | null }[] = [
     slot: "K",
     data: {
       name: "Brandon Aubrey",
+      weekActualPositionRank: 7,
       position: "K",
       positionRank: 1,
       team: "DAL",
@@ -238,6 +244,7 @@ const SAMPLE_ROSTER: { slot: string; data: GlassMatchupCardData | null }[] = [
     slot: "DST",
     data: {
       name: "Ravens D/ST",
+      weekActualPositionRank: 4,
       position: "DST",
       positionRank: 4,
       team: "BAL",

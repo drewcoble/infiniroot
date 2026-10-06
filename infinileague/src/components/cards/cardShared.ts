@@ -12,6 +12,8 @@ export type GameState = "pre" | "live" | "final" | "bye";
 export interface GlassMatchupCardData {
   name: string;
   position: Position;
+  // Projected rest-of-season position rank (the Players tab's rosVOR
+  // positionRank) - detail card only, labeled "ROS rank" there.
   positionRank: number;
   team: string;
   // "vs. KC" / "@ BUF" / "BYE", and "Q3 8:12" / "Sun 4:25 PM" / "Final"
@@ -30,11 +32,28 @@ export interface GlassMatchupCardData {
   isRookie?: boolean;
   byeWeek?: number;
   // Season-to-date and rest-of-season points per game, and this week's
-  // position rank - the Players tab's rosVOR snapshot fields (actualPpg,
-  // rosPpg, weekPositionRank).
+  // projected position rank - the Players tab's rosVOR snapshot fields
+  // (actualPpg, rosPpg, weekPositionRank).
   seasonPpg?: number;
   rosPpg?: number;
   weekPositionRank?: number;
+  // Position rank by points actually scored this week, among everyone at
+  // the position - recomputed from each live scoring poll, so it moves
+  // during games. Only shown once their game has started (see badgeRank).
+  weekActualPositionRank?: number;
+}
+
+// The rank on the position badge: this week's actual rank once their game
+// has kicked off (live, updating each poll; then final), nothing before
+// kickoff or on a bye - a badge too small to say which rank it is should
+// only ever mean one thing.
+export function badgeRank(data: GlassMatchupCardData): number | undefined {
+  if (data.gameState !== "live" && data.gameState !== "final") return undefined;
+  return data.weekActualPositionRank;
+}
+
+export function positionBadge(data: GlassMatchupCardData): string {
+  return `${data.position}${badgeRank(data) ?? ""}`;
 }
 
 export function gameLine(data: GlassMatchupCardData): string {
@@ -94,7 +113,9 @@ export function paceFor(data: GlassMatchupCardData): Pace | undefined {
 export function ariaSummary(data: GlassMatchupCardData): string {
   const parts = [
     data.name,
-    `${data.position}${data.positionRank > 0 ? ` ${data.positionRank}` : ""}`,
+    badgeRank(data) !== undefined
+      ? `${data.position}, ${data.position}${badgeRank(data)} this week`
+      : data.position,
     `${data.team} ${gameLine(data)}`,
   ];
   if (data.gameState === "live") parts.push("game in progress");
