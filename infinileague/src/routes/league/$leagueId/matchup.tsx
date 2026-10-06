@@ -263,12 +263,19 @@ function MatchupPage() {
     const states = (rows ?? [])
       .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
       .map((row) => toCardData(row).gameState);
+    const liveCount = states.filter((state) => state === "live").length;
+    const toPlayCount = states.filter((state) => state === "pre").length;
+    // Once every starter's game is over the live projection just equals the
+    // final score - show the pregame projection instead, so "Proj" still
+    // says what the team was expected to put up. (The win probability keeps
+    // using the live projection either way.)
+    const allFinal = liveCount === 0 && toPlayCount === 0;
     return {
       name,
       actualPoints: actual,
-      projectedPoints: proj,
-      liveCount: states.filter((state) => state === "live").length,
-      toPlayCount: states.filter((state) => state === "pre").length,
+      projectedPoints: allFinal ? sumStarterPoints(rows, (row) => row.projectedPoints ?? 0) : proj,
+      liveCount,
+      toPlayCount,
     };
   };
 
