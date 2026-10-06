@@ -19,8 +19,6 @@ export interface GlassMatchupCardData {
   // the detail card can lay them out separately.
   matchup: string;
   status?: string;
-  // Epoch ms - sets the pregame clock icon's hands (see GameStatusGlyph).
-  kickoffAt?: number;
   gameState: GameState;
   projectedPoints?: number;
   // Live projection (points so far + unplayed share of the projection) -

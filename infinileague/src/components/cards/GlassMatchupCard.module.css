@@ -136,10 +136,19 @@
   overflow-wrap: anywhere;
 }
 
+/* Flex row so the status icon and text center on each other; the text
+   span carries the ellipsis, since a flex container can't. */
 .gameLine {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   font-size: 12px;
   line-height: 1.25;
   color: rgba(248, 250, 252, 0.78);
+}
+
+.gameLineText {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -151,10 +160,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 13px;
-  height: 13px;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
   margin-right: 5px;
-  vertical-align: -2px;
 }
 
 .status_final {
@@ -177,8 +186,8 @@
 }
 
 .statusSlot .dot {
+  display: block;
   margin-right: 0;
-  vertical-align: 0;
 }
 
 @keyframes pulse {
