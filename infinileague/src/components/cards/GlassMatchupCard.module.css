@@ -154,16 +154,15 @@
   text-overflow: ellipsis;
 }
 
-/* Fixed-width slot for GameStatusGlyph's icon, so game lines start at
-   the same x whatever state they're in. */
+/* GameStatusGlyph's box - the same 20px height as the badges it sits
+   beside, so the corner icon centers on them. */
 .statusSlot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  margin-right: 5px;
+  width: 20px;
+  height: 20px;
 }
 
 .status_final {
@@ -187,6 +186,8 @@
 
 .statusSlot .dot {
   display: block;
+  width: 9px;
+  height: 9px;
   margin-right: 0;
 }
 
@@ -430,15 +431,18 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-.liveLabel {
+/* Detail card's status - the corner icon plus its name, pushed to the end
+   of the pill row. */
+.statusLabel {
   display: inline-flex;
   align-items: center;
-  margin-left: 4px;
+  gap: 4px;
+  margin-left: auto;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #86efac;
+  color: rgba(248, 250, 252, 0.85);
 }
 
 .expandedPoints {

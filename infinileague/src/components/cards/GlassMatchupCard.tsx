@@ -46,8 +46,8 @@ function ariaSummary(data: GlassMatchupCardData): string {
 // Base (collapsed) Matchup card - name, position, this week's game, and
 // the two numbers a matchup is about: actual points large, with projection
 // (and live projection mid-game) drawn on a meter under it. A live game
-// shows as the card's green tint plus a pulsing dot on the game clock
-// (see GameStatusGlyph for the other states' icons).
+// shows as the card's green tint plus a pulsing dot in the top-right
+// corner (see GameStatusGlyph for the other states' icons).
 // Long-press (or Enter/Space when focused) opens ExpandedMatchupCard over
 // it; the base card stays in the layout, just hidden, so nothing shifts.
 export function GlassMatchupCard({
@@ -130,12 +130,12 @@ export function GlassMatchupCard({
               </span>
             )}
           </div>
+          <GameStatusGlyph state={data.gameState} />
         </div>
 
         <div aria-hidden>
           <div className={classes.name}>{displayName}</div>
           <div className={classes.gameLine}>
-            <GameStatusGlyph state={data.gameState} />
             <span className={classes.gameLineText}>{gameLine(data)}</span>
           </div>
         </div>

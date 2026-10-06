@@ -23,6 +23,9 @@ const MAX_WIDTH = 380;
 const EDGE_MARGIN = 12;
 const BOTTOM_RESERVE = BOTTOM_NAV_HEIGHT + BOTTOM_NAV_BOTTOM_OFFSET + EDGE_MARGIN;
 
+// The detail card has room to name the state its corner icon stands for.
+const STATUS_LABEL = { live: "Live", final: "Final", pre: "Upcoming", bye: "Bye" } as const;
+
 const PACE_ICON = { ahead: TrendingUp, behind: TrendingDown, even: Minus } as const;
 
 function paceSentence(data: GlassMatchupCardData, pace: Pace): string {
@@ -139,7 +142,6 @@ export function ExpandedMatchupCard({
               {data.name}
             </div>
             <div className={classes.gameLine}>
-              <GameStatusGlyph state={data.gameState} />
               <span className={classes.gameLineText}>
                 {data.team} {gameLine(data)}
               </span>
@@ -170,10 +172,10 @@ export function ExpandedMatchupCard({
               Rookie
             </span>
           )}
-          {isLive && (
-            <span className={classes.liveLabel}>
-              <span className={classes.dot} />
-              Live
+          {!isBye && (
+            <span className={classes.statusLabel}>
+              <GameStatusGlyph state={data.gameState} />
+              {STATUS_LABEL[data.gameState]}
             </span>
           )}
         </div>
