@@ -25,12 +25,12 @@ export interface GlassMatchupCardData {
   isRookie?: boolean;
 }
 
-// Each pill is a small glass pane tinted by its theme color - a light shade
-// for text (the card's glass is mostly clear over the dark page), and
-// --pill-tint for the pane's tint and border (see .pill).
+// Each pill is a small glass pane tinted by its theme color (--pill-tint,
+// see .pill). The pane carries the color; text stays near-white with just a
+// hint of it, since a full light shade over its own tint read too faintly.
 function pillStyle(color: string) {
   return {
-    color: `var(--mantine-color-${color}-2)`,
+    color: `color-mix(in srgb, var(--mantine-color-${color}-1) 30%, #fff)`,
     "--pill-tint": `var(--mantine-color-${color}-4)`,
   } as CSSProperties;
 }
