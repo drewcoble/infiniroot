@@ -50,13 +50,6 @@
   position: relative;
 }
 
-.card:focus-visible {
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.9),
-    0 0 0 5px rgba(96, 165, 250, 0.9),
-    0 6px 20px rgba(0, 0, 0, 0.22);
-}
-
 /* Live game: the pane itself turns green-tinted glass - same border and
    shadow as every other card, no outline or glow. */
 .live {
@@ -340,13 +333,6 @@
   animation: expandIn 200ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
 }
 
-.expanded:focus-visible {
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.9),
-    0 0 0 5px rgba(96, 165, 250, 0.9),
-    0 18px 50px rgba(0, 0, 0, 0.45);
-}
-
 .expanded .pills {
   flex-wrap: wrap;
 }
@@ -404,14 +390,10 @@
   border-radius: 50%;
   color: #f8fafc;
   cursor: pointer;
+  outline: none;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
   border: 1px solid rgba(255, 255, 255, 0.28);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.closeButton:focus-visible {
-  outline: 2px solid rgba(96, 165, 250, 0.95);
-  outline-offset: 2px;
 }
 
 .liveLabel {
@@ -543,4 +525,28 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(248, 250, 252, 0.65);
+}
+
+/* Focus rings only where there's a precise pointer (desktop). On touch,
+   opening a detail card moves focus into it and closing moves it back to
+   the base card - a ring there just reads as a stray blue outline. */
+@media (hover: hover) and (pointer: fine) {
+  .card:focus-visible {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.9),
+      0 0 0 5px rgba(96, 165, 250, 0.9),
+      0 6px 20px rgba(0, 0, 0, 0.22);
+  }
+
+  .expanded:focus-visible {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.9),
+      0 0 0 5px rgba(96, 165, 250, 0.9),
+      0 18px 50px rgba(0, 0, 0, 0.45);
+  }
+
+  .closeButton:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.95);
+    outline-offset: 2px;
+  }
 }
