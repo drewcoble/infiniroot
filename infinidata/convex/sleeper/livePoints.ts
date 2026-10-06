@@ -1,9 +1,12 @@
 import { v, type Infer } from "convex/values";
-import { internalAction, internalMutation, internalQuery } from "../_generated/server";
+import { internalAction, internalMutation, internalQuery, query } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { positionValidator } from "../positions";
+import { sameJson } from "../lib/sameJson";
 import { fetchSleeper, POSITION_SLUGS } from "./client";
 import { parseSleeperStatsRecords, type SleeperStatsRecord } from "./playerPoints";
+import { fetchEspnWeekGames } from "../espn/scoreboard";
+import { liveGameValidator, normalizeNflTeam, remainingFraction, type LiveGame } from "../lib/liveGames";
 
 // A game counts as live from shortly before kickoff until well after it
 // should have ended - nflGames only has kickoff times (estimatedEndAt is
@@ -77,21 +80,35 @@ function sameEntries(a: LiveEntry[], b: LiveEntry[]): boolean {
 // Writes only when the week's entries actually changed - an unchanged poll
 // (between scoring plays, or the tail end of a game window) costs one read
 // and doesn't re-run every Players tab subscribed to this document.
+// `games` omitted (ESPN's fetch failed this poll) keeps whatever game
+// status the document already had rather than wiping it.
 export const upsertLiveWeekPoints = internalMutation({
   args: {
     season: v.string(),
     week: v.string(),
     players: v.array(liveEntryValidator),
+    games: v.optional(v.array(liveGameValidator)),
   },
   handler: async (ctx, args): Promise<{ changed: boolean }> => {
     const existing = await ctx.db
       .query("liveWeekPoints")
       .withIndex("by_season_week", (q) => q.eq("season", args.season).eq("week", args.week))
       .first();
-    if (existing && sameEntries(existing.players, args.players)) {
+    const games = args.games ?? existing?.games;
+    if (
+      existing &&
+      sameEntries(existing.players, args.players) &&
+      sameJson(existing.games ?? null, games ?? null)
+    ) {
       return { changed: false };
     }
-    const doc = { season: args.season, week: args.week, players: args.players, updatedAt: Date.now() };
+    const doc = {
+      season: args.season,
+      week: args.week,
+      players: args.players,
+      ...(games ? { games } : {}),
+      updatedAt: Date.now(),
+    };
     if (existing) {
       await ctx.db.replace(existing._id, doc);
     } else {
@@ -116,9 +133,10 @@ export const pruneLiveWeekPoints = internalMutation({
   },
 });
 
-// The 5-minute cron's entry point (see crons.ts). One Sleeper call per live
-// week - the same stats endpoint the daily playerPoints sync reads, so live
-// and synced numbers agree once the daily run catches up.
+// The 2-minute cron's entry point (see crons.ts). Per live week: one Sleeper
+// call (the same stats endpoint the daily playerPoints sync reads, so live
+// and synced numbers agree once the daily run catches up) plus one ESPN
+// scoreboard call for game clocks - the latter best-effort, see below.
 export const pollLivePointsInternal = internalAction({
   args: {},
   handler: async (ctx): Promise<void> => {
@@ -146,7 +164,77 @@ export const pollLivePointsInternal = internalAction({
         // Stable order so upsertLiveWeekPoints' unchanged check isn't
         // fooled by Sleeper returning the same players in a new order.
         .sort((a, b) => a.fpid - b.fpid);
-      await ctx.runMutation(internal.sleeper.livePoints.upsertLiveWeekPoints, { season, week, players });
+
+      // Game status is a nice-to-have on top of points - an ESPN outage or
+      // shape change logs and keeps the last known status instead of
+      // dropping this poll's points along with it.
+      let games: LiveGame[] | undefined;
+      try {
+        games = await fetchEspnWeekGames(season, week);
+      } catch (error) {
+        console.error("ESPN scoreboard fetch failed; keeping previous game status", error);
+      }
+
+      await ctx.runMutation(internal.sleeper.livePoints.upsertLiveWeekPoints, {
+        season,
+        week,
+        players,
+        ...(games ? { games } : {}),
+      });
     }
+  },
+});
+
+// One week's NFL slate per team - opponent, home/away and kickoff from
+// nflGames (Tank01's schedule), plus live status from the poll's ESPN
+// snapshot when one exists. Powers infinileague's Matchup tab ("@ HOU ·
+// Sun 1:00 PM" / "vs LAR · Q3 8:12" and live projections). Public NFL
+// schedule data, no league involved - same as tank01/scheduleData.ts's
+// listGamesForWeek. `live` is absent until the poll has seen that game
+// (before its window opens, or if ESPN was down) - callers decide pre/post
+// from kickoffAt in that case, since a query can't read the clock.
+// live.remainingFraction is the share of regulation left (see
+// lib/liveGames.ts) - what a pregame projection gets scaled by.
+export const getWeekGames = query({
+  args: { season: v.string(), week: v.string() },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    Array<{
+      team: string;
+      opponent: string;
+      isHome: boolean;
+      kickoffAt: number;
+      live?: LiveGame & { remainingFraction: number };
+    }>
+  > => {
+    const [games, liveWeek] = await Promise.all([
+      ctx.db
+        .query("nflGames")
+        .withIndex("by_season_week", (q) => q.eq("season", args.season).eq("week", args.week))
+        .collect(),
+      ctx.db
+        .query("liveWeekPoints")
+        .withIndex("by_season_week", (q) => q.eq("season", args.season).eq("week", args.week))
+        .first(),
+    ]);
+    const liveByTeam = new Map((liveWeek?.games ?? []).map((game) => [game.team, game]));
+
+    return games.flatMap((game) => {
+      const home = normalizeNflTeam(game.homeTeam);
+      const away = normalizeNflTeam(game.awayTeam);
+      return [
+        { team: home, opponent: away, isHome: true },
+        { team: away, opponent: home, isHome: false },
+      ].map((side) => {
+        const live = liveByTeam.get(side.team);
+        return {
+          ...side,
+          kickoffAt: game.kickoffAt,
+          ...(live ? { live: { ...live, remainingFraction: remainingFraction(live) } } : {}),
+        };
+      });
+    });
   },
 });

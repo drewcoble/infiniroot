@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { positionValidator } from "./positions";
 import { scoringValidator, teScoringValidator } from "./scoring";
 import { injuryAssessmentValidator } from "./jev/validators";
+import { liveGameValidator } from "./lib/liveGames";
 import { draftTypeValidator } from "./draftType";
 import { leagueTypeValidator } from "./leagueType";
 
@@ -968,7 +969,7 @@ export default defineSchema({
   }).index("by_season_week", ["season", "week"]),
 
   // Live in-game fantasy points for one (season, week) - a single wide
-  // document, not a row per player, rewritten whole by the 5-minute poll
+  // document, not a row per player, rewritten whole by the 2-minute poll
   // in convex/sleeper/livePoints.ts while any game is live (one write per
   // poll that changed anything, and one read for the Players tab's board).
   // Display-only: playerPoints/playerSeasonStats (daily sync) stay the
@@ -993,6 +994,12 @@ export default defineSchema({
         passTd: v.number(),
       }),
     ),
+    // Per-team game status from ESPN's scoreboard (see lib/liveGames.ts),
+    // written by the same poll - powers infinileague's Matchup tab live
+    // projections and game clocks. Optional: absent on documents written
+    // before this field existed, or when ESPN's fetch failed on every poll
+    // so far (game status is best-effort, points never wait on it).
+    games: v.optional(v.array(liveGameValidator)),
   }).index("by_season_week", ["season", "week"]),
 
   // The eligibility source of truth for infinifaab's whole Players board on

@@ -116,7 +116,7 @@ crons.interval(
 // game time this is one tiny query per run - no Sleeper call, no write.
 crons.interval(
   'poll live player points',
-  { minutes: 5 },
+  { minutes: 2 },
   internal.sleeper.livePoints.pollLivePointsInternal,
   {},
 )

@@ -418,7 +418,7 @@ export const getWeekPoints = query({
     const scoringConfig = scoringConfigFromSeason(settings);
 
     // Live in-game points (convex/sleeper/livePoints.ts) win when the
-    // 5-minute poll has written a document for this week - fresher than
+    // 2-minute poll has written a document for this week - fresher than
     // playerPoints (daily sync) and one read instead of ~1,800. Falls back
     // to playerPoints otherwise (no game live yet this week, or a past week
     // whose live copy the daily sync has already pruned). Same
