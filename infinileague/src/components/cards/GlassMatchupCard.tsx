@@ -22,6 +22,7 @@ export interface GlassMatchupCardData {
   liveProjectedPoints?: number;
   actualPoints?: number;
   injury?: { status: string; statusShort: string };
+  // Not shown on the base card - reserved for the expanded detail card.
   isRookie?: boolean;
 }
 
@@ -53,7 +54,6 @@ function ariaSummary(data: GlassMatchupCardData): string {
   ];
   if (data.gameState === "live") parts.push("game in progress");
   if (data.injury) parts.push(data.injury.status);
-  if (data.isRookie) parts.push("rookie");
   parts.push(`${formatPoints(data.actualPoints)} points`);
   const proj = data.gameState === "live" ? data.liveProjectedPoints : data.projectedPoints;
   parts.push(`${data.gameState === "live" ? "live projection" : "projected"} ${formatProj(proj)}`);
@@ -87,11 +87,6 @@ export function GlassMatchupCard({ data }: { data: GlassMatchupCardData }) {
             {data.position}
             {data.positionRank > 0 ? data.positionRank : ""}
           </span>
-          {data.isRookie && (
-            <span className={classes.pill} style={pillStyle("grape")} title="Rookie">
-              R
-            </span>
-          )}
           {data.injury && (
             <span
               className={classes.pill}
