@@ -139,7 +139,7 @@ export function ExpandedMatchupCard({
               {data.name}
             </div>
             <div className={classes.gameLine}>
-              <GameStatusGlyph state={data.gameState} />
+              <GameStatusGlyph state={data.gameState} kickoffAt={data.kickoffAt} />
               {data.team} {gameLine(data)}
             </div>
           </div>

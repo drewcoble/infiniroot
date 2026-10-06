@@ -135,7 +135,7 @@ export function GlassMatchupCard({
         <div aria-hidden>
           <div className={classes.name}>{displayName}</div>
           <div className={classes.gameLine}>
-            <GameStatusGlyph state={data.gameState} />
+            <GameStatusGlyph state={data.gameState} kickoffAt={data.kickoffAt} />
             {gameLine(data)}
           </div>
         </div>

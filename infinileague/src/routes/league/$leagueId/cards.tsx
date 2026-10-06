@@ -17,6 +17,16 @@ export const Route = createFileRoute("/league/$leagueId/cards")({
 // here reads league state or is reused by the other tabs until a design is
 // finalized.
 
+// Next local-time occurrence of a weekday + time (0 = Sunday), so each
+// sample's kickoffAt agrees with its hardcoded "Sun 4:25 PM" status text
+// in whatever time zone the preview is opened.
+function nextKickoff(weekday: number, hour: number, minute: number): number {
+  const date = new Date();
+  date.setDate(date.getDate() + ((weekday - date.getDay() + 7) % 7));
+  date.setHours(hour, minute, 0, 0);
+  return date.getTime();
+}
+
 // One row per state the Matchup tab can put a card in: live vs. pregame,
 // final vs. injured, rookie vs. bye, and a filled slot vs. an empty one.
 // The second RB row pairs Bijan Robinson's teammate Brian Robinson Jr. so
@@ -89,6 +99,7 @@ const SAMPLE_ROWS: {
       team: "SF",
       matchup: "@ LAR",
       status: "Sun 4:25 PM",
+      kickoffAt: nextKickoff(0, 16, 25),
       gameState: "pre",
       projectedPoints: 15.2,
       actualPoints: 0,
@@ -123,6 +134,7 @@ const SAMPLE_ROWS: {
       team: "DET",
       matchup: "vs. GB",
       status: "Mon 8:15 PM",
+      kickoffAt: nextKickoff(1, 20, 15),
       gameState: "pre",
       projectedPoints: 17.6,
       actualPoints: 0,
@@ -141,6 +153,7 @@ const SAMPLE_ROWS: {
       team: "ARI",
       matchup: "vs. SEA",
       status: "Sun 4:05 PM",
+      kickoffAt: nextKickoff(0, 16, 5),
       gameState: "pre",
       projectedPoints: 13.8,
       actualPoints: 0,
