@@ -3,6 +3,7 @@ import { Badge, Box, Card, Group, Stack, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { PlayerCard } from "@shared/PlayerCard";
 import type { RosVorRow, TeamRosterRow } from "../types/season";
+import { alignRosterRows } from "../lib/rosterAlignment";
 
 interface TradeRosterMatchupProps {
   teamARows: TeamRosterRow[];
@@ -23,14 +24,6 @@ function slotLabel(slot: TeamRosterRow["slot"]): string {
   if (slot === "BENCH") return "BN";
   if (slot === "SUPERFLEX") return "SFLEX";
   return slot;
-}
-
-// Excludes IR/TAXI (not tradeable pieces, same eligibility buildTradePool
-// uses) but keeps unfilled slots (unlike a plain roster list would) - an
-// empty bench spot on one side still needs a row here so the two teams'
-// slots stay lined up alongside each other index-for-index.
-function alignableRows(rows: TeamRosterRow[]): TeamRosterRow[] {
-  return rows.filter((row) => row.slot !== undefined && row.slot !== "IR" && row.slot !== "TAXI");
 }
 
 function toFallbackRow(row: TeamRosterRow, fpid: number): RosVorRow {
@@ -144,15 +137,9 @@ export function TradeRosterMatchup({
   onToggleA,
   onToggleB,
 }: TradeRosterMatchupProps) {
-  const aRows = alignableRows(teamARows);
-  const bRows = teamBRows ? alignableRows(teamBRows) : undefined;
-  const rowCount = Math.max(aRows.length, bRows?.length ?? 0);
-
   return (
     <>
-      {Array.from({ length: rowCount }, (_, index) => {
-        const aRow = aRows[index];
-        const bRow = bRows?.[index];
+      {alignRosterRows(teamARows, teamBRows).map(({ a: aRow, b: bRow }, index) => {
         const slot = aRow?.slot ?? bRow?.slot;
         return (
           <Group key={index} wrap="nowrap" gap="xs" align="stretch">
@@ -165,7 +152,7 @@ export function TradeRosterMatchup({
             >
               {slotLabel(slot)}
             </Badge>
-            {bRows ? (
+            {teamBRows ? (
               <PlayerCell row={bRow} vorByFpid={vorByFpid} selected={selectedB} onToggle={onToggleB} />
             ) : (
               <Cell>

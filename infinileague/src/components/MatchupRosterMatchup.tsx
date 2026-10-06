@@ -3,6 +3,7 @@ import { Badge, Box, Card, Group, Text } from "@mantine/core";
 import { positionColorOrDefault } from "@shared/positionColors";
 import { PlayerCard } from "@shared/PlayerCard";
 import type { RosVorRow, SlotLabel, TeamRosterRow } from "../types/season";
+import { alignRosterRows } from "../lib/rosterAlignment";
 import {
   formatGameLine,
   isGameInProgress,
@@ -34,13 +35,6 @@ function slotLabel(slot: SlotLabel | undefined): string {
 
 function formatPoints(points: number | undefined): string {
   return points === undefined ? "—" : points.toFixed(2);
-}
-
-// Excludes IR/TAXI (not part of this week's scored lineup either way) but
-// keeps unfilled slots, same as TradeRosterMatchup - an empty bench spot on
-// one side still needs a row so the two teams' slots line up index-for-index.
-function alignableRows(rows: TeamRosterRow[]): TeamRosterRow[] {
-  return rows.filter((row) => row.slot !== undefined && row.slot !== "IR" && row.slot !== "TAXI");
 }
 
 // "HOU · vs. LAR · Sun 1:00 PM" / "HOU · @ IND · Q3 8:12" / "HOU · BYE" -
@@ -122,7 +116,9 @@ function PlayerCell({
   // one - before kickoff and after the final, the pregame projection is
   // the more useful reference.
   const game = row.team ? gamesByTeam?.get(row.team) : undefined;
-  const inProgress = isGameInProgress(game, now);
+  // IR players' teams can be mid-game without them in it - no live
+  // emphasis or live projection for those.
+  const inProgress = row.slot !== "IR" && isGameInProgress(game, now);
   const leftLabel = inProgress ? "Live" : "Proj";
   const leftPoints = inProgress
     ? liveProjection(row.projectedPoints, row.actualPoints, remainingFraction(game, now))
@@ -173,15 +169,9 @@ export function MatchupRosterMatchup({
   gamesByTeam,
   now,
 }: MatchupRosterMatchupProps) {
-  const aRows = alignableRows(teamARows);
-  const bRows = teamBRows ? alignableRows(teamBRows) : undefined;
-  const rowCount = Math.max(aRows.length, bRows?.length ?? 0);
-
   return (
     <>
-      {Array.from({ length: rowCount }, (_, index) => {
-        const aRow = aRows[index];
-        const bRow = bRows?.[index];
+      {alignRosterRows(teamARows, teamBRows).map(({ a: aRow, b: bRow }, index) => {
         const slot = aRow?.slot ?? bRow?.slot;
         return (
           <Group key={index} wrap="nowrap" gap="xs" align="stretch">
@@ -194,7 +184,7 @@ export function MatchupRosterMatchup({
             >
               {slotLabel(slot)}
             </Badge>
-            {bRows ? (
+            {teamBRows ? (
               <PlayerCell row={bRow} teamName={teamBName} gamesByTeam={gamesByTeam} now={now} />
             ) : (
               <Cell>
