@@ -61,10 +61,22 @@
 .logoPanel {
   display: inline-flex;
   align-items: center;
-  padding: 1px 10px;
+  padding: 3px 10px;
   border-radius: 16px;
   text-decoration: none;
   outline: none;
+}
+
+/* The logo PNG is a square with ~29% transparent space above and below the
+   emblem; on mobile the wordmark already tucks up into the space below it
+   (AppLogo's marginTop: -7), which left all the extra room on top. Pulling
+   the image up evens out the panel - emblem + wordmark centered in it.
+   (Mantine's "sm" breakpoint, 48em, is where the stacked mobile logo
+   switches to the side-by-side desktop one, which is already balanced.) */
+@media (max-width: 47.99em) {
+  .logoPanel img {
+    margin-top: -8px;
+  }
 }
 
 /* Pill button (the header's league switcher). */
