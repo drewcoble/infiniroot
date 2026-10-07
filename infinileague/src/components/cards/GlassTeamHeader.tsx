@@ -12,14 +12,21 @@ export interface TeamWeekSummary {
   toPlayCount: number;
 }
 
+// Points for per game played - null before any game has been played.
+function seasonPpg(team: StandingsRow): number | null {
+  const games = team.wins + team.losses + team.ties;
+  return games > 0 ? team.pointsFor / games : null;
+}
+
 // My Team's header in the same glass as the Matchup header and roster cards:
-// team name with a FAAB / waiver-order badge, the season line (rank,
-// record, points for/against), then a week section - which week it is, the
-// starters' live/to-play counts, and the week's score with its projection
-// (the week itself is picked from the page's title row - see WeekPicker). `team` undefined = standings still loading (skeleton);
-// `summary` undefined = the week's roster still loading. Before any starter
-// has kicked off there's no score yet, so the projection takes the score's
-// place, small - same rule as the player cards.
+// team name, the season line (rank, record, points per game), then a week
+// section - which week it is, the starters' live/to-play counts, and the
+// week's score with its projection (the week itself is picked from the
+// page's title row - see WeekPicker). `team` undefined = standings still
+// loading (skeleton); `summary` undefined = the week's roster still
+// loading. Before any starter has kicked off there's no score yet, so the
+// projection takes the score's place, small - same rule as the player
+// cards.
 export function GlassTeamHeader({
   team,
   week,
@@ -34,6 +41,7 @@ export function GlassTeamHeader({
     summary.liveCount === 0 &&
     summary.toPlayCount > 0 &&
     summary.actualPoints === 0;
+  const ppg = team ? seasonPpg(team) : null;
   const allFinal = summary !== undefined && summary.liveCount === 0 && summary.toPlayCount === 0;
 
   return (
@@ -48,23 +56,10 @@ export function GlassTeamHeader({
         </div>
       ) : (
         <div>
-          <div className={classes.teamHeaderTop}>
-            <h3 className={classes.teamHeaderName}>{team.name}</h3>
-            <span
-              className={classes.pill}
-              style={{
-                color: "#f8fafc",
-                ["--pill-tint" as string]: "var(--mantine-color-gray-5)",
-              }}
-            >
-              {team.faabRemaining !== undefined
-                ? `$${team.faabRemaining} FAAB`
-                : `Waiver #${team.waiverPosition ?? "—"}`}
-            </span>
-          </div>
+          <h3 className={classes.teamHeaderName}>{team.name}</h3>
           <div className={classes.teamHeaderSeason}>
-            #{team.rank} · {team.wins}-{team.losses}-{team.ties} · {team.pointsFor.toFixed(1)} PF ·{" "}
-            {team.pointsAgainst.toFixed(1)} PA
+            #{team.rank} · {team.wins}-{team.losses}-{team.ties}
+            {ppg !== null && ` · ${ppg.toFixed(1)} PPG`}
           </div>
         </div>
       )}

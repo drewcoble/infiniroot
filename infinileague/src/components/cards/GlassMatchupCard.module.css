@@ -931,13 +931,6 @@
 
 /* --- My Team header (GlassTeamHeader) ---------------------------------- */
 
-.teamHeaderTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .teamHeaderName {
   margin: 0;
   min-width: 0;
