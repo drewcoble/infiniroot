@@ -40,6 +40,7 @@ export function AppHeader() {
   return (
     <SharedAppHeader
       wordmark="league"
+      glass
       selectedLeagueLabel={selectedLeague?.name}
       leagueMenuItems={
         <>

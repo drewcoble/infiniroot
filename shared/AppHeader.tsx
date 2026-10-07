@@ -10,9 +10,17 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, LogOut, Moon, MoreVertical, Sun } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  Moon,
+  MoreHorizontal,
+  MoreVertical,
+  Sun,
+} from "lucide-react";
 import { MOBILE_HEADER_HEIGHT } from "./constants";
 import { AppLogo } from "./AppLogo";
+import { glassClasses, glassMenuProps } from "./glassClasses";
 
 interface AppHeaderProps {
   wordmark: "draft" | "faab" | "league";
@@ -31,7 +39,18 @@ interface AppHeaderProps {
   extraOverflowItems?: ReactNode;
   // infinidraft narrows this to make room for modeSwitchSlot on mobile.
   leagueButtonWidth?: { base: number; sm: number };
+  // Glass chrome (see glass.module.css): on mobile the header floats as a
+  // glass pill inset from the screen edges - the bottom nav's counterpart -
+  // with glass controls and glass dropdown menus. infinileague opts in;
+  // other apps keep the frosted full-width bar.
+  glass?: boolean;
 }
+
+// Header height on mobile when `glass` - plus its top offset, it takes up
+// the same MOBILE_HEADER_HEIGHT footprint the flat bar does, so page
+// padding (PageContainer) and anything docked below needn't change.
+const GLASS_HEADER_TOP = 6;
+const GLASS_HEADER_HEIGHT = MOBILE_HEADER_HEIGHT - GLASS_HEADER_TOP;
 
 // Shared top bar for infinidraft/infinifaab/infinileague - logo, league
 // picker (dropdown content supplied by the caller, since each app fetches
@@ -53,44 +72,57 @@ export function AppHeader({
   modeSwitchSlot,
   extraOverflowItems,
   leagueButtonWidth = { base: 150, sm: 220 },
+  glass = false,
 }: AppHeaderProps) {
   const navigate = useNavigate();
   const { signOut } = useAuthActions();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const isDark = colorScheme === "dark";
+  const menuProps = glass ? glassMenuProps : { withArrow: true };
 
   return (
     <Box
       pos={{ base: "fixed", sm: "static" }}
-      top={0}
-      left={0}
-      right={0}
-      px={{ base: "md", sm: 0 }}
-      py={{ base: 6, sm: "xs" }}
-      h={{ base: MOBILE_HEADER_HEIGHT, sm: "auto" }}
-      style={{
-        // Above modals that must never be covered by the header (e.g.
-        // infinidraft's Keepers route non-dismissible upgrade Modal, zIndex
-        // 190) but below BottomNav's 200 - AppHeader (top-fixed) and
-        // BottomNav (bottom-fixed) never occupy the same pixels on any real
-        // viewport, so their relative order doesn't otherwise matter, and
-        // keeping AppHeader under BottomNav lets a bottom-sheet Drawer sit
-        // in between the two instead of needing to either outrank
-        // BottomNav too or physically avoid ever reaching this bar.
-        zIndex: 195,
-        display: "flex",
-        alignItems: "center",
-        overflow: "hidden",
-        // Translucent + blurred rather than a flat cutout - same frosted-
-        // glass treatment as BottomNav.tsx, so content scrolling underneath
-        // the fixed mobile header still shows through softly instead of
-        // vanishing behind a hard edge.
-        background:
-          "color-mix(in srgb, var(--mantine-color-body) 75%, transparent)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        borderBottom: "1px solid var(--mantine-color-default-border)",
-      }}
+      {...(glass
+        ? {
+            top: {
+              base: `calc(${GLASS_HEADER_TOP}px + env(safe-area-inset-top))`,
+              sm: 0,
+            },
+            left: { base: 12, sm: 0 },
+            right: { base: 12, sm: 0 },
+            mt: { base: 0, sm: "xs" },
+            px: { base: 8, sm: 10 },
+            h: { base: GLASS_HEADER_HEIGHT, sm: 56 },
+            className: glassClasses.bar,
+            style: {
+              zIndex: 195,
+              display: "flex",
+              alignItems: "center",
+              maxWidth: 480,
+              marginInline: "auto",
+              borderRadius: 999,
+            },
+          }
+        : {
+            top: 0,
+            left: 0,
+            right: 0,
+            px: { base: "md", sm: 0 },
+            py: { base: 6, sm: "xs" },
+            h: { base: MOBILE_HEADER_HEIGHT, sm: "auto" },
+            style: {
+              zIndex: 195,
+              display: "flex",
+              alignItems: "center",
+              overflow: "hidden",
+              background:
+                "color-mix(in srgb, var(--mantine-color-body) 75%, transparent)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              borderBottom: "1px solid var(--mantine-color-default-border)",
+            },
+          })}
     >
       <Group
         justify="space-between"
@@ -105,30 +137,58 @@ export function AppHeader({
         <Group gap="xs" wrap="nowrap" align="center" style={{ flexShrink: 0 }}>
           {!hideLeagueControls && (
             <>
-              <Menu position="bottom-end" withArrow offset={8} width={260}>
+              <Menu position="bottom-end" offset={8} width={260} {...menuProps}>
                 <Menu.Target>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    w={leagueButtonWidth}
-                    justify="space-between"
-                    rightSection={<ChevronDown size={16} />}
-                  >
-                    <Text truncate span>
-                      {selectedLeagueLabel ?? "Select league"}
-                    </Text>
-                  </Button>
+                  {glass ? (
+                    <Box
+                      component="button"
+                      type="button"
+                      className={glassClasses.button}
+                      w={leagueButtonWidth}
+                    >
+                      <span className={glassClasses.buttonLabel}>
+                        {selectedLeagueLabel ?? "Select league"}
+                      </span>
+                      <ChevronDown size={16} style={{ flexShrink: 0 }} />
+                    </Box>
+                  ) : (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      w={leagueButtonWidth}
+                      justify="space-between"
+                      rightSection={<ChevronDown size={16} />}
+                    >
+                      <Text truncate span>
+                        {selectedLeagueLabel ?? "Select league"}
+                      </Text>
+                    </Button>
+                  )}
                 </Menu.Target>
                 <Menu.Dropdown>{leagueMenuItems}</Menu.Dropdown>
               </Menu>
               {modeSwitchSlot}
             </>
           )}
-          <Menu position="bottom-end" withArrow offset={8}>
+          <Menu position="bottom-end" offset={8} {...menuProps}>
             <Menu.Target>
-              <ActionIcon variant="default" size={40} aria-label="More options">
-                <MoreVertical size={18} />
-              </ActionIcon>
+              {glass ? (
+                <button
+                  type="button"
+                  className={glassClasses.iconButton}
+                  aria-label="More options"
+                >
+                  <MoreHorizontal size={18} strokeWidth={2.5} />
+                </button>
+              ) : (
+                <ActionIcon
+                  variant="default"
+                  size={40}
+                  aria-label="More options"
+                >
+                  <MoreVertical size={18} />
+                </ActionIcon>
+              )}
             </Menu.Target>
             <Menu.Dropdown>
               {extraOverflowItems}

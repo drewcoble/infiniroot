@@ -1,0 +1,147 @@
+/* Glass chrome for the app shell - the floating header and bottom nav, their
+   buttons, and their dropdown menus - matching infinileague's glass cards
+   (infinileague/src/components/cards/GlassMatchupCard.module.css). Opt-in
+   via AppHeader's / BottomNav's `glass` prop; apps that don't pass it keep
+   the previous frosted look. */
+
+/* Floating bar: the cards' white-tint glass over a translucent page-color
+   base - the base keeps icons and labels legible over busy cards
+   scrolling underneath, which bare glass wouldn't. */
+.bar {
+  position: relative;
+  color: #f8fafc;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%),
+    color-mix(in srgb, var(--mantine-color-body) 55%, transparent);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+/* Specular sheen across the top, same as the cards. */
+.bar::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 45%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
+.bar > * {
+  position: relative;
+}
+
+/* Pill button (the header's league switcher). */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px 0 14px;
+  border-radius: 999px;
+  color: #f8fafc;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.buttonLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Round icon button (the header's overflow menu). */
+.iconButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  color: #f8fafc;
+  cursor: pointer;
+  outline: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:focus-visible,
+  .iconButton:focus-visible,
+  .navItem:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.95);
+    outline-offset: 2px;
+  }
+}
+
+/* Bottom nav tab: every tab gets the same inset so the active one's raised
+   glass pill (below) sits evenly inside the bar. */
+.navItem {
+  margin: 4px 2px;
+  padding: 7px 0;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  outline: none;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.navItemActive {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navItem {
+    transition: none;
+  }
+}
+
+/* Dropdown menus (league picker, overflow, the nav's More) - a glass panel
+   like the long-press popovers, a bit more opaque since it sits over
+   everything. */
+.menu {
+  padding: 6px;
+  border-radius: 16px;
+  color: #f8fafc;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%),
+    color-mix(in srgb, var(--mantine-color-body) 78%, transparent);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.menuItem {
+  border-radius: 10px;
+}
+
+.menuItem[data-hovered] {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.menuDivider {
+  border-color: rgba(255, 255, 255, 0.12);
+}

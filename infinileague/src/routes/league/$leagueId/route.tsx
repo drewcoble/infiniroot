@@ -206,6 +206,7 @@ function LeagueLayout() {
         <Outlet />
       </Stack>
       <BottomNav
+        glass
         items={tabs.slice(0, BOTTOM_NAV_DIRECT_COUNT)}
         more={{ label: "More", items: tabs.slice(BOTTOM_NAV_DIRECT_COUNT) }}
         activeValue={activeValue}
