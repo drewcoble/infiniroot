@@ -1,6 +1,6 @@
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexQueryClient } from "@convex-dev/react-query";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider, mergeThemeOverrides } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/charts/styles.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,6 +13,26 @@ import ReactDOM from "react-dom/client";
 // only, bundled rather than loaded from Google Fonts. See index.css's
 // --font-numeric.
 import "@fontsource/barlow/latin-600.css";
+// TEMPORARY - text-font candidates for the Cards tab's switcher (see
+// lib/appFont.ts). A face's files only download once it's in use.
+import "@fontsource/barlow/latin-400.css";
+import "@fontsource/barlow/latin-500.css";
+import "@fontsource/barlow/latin-700.css";
+import "@fontsource/public-sans/latin-400.css";
+import "@fontsource/public-sans/latin-500.css";
+import "@fontsource/public-sans/latin-600.css";
+import "@fontsource/public-sans/latin-700.css";
+import "@fontsource/source-sans-3/latin-400.css";
+import "@fontsource/source-sans-3/latin-500.css";
+import "@fontsource/source-sans-3/latin-600.css";
+import "@fontsource/source-sans-3/latin-700.css";
+import "@fontsource/red-hat-text/latin-400.css";
+import "@fontsource/red-hat-text/latin-500.css";
+import "@fontsource/red-hat-text/latin-600.css";
+import "@fontsource/red-hat-text/latin-700.css";
+import "@fontsource/red-hat-display/latin-600.css";
+import "@fontsource/red-hat-display/latin-700.css";
+import { applyAppFont, getAppFont } from "./lib/appFont";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import { cssVariablesResolver, theme } from "@shared/theme";
@@ -22,6 +42,20 @@ import { installStaleChunkReload } from "@shared/errors";
 // see shared/errors.ts's own comment. Installed before the router even
 // renders so most cases reload before React ever shows an error.
 installStaleChunkReload();
+
+// TEMPORARY - restore the text font picked on the Cards tab.
+applyAppFont(getAppFont());
+
+// infinileague's own text fonts, overriding the shared theme's (which
+// infinidraft/infinifaab keep) - read from index.css's --app-font-*
+// variables so they can change at runtime.
+const leagueTheme = mergeThemeOverrides(theme, {
+  fontFamily: "var(--app-font-body)",
+  headings: {
+    fontFamily: "var(--app-font-heading)",
+    fontWeight: "var(--app-heading-weight)",
+  },
+});
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
 
@@ -78,7 +112,7 @@ ReactDOM.createRoot(rootElement).render(
     <ConvexAuthProvider client={convex} shouldHandleCode={false}>
       <QueryClientProvider client={queryClient}>
         <MantineProvider
-          theme={theme}
+          theme={leagueTheme}
           defaultColorScheme="dark"
           cssVariablesResolver={cssVariablesResolver}
         >
