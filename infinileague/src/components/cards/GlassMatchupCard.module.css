@@ -816,6 +816,15 @@
   margin-top: 0;
 }
 
+.wideProj {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .wideMeter {
   grid-area: meter;
   min-width: 0;

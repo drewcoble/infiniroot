@@ -2,6 +2,7 @@ import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault } from "@shared/positionColors";
 import {
   ariaSummary,
+  formatProj,
   gameLine,
   pillStyle,
   positionBadge,
@@ -83,6 +84,12 @@ export function GlassRosterCard({
           <div className={classes.statsRow}>
             <PointsHeadline data={data} />
           </div>
+          {/* Start/sit is what this screen is for, so the projection is
+              spelled out as a number here, not just the meter's tick.
+              Before kickoff the headline already is the projection. */}
+          {(data.gameState === "live" || data.gameState === "final") && (
+            <div className={classes.wideProj}>Proj {formatProj(data.projectedPoints)}</div>
+          )}
         </div>
 
         {!isBye && (
