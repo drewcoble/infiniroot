@@ -40,13 +40,13 @@ export function StandingsList({
           leftLabel={row.rank}
           stats={
             <>
-              <Text size="sm" fw={500}>
+              <Text size="sm" className="num">
                 {row.wins}-{row.losses}-{row.ties}
               </Text>
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="dimmed" className="num">
                 {row.pointsFor.toFixed(1)} PF / {row.pointsAgainst.toFixed(1)} PA
               </Text>
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="dimmed" className="num">
                 {row.faabRemaining !== undefined
                   ? `$${row.faabRemaining} FAAB`
                   : `Waiver #${row.waiverPosition ?? "—"}`}

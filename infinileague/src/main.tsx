@@ -9,6 +9,10 @@ import { Analytics } from "@vercel/analytics/react";
 import { ConvexReactClient } from "convex/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
+// Fjalla One for numbers (points, standings, FAAB) - Latin subset only,
+// bundled rather than loaded from Google Fonts. See index.css's
+// --font-numeric.
+import "@fontsource/fjalla-one/latin-400.css";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import { cssVariablesResolver, theme } from "@shared/theme";

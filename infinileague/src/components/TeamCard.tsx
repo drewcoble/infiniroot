@@ -73,7 +73,7 @@ export function TeamCard({
       }}
     >
       <Group wrap="nowrap" gap="sm">
-        <Text size="sm" fw={700} c="dimmed" w={28} ta="right">
+        <Text size="sm" c="dimmed" w={28} ta="right" className="num">
           {leftLabel}
         </Text>
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>

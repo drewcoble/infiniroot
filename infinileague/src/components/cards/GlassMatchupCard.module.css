@@ -229,19 +229,21 @@
 
 .points {
   font-size: 15px;
-  font-weight: 750;
   line-height: 1.2;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 /* Pregame projection in a card's headline slot - small, since nothing has
    been scored yet. */
 .projSmall {
   font-size: 12px;
-  font-weight: 600;
   color: rgba(248, 250, 252, 0.68);
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 .pointsPending {
@@ -475,10 +477,11 @@
 
 .expandedPoints {
   font-size: 20px;
-  font-weight: 750;
   line-height: 1.2;
   letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 .meterLarge {
@@ -500,9 +503,10 @@
   flex-wrap: wrap;
   gap: 4px 14px;
   font-size: 12px;
-  font-weight: 600;
   color: rgba(248, 250, 252, 0.82);
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 .legendItem {
@@ -576,12 +580,13 @@
 
 .statValue {
   font-size: 15px;
-  font-weight: 700;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 .statLabel {
@@ -666,10 +671,11 @@
 .headerTotal {
   margin-top: 2px;
   font-size: 30px;
-  font-weight: 750;
   line-height: 1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 .headerProj {
@@ -678,9 +684,10 @@
   align-items: center;
   gap: 2px 10px;
   font-size: 12px;
-  font-weight: 600;
   color: rgba(248, 250, 252, 0.68);
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 .headerTeamRight .headerProj {
@@ -724,8 +731,9 @@
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 /* Two glass segments with a 2px gap between them - each tinted by who's
@@ -841,10 +849,11 @@
   grid-area: proj;
   justify-self: end;
   font-size: 12px;
-  font-weight: 600;
   color: rgba(248, 250, 252, 0.68);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 .wideMeter {
@@ -968,19 +977,21 @@
   gap: 8px;
   min-width: 0;
   font-size: 13px;
-  font-weight: 600;
   color: rgba(248, 250, 252, 0.68);
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 .teamHeaderTotal {
   grid-area: total;
   justify-self: end;
   font-size: 20px;
-  font-weight: 750;
   line-height: 1.2;
   letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: 400;
 }
 
 .teamHeaderProj {

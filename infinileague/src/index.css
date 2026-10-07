@@ -8,3 +8,17 @@
     font-size: 16px !important;
   }
 }
+
+/* Numbers (points, scores, standings, FAAB) are set in Fjalla One - a
+   condensed display face that keeps stat-heavy rows compact. It ships in
+   one weight only, so anything using it drops to 400 rather than getting
+   a synthesized (smudgy) bold. `.num` is for plain elements; the glass
+   cards' stylesheet uses the variable directly. */
+:root {
+  --font-numeric: "Fjalla One", var(--mantine-font-family);
+}
+
+.num {
+  font-family: var(--font-numeric);
+  font-weight: 400;
+}

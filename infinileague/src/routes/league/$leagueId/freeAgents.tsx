@@ -109,11 +109,11 @@ function FreeAgentsPage() {
               <Stack gap={2}>
                 {showBidLine && (
                   <Group gap={8} wrap="nowrap">
-                    <Text size="sm" fw={700}>
+                    <Text size="sm" className="num">
                       {`$${row.suggestedBid ?? row.marketValue}`}
                     </Text>
                     <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
-                      {`Market $${row.marketValue}`}
+                      <span className="num">{`Market $${row.marketValue}`}</span>
                       {row.rationale ? ` · ${row.rationale}` : ""}
                     </Text>
                   </Group>
