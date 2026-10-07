@@ -127,11 +127,13 @@
 }
 
 /* Bottom nav tab: every tab gets the same inset so the active one's raised
-   glass pill (below) sits evenly inside the bar. */
+   glass pill (below) sits evenly inside the bar - 4px from every edge
+   (the bar adds 4px of side padding), and fully rounded so its curve runs
+   concentric with the bar's own pill ends. */
 .navItem {
-  margin: 4px 2px;
+  margin: 4px 0;
   padding: 7px 0;
-  border-radius: 18px;
+  border-radius: 999px;
   border: 1px solid transparent;
   outline: none;
   transition:
