@@ -19,8 +19,9 @@ import classes from "./GlassMatchupCard.module.css";
 // GlassMatchupCard, laid out for a full row on mobile: the roster slot chip
 // sits outside the card on the left (like the Matchup tab's slot chips
 // between columns), and inside it the full name with position/injury/game
-// beneath, the status icon and headline points stacked on the right, and
-// the meter running the width underneath. Full names fit here, so no
+// beneath, the status icon and headline points on the name's row with the
+// projection on the game line's row, and the meter running the width
+// underneath. Full names fit here, so no
 // shortening.
 export function GlassRosterCard({
   data,
@@ -54,43 +55,43 @@ export function GlassRosterCard({
           .filter(Boolean)
           .join(" ")}
       >
-        <div className={classes.wideInfo} aria-hidden>
-          <div className={classes.name}>{data.name}</div>
-          <div className={classes.wideDetail}>
-            <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
-              {positionBadge(data)}
-            </span>
-            {data.injury && (
-              <span
-                className={classes.pill}
-                style={pillStyle(injuryColor(data.injury.status))}
-                title={data.injury.status}
-              >
-                {data.injury.statusShort}
-              </span>
-            )}
-            <span className={`${classes.gameLine} ${classes.wideGameLine}`}>
-              <span className={classes.gameLineText}>{gameLine(data)}</span>
-            </span>
-          </div>
+        {/* Two shared rows so each side lines up with the other: name |
+            status icon + points, then position/injury/game | projection. */}
+        <div className={`${classes.name} ${classes.wideName}`} aria-hidden>
+          {data.name}
         </div>
-
-        <div className={classes.wideScore} aria-hidden>
-          {/* Reserved even when empty (final/bye) so the points line up
-              down the list whatever each row's status. */}
-          <div className={classes.wideGlyph}>
-            <GameStatusGlyph state={data.gameState} />
-          </div>
+        <div className={classes.widePoints} aria-hidden>
+          <GameStatusGlyph state={data.gameState} />
           <div className={classes.statsRow}>
             <PointsHeadline data={data} />
           </div>
-          {/* Start/sit is what this screen is for, so the projection is
-              spelled out as a number here, not just the meter's tick.
-              Before kickoff the headline already is the projection. */}
-          {(data.gameState === "live" || data.gameState === "final") && (
-            <div className={classes.wideProj}>Proj {formatProj(data.projectedPoints)}</div>
-          )}
         </div>
+
+        <div className={classes.wideDetail} aria-hidden>
+          <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
+            {positionBadge(data)}
+          </span>
+          {data.injury && (
+            <span
+              className={classes.pill}
+              style={pillStyle(injuryColor(data.injury.status))}
+              title={data.injury.status}
+            >
+              {data.injury.statusShort}
+            </span>
+          )}
+          <span className={`${classes.gameLine} ${classes.wideGameLine}`}>
+            <span className={classes.gameLineText}>{gameLine(data)}</span>
+          </span>
+        </div>
+        {/* Start/sit is what this screen is for, so the projection is
+            spelled out as a number here, not just the meter's tick. Before
+            kickoff the headline already is the projection. */}
+        {(data.gameState === "live" || data.gameState === "final") && (
+          <div className={classes.wideProj} aria-hidden>
+            Proj {formatProj(data.projectedPoints)}
+          </div>
+        )}
 
         {!isBye && (
           <div className={classes.wideMeter}>

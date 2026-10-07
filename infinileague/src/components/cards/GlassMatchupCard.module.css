@@ -754,26 +754,51 @@
   min-width: 0;
 }
 
+/* Three rows shared by both columns, so the right side lines up with the
+   left: name | status icon + points, detail | projection, then the meter
+   across the full width. Each row centers its two sides on each other. */
 .wide {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    "info score"
+    "name points"
+    "detail proj"
     "meter meter";
   align-items: center;
   column-gap: 12px;
-  row-gap: 6px;
+  row-gap: 4px;
 }
 
+/* Empty roster slot - just the "Empty" label, centered. */
 .wideInfo {
-  grid-area: info;
+  grid-area: name;
   min-width: 0;
+}
+
+.wideName {
+  grid-area: name;
+  min-width: 0;
+}
+
+.widePoints {
+  grid-area: points;
+  justify-self: end;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
+}
+
+.widePoints .statusSlot {
+  width: auto;
+  height: auto;
+}
+
+.widePoints .statsRow {
+  margin-top: 0;
 }
 
 .wideDetail {
+  grid-area: detail;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -788,36 +813,9 @@
   margin-left: 4px;
 }
 
-.wideScore {
-  grid-area: score;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: space-between;
-}
-
-/* Icon tucked into the card's top-right corner (flush with the padding
-   edge, the same inset the name has from the top) rather than centered in
-   its 20px box, which left it floating in from the corner. */
-.wideGlyph {
-  height: 20px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: flex-start;
-}
-
-.wideGlyph .statusSlot {
-  width: auto;
-  height: auto;
-}
-
-.wideScore .statsRow {
-  margin-top: 0;
-}
-
 .wideProj {
-  margin-top: 3px;
+  grid-area: proj;
+  justify-self: end;
   font-size: 12px;
   font-weight: 600;
   color: rgba(248, 250, 252, 0.68);
@@ -831,7 +829,7 @@
 }
 
 .wideMeter .meter {
-  margin: 0 0 2px;
+  margin: 6px 0 2px;
 }
 
 /* Same height as a filled roster card, so an empty slot reads as the
