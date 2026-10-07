@@ -16,9 +16,11 @@
    cards' stylesheet uses the variable directly. */
 :root {
   --font-numeric: "Fjalla One", var(--mantine-font-family);
+  --font-numeric-weight: 400;
 }
 
 .num {
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
+  font-variant-numeric: tabular-nums;
 }

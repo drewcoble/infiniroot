@@ -19,7 +19,7 @@ export interface TeamWeekSummary {
 const RANK_PILL_STYLE = {
   color: "color-mix(in srgb, #8b4513 15%, #fff)",
   fontFamily: "var(--font-numeric)",
-  fontWeight: 400,
+  fontWeight: "var(--font-numeric-weight)",
   "--pill-tint": "#8b4513",
 } as CSSProperties;
 

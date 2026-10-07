@@ -233,7 +233,7 @@
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 /* Pregame projection in a card's headline slot - small, since nothing has
@@ -243,7 +243,7 @@
   color: rgba(248, 250, 252, 0.68);
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 .pointsPending {
@@ -481,7 +481,7 @@
   letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 .meterLarge {
@@ -506,7 +506,7 @@
   color: rgba(248, 250, 252, 0.82);
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 .legendItem {
@@ -586,7 +586,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 .statLabel {
@@ -675,7 +675,7 @@
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 .headerProj {
@@ -687,7 +687,7 @@
   color: rgba(248, 250, 252, 0.68);
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 .headerTeamRight .headerProj {
@@ -733,7 +733,7 @@
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 /* Two glass segments with a 2px gap between them - each tinted by who's
@@ -853,7 +853,7 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 .wideMeter {
@@ -980,7 +980,7 @@
   color: rgba(248, 250, 252, 0.68);
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 .teamHeaderTotal {
@@ -991,7 +991,7 @@
   letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-weight: 400;
+  font-weight: var(--font-numeric-weight);
 }
 
 .teamHeaderProj {
