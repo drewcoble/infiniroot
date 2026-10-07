@@ -18,22 +18,20 @@ function seasonPpg(team: StandingsRow): number | null {
   return games > 0 ? team.pointsFor / games : null;
 }
 
-// My Team's header in the same glass as the Matchup header and roster cards:
-// team name, the season line (rank, record, points per game), then a week
-// section - which week it is, the starters' live/to-play counts, and the
-// week's score with its projection (the week itself is picked from the
-// page's title row - see WeekPicker). `team` undefined = standings still
-// loading (skeleton); `summary` undefined = the week's roster still
-// loading. Before any starter has kicked off there's no score yet, so the
-// projection takes the score's place, small - same rule as the player
-// cards.
+// My Team's header in the same glass as the Matchup header and roster
+// cards, on two shared rows like the full-width player card: team name |
+// the week's score, then the season line (rank, record, points per game) |
+// the starters' live/to-play counts and the week's projection. The week
+// itself is picked from the page's title row (see WeekPicker). `team`
+// undefined = standings still loading; `summary` undefined = the week's
+// roster still loading (shimmer placeholders either way). Before any
+// starter has kicked off there's no score yet - that slot stays empty and
+// the projection sits on its usual row, same as the player cards.
 export function GlassTeamHeader({
   team,
-  week,
   summary,
 }: {
   team: StandingsRow | undefined;
-  week: number | null;
   summary: TeamWeekSummary | undefined;
 }) {
   const notStarted =
@@ -42,40 +40,52 @@ export function GlassTeamHeader({
     summary.toPlayCount > 0 &&
     summary.actualPoints === 0;
   const ppg = team ? seasonPpg(team) : null;
-  const allFinal = summary !== undefined && summary.liveCount === 0 && summary.toPlayCount === 0;
 
   return (
-    <div className={`${classes.card} ${classes.header}`} aria-busy={team === undefined}>
+    <div
+      className={`${classes.card} ${classes.header} ${classes.teamHeader}`}
+      aria-busy={team === undefined || summary === undefined}
+    >
       {team === undefined ? (
-        <div aria-hidden>
-          <span className={classes.skeletonBar} style={{ width: "55%", height: 18 }} />
+        <>
           <span
-            className={classes.skeletonBar}
-            style={{ width: "75%", height: 12, marginTop: 8 }}
+            className={`${classes.skeletonBar} ${classes.teamHeaderName}`}
+            style={{ width: "55%", height: 18 }}
           />
-        </div>
+          <span
+            className={`${classes.skeletonBar} ${classes.teamHeaderSeason}`}
+            style={{ width: "45%", height: 12 }}
+          />
+        </>
       ) : (
-        <div>
+        <>
           <h3 className={classes.teamHeaderName}>{team.name}</h3>
           <div className={classes.teamHeaderSeason}>
             #{team.rank} · {team.wins}-{team.losses}-{team.ties}
             {ppg !== null && ` · ${ppg.toFixed(1)} PPG`}
           </div>
-        </div>
+        </>
       )}
 
-      <div className={classes.teamHeaderDivider} aria-hidden />
-
-      <div className={classes.teamHeaderWeek}>
-        <span className={classes.teamHeaderWeekLabel}>{week !== null ? `Week ${week}` : ""}</span>
-        {summary && (
+      {summary === undefined ? (
+        <>
+          <span
+            className={`${classes.skeletonBar} ${classes.teamHeaderTotal}`}
+            style={{ width: 96, height: 24 }}
+          />
+          <span
+            className={`${classes.skeletonBar} ${classes.teamHeaderProj}`}
+            style={{ width: 72, height: 12 }}
+          />
+        </>
+      ) : (
+        <>
+          <span className={classes.teamHeaderTotal}>
+            {notStarted ? "" : summary.actualPoints.toFixed(2)}
+          </span>
           <div
-            className={classes.headerProj}
-            aria-label={
-              allFinal
-                ? "All games final"
-                : `${summary.liveCount} live, ${summary.toPlayCount} to play`
-            }
+            className={`${classes.headerProj} ${classes.teamHeaderProj}`}
+            aria-label={`${summary.liveCount} live, ${summary.toPlayCount} to play, projected ${summary.projectedPoints.toFixed(1)}`}
           >
             {summary.liveCount > 0 && (
               <span className={classes.headerCount}>
@@ -89,23 +99,9 @@ export function GlassTeamHeader({
                 {summary.toPlayCount}
               </span>
             )}
-            {allFinal && <span>Final</span>}
+            <span>Proj {summary.projectedPoints.toFixed(1)}</span>
           </div>
-        )}
-      </div>
-
-      {summary === undefined ? (
-        <div className={classes.teamHeaderScore} aria-hidden>
-          <span className={classes.skeletonBar} style={{ width: 110, height: 28 }} />
-          <span className={classes.skeletonBar} style={{ width: 72, height: 12 }} />
-        </div>
-      ) : (
-        <div className={classes.teamHeaderScore}>
-          <span className={classes.headerTotal}>
-            {notStarted ? "" : summary.actualPoints.toFixed(2)}
-          </span>
-          <span className={classes.headerProj}>Proj {summary.projectedPoints.toFixed(1)}</span>
-        </div>
+        </>
       )}
     </div>
   );

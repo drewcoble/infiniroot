@@ -192,7 +192,7 @@ function TeamPage() {
         )}
       </Group>
 
-      <GlassTeamHeader team={team} week={week !== null ? Number(week) : null} summary={summary} />
+      <GlassTeamHeader team={team} summary={summary} />
 
       {roster !== undefined && <LineupSuggestionsCard rows={roster} />}
 

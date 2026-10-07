@@ -931,7 +931,21 @@
 
 /* --- My Team header (GlassTeamHeader) ---------------------------------- */
 
+/* Two shared rows (name | score, season | projection), each side centered
+   on the other - the full-width player card's layout. */
+.teamHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name total"
+    "season proj";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+}
+
 .teamHeaderName {
+  grid-area: name;
   margin: 0;
   min-width: 0;
   font-size: 20px;
@@ -942,43 +956,26 @@
 }
 
 .teamHeaderSeason {
-  margin-top: 4px;
+  grid-area: season;
+  min-width: 0;
   font-size: 13px;
   font-weight: 600;
   color: rgba(248, 250, 252, 0.68);
   font-variant-numeric: tabular-nums;
 }
 
-.teamHeaderDivider {
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.18) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
+.teamHeaderTotal {
+  grid-area: total;
+  justify-self: end;
+  font-size: 26px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
-.teamHeaderWeek {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-/* Score left, projection right, sharing a baseline. */
-.teamHeaderScore {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 30px;
-}
-
-.teamHeaderWeekLabel {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.6);
+.teamHeaderProj {
+  grid-area: proj;
+  justify-self: end;
+  justify-content: flex-end;
 }
