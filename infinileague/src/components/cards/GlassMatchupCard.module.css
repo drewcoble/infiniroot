@@ -255,11 +255,11 @@
   color: rgba(248, 250, 252, 0.6);
 }
 
-/* Bullet meter - see PointsMeter. Fill and tick are the same light gray
-   as the win bar's toss-up tint (#9ca3af); track and ghost are faint white
-   (the card's color already belongs to the position pill and the live
-   tint). The tick is a taller solid mark so it reads even where the fill
-   passes over it. */
+/* Bullet meter - see PointsMeter. The fill is the same light gray as the
+   win bar's toss-up tint (#9ca3af), the tick a shade lighter (#d1d5db) so
+   it stands out where the fill passes over it; track and ghost are faint
+   white (the card's color already belongs to the position pill and the
+   live tint). The tick is also taller than the bar, for the same reason. */
 .meter {
   position: relative;
   height: 5px;
@@ -325,7 +325,7 @@
   width: 2px;
   margin-left: -1px;
   border-radius: 1px;
-  background: #9ca3af;
+  background: #d1d5db;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
@@ -532,7 +532,7 @@
   width: 3px;
   height: 12px;
   border-radius: 1px;
-  background: #9ca3af;
+  background: #d1d5db;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
