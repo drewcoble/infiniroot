@@ -235,6 +235,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Pregame projection in a card's headline slot - small, since nothing has
+   been scored yet. */
+.projSmall {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+}
+
 .pointsPending {
   color: rgba(248, 250, 252, 0.6);
 }
@@ -256,6 +265,14 @@
   margin: 4px 0 3px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
+}
+
+/* On the half-width Matchup card the meter is the card's last row - pinned
+   to the bottom so it lines up with the card beside it when the two stretch
+   to one height (an upcoming card's small "Proj" line is shorter than a
+   live card's big score). */
+.card > .meter {
+  margin-top: auto;
 }
 
 .meterFill,

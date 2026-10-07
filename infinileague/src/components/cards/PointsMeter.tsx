@@ -66,21 +66,14 @@ export function PointsMeter({
   );
 }
 
-// The card's headline number. Before kickoff the actual score is a
-// meaningless 0, so it shows the projection instead (dimmed and labeled);
-// once the game starts it's the actual score, and the projection lives on
-// the meter's tick.
+// The card's headline number: the actual score, large, once the game has
+// started (the projection lives on the meter's tick). Before kickoff there's
+// no score yet, so it's just the projection, small - big text is saved for
+// points actually scored.
 export function PointsHeadline({ data }: { data: GlassMatchupCardData }) {
   if (data.gameState === "bye") return <span className={classes.points}>—</span>;
   if (data.gameState === "pre") {
-    return (
-      <>
-        <span className={`${classes.points} ${classes.pointsPending}`}>
-          {formatProj(data.projectedPoints)}
-        </span>
-        <span className={classes.pointsUnit}>proj</span>
-      </>
-    );
+    return <span className={classes.projSmall}>Proj {formatProj(data.projectedPoints)}</span>;
   }
   return <span className={classes.points}>{formatPoints(data.actualPoints)}</span>;
 }
