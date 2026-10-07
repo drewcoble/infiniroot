@@ -1013,18 +1013,27 @@
   flex-shrink: 0;
 }
 
-/* The name is the link to the team page - styled as the card's title, not
-   a blue hyperlink. */
-.teamCardLink {
-  min-width: 0;
+/* The whole card is the link to the team page - a third grid column holds
+   the chevron that says so, centered across both rows. */
+.teamCard {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "name points chevron"
+    "detail proj chevron";
   color: inherit;
   text-decoration: none;
+  cursor: pointer;
+}
+
+.teamCardChevron {
+  grid-area: chevron;
+  margin-right: -2px;
+  color: rgba(248, 250, 252, 0.5);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .teamCardLink:hover .name {
-    text-decoration: underline;
-    text-underline-offset: 3px;
+  .teamCard:hover .teamCardChevron {
+    color: rgba(248, 250, 252, 0.85);
   }
 }
 

@@ -1,6 +1,6 @@
 import { useId, type CSSProperties, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import type { TeamPositionRanks } from "../../types/season";
 import { TeamPositionRanksPanel } from "../TeamPositionRanksPanel";
 import { GlassPopover } from "./GlassPopover";
@@ -44,10 +44,11 @@ function YouBadge() {
 }
 
 // League-home team card (Standings / Power Rankings / Elimination Watch) in
-// the full-width glass card's layout: name (a link to the team page) and
-// the list's headline number on the first row, a supporting line under
-// each. Long-press (or Enter/Space) opens the team's detail popover - its
-// stats and the position-strength radar that used to expand inline.
+// the full-width glass card's layout: name and the list's headline number
+// on the first row, a supporting line under each, and a chevron - the whole
+// card is a link to the team page. Long-press (or Space) opens the team's
+// detail popover instead - its stats and the position-strength radar that
+// used to expand inline.
 export function GlassTeamCard({
   data,
   positionRanks,
@@ -57,8 +58,9 @@ export function GlassTeamCard({
   positionRanks: TeamPositionRanks | undefined;
   totalTeams: number;
 }) {
-  const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(
+  const { cardProps, anchor, expanded, pressing, close } = useExpandableCard<HTMLAnchorElement>(
     `Rank ${data.rank}, ${data.name}${data.isSelf ? " (you)" : ""}, ${data.primary}`,
+    { asLink: true },
   );
   const titleId = useId();
 
@@ -71,11 +73,14 @@ export function GlassTeamCard({
       >
         {data.rank}
       </span>
-      <div
+      <Link
+        to="/league/$leagueId/teams/$teamId"
+        params={{ leagueId: data.leagueId, teamId: data.teamId }}
         {...cardProps}
         className={[
           classes.card,
           classes.wide,
+          classes.teamCard,
           classes.pressable,
           pressing && classes.pressing,
           expanded && classes.hidden,
@@ -83,14 +88,8 @@ export function GlassTeamCard({
           .filter(Boolean)
           .join(" ")}
       >
-        <div className={`${classes.wideName} ${classes.teamCardName}`}>
-          <Link
-            to="/league/$leagueId/teams/$teamId"
-            params={{ leagueId: data.leagueId, teamId: data.teamId }}
-            className={classes.teamCardLink}
-          >
-            <span className={classes.name}>{data.name}</span>
-          </Link>
+        <div className={`${classes.wideName} ${classes.teamCardName}`} aria-hidden>
+          <span className={classes.name}>{data.name}</span>
           {data.isSelf && <YouBadge />}
           {data.nameBadges}
         </div>
@@ -107,7 +106,8 @@ export function GlassTeamCard({
             {data.secondaryRight}
           </div>
         )}
-      </div>
+        <ChevronRight className={classes.teamCardChevron} size={18} strokeWidth={2.5} aria-hidden />
+      </Link>
 
       {anchor && (
         <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
