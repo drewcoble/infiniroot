@@ -16,7 +16,7 @@ export interface MatchupHeaderTeam {
 // team (there's no team-color concept): green for the favorite, red for the
 // underdog, neutral for both when it's within TOSSUP_MARGIN of 50/50 - the
 // same green/red/neutral the player cards' meters use for pace.
-const TOSSUP_MARGIN = 5;
+const TOSSUP_MARGIN = 3;
 const FAVORED_TINT = "#4ade80";
 const UNDERDOG_TINT = "#f87171";
 const TOSSUP_TINT = "#9ca3af";
