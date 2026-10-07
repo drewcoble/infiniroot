@@ -10,11 +10,14 @@ export function GlassSegmented<T extends string>({
   options,
   onChange,
   label,
+  compact = false,
 }: {
   value: T;
   options: Array<{ value: T; label: string }>;
   onChange: (value: T) => void;
   label: string;
+  // Shorter segments - for a secondary control under a full-size one.
+  compact?: boolean;
 }) {
   const buttonsRef = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -33,7 +36,11 @@ export function GlassSegmented<T extends string>({
   };
 
   return (
-    <div className={classes.segmented} role="radiogroup" aria-label={label}>
+    <div
+      className={`${classes.segmented} ${compact ? classes.segmentedCompact : ""}`}
+      role="radiogroup"
+      aria-label={label}
+    >
       {options.map((option, index) => {
         const selected = option.value === value;
         return (
