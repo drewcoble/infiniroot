@@ -228,10 +228,10 @@
 }
 
 .points {
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 750;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -474,10 +474,10 @@
 }
 
 .expandedPoints {
-  font-size: 32px;
+  font-size: 20px;
   font-weight: 750;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -659,10 +659,9 @@
 
 .headerTotal {
   margin-top: 2px;
-  font-size: 30px;
+  font-size: 14px;
   font-weight: 750;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  line-height: 1.25;
   font-variant-numeric: tabular-nums;
 }
 
@@ -869,7 +868,7 @@
 
 .skeletonCard {
   gap: 10px;
-  min-height: 118px;
+  min-height: 110px;
 }
 
 /* A glass-tinted bar with a slow highlight sweeping across it. */
@@ -970,10 +969,10 @@
 .teamHeaderTotal {
   grid-area: total;
   justify-self: end;
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 750;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
 }
 

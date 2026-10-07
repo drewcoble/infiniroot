@@ -148,7 +148,7 @@ export function GlassRosterSkeletonCard() {
         />
         <span
           className={`${classes.skeletonBar} ${classes.widePoints}`}
-          style={{ width: 52, height: 20 }}
+          style={{ width: 44, height: 15 }}
         />
         <span
           className={`${classes.skeletonBar} ${classes.wideDetail}`}

@@ -85,7 +85,7 @@ export function GlassTeamHeader({
         <>
           <span
             className={`${classes.skeletonBar} ${classes.teamHeaderTotal}`}
-            style={{ width: 96, height: 24 }}
+            style={{ width: 80, height: 20 }}
           />
           <span
             className={`${classes.skeletonBar} ${classes.teamHeaderProj}`}

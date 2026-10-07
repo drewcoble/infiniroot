@@ -66,7 +66,7 @@ function TeamSideSkeleton({ align }: { align: "left" | "right" }) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
       <span className={classes.skeletonBar} style={{ width: "70%", height: 14 }} />
-      <span className={classes.skeletonBar} style={{ width: "62%", height: 28, marginTop: 4 }} />
+      <span className={classes.skeletonBar} style={{ width: "50%", height: 14, marginTop: 4 }} />
       <span className={classes.skeletonBar} style={{ width: "48%", height: 11, marginTop: 4 }} />
     </div>
   );

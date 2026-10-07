@@ -132,7 +132,7 @@ export function GlassSkeletonCard() {
         <span className={classes.skeletonBar} style={{ width: "72%", height: 14 }} />
         <span className={classes.skeletonBar} style={{ width: "52%", height: 10, marginTop: 6 }} />
       </div>
-      <span className={classes.skeletonBar} style={{ width: "44%", height: 20 }} />
+      <span className={classes.skeletonBar} style={{ width: "44%", height: 15 }} />
       <span className={classes.skeletonBar} style={{ width: "100%", height: 5 }} />
     </div>
   );
