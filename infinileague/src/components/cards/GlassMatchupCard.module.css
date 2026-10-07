@@ -659,9 +659,10 @@
 
 .headerTotal {
   margin-top: 2px;
-  font-size: 14px;
+  font-size: 30px;
   font-weight: 750;
-  line-height: 1.25;
+  line-height: 1;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
