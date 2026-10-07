@@ -127,13 +127,15 @@ export const syncLeagueRoster = action({
       throw new Error("This league isn't linked to a Sleeper league yet.");
     }
 
-    const [rosters, leagueSettings] = await Promise.all([
+    const [rosters, users, leagueSettings] = await Promise.all([
       fetchSleeperLeagueJson<SleeperRoster[]>(season.sleeperLeagueId, "/rosters"),
+      fetchSleeperLeagueJson<SleeperLeagueUser[]>(season.sleeperLeagueId, "/users"),
       fetchSleeperLeagueSettings(season.sleeperLeagueId),
     ]);
     const rosterById = new Map(
       rosters.map((roster) => [String(roster.roster_id), roster]),
     );
+    const userById = new Map(users.map((user) => [user.user_id, user]));
 
     // Re-read every sync, not just at connect time - self-heals a season
     // connected before this field existed, and keeps up with a mid-season
@@ -168,6 +170,10 @@ export const syncLeagueRoster = action({
       if (!team.sleeperRosterId) continue;
       const roster = rosterById.get(team.sleeperRosterId);
       if (!roster) continue;
+      // Same team_name -> display_name preference as fetchLeagueTeamRows
+      // (the import path), so a manager's mid-season rename flows through.
+      const owner = roster.owner_id ? userById.get(roster.owner_id) : undefined;
+      const name = owner?.metadata?.team_name || owner?.display_name;
 
       await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
         seasonId: args.seasonId,
@@ -185,6 +191,7 @@ export const syncLeagueRoster = action({
         ...(roster.settings?.waiver_position !== undefined
           ? { waiverPosition: roster.settings.waiver_position }
           : {}),
+        ...(name ? { name } : {}),
       });
       syncedTeams += 1;
     }
