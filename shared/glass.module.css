@@ -1,4 +1,4 @@
-/* Glass chrome for the app shell - the floating header and bottom nav, their
+/* Glass chrome for the app shell - the header's floating pieces and the bottom nav, their
    buttons, and their dropdown menus - matching infinileague's glass cards
    (infinileague/src/components/cards/GlassMatchupCard.module.css). Opt-in
    via AppHeader's / BottomNav's `glass` prop; apps that don't pass it keep
@@ -37,6 +37,36 @@
   position: relative;
 }
 
+/* Free-floating header pieces (logo, league switcher, overflow) each carry
+   their own glass, so they share this base: the cards' white tint over a
+   translucent page color, blurred - legible on their own over cards
+   scrolling underneath, with no bar behind them. */
+.button,
+.iconButton,
+.logoPanel {
+  color: #f8fafc;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%),
+    color-mix(in srgb, var(--mantine-color-body) 55%, transparent);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+/* The logo's panel - a rounded rectangle rather than a pill, since the
+   mobile logo stacks its wordmark under the emblem. */
+.logoPanel {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 10px;
+  border-radius: 16px;
+  text-decoration: none;
+  outline: none;
+}
+
 /* Pill button (the header's league switcher). */
 .button {
   display: inline-flex;
@@ -46,15 +76,11 @@
   height: 36px;
   padding: 0 10px 0 14px;
   border-radius: 999px;
-  color: #f8fafc;
   font: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   outline: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .buttonLabel {
@@ -74,17 +100,14 @@
   height: 36px;
   padding: 0;
   border-radius: 50%;
-  color: #f8fafc;
   cursor: pointer;
   outline: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .button:focus-visible,
   .iconButton:focus-visible,
+  .logoPanel:focus-visible,
   .navItem:focus-visible {
     outline: 2px solid rgba(96, 165, 250, 0.95);
     outline-offset: 2px;

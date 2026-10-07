@@ -39,17 +39,18 @@ interface AppHeaderProps {
   extraOverflowItems?: ReactNode;
   // infinidraft narrows this to make room for modeSwitchSlot on mobile.
   leagueButtonWidth?: { base: number; sm: number };
-  // Glass chrome (see glass.module.css): on mobile the header floats as a
-  // glass pill inset from the screen edges - the bottom nav's counterpart -
-  // with glass controls and glass dropdown menus. infinileague opts in;
-  // other apps keep the frosted full-width bar.
+  // Glass chrome (see glass.module.css): no bar at all - the logo, league
+  // switcher, and overflow button each float as their own glass piece over
+  // the page, with glass dropdown menus. infinileague opts in; other apps
+  // keep the frosted full-width bar.
   glass?: boolean;
 }
 
-// Header height on mobile when `glass` - plus its top offset, it takes up
-// the same MOBILE_HEADER_HEIGHT footprint the flat bar does, so page
-// padding (PageContainer) and anything docked below needn't change.
-const GLASS_HEADER_TOP = 6;
+// Header row height on mobile when `glass` - plus its top offset, it takes
+// up the same MOBILE_HEADER_HEIGHT footprint the flat bar does, so page
+// padding (PageContainer) and anything docked below needn't change. Tall
+// enough for the logo's panel (emblem + stacked wordmark).
+const GLASS_HEADER_TOP = 2;
 const GLASS_HEADER_HEIGHT = MOBILE_HEADER_HEIGHT - GLASS_HEADER_TOP;
 
 // Shared top bar for infinidraft/infinifaab/infinileague - logo, league
@@ -91,17 +92,18 @@ export function AppHeader({
             },
             left: { base: 12, sm: 0 },
             right: { base: 12, sm: 0 },
-            mt: { base: 0, sm: "xs" },
-            px: { base: 8, sm: 10 },
-            h: { base: GLASS_HEADER_HEIGHT, sm: 56 },
-            className: glassClasses.bar,
+            py: { base: 0, sm: "xs" },
+            h: { base: GLASS_HEADER_HEIGHT, sm: "auto" },
             style: {
               zIndex: 195,
               display: "flex",
               alignItems: "center",
+              // Lined up with the bottom nav's width cap.
               maxWidth: 480,
               marginInline: "auto",
-              borderRadius: 999,
+              // The row itself is invisible - taps in the gaps between the
+              // pieces fall through to the page; the pieces opt back in.
+              pointerEvents: "none",
             },
           }
         : {
@@ -131,10 +133,26 @@ export function AppHeader({
         gap="xs"
         style={{ flex: 1, minWidth: 0 }}
       >
-        <Link to="/" style={{ flexShrink: 0, textDecoration: "none" }}>
+        <Link
+          to="/"
+          {...(glass ? { className: glassClasses.logoPanel } : {})}
+          style={{
+            flexShrink: 0,
+            textDecoration: "none",
+            ...(glass ? { pointerEvents: "auto" } : {}),
+          }}
+        >
           <AppLogo wordmark={wordmark} />
         </Link>
-        <Group gap="xs" wrap="nowrap" align="center" style={{ flexShrink: 0 }}>
+        <Group
+          gap="xs"
+          wrap="nowrap"
+          align="center"
+          style={{
+            flexShrink: 0,
+            ...(glass ? { pointerEvents: "auto" } : {}),
+          }}
+        >
           {!hideLeagueControls && (
             <>
               <Menu position="bottom-end" offset={8} width={260} {...menuProps}>
