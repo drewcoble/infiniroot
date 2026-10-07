@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import {
   Alert,
@@ -13,10 +13,13 @@ import {
   Title,
 } from "@mantine/core";
 import { api } from "@infinidata/api";
-import { TeamRosterList } from "../../../../components/TeamRosterList";
+import { TeamRosterList, TeamRosterListSkeleton } from "../../../../components/TeamRosterList";
+import { meterScaleMax } from "../../../../components/cards/meterScale";
+import { useTeamRoster } from "../../../../hooks/useTeamRoster";
+import { isAnyGameLive, useNow, type WeekGame } from "../../../../lib/liveGames";
+import { toMatchupCardData } from "../../../../lib/matchupCardData";
 import { LineupSuggestionsCard } from "../../../../components/LineupSuggestionsCard";
-import { getErrorMessage } from "@shared/errors";
-import type { SlotLabel, StandingsRow, TeamRosterRow } from "../../../../types/season";
+import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/teams/$teamId")({
   component: TeamPage,
@@ -29,6 +32,10 @@ interface NflState {
 }
 
 const WEEK_OPTIONS = Array.from({ length: 18 }, (_, i) => String(i + 1));
+
+// While a game is on, how often the roster's points are re-fetched - same
+// cadence as the Matchup tab (the live poll's own, see convex/crons.ts).
+const LIVE_REFRESH_MS = 2 * 60 * 1000;
 
 // Starting lineup slots only - excludes BENCH/IR/TAXI, whose points don't
 // count toward the team's total for the week (mirrors Sleeper's own
@@ -60,7 +67,6 @@ function TeamPage() {
   // convexApi.ts's FunctionReference types expect the branded Id<>
   // convex/values declares.
   const seasonId = leagueId as Id<"seasons">;
-  const teamIdTyped = teamId as Id<"seasonTeams">;
   const { isAuthenticated } = useConvexAuth();
 
   // Reuses the same standings query the league page's table already calls -
@@ -89,20 +95,49 @@ function TeamPage() {
     setWeek(currentWeek > 0 ? String(currentWeek) : "1");
   }, [nflState, week]);
 
-  const getTeamRosterForWeek = useAction(api.infinileague.season.teamRoster.getTeamRosterForWeek);
-  const [roster, setRoster] = useState<TeamRosterRow[] | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // The week's slate (opponent/kickoff/live status per NFL team) - drives
+  // each card's game line, status icon, and live projection.
+  const weekGames: WeekGame[] | undefined = useQuery(
+    api.sleeper.livePoints.getWeekGames,
+    isAuthenticated && nflState && week ? { season: nflState.season, week } : "skip",
+  );
+  const gamesByTeam = useMemo(
+    () => new Map((weekGames ?? []).map((game) => [game.team, game])),
+    [weekGames],
+  );
+  const now = useNow(60 * 1000);
+  const isCurrentWeek = nflState != null && week === nflState.week;
+  const refreshMs = isCurrentWeek && isAnyGameLive(weekGames, now) ? LIVE_REFRESH_MS : null;
 
-  useEffect(() => {
-    if (week === null) return;
-    setLoading(true);
-    setLoadError(null);
-    getTeamRosterForWeek({ teamId: teamIdTyped, week })
-      .then(setRoster)
-      .catch((err) => setLoadError(getErrorMessage(err, "Failed to load roster.")))
-      .finally(() => setLoading(false));
-  }, [week, teamIdTyped, getTeamRosterForWeek]);
+  // Keyed by team/week (see useTeamRoster), so a week change shows the
+  // loading skeleton rather than the previous week's roster.
+  const teamRoster = useTeamRoster(teamId, week, refreshMs);
+  const roster = teamRoster.rows;
+
+  // Season/ROS context for the detail cards (current week's board, as on
+  // the Matchup tab) and this week's actual position ranks for the badges.
+  const vorRows: RosVorRow[] | undefined = useQuery(
+    api.rosVor.getRosVorBoard,
+    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
+  );
+  const vorByFpid = useMemo(() => new Map((vorRows ?? []).map((row) => [row.fpid, row])), [vorRows]);
+  const weekRanks = useQuery(
+    api.infinileague.season.matchup.getWeekPositionRanks,
+    isAuthenticated && week ? { seasonId, week } : "skip",
+  );
+  const weekRankByFpid = useMemo(
+    () => new Map((weekRanks ?? []).map((entry) => [entry.fpid, entry.rank])),
+    [weekRanks],
+  );
+
+  const toCardData = (row: TeamRosterRow) =>
+    toMatchupCardData(
+      row,
+      weekGames ? gamesByTeam : undefined,
+      now,
+      row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
+      row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
+    );
 
   if (team === undefined) {
     return <Loader />;
@@ -164,16 +199,18 @@ function TeamPage() {
           )}
         </Group>
 
-        {loadError && (
-          <Alert color="red" withCloseButton onClose={() => setLoadError(null)}>
-            {loadError}
-          </Alert>
-        )}
+        {teamRoster.error && <Alert color="red">{teamRoster.error}</Alert>}
 
-        {loading || roster === undefined ? (
-          <Loader />
+        {roster === undefined ? (
+          teamRoster.error ? null : <TeamRosterListSkeleton />
         ) : (
-          <TeamRosterList rows={roster} teamName={team.name} />
+          <TeamRosterList
+            rows={roster}
+            toCardData={toCardData}
+            scaleMax={meterScaleMax(
+              roster.filter((row) => row.fpid !== undefined).map(toCardData),
+            )}
+          />
         )}
       </Stack>
     </Stack>

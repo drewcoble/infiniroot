@@ -1,5 +1,5 @@
 import type { GlassMatchupCardData } from "../components/cards/cardShared";
-import type { RosVorRow, TeamRosterRow } from "../types/season";
+import type { RosVorRow, SlotLabel, TeamRosterRow } from "../types/season";
 import {
   formatGameStatus,
   formatMatchup,
@@ -63,4 +63,13 @@ export function toMatchupCardData(
     };
   }
   return { ...base, matchup, status, gameState: isGameFinal(game, now) ? "final" : "pre" };
+}
+
+// Short label for a roster slot, as shown on the glass slot chips.
+export function slotLabel(slot: SlotLabel | undefined): string {
+  if (slot === undefined) return "";
+  if (slot === "BENCH") return "BN";
+  if (slot === "TAXI") return "Taxi";
+  if (slot === "SUPERFLEX") return "SFLEX";
+  return slot;
 }

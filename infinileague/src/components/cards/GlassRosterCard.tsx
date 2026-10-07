@@ -134,3 +134,31 @@ export function EmptyGlassRosterCard({ slot }: { slot: string }) {
     </div>
   );
 }
+
+// Loading placeholder in the full-width card's shape (slot chip outside,
+// name/detail bars and a meter bar inside) - see GlassSkeletonCard.
+export function GlassRosterSkeletonCard() {
+  return (
+    <div className={classes.rosterRow} aria-hidden>
+      <GlassSlotChip label="" />
+      <div className={`${classes.card} ${classes.wide} ${classes.wideSkeleton}`}>
+        <span
+          className={`${classes.skeletonBar} ${classes.wideName}`}
+          style={{ width: "55%", height: 14 }}
+        />
+        <span
+          className={`${classes.skeletonBar} ${classes.widePoints}`}
+          style={{ width: 52, height: 20 }}
+        />
+        <span
+          className={`${classes.skeletonBar} ${classes.wideDetail}`}
+          style={{ width: "70%", height: 12 }}
+        />
+        <span
+          className={`${classes.skeletonBar} ${classes.wideMeter}`}
+          style={{ height: 5, marginTop: 6 }}
+        />
+      </div>
+    </div>
+  );
+}

@@ -46,7 +46,8 @@ const SORT_LABELS: Record<"week" | "ros", Record<Exclude<SortKey, "rank">, strin
   ros: { actual: "PPG", projected: "ROS PPG" },
 };
 
-// Same formatting as My Team's weekly Proj/Actual (TeamRosterList.tsx).
+// Two decimals, same as the glass player cards' points (components/cards/
+// cardShared.ts's formatPoints).
 function formatPoints(points: number | undefined): string {
   return points === undefined ? "—" : points.toFixed(2);
 }
@@ -275,8 +276,8 @@ function PlayersPage() {
                 {...(isWeekMode
                   ? {
                       // This week's own numbers rather than the default
-                      // season-long PPG/ROS PPG stack - same Proj-over-
-                      // Actual layout as My Team (TeamRosterList.tsx).
+                      // season-long PPG/ROS PPG stack - Proj over
+                      // Actual.
                       rightStats: (
                         <>
                           <Text size="xs" c="dimmed">

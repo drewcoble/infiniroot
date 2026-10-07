@@ -1,99 +1,65 @@
-import { Badge, Card, Group, Stack, Text } from "@mantine/core";
-import { positionColorOrDefault } from "@shared/positionColors";
-import { PlayerCard } from "@shared/PlayerCard";
-import type { RosVorRow, SlotLabel, TeamRosterRow } from "../types/season";
+import { Fragment } from "react";
+import { Stack } from "@mantine/core";
+import type { TeamRosterRow } from "../types/season";
+import { slotLabel } from "../lib/matchupCardData";
+import { ROSTER_SECTION_LABEL, rosterSection, type GlassMatchupCardData } from "./cards/cardShared";
+import { GlassSectionDivider } from "./cards/GlassMatchupCard";
+import {
+  EmptyGlassRosterCard,
+  GlassRosterCard,
+  GlassRosterSkeletonCard,
+} from "./cards/GlassRosterCard";
 
 interface TeamRosterListProps {
   rows: TeamRosterRow[];
-  // Shown as this player's "rostered by" line on their card - already true
-  // by construction (every row here comes from this one team's roster), but
-  // RosVorRow's own field still needs a value rather than null (which would
-  // render PlayerCard's "FA" badge instead).
-  teamName: string;
+  toCardData: (row: TeamRosterRow) => GlassMatchupCardData;
+  // Shared meter scale for every card in the list (see meterScale.ts).
+  scaleMax: number;
 }
 
-function slotLabel(slot: SlotLabel | undefined): string {
-  if (slot === undefined) return "";
-  if (slot === "BENCH") return "BN";
-  if (slot === "TAXI") return "Taxi";
-  if (slot === "SUPERFLEX") return "SFLEX";
-  return slot;
-}
+// My Team's roster as full-width glass cards (components/cards/
+// GlassRosterCard.tsx) in roster order - starters, then bench, IR, and
+// taxi, each set off with a labeled divider. Unfilled slots are recessed
+// "Empty" wells; long-press any card for the player's detail card.
+// Starters and bench keep the order they came in (lineup order, then
+// bench); IR and taxi follow, grouped, so each section is contiguous.
+const SECTION_ORDER = { starters: 0, bench: 0, ir: 1, taxi: 2 } as const;
 
-function formatPoints(points: number | undefined): string {
-  return points === undefined ? "—" : points.toFixed(2);
-}
-
-// A filled roster row has no rosVOR fields of its own (this is a weekly
-// matchup roster, not the Players tab's league-wide value board) - a
-// minimal stand-in RosVorRow, same "zero the fields PlayerCard doesn't use
-// here" convention freeAgents.tsx's no-rosVOR-match fallback already
-// established, so this player still reads through the one shared card
-// rather than a second bespoke layout.
-function toRosVorRow(row: TeamRosterRow, teamName: string): RosVorRow {
-  return {
-    fpid: row.fpid ?? 0,
-    name: row.name ?? "",
-    team: row.byeWeek !== undefined ? `${row.team ?? ""} · Bye ${row.byeWeek}` : (row.team ?? null),
-    position: row.position ?? "QB",
-    rosVor: 0,
-    rosRank: 0,
-    actualVor: 0,
-    actualRank: 0,
-    positionRank: 0,
-    rosPpg: 0,
-    actualPpg: 0,
-    weekVor: 0,
-    weekRank: 0,
-    weekPpg: 0,
-    weekPositionRank: 0,
-    rosteredByTeamName: teamName,
-    ...(row.injury ? { injury: row.injury } : {}),
-  };
-}
-
-// One team's roster for a given week - the "My Team" page's replacement for
-// its old plain Table, now the same PlayerCard every other player list in
-// the app uses (see PlayerCard.tsx's own comment on why). Rows arrive
-// pre-sorted from the backend in infinidraft's own canonical slot order (QB,
-// SUPERFLEX, RB, WR, FLEX, TE, DST, K, BENCH, IR, TAXI - see convex/season/
-// teamRoster.ts's SLOT_ORDER_RANK), rendered as-is. A row with no fpid is an
-// unfilled slot (an open bench/taxi spot the league is configured for) -
-// too sparse for a full PlayerCard, so it stays a minimal one-line stand-in.
-export function TeamRosterList({ rows, teamName }: TeamRosterListProps) {
+export function TeamRosterList({ rows, toCardData, scaleMax }: TeamRosterListProps) {
+  const ordered = [...rows].sort(
+    (a, b) => SECTION_ORDER[rosterSection(a.slot)] - SECTION_ORDER[rosterSection(b.slot)],
+  );
   return (
     <Stack gap={8}>
-      {rows.map((row, index) =>
-        row.fpid !== undefined ? (
-          <PlayerCard
-            key={row.fpid}
-            row={toRosVorRow(row, teamName)}
-            isRookie={row.isRookie ?? false}
-            leftBadge={{ label: slotLabel(row.slot), color: positionColorOrDefault(row.slot ?? "") }}
-            rightStats={
-              <>
-                <Text size="xs" c="dimmed">
-                  {formatPoints(row.projectedPoints)} Proj
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {formatPoints(row.actualPoints)} Actual
-                </Text>
-              </>
-            }
-          />
-        ) : (
-          <Card key={`empty-${row.slot}-${index}`} padding="xs" radius="md">
-            <Group wrap="nowrap" gap="sm">
-              <Badge size="sm" variant="light" color={positionColorOrDefault(row.slot ?? "")}>
-                {slotLabel(row.slot)}
-              </Badge>
-              <Text size="sm" c="dimmed">
-                —
-              </Text>
-            </Group>
-          </Card>
-        ),
-      )}
+      {ordered.map((row, index) => {
+        const section = rosterSection(row.slot);
+        const startsSection = index > 0 && rosterSection(ordered[index - 1]!.slot) !== section;
+        const slot = slotLabel(row.slot);
+        return (
+          <Fragment key={row.fpid ?? `empty-${row.slot}-${index}`}>
+            {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
+            {row.fpid !== undefined ? (
+              <GlassRosterCard data={toCardData(row)} slot={slot} scaleMax={scaleMax} />
+            ) : (
+              <EmptyGlassRosterCard slot={slot} />
+            )}
+          </Fragment>
+        );
+      })}
+    </Stack>
+  );
+}
+
+// Placeholder rows while the roster loads (first load, or a week change) -
+// a fixed count since the roster's real length isn't known yet.
+const SKELETON_ROWS = 9;
+
+export function TeamRosterListSkeleton() {
+  return (
+    <Stack gap={8}>
+      {Array.from({ length: SKELETON_ROWS }, (_, index) => (
+        <GlassRosterSkeletonCard key={index} />
+      ))}
     </Stack>
   );
 }

@@ -850,6 +850,10 @@
   margin: 6px 0 2px;
 }
 
+.wideSkeleton {
+  min-height: 80px;
+}
+
 /* Same height as a filled roster card, so an empty slot reads as the
    space one would fill. The recessed look is shared with .empty above. */
 .wideEmpty {

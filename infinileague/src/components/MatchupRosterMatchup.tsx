@@ -1,6 +1,7 @@
 import { Box, Group } from "@mantine/core";
-import type { SlotLabel, TeamRosterRow } from "../types/season";
+import type { TeamRosterRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
+import { slotLabel } from "../lib/matchupCardData";
 import { Fragment } from "react";
 import { ROSTER_SECTION_LABEL, rosterSection, type GlassMatchupCardData } from "./cards/cardShared";
 import {
@@ -10,14 +11,6 @@ import {
   GlassSkeletonCard,
   GlassSlotChip,
 } from "./cards/GlassMatchupCard";
-
-function slotLabel(slot: SlotLabel | undefined): string {
-  if (slot === undefined) return "";
-  if (slot === "BENCH") return "BN";
-  if (slot === "TAXI") return "Taxi";
-  if (slot === "SUPERFLEX") return "SFLEX";
-  return slot;
-}
 
 interface MatchupRosterMatchupProps {
   teamARows: TeamRosterRow[];
