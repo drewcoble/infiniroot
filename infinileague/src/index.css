@@ -15,11 +15,11 @@
    scores from shifting as digits change. `.num` is for plain elements; the
    glass cards' stylesheet uses the variables directly. */
 :root {
-  /* App text fonts - main.tsx's theme points Mantine's body/heading fonts
-     here. Defaults are the shared theme's Inter / Space Grotesk. */
-  --app-font-body: Inter, sans-serif;
-  --app-font-heading: "Space Grotesk", sans-serif;
-  --app-heading-weight: 700;
+  /* App text font - main.tsx's theme points Mantine's body/heading fonts
+     here: Barlow throughout, semibold for headings. */
+  --app-font-body: "Barlow", sans-serif;
+  --app-font-heading: "Barlow", sans-serif;
+  --app-heading-weight: 600;
   --font-numeric: "Barlow", var(--mantine-font-family);
   --font-numeric-weight: 600;
 }

@@ -9,30 +9,13 @@ import { Analytics } from "@vercel/analytics/react";
 import { ConvexReactClient } from "convex/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
-// Barlow (semibold) for numbers - points, standings, FAAB. Latin subset
-// only, bundled rather than loaded from Google Fonts. See index.css's
-// --font-numeric.
-import "@fontsource/barlow/latin-600.css";
-// TEMPORARY - text-font candidates for the Cards tab's switcher (see
-// lib/appFont.ts). A face's files only download once it's in use.
+// Barlow for all of infinileague's text and numbers (see index.css's
+// --app-font-* / --font-numeric) - Latin subset, bundled rather than loaded
+// from Google Fonts.
 import "@fontsource/barlow/latin-400.css";
 import "@fontsource/barlow/latin-500.css";
+import "@fontsource/barlow/latin-600.css";
 import "@fontsource/barlow/latin-700.css";
-import "@fontsource/public-sans/latin-400.css";
-import "@fontsource/public-sans/latin-500.css";
-import "@fontsource/public-sans/latin-600.css";
-import "@fontsource/public-sans/latin-700.css";
-import "@fontsource/source-sans-3/latin-400.css";
-import "@fontsource/source-sans-3/latin-500.css";
-import "@fontsource/source-sans-3/latin-600.css";
-import "@fontsource/source-sans-3/latin-700.css";
-import "@fontsource/red-hat-text/latin-400.css";
-import "@fontsource/red-hat-text/latin-500.css";
-import "@fontsource/red-hat-text/latin-600.css";
-import "@fontsource/red-hat-text/latin-700.css";
-import "@fontsource/red-hat-display/latin-600.css";
-import "@fontsource/red-hat-display/latin-700.css";
-import { applyAppFont, getAppFont } from "./lib/appFont";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import { cssVariablesResolver, theme } from "@shared/theme";
@@ -43,12 +26,9 @@ import { installStaleChunkReload } from "@shared/errors";
 // renders so most cases reload before React ever shows an error.
 installStaleChunkReload();
 
-// TEMPORARY - restore the text font picked on the Cards tab.
-applyAppFont(getAppFont());
-
-// infinileague's own text fonts, overriding the shared theme's (which
-// infinidraft/infinifaab keep) - read from index.css's --app-font-*
-// variables so they can change at runtime.
+// infinileague's own text font (Barlow), overriding the shared theme's
+// Inter / Space Grotesk, which infinidraft/infinifaab keep. Read from
+// index.css's --app-font-* variables so the font is defined in one place.
 const leagueTheme = mergeThemeOverrides(theme, {
   fontFamily: "var(--app-font-body)",
   headings: {
