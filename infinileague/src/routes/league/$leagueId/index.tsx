@@ -17,6 +17,7 @@ import { api } from "@infinidata/api";
 import { StandingsList } from "../../../components/StandingsList";
 import { PowerRankingsList } from "../../../components/PowerRankingsList";
 import { EliminationWatchList } from "../../../components/EliminationWatchList";
+import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
 import type {
@@ -137,22 +138,10 @@ function LeaguePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, isAuthenticated, isGuillotine]);
 
-  // Backs every team card's click-to-expand position radar chart (see
-  // StandingsList/PowerRankingsList) - fetched once per league visit
-  // rather than per-card-expand, since ranking any one team's positions
-  // needs every team's roster gathered anyway (see getTeamPositionRanks).
-  // A Set (not a single expanded id) so more than one card can be open at
-  // once, same convention infinidraft's DraftReportCard.tsx uses.
-  const [expandedTeamIds, setExpandedTeamIds] = useState<Set<string>>(new Set());
-  const toggleExpanded = (teamId: string) => {
-    setExpandedTeamIds((current) => {
-      const next = new Set(current);
-      if (next.has(teamId)) next.delete(teamId);
-      else next.add(teamId);
-      return next;
-    });
-  };
-
+  // Backs every team card's long-press popover radar chart (see
+  // GlassTeamCard) - fetched once per league visit rather than per popover,
+  // since ranking any one team's positions needs every team's roster
+  // gathered anyway (see getTeamPositionRanks).
   const getTeamPositionRanks = useAction(
     api.infinileague.season.powerRankings.getTeamPositionRanks,
   );
@@ -294,20 +283,20 @@ function LeaguePage() {
           <EliminationWatchList
             leagueId={leagueId}
             rows={eliminationWatch}
-            expandedTeamIds={expandedTeamIds}
-            onToggleExpand={toggleExpanded}
             positionRanksByTeam={positionRanksByTeam}
           />
         </>
       ) : tableView === "standings" ? (
         standings === undefined ? (
-          <Loader />
+          <Stack gap={8}>
+            {Array.from({ length: 8 }, (_, index) => (
+              <GlassRosterSkeletonCard key={index} />
+            ))}
+          </Stack>
         ) : (
           <StandingsList
             leagueId={leagueId}
             rows={standings}
-            expandedTeamIds={expandedTeamIds}
-            onToggleExpand={toggleExpanded}
             positionRanksByTeam={positionRanksByTeam}
           />
         )
@@ -325,8 +314,6 @@ function LeaguePage() {
           <PowerRankingsList
             leagueId={leagueId}
             rows={powerRankings}
-            expandedTeamIds={expandedTeamIds}
-            onToggleExpand={toggleExpanded}
             positionRanksByTeam={positionRanksByTeam}
           />
         </>

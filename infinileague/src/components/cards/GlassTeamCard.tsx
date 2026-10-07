@@ -1,0 +1,152 @@
+import { useId, type CSSProperties, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { X } from "lucide-react";
+import type { TeamPositionRanks } from "../../types/season";
+import { TeamPositionRanksPanel } from "../TeamPositionRanksPanel";
+import { GlassPopover } from "./GlassPopover";
+import { useExpandableCard } from "./useExpandableCard";
+import classes from "./GlassMatchupCard.module.css";
+
+export interface GlassTeamCardData {
+  leagueId: string;
+  teamId: string;
+  name: string;
+  rank: number;
+  isSelf: boolean;
+  // Small badges after the name - power rankings' week-over-week move,
+  // elimination watch's status.
+  nameBadges?: ReactNode;
+  // The list's headline number (record, projected points, week points) on
+  // the name's row, and an optional second-row left/right line.
+  primary: string;
+  secondaryLeft?: ReactNode;
+  secondaryRight?: ReactNode;
+  // Labeled tiles for the detail popover.
+  stats: Array<{ label: string; value: string }>;
+}
+
+// Rank chip outside the card, like the roster cards' slot chip - glass gray,
+// or saddlebrown for your own team (the "yours" color, same as the My Team
+// header's rank badge).
+function rankChipStyle(isSelf: boolean): CSSProperties {
+  return {
+    color: isSelf ? "color-mix(in srgb, #8b4513 15%, #fff)" : "#f8fafc",
+    "--pill-tint": isSelf ? "#8b4513" : "var(--mantine-color-gray-5)",
+  } as CSSProperties;
+}
+
+function YouBadge() {
+  return (
+    <span className={classes.pill} style={rankChipStyle(true)}>
+      You
+    </span>
+  );
+}
+
+// League-home team card (Standings / Power Rankings / Elimination Watch) in
+// the full-width glass card's layout: name (a link to the team page) and
+// the list's headline number on the first row, a supporting line under
+// each. Long-press (or Enter/Space) opens the team's detail popover - its
+// stats and the position-strength radar that used to expand inline.
+export function GlassTeamCard({
+  data,
+  positionRanks,
+  totalTeams,
+}: {
+  data: GlassTeamCardData;
+  positionRanks: TeamPositionRanks | undefined;
+  totalTeams: number;
+}) {
+  const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(
+    `Rank ${data.rank}, ${data.name}${data.isSelf ? " (you)" : ""}, ${data.primary}`,
+  );
+  const titleId = useId();
+
+  return (
+    <div className={classes.rosterRow}>
+      <span
+        className={`${classes.pill} ${classes.slotChip}`}
+        style={{ ...rankChipStyle(data.isSelf), fontFamily: "var(--font-numeric)" }}
+        aria-hidden
+      >
+        {data.rank}
+      </span>
+      <div
+        {...cardProps}
+        className={[
+          classes.card,
+          classes.wide,
+          classes.pressable,
+          pressing && classes.pressing,
+          expanded && classes.hidden,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <div className={`${classes.wideName} ${classes.teamCardName}`}>
+          <Link
+            to="/league/$leagueId/teams/$teamId"
+            params={{ leagueId: data.leagueId, teamId: data.teamId }}
+            className={classes.teamCardLink}
+          >
+            <span className={classes.name}>{data.name}</span>
+          </Link>
+          {data.isSelf && <YouBadge />}
+          {data.nameBadges}
+        </div>
+        <div className={`${classes.widePoints} ${classes.points}`} aria-hidden>
+          {data.primary}
+        </div>
+        {data.secondaryLeft !== undefined && (
+          <div className={`${classes.wideDetail} ${classes.teamCardSecondary}`} aria-hidden>
+            {data.secondaryLeft}
+          </div>
+        )}
+        {data.secondaryRight !== undefined && (
+          <div className={classes.wideProj} aria-hidden>
+            {data.secondaryRight}
+          </div>
+        )}
+      </div>
+
+      {anchor && (
+        <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
+          <div className={classes.expandedHeader}>
+            <div className={classes.teamCardPopoverTitle}>
+              <span
+                className={classes.pill}
+                style={{ ...rankChipStyle(data.isSelf), fontFamily: "var(--font-numeric)" }}
+              >
+                #{data.rank}
+              </span>
+              <span id={titleId} className={classes.expandedName}>
+                {data.name}
+              </span>
+            </div>
+            <button
+              type="button"
+              className={classes.closeButton}
+              onClick={close}
+              aria-label="Close"
+            >
+              <X size={16} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          {data.stats.length > 0 && (
+            <div className={classes.statGrid}>
+              {data.stats.map((stat) => (
+                <div key={stat.label} className={classes.stat}>
+                  <div className={classes.statValue}>{stat.value}</div>
+                  <div className={classes.statLabel}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <TeamPositionRanksPanel positionRanks={positionRanks} totalTeams={totalTeams} />
+        </GlassPopover>
+      )}
+    </div>
+  );
+}

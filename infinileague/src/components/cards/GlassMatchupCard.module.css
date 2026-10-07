@@ -999,3 +999,71 @@
   justify-self: end;
   justify-content: flex-end;
 }
+
+/* --- League-home team card (GlassTeamCard) ----------------------------- */
+
+.teamCardName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.teamCardName .pill {
+  flex-shrink: 0;
+}
+
+/* The name is the link to the team page - styled as the card's title, not
+   a blue hyperlink. */
+.teamCardLink {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .teamCardLink:hover .name {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.teamCardSecondary {
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.teamCardPopoverTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Position-strength section in the team popover. */
+.strengthHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.strengthLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+.radarTooltip {
+  padding: 6px 10px;
+  border-radius: 10px;
+  color: #f8fafc;
+  background: rgba(20, 24, 28, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
