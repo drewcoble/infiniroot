@@ -255,10 +255,11 @@
   color: rgba(248, 250, 252, 0.6);
 }
 
-/* Bullet meter - see PointsMeter. Track, fill, and ghost are all white at
-   different strengths (the card's color already belongs to the position
-   pill and the live tint); the tick is a taller solid mark so it reads
-   even where the fill passes over it. */
+/* Bullet meter - see PointsMeter. Fill and tick are the same light gray
+   as the win bar's toss-up tint (#9ca3af); track and ghost are faint white
+   (the card's color already belongs to the position pill and the live
+   tint). The tick is a taller solid mark so it reads even where the fill
+   passes over it. */
 .meter {
   position: relative;
   height: 5px;
@@ -285,7 +286,7 @@
 
 .meterFill {
   left: 0;
-  background: rgba(248, 250, 252, 0.88);
+  background: #9ca3af;
 }
 
 .meterGhost {
@@ -314,7 +315,7 @@
 }
 
 .final_even {
-  background: rgba(248, 250, 252, 0.42);
+  background: rgba(156, 163, 175, 0.6);
 }
 
 .meterTick {
@@ -324,7 +325,7 @@
   width: 2px;
   margin-left: -1px;
   border-radius: 1px;
-  background: #fff;
+  background: #9ca3af;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
@@ -520,7 +521,7 @@
 /* Default swatch colors at zero specificity so the pace_/final_ classes
    (declared earlier in this file) still win when applied alongside. */
 :where(.swatchFill) {
-  background: rgba(248, 250, 252, 0.88);
+  background: #9ca3af;
 }
 
 :where(.swatchGhost) {
@@ -531,7 +532,7 @@
   width: 3px;
   height: 12px;
   border-radius: 1px;
-  background: #fff;
+  background: #9ca3af;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
