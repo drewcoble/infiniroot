@@ -1,10 +1,12 @@
 import { Box, Group } from "@mantine/core";
 import type { SlotLabel, TeamRosterRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
-import type { GlassMatchupCardData } from "./cards/cardShared";
+import { Fragment } from "react";
+import { ROSTER_SECTION_LABEL, rosterSection, type GlassMatchupCardData } from "./cards/cardShared";
 import {
   EmptyGlassCard,
   GlassMatchupCard,
+  GlassSectionDivider,
   GlassSkeletonCard,
   GlassSlotChip,
 } from "./cards/GlassMatchupCard";
@@ -88,17 +90,29 @@ export function MatchupRosterSkeleton() {
 export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
   return (
     <>
-      {alignRosterRows(props.teamARows, props.teamBRows).map(({ a: aRow, b: bRow }, index) => (
-        <Group key={index} wrap="nowrap" gap="xs" align="stretch">
-          <Cell row={aRow} props={props} />
-          <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
-          {props.teamBRows === undefined && props.teamBLoading ? (
-            <SkeletonCell />
-          ) : (
-            <Cell row={props.teamBRows ? bRow : undefined} props={props} />
-          )}
-        </Group>
-      ))}
+      {alignRosterRows(props.teamARows, props.teamBRows).map(
+        ({ a: aRow, b: bRow }, index, rows) => {
+          const section = rosterSection(aRow?.slot ?? bRow?.slot);
+          const previous = index > 0 ? rows[index - 1] : undefined;
+          const startsSection =
+            previous !== undefined &&
+            rosterSection(previous.a?.slot ?? previous.b?.slot) !== section;
+          return (
+            <Fragment key={index}>
+              {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
+              <Group wrap="nowrap" gap="xs" align="stretch">
+                <Cell row={aRow} props={props} />
+                <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
+                {props.teamBRows === undefined && props.teamBLoading ? (
+                  <SkeletonCell />
+                ) : (
+                  <Cell row={props.teamBRows ? bRow : undefined} props={props} />
+                )}
+              </Group>
+            </Fragment>
+          );
+        },
+      )}
     </>
   );
 }

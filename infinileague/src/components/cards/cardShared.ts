@@ -134,3 +134,23 @@ export function ariaSummary(data: GlassMatchupCardData): string {
   }
   return parts.join(", ");
 }
+
+// Which part of a roster a slot belongs to - starters first, then bench,
+// IR, and taxi, each set off with a GlassSectionDivider. Takes either the
+// raw slot ("BENCH"/"TAXI") or its display label ("BN"/"Taxi").
+export type RosterSection = "starters" | "bench" | "ir" | "taxi";
+
+export function rosterSection(slot: string | undefined): RosterSection {
+  const upper = (slot ?? "").toUpperCase();
+  if (upper === "BENCH" || upper === "BN") return "bench";
+  if (upper === "IR") return "ir";
+  if (upper === "TAXI") return "taxi";
+  return "starters";
+}
+
+export const ROSTER_SECTION_LABEL: Record<RosterSection, string> = {
+  starters: "Starters",
+  bench: "Bench",
+  ir: "IR",
+  taxi: "Taxi",
+};

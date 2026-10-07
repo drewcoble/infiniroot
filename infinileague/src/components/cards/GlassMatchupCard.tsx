@@ -138,6 +138,19 @@ export function GlassSkeletonCard() {
   );
 }
 
+// Labeled break between roster sections (Bench / IR / Taxi) - a hairline
+// either side of a small caps label, with extra space above so starters
+// and reserves read as separate groups.
+export function GlassSectionDivider({ label }: { label: string }) {
+  return (
+    <div className={classes.sectionDivider} role="separator" aria-label={label}>
+      <span className={classes.sectionLine} />
+      <span className={classes.sectionLabel}>{label}</span>
+      <span className={classes.sectionLine} />
+    </div>
+  );
+}
+
 export function GlassSlotChip({ label }: { label: string }) {
   return (
     <span

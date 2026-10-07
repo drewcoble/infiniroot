@@ -1,8 +1,10 @@
+import { Fragment } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Box, Group, Stack, Text, Title } from "@mantine/core";
 import {
   EmptyGlassCard,
   GlassMatchupCard,
+  GlassSectionDivider,
   GlassSlotChip,
   type GlassMatchupCardData,
 } from "../../../components/cards/GlassMatchupCard";
@@ -12,6 +14,7 @@ import {
 } from "../../../components/cards/GlassMatchupHeader";
 import { EmptyGlassRosterCard, GlassRosterCard } from "../../../components/cards/GlassRosterCard";
 import { meterScaleMax } from "../../../components/cards/meterScale";
+import { ROSTER_SECTION_LABEL, rosterSection } from "../../../components/cards/cardShared";
 import { buildShortNames } from "../../../lib/shortPlayerName";
 
 export const Route = createFileRoute("/league/$leagueId/cards")({
@@ -380,18 +383,21 @@ function CardsPage() {
       <Text fw={600}>My Team: full-width card</Text>
 
       <Stack gap={8}>
-        {SAMPLE_ROSTER.map((entry, index) =>
-          entry.data ? (
-            <GlassRosterCard
-              key={index}
-              data={entry.data}
-              slot={entry.slot}
-              scaleMax={rosterScaleMax}
-            />
-          ) : (
-            <EmptyGlassRosterCard key={index} slot={entry.slot} />
-          ),
-        )}
+        {SAMPLE_ROSTER.map((entry, index) => {
+          const section = rosterSection(entry.slot);
+          const startsSection =
+            index > 0 && rosterSection(SAMPLE_ROSTER[index - 1]!.slot) !== section;
+          return (
+            <Fragment key={index}>
+              {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
+              {entry.data ? (
+                <GlassRosterCard data={entry.data} slot={entry.slot} scaleMax={rosterScaleMax} />
+              ) : (
+                <EmptyGlassRosterCard slot={entry.slot} />
+              )}
+            </Fragment>
+          );
+        })}
       </Stack>
     </Stack>
   );
