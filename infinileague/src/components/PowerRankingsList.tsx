@@ -44,23 +44,19 @@ export function RankChangeIndicator({ rankChange }: { rankChange: number | undef
 // backend saved (also powerRankings.ts) - absent, not zero, the very first
 // time it's computed for a season.
 // Week-over-week move as a glass badge on the team card - green up, red
-// down, gray dash for unchanged; nothing without a prior week to compare.
+// down. Only shown when the team actually moved: no badge for no change,
+// or without a prior week to compare against.
 function RankChangeBadge({ rankChange }: { rankChange: number | undefined }) {
-  if (rankChange === undefined) return null;
-  const color = rankChange > 0 ? "green" : rankChange < 0 ? "red" : "gray";
-  const Icon = rankChange > 0 ? ArrowUp : rankChange < 0 ? ArrowDown : Minus;
+  if (rankChange === undefined || rankChange === 0) return null;
+  const Icon = rankChange > 0 ? ArrowUp : ArrowDown;
   return (
     <span
       className={classes.pill}
-      style={{ ...pillStyle(color), fontFamily: "var(--font-numeric)" }}
-      aria-label={
-        rankChange === 0
-          ? "No change since last week"
-          : `${rankChange > 0 ? "Up" : "Down"} ${Math.abs(rankChange)} since last week`
-      }
+      style={{ ...pillStyle(rankChange > 0 ? "green" : "red"), fontFamily: "var(--font-numeric)" }}
+      aria-label={`${rankChange > 0 ? "Up" : "Down"} ${Math.abs(rankChange)} since last week`}
     >
       <Icon size={12} strokeWidth={3} />
-      {rankChange !== 0 && Math.abs(rankChange)}
+      {Math.abs(rankChange)}
     </span>
   );
 }
