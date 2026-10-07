@@ -9,14 +9,14 @@
   }
 }
 
-/* Numbers (points, scores, standings, FAAB) are set in Fjalla One - a
-   condensed display face that keeps stat-heavy rows compact. It ships in
-   one weight only, so anything using it drops to 400 rather than getting
-   a synthesized (smudgy) bold. `.num` is for plain elements; the glass
-   cards' stylesheet uses the variable directly. */
+/* Numbers (points, scores, standings, FAAB) are set in Barlow semibold -
+   a clean, very legible grotesque that holds up at small sizes. Every
+   number style reads these two variables; tabular figures keep live
+   scores from shifting as digits change. `.num` is for plain elements; the
+   glass cards' stylesheet uses the variables directly. */
 :root {
-  --font-numeric: "Fjalla One", var(--mantine-font-family);
-  --font-numeric-weight: 400;
+  --font-numeric: "Barlow", var(--mantine-font-family);
+  --font-numeric-weight: 600;
 }
 
 .num {

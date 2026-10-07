@@ -9,17 +9,10 @@ import { Analytics } from "@vercel/analytics/react";
 import { ConvexReactClient } from "convex/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
-// Fjalla One for numbers (points, standings, FAAB) - Latin subset only,
-// bundled rather than loaded from Google Fonts. See index.css's
+// Barlow (semibold) for numbers - points, standings, FAAB. Latin subset
+// only, bundled rather than loaded from Google Fonts. See index.css's
 // --font-numeric.
-import "@fontsource/fjalla-one/latin-400.css";
-// TEMPORARY - number-font candidates for the Cards tab's switcher (see
-// lib/numericFont.ts). A face's file only downloads once it's in use.
-import "@fontsource/barlow-semi-condensed/latin-600.css";
-import "@fontsource/archivo/latin-600.css";
 import "@fontsource/barlow/latin-600.css";
-import "@fontsource/rubik/latin-500.css";
-import { applyNumericFont, getNumericFont } from "./lib/numericFont";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import { cssVariablesResolver, theme } from "@shared/theme";
@@ -29,9 +22,6 @@ import { installStaleChunkReload } from "@shared/errors";
 // see shared/errors.ts's own comment. Installed before the router even
 // renders so most cases reload before React ever shows an error.
 installStaleChunkReload();
-
-// TEMPORARY - restore the number font picked on the Cards tab.
-applyNumericFont(getNumericFont());
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
 
