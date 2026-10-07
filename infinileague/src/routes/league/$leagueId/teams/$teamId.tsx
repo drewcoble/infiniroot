@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Stack } from "@mantine/core";
+import { Alert, Group, Stack, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { TeamRosterList, TeamRosterListSkeleton } from "../../../../components/TeamRosterList";
+import { WeekPicker } from "../../../../components/WeekPicker";
 import {
   GlassTeamHeader,
   type TeamWeekSummary,
@@ -177,15 +178,21 @@ function TeamPage() {
 
   return (
     <Stack gap="md">
-      <GlassTeamHeader
-        team={team}
-        picker={
-          week !== null
-            ? { week: Number(week), lastWeek: REGULAR_SEASON_WEEKS, onChange: goToWeek }
-            : null
-        }
-        summary={summary}
-      />
+      {/* Same title row as the Matchup tab. This route also shows other
+          teams (from standings) - only your own is "My Team". */}
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Title order={3}>{team === undefined || team.isSelf ? "My Team" : "Team"}</Title>
+        {week !== null && (
+          <WeekPicker
+            week={Number(week)}
+            currentWeek={currentWeek !== null ? Number(currentWeek) : null}
+            lastWeek={REGULAR_SEASON_WEEKS}
+            onChange={goToWeek}
+          />
+        )}
+      </Group>
+
+      <GlassTeamHeader team={team} week={week !== null ? Number(week) : null} summary={summary} />
 
       {roster !== undefined && <LineupSuggestionsCard rows={roster} />}
 

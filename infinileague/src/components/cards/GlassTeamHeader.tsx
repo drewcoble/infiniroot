@@ -1,4 +1,3 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { StandingsRow } from "../../types/season";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import classes from "./GlassMatchupCard.module.css";
@@ -13,27 +12,21 @@ export interface TeamWeekSummary {
   toPlayCount: number;
 }
 
-interface WeekPicker {
-  week: number;
-  lastWeek: number;
-  onChange: (week: number) => void;
-}
-
 // My Team's header in the same glass as the Matchup header and roster cards:
 // team name with a FAAB / waiver-order badge, the season line (rank,
-// record, points for/against), then a week section - prev/next week picker,
-// the starters' live/to-play counts, and the week's score with its
-// projection. `team` undefined = standings still loading (skeleton);
+// record, points for/against), then a week section - which week it is, the
+// starters' live/to-play counts, and the week's score with its projection
+// (the week itself is picked from the page's title row - see WeekPicker). `team` undefined = standings still loading (skeleton);
 // `summary` undefined = the week's roster still loading. Before any starter
 // has kicked off there's no score yet, so the projection takes the score's
 // place, small - same rule as the player cards.
 export function GlassTeamHeader({
   team,
-  picker,
+  week,
   summary,
 }: {
   team: StandingsRow | undefined;
-  picker: WeekPicker | null;
+  week: number | null;
   summary: TeamWeekSummary | undefined;
 }) {
   const notStarted =
@@ -48,7 +41,10 @@ export function GlassTeamHeader({
       {team === undefined ? (
         <div aria-hidden>
           <span className={classes.skeletonBar} style={{ width: "55%", height: 18 }} />
-          <span className={classes.skeletonBar} style={{ width: "75%", height: 12, marginTop: 8 }} />
+          <span
+            className={classes.skeletonBar}
+            style={{ width: "75%", height: 12, marginTop: 8 }}
+          />
         </div>
       ) : (
         <div>
@@ -76,31 +72,7 @@ export function GlassTeamHeader({
       <div className={classes.teamHeaderDivider} aria-hidden />
 
       <div className={classes.teamHeaderWeek}>
-        {picker ? (
-          <div className={classes.weekPicker}>
-            <button
-              type="button"
-              className={classes.glassIconButton}
-              aria-label="Previous week"
-              disabled={picker.week <= 1}
-              onClick={() => picker.onChange(picker.week - 1)}
-            >
-              <ChevronLeft size={16} strokeWidth={2.5} />
-            </button>
-            <span className={classes.weekPickerLabel}>Week {picker.week}</span>
-            <button
-              type="button"
-              className={classes.glassIconButton}
-              aria-label="Next week"
-              disabled={picker.week >= picker.lastWeek}
-              onClick={() => picker.onChange(picker.week + 1)}
-            >
-              <ChevronRight size={16} strokeWidth={2.5} />
-            </button>
-          </div>
-        ) : (
-          <span />
-        )}
+        <span className={classes.teamHeaderWeekLabel}>{week !== null ? `Week ${week}` : ""}</span>
         {summary && (
           <div
             className={classes.headerProj}

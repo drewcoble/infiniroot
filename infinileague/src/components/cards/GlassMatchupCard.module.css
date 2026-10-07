@@ -982,45 +982,10 @@
   min-height: 30px;
 }
 
-.weekPicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.weekPickerLabel {
-  min-width: 56px;
-  text-align: center;
-  font-size: 14px;
+.teamHeaderWeekLabel {
+  font-size: 11px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Small round glass button - the week picker's arrows. */
-.glassIconButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: 50%;
-  color: #f8fafc;
-  cursor: pointer;
-  outline: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
-}
-
-.glassIconButton:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .glassIconButton:focus-visible {
-    outline: 2px solid rgba(96, 165, 250, 0.95);
-    outline-offset: 2px;
-  }
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.6);
 }

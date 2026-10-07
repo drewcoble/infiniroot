@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { ActionIcon, Alert, Button, Group, Select, Stack, Text, Title } from "@mantine/core";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Alert, Group, Select, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
+import { WeekPicker } from "../../../components/WeekPicker";
 import {
   MatchupRosterMatchup,
   MatchupRosterSkeleton,
@@ -332,36 +332,12 @@ function MatchupPage() {
       <Group justify="space-between" align="center" wrap="nowrap">
         <Title order={3}>Matchup</Title>
         {week !== null && (
-          <Group gap={4} wrap="nowrap">
-            {!isCurrentWeek && currentWeek !== null && (
-              <Button
-                variant="subtle"
-                size="compact-sm"
-                onClick={() => goToWeek(Number(currentWeek))}
-              >
-                This week
-              </Button>
-            )}
-            <ActionIcon
-              variant="subtle"
-              aria-label="Previous week"
-              disabled={Number(week) <= 1}
-              onClick={() => goToWeek(Number(week) - 1)}
-            >
-              <ChevronLeft size={18} />
-            </ActionIcon>
-            <Text fw={600} style={{ minWidth: 64, textAlign: "center" }}>
-              Week {week}
-            </Text>
-            <ActionIcon
-              variant="subtle"
-              aria-label="Next week"
-              disabled={Number(week) >= REGULAR_SEASON_WEEKS}
-              onClick={() => goToWeek(Number(week) + 1)}
-            >
-              <ChevronRight size={18} />
-            </ActionIcon>
-          </Group>
+          <WeekPicker
+            week={Number(week)}
+            currentWeek={currentWeek !== null ? Number(currentWeek) : null}
+            lastWeek={REGULAR_SEASON_WEEKS}
+            onChange={goToWeek}
+          />
         )}
       </Group>
 
