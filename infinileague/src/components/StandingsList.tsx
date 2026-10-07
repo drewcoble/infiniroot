@@ -43,6 +43,9 @@ export function StandingsList({ leagueId, rows, positionRanksByTeam }: Standings
                 <span className="num">{ppg !== null ? `${ppg.toFixed(1)} PPG` : "—"}</span>
               ),
               secondaryRight: waiver,
+              summary: [ppg !== null ? `${ppg.toFixed(1)} PPG` : null, waiver]
+                .filter(Boolean)
+                .join(", "),
               stats: [
                 { label: "Record", value: `${row.wins}-${row.losses}-${row.ties}` },
                 { label: "PPG", value: ppg !== null ? ppg.toFixed(1) : "—" },

@@ -54,6 +54,9 @@ export interface PowerRankingRow {
   name: string;
   isSelf: boolean;
   totalProjectedPoints: number;
+  // totalProjectedPoints per remaining week (the weeks it was summed over,
+  // current through 18) - the per-game rate the league home shows.
+  rosPpg: number;
   // Rank this week minus rank last snapshotted week (positive = moved up,
   // negative = moved down) - undefined when there's no prior snapshot to
   // compare against yet (first time power rankings have run for this
@@ -294,6 +297,11 @@ function computeTeamCategoryTotals(
   return totals;
 }
 
+// A total summed over `weeks` remaining weeks as a per-week rate.
+function perWeek(total: number, weeks: number): number {
+  return weeks > 0 ? total / weeks : 0;
+}
+
 // Ranks every team with a known total, descending - shared by
 // getPowerRankings' real-roster totals and getPowerRankingsWithTrade's
 // before/after totals alike.
@@ -352,6 +360,7 @@ export const getPowerRankings = action({
         name: team.name,
         isSelf: team.isSelf,
         totalProjectedPoints,
+        rosPpg: perWeek(totalProjectedPoints, inputs.projectionMapsByWeek.length),
         ...(previousRank !== undefined ? { rankChange: previousRank - (index + 1) } : {}),
       };
     });
@@ -402,6 +411,7 @@ export const getPowerRankingsWithTrade = action({
         name: team.name,
         isSelf: team.isSelf,
         totalProjectedPoints,
+        rosPpg: perWeek(totalProjectedPoints, inputs.projectionMapsByWeek.length),
       }));
 
     return {

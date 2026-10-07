@@ -55,6 +55,9 @@ export interface PowerRankingRow {
   name: string;
   isSelf: boolean;
   totalProjectedPoints: number;
+  // totalProjectedPoints per remaining week - optional since a backend
+  // deployed before this field existed doesn't send it.
+  rosPpg?: number;
   // Rank this week minus rank last snapshotted week - positive means moved
   // up, negative means moved down. Absent when there's no prior snapshot
   // yet (first computation for this season).

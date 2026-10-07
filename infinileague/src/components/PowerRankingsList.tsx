@@ -90,10 +90,18 @@ export function PowerRankingsList({ leagueId, rows, positionRanksByTeam }: Power
             rank: index + 1,
             isSelf: row.isSelf,
             nameBadges: <RankChangeBadge rankChange={row.rankChange} />,
-            primary: row.totalProjectedPoints.toFixed(1),
-            secondaryRight: "Proj pts",
+            // Rest-of-season points per game under the name, same spot as
+            // Standings' PPG.
+            secondaryLeft: (
+              <span className="num">
+                {row.rosPpg !== undefined ? `${row.rosPpg.toFixed(1)} ROS PPG` : "—"}
+              </span>
+            ),
+            summary:
+              row.rosPpg !== undefined ? `${row.rosPpg.toFixed(1)} rest-of-season PPG` : undefined,
             stats: [
-              { label: "Proj pts", value: row.totalProjectedPoints.toFixed(1) },
+              { label: "ROS PPG", value: row.rosPpg !== undefined ? row.rosPpg.toFixed(1) : "—" },
+              { label: "ROS proj pts", value: row.totalProjectedPoints.toFixed(0) },
               { label: "Since last wk", value: rankChangeText(row.rankChange) },
             ],
           }}

@@ -16,11 +16,15 @@ export interface GlassTeamCardData {
   // Small badges after the name - power rankings' week-over-week move,
   // elimination watch's status.
   nameBadges?: ReactNode;
-  // The list's headline number (record, projected points, week points) on
-  // the name's row, and an optional second-row left/right line.
-  primary: string;
+  // The list's headline number (record, week points) on the name's row -
+  // optional, for lists whose number reads better under the name - and an
+  // optional second-row left/right line.
+  primary?: string;
   secondaryLeft?: ReactNode;
   secondaryRight?: ReactNode;
+  // Spoken summary of the second row for screen readers (the visible rows
+  // are hidden from them in favor of one label).
+  summary?: string | undefined;
   // Labeled tiles for the detail popover.
   stats: Array<{ label: string; value: string }>;
 }
@@ -51,7 +55,9 @@ export function GlassTeamCard({
   totalTeams: number;
 }) {
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard<HTMLAnchorElement>(
-    `Rank ${data.rank}, ${data.name}${data.isSelf ? " (you)" : ""}, ${data.primary}`,
+    [`Rank ${data.rank}`, `${data.name}${data.isSelf ? " (you)" : ""}`, data.primary, data.summary]
+      .filter(Boolean)
+      .join(", "),
     { asLink: true },
   );
   const titleId = useId();
@@ -84,9 +90,11 @@ export function GlassTeamCard({
           <span className={classes.name}>{data.name}</span>
           {data.nameBadges}
         </div>
-        <div className={`${classes.widePoints} ${classes.points}`} aria-hidden>
-          {data.primary}
-        </div>
+        {data.primary !== undefined && (
+          <div className={`${classes.widePoints} ${classes.points}`} aria-hidden>
+            {data.primary}
+          </div>
+        )}
         {data.secondaryLeft !== undefined && (
           <div className={`${classes.wideDetail} ${classes.teamCardSecondary}`} aria-hidden>
             {data.secondaryLeft}
