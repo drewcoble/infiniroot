@@ -62,9 +62,13 @@ export function GlassRosterCard({
         </div>
         <div className={classes.widePoints} aria-hidden>
           <GameStatusGlyph state={data.gameState} />
-          <div className={classes.statsRow}>
-            <PointsHeadline data={data} />
-          </div>
+          {/* Nothing scored yet before kickoff - the number slot stays
+              empty and the projection sits on the row below as usual. */}
+          {data.gameState !== "pre" && (
+            <div className={classes.statsRow}>
+              <PointsHeadline data={data} />
+            </div>
+          )}
         </div>
 
         <div className={classes.wideDetail} aria-hidden>
@@ -85,9 +89,9 @@ export function GlassRosterCard({
           </span>
         </div>
         {/* Start/sit is what this screen is for, so the projection is
-            spelled out as a number here, not just the meter's tick. Before
-            kickoff the headline already is the projection. */}
-        {(data.gameState === "live" || data.gameState === "final") && (
+            spelled out as a number here, not just the meter's tick - always
+            small and on this row, upcoming games included. */}
+        {data.gameState !== "bye" && (
           <div className={classes.wideProj} aria-hidden>
             Proj {formatProj(data.projectedPoints)}
           </div>
