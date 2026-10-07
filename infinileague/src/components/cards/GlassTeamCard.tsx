@@ -27,20 +27,12 @@ export interface GlassTeamCardData {
 
 // Rank chip outside the card, like the roster cards' slot chip - glass gray,
 // or saddlebrown for your own team (the "yours" color, same as the My Team
-// header's rank badge).
+// header's rank badge) - the only "this is you" marker on the card.
 function rankChipStyle(isSelf: boolean): CSSProperties {
   return {
     color: isSelf ? "color-mix(in srgb, #8b4513 15%, #fff)" : "#f8fafc",
     "--pill-tint": isSelf ? "#8b4513" : "var(--mantine-color-gray-5)",
   } as CSSProperties;
-}
-
-function YouBadge() {
-  return (
-    <span className={classes.pill} style={rankChipStyle(true)}>
-      You
-    </span>
-  );
 }
 
 // League-home team card (Standings / Power Rankings / Elimination Watch) in
@@ -90,7 +82,6 @@ export function GlassTeamCard({
       >
         <div className={`${classes.wideName} ${classes.teamCardName}`} aria-hidden>
           <span className={classes.name}>{data.name}</span>
-          {data.isSelf && <YouBadge />}
           {data.nameBadges}
         </div>
         <div className={`${classes.widePoints} ${classes.points}`} aria-hidden>
