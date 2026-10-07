@@ -19,7 +19,7 @@ export interface MatchupHeaderTeam {
 const TOSSUP_MARGIN = 5;
 const FAVORED_TINT = "#4ade80";
 const UNDERDOG_TINT = "#f87171";
-const TOSSUP_TINT = "#f8fafc";
+const TOSSUP_TINT = "#9ca3af";
 
 function segmentTint(pct: number): string {
   if (pct > 50 + TOSSUP_MARGIN) return FAVORED_TINT;
