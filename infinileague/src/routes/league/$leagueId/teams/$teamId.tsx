@@ -1,8 +1,9 @@
 import { useMemo } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Group, Stack, Title } from "@mantine/core";
+import { ActionIcon, Alert, Group, Stack, Title } from "@mantine/core";
+import { ChevronLeft } from "lucide-react";
 import { api } from "@infinidata/api";
 import { TeamRosterList, TeamRosterListSkeleton } from "../../../../components/TeamRosterList";
 import { WeekPicker } from "../../../../components/WeekPicker";
@@ -179,9 +180,24 @@ function TeamPage() {
   return (
     <Stack gap="md">
       {/* Same title row as the Matchup tab. This route also shows other
-          teams (from standings) - only your own is "My Team". */}
+          teams (opened from the league home's list) - those get a back
+          chevron to the league page; your own is the Team tab itself. */}
       <Group justify="space-between" align="center" wrap="nowrap">
-        <Title order={3}>{team === undefined || team.isSelf ? "My Team" : "Team"}</Title>
+        <Group gap={4} wrap="nowrap">
+          {team !== undefined && !team.isSelf && (
+            <ActionIcon
+              renderRoot={(props) => (
+                <Link to="/league/$leagueId" params={{ leagueId }} {...props} />
+              )}
+              variant="subtle"
+              aria-label="Back to league"
+              ml={-6}
+            >
+              <ChevronLeft size={20} />
+            </ActionIcon>
+          )}
+          <Title order={3}>Team</Title>
+        </Group>
         {week !== null && (
           <WeekPicker
             week={Number(week)}

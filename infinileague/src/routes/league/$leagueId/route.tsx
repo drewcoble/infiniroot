@@ -43,10 +43,10 @@ interface TabItem {
   params: Record<string, string>;
 }
 
-// Standings, Free Agents, and Players are always reachable; "My Team" and
-// "Matchup" only once the self team is known (both need a concrete teamId
-// param, unlike infinidraft's flat per-league tabs) so they're appended
-// conditionally below rather than listed here.
+// Standings, Free Agents, and Players are always reachable; "Team" (your
+// own team) and "Matchup" only once the self team is known (both need a
+// concrete teamId param, unlike infinidraft's flat per-league tabs) so
+// they're appended conditionally below rather than listed here.
 const STANDINGS_VALUE: TabValue = "standings";
 
 // Mobile BottomNav's direct-row cutoff, same "positional rather than a
@@ -91,7 +91,7 @@ function LeagueLayout() {
       ? [
           {
             value: "myTeam" as const,
-            label: "My Team",
+            label: "Team",
             icon: CircleUserRound,
             to: "/league/$leagueId/teams/$teamId",
             params: { leagueId, teamId: selfTeam.teamId },
@@ -153,10 +153,10 @@ function LeagueLayout() {
   // Path-based rather than TAB_META's exact route string, since the
   // standings tab's own route has no trailing segment to match against (the
   // way infinidraft's `pathname.split("/").pop()` compares against each
-  // tab's flat leaf segment). "My Team" only lights up on the self team's
-  // own team page specifically - viewing another team (e.g. clicked from
-  // the standings table) is still the /teams/$teamId route, but it isn't
-  // "My Team", so it shouldn't claim that tab as active.
+  // tab's flat leaf segment). The Team tab only lights up on the self
+  // team's own page specifically - viewing another team (e.g. clicked from
+  // the standings list) is still the /teams/$teamId route, but it isn't
+  // yours, so it shouldn't claim that tab as active.
   const activeValue: TabValue | undefined =
     location.pathname === `/league/${leagueId}` ||
     location.pathname === `/league/${leagueId}/`
