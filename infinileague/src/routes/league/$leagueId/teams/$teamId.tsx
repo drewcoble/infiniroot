@@ -2,11 +2,12 @@ import { useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { ActionIcon, Alert, Group, Stack, Title } from "@mantine/core";
+import { Alert, Group, Stack, Title } from "@mantine/core";
 import { ChevronLeft } from "lucide-react";
 import { api } from "@infinidata/api";
 import { TeamRosterList, TeamRosterListSkeleton } from "../../../../components/TeamRosterList";
 import { WeekPicker } from "../../../../components/WeekPicker";
+import classes from "../../../../components/cards/GlassMatchupCard.module.css";
 import {
   GlassTeamHeader,
   type TeamWeekSummary,
@@ -183,18 +184,17 @@ function TeamPage() {
           teams (opened from the league home's list) - those get a back
           chevron to the league page; your own is the Team tab itself. */}
       <Group justify="space-between" align="center" wrap="nowrap">
-        <Group gap={4} wrap="nowrap">
+        <Group gap={10} wrap="nowrap">
           {team !== undefined && !team.isSelf && (
-            <ActionIcon
-              renderRoot={(props) => (
-                <Link to="/league/$leagueId" params={{ leagueId }} {...props} />
-              )}
-              variant="subtle"
+            // Round glass button, same as the league home's sync button.
+            <Link
+              to="/league/$leagueId"
+              params={{ leagueId }}
+              className={classes.glassIconButton}
               aria-label="Back to league"
-              ml={-6}
             >
-              <ChevronLeft size={20} />
-            </ActionIcon>
+              <ChevronLeft size={18} strokeWidth={2.5} />
+            </Link>
           )}
           <Title order={3}>Team</Title>
         </Group>
