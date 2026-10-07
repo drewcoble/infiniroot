@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Stack, Text, Title } from "@mantine/core";
+import { Alert, Stack, Title } from "@mantine/core";
 import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
 import { StandingsList } from "../../../components/StandingsList";
@@ -324,10 +324,6 @@ function LeaguePage() {
           />
         </>
       )}
-      <Text c="dimmed">
-        Waiver recommendations, FAAB bid suggestions, and trade analysis land
-        here next.
-      </Text>
     </Stack>
   );
 }
