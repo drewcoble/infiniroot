@@ -2,22 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import {
-  Alert,
-  Button,
-  Group,
-  Loader,
-  SegmentedControl,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Alert, Stack, Text, Title } from "@mantine/core";
 import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
 import { StandingsList } from "../../../components/StandingsList";
 import { PowerRankingsList } from "../../../components/PowerRankingsList";
 import { EliminationWatchList } from "../../../components/EliminationWatchList";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
+import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import classes from "../../../components/cards/GlassMatchupCard.module.css";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
 import type {
@@ -214,30 +207,45 @@ function LeaguePage() {
   }, [leagueId, syncStatus, season]);
 
   if (season === undefined) {
-    return <Loader />;
+    return (
+      <Stack gap="md">
+        <span className={classes.skeletonBar} style={{ width: "55%", height: 22 }} />
+        <span className={classes.skeletonBar} style={{ height: 42 }} />
+        <Stack gap={8}>
+          {Array.from({ length: 8 }, (_, index) => (
+            <GlassRosterSkeletonCard key={index} />
+          ))}
+        </Stack>
+      </Stack>
+    );
   }
 
   return (
     <Stack gap="md">
-      <Title order={2}>{season.name}</Title>
-      <Group gap="xs">
-        <Text size="sm" c="dimmed">
-          {syncing
-            ? "Syncing…"
-            : lastSyncedAt !== undefined
-              ? `Last synced ${formatRelativeTime(lastSyncedAt)}`
-              : "Rosters haven't synced yet."}
-        </Text>
-        <Button
-          size="xs"
-          variant="default"
-          leftSection={<RefreshCw size={14} />}
+      {/* League name in the same title style as the other tabs, with the
+          roster sync's status quietly under it and the sync itself as a
+          round glass button - a status line rather than a toolbar. */}
+      <div className={classes.pageHeader}>
+        <div style={{ minWidth: 0 }}>
+          <Title order={3}>{season.name}</Title>
+          <div className={classes.pageHeaderStatus} aria-live="polite">
+            {syncing
+              ? "Syncing rosters…"
+              : lastSyncedAt !== undefined
+                ? `Synced ${formatRelativeTime(lastSyncedAt)}`
+                : "Rosters haven't synced yet"}
+          </div>
+        </div>
+        <button
+          type="button"
+          className={classes.glassIconButton}
           onClick={() => void runSync()}
-          loading={syncing}
+          disabled={syncing}
+          aria-label={syncing ? "Syncing rosters" : "Sync rosters now"}
         >
-          Sync now
-        </Button>
-      </Group>
+          <RefreshCw size={16} strokeWidth={2.5} className={syncing ? classes.spinning : undefined} />
+        </button>
+      </div>
       {syncError && (
         <Alert color="red" withCloseButton onClose={() => setSyncError(null)}>
           {syncError}
@@ -252,22 +260,20 @@ function LeaguePage() {
           {positionRanksError}
         </Alert>
       )}
-      <SegmentedControl
+      <GlassSegmented
+        label="League view"
         value={tableView}
-        onChange={(value) =>
-          setManualTableView(value as "standings" | "power" | "elimination")
-        }
-        data={[
+        onChange={setManualTableView}
+        options={[
           // Standings' win/loss record doesn't mean anything in a
           // guillotine league (no head-to-head games) - swapped for
           // Elimination Watch instead, same tab slot. Power rankings is
           // unaffected either way.
           isGuillotine
-            ? { label: "Elimination Watch", value: "elimination" }
-            : { label: "Standings", value: "standings" },
-          { label: "Power rankings", value: "power" },
+            ? { label: "Elimination Watch", value: "elimination" as const }
+            : { label: "Standings", value: "standings" as const },
+          { label: "Power rankings", value: "power" as const },
         ]}
-        style={{ alignSelf: "flex-start" }}
       />
       {tableView === "elimination" ? (
         <>
