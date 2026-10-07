@@ -194,7 +194,13 @@ function TeamPage() {
 
       <GlassTeamHeader team={team} summary={summary} />
 
-      {roster !== undefined && <LineupSuggestionsCard rows={roster} />}
+      {/* Start/sit advice is only actionable for your own lineup, and only
+          for a week that hasn't already happened. */}
+      {roster !== undefined &&
+        team?.isSelf &&
+        week !== null &&
+        currentWeek !== null &&
+        Number(week) >= Number(currentWeek) && <LineupSuggestionsCard rows={roster} />}
 
       <Stack gap="sm">
         {teamRoster.error && <Alert color="red">{teamRoster.error}</Alert>}
