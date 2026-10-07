@@ -27,7 +27,17 @@ function segmentTint(pct: number): string {
   return TOSSUP_TINT;
 }
 
-function TeamSide({ team, align }: { team: MatchupHeaderTeam; align: "left" | "right" }) {
+// `hideFinal`: the header's result line already says the week is over, so
+// the per-side "Final" would just repeat it.
+function TeamSide({
+  team,
+  align,
+  hideFinal,
+}: {
+  team: MatchupHeaderTeam;
+  align: "left" | "right";
+  hideFinal: boolean;
+}) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
       <div className={classes.headerTeamName}>{team.name}</div>
@@ -49,7 +59,7 @@ function TeamSide({ team, align }: { team: MatchupHeaderTeam; align: "left" | "r
             {team.toPlayCount}
           </span>
         )}
-        {team.liveCount === 0 && team.toPlayCount === 0 && <span>Final</span>}
+        {!hideFinal && team.liveCount === 0 && team.toPlayCount === 0 && <span>Final</span>}
       </div>
     </div>
   );
@@ -126,12 +136,12 @@ export function GlassMatchupHeader({
         {teamA === "loading" ? (
           <TeamSideSkeleton align="left" />
         ) : (
-          <TeamSide team={teamA} align="left" />
+          <TeamSide team={teamA} align="left" hideFinal={Boolean(result)} />
         )}
         {teamB === "loading" ? (
           <TeamSideSkeleton align="right" />
         ) : teamB ? (
-          <TeamSide team={teamB} align="right" />
+          <TeamSide team={teamB} align="right" hideFinal={Boolean(result)} />
         ) : (
           <div
             className={`${classes.headerTeam} ${classes.headerTeamRight} ${classes.headerPending}`}
