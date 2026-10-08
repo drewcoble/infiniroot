@@ -1294,14 +1294,15 @@
   font-size: 13px;
 }
 
-/* ScoreboardNumber's decimal point - one round dot, sized and spaced like
-   a single dot of Doto's dot-matrix grid, sitting on the baseline. */
+/* ScoreboardNumber's decimal point - one square dot, sized and spaced like
+   a single dot of Doto's dot-matrix grid (its dots are square), sitting on
+   the baseline. */
 .scoreboardDot {
   display: inline-block;
   width: 0.15em;
   height: 0.15em;
   margin: 0 0.08em;
-  border-radius: 50%;
+  border-radius: 0;
   background: currentColor;
   vertical-align: baseline;
 }

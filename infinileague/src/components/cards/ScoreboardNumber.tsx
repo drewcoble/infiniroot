@@ -1,7 +1,7 @@
 import classes from "./GlassMatchupCard.module.css";
 
 // A score in the scoreboard font (Doto, see index.css's --font-scoreboard),
-// with the decimal point drawn as one round dot - Doto's own period is a
+// with the decimal point drawn as one square dot - Doto's own period is a
 // small cluster of dots that reads as a "+" at this weight. Screen readers
 // get the plain number as visually hidden text.
 export function ScoreboardNumber({ value }: { value: string }) {
