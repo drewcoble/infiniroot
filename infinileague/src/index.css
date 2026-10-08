@@ -25,6 +25,12 @@
      poorly at badge size). */
   --font-badge: "Red Hat Mono", var(--app-font-body);
   --font-badge-weight: 600;
+  /* Scoreboard numbers (the Matchup and Team headers' scores) - Doto, a
+     dot-matrix face, extra-bold so the dots read at a glance. Its digits
+     are all one width already. Kept to these big numbers: dot fonts lose
+     legibility at small sizes. */
+  --font-scoreboard: "Doto", var(--font-numeric);
+  --font-scoreboard-weight: 800;
   --font-numeric: "Barlow", var(--mantine-font-family);
   --font-numeric-weight: 600;
 }

@@ -673,10 +673,9 @@
   margin-top: 2px;
   font-size: 30px;
   line-height: 1;
-  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  font-family: var(--font-numeric);
-  font-weight: var(--font-numeric-weight);
+  font-family: var(--font-scoreboard);
+  font-weight: var(--font-scoreboard-weight);
 }
 
 .headerProj {
@@ -989,10 +988,9 @@
   justify-self: end;
   font-size: 20px;
   line-height: 1.2;
-  letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
-  font-family: var(--font-numeric);
-  font-weight: var(--font-numeric-weight);
+  font-family: var(--font-scoreboard);
+  font-weight: var(--font-scoreboard-weight);
 }
 
 .teamHeaderProj {

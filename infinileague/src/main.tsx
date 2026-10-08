@@ -18,6 +18,9 @@ import "@fontsource/barlow/latin-600.css";
 import "@fontsource/barlow/latin-700.css";
 // Red Hat Mono (semibold) for badge text - see index.css's --font-badge.
 import "@fontsource/red-hat-mono/latin-600.css";
+// Doto (extra-bold) for scoreboard numbers - see index.css's
+// --font-scoreboard.
+import "@fontsource/doto/latin-800.css";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import { cssVariablesResolver, theme } from "@shared/theme";
