@@ -1299,9 +1299,9 @@
    the baseline. */
 .scoreboardDot {
   display: inline-block;
-  width: 0.15em;
-  height: 0.15em;
-  margin: 0 0.08em;
+  width: 0.09em;
+  height: 0.09em;
+  margin: 0 0.06em;
   border-radius: 0;
   background: currentColor;
   vertical-align: baseline;
