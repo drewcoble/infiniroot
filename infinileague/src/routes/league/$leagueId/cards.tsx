@@ -1,6 +1,6 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Box, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Chip, Group, Stack, Text, Title } from "@mantine/core";
 import {
   EmptyGlassCard,
   GlassMatchupCard,
@@ -16,6 +16,7 @@ import { EmptyGlassRosterCard, GlassRosterCard } from "../../../components/cards
 import { meterScaleMax } from "../../../components/cards/meterScale";
 import { ROSTER_SECTION_LABEL, rosterSection } from "../../../components/cards/cardShared";
 import { buildShortNames } from "../../../lib/shortPlayerName";
+import { BADGE_FONTS, applyBadgeFont, getBadgeFont, type BadgeFontId } from "../../../lib/badgeFont";
 
 export const Route = createFileRoute("/league/$leagueId/cards")({
   component: CardsPage,
@@ -328,6 +329,36 @@ const SAMPLE_WIN_PROB_A =
   1 /
   (1 + Math.exp(-(SAMPLE_HEADER.teamA.projectedPoints - SAMPLE_HEADER.teamB.projectedPoints) / 15));
 
+// TEMPORARY - badge-font comparison (see lib/badgeFont.ts). Applies
+// app-wide and is remembered on this device, so the pick carries over to
+// every tab while comparing.
+function BadgeFontSwitcher() {
+  const [fontId, setFontId] = useState<BadgeFontId>(getBadgeFont);
+  return (
+    <Stack gap={6}>
+      <Text fw={600}>Badge font (temporary)</Text>
+      <Chip.Group
+        value={fontId}
+        onChange={(value) => {
+          const id = value as BadgeFontId;
+          setFontId(id);
+          applyBadgeFont(id);
+        }}
+      >
+        <Group gap={6}>
+          {BADGE_FONTS.map((font) => (
+            <Chip key={font.id} value={font.id} size="sm">
+              <span style={{ fontFamily: `${font.family}, sans-serif`, fontWeight: font.weight }}>
+                {font.label} · Q QB12
+              </span>
+            </Chip>
+          ))}
+        </Group>
+      </Chip.Group>
+    </Stack>
+  );
+}
+
 function CardsPage() {
   return (
     <Stack gap="md">
@@ -337,6 +368,8 @@ function CardsPage() {
           Design sandbox. Sample data only.
         </Text>
       </Stack>
+
+      <BadgeFontSwitcher />
 
 
 

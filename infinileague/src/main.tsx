@@ -16,6 +16,14 @@ import "@fontsource/barlow/latin-400.css";
 import "@fontsource/barlow/latin-500.css";
 import "@fontsource/barlow/latin-600.css";
 import "@fontsource/barlow/latin-700.css";
+// TEMPORARY - badge-font candidates for the Cards tab's switcher (see
+// lib/badgeFont.ts). A face's file only downloads once it's in use.
+import "@fontsource/ibm-plex-mono/latin-600.css";
+import "@fontsource/jetbrains-mono/latin-700.css";
+import "@fontsource/roboto-mono/latin-600.css";
+import "@fontsource/red-hat-mono/latin-600.css";
+import "@fontsource/dm-mono/latin-500.css";
+import { applyBadgeFont, getBadgeFont } from "./lib/badgeFont";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import { cssVariablesResolver, theme } from "@shared/theme";
@@ -25,6 +33,9 @@ import { installStaleChunkReload } from "@shared/errors";
 // see shared/errors.ts's own comment. Installed before the router even
 // renders so most cases reload before React ever shows an error.
 installStaleChunkReload();
+
+// TEMPORARY - restore the badge font picked on the Cards tab.
+applyBadgeFont(getBadgeFont());
 
 // infinileague's own text font (Barlow), overriding the shared theme's
 // Inter / Space Grotesk, which infinidraft/infinifaab keep. Read from

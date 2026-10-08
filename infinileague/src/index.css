@@ -20,6 +20,9 @@
   --app-font-body: "Barlow", sans-serif;
   --app-font-heading: "Barlow", sans-serif;
   --app-heading-weight: 600;
+  /* Badge text (glass .pill badges, position filter chips). */
+  --font-badge: var(--app-font-body);
+  --font-badge-weight: 700;
   --font-numeric: "Barlow", var(--mantine-font-family);
   --font-numeric-weight: 600;
 }
