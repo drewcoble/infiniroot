@@ -20,9 +20,11 @@
   --app-font-body: "Barlow", sans-serif;
   --app-font-heading: "Barlow", sans-serif;
   --app-heading-weight: 600;
-  /* Badge text (glass .pill badges, position filter chips). */
-  --font-badge: var(--app-font-body);
-  --font-badge-weight: 700;
+  /* Badge text (glass .pill badges, position filter chips) - Red Hat Mono
+     semibold, a monospace with clearly drawn letters (Barlow's "Q" read
+     poorly at badge size). */
+  --font-badge: "Red Hat Mono", var(--app-font-body);
+  --font-badge-weight: 600;
   --font-numeric: "Barlow", var(--mantine-font-family);
   --font-numeric-weight: 600;
 }
