@@ -1,4 +1,5 @@
 import { GameStatusGlyph } from "./GameStatusGlyph";
+import { ScoreboardNumber } from "./ScoreboardNumber";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface MatchupHeaderTeam {
@@ -41,7 +42,9 @@ function TeamSide({
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
       <div className={classes.headerTeamName}>{team.name}</div>
-      <div className={classes.headerTotal}>{team.actualPoints.toFixed(2)}</div>
+      <div className={classes.headerTotal}>
+        <ScoreboardNumber value={team.actualPoints.toFixed(2)} />
+      </div>
       {/* Projection and what's left on one line - the same dot/clock as the
           player cards' corners, so the counts need no words here (the
           card's aria-label spells them out). */}

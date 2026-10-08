@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { StandingsRow } from "../../types/season";
 import { GameStatusGlyph } from "./GameStatusGlyph";
+import { ScoreboardNumber } from "./ScoreboardNumber";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface TeamWeekSummary {
@@ -97,7 +98,7 @@ export function GlassTeamHeader({
       ) : (
         <>
           <span className={classes.teamHeaderTotal}>
-            {notStarted ? "" : summary.actualPoints.toFixed(2)}
+            {notStarted ? "" : <ScoreboardNumber value={summary.actualPoints.toFixed(2)} />}
           </span>
           <div
             className={`${classes.headerProj} ${classes.teamHeaderProj}`}
