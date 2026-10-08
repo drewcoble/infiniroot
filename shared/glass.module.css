@@ -79,6 +79,15 @@
   }
 }
 
+/* Trying out: no logo in the header on phones - just the league switcher
+   and overflow button floating top-right. (The rule above still centers it
+   if this is reverted.) */
+@media (max-width: 47.99em) {
+  .logoPanel {
+    display: none;
+  }
+}
+
 /* Pill button (the header's league switcher). */
 .button {
   display: inline-flex;
