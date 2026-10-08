@@ -1,6 +1,6 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Box, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Chip, Group, Stack, Text, Title } from "@mantine/core";
 import {
   EmptyGlassCard,
   GlassMatchupCard,
@@ -16,6 +16,12 @@ import { EmptyGlassRosterCard, GlassRosterCard } from "../../../components/cards
 import { meterScaleMax } from "../../../components/cards/meterScale";
 import { ROSTER_SECTION_LABEL, rosterSection } from "../../../components/cards/cardShared";
 import { buildShortNames } from "../../../lib/shortPlayerName";
+import {
+  SCOREBOARD_FONTS,
+  applyScoreboardFont,
+  getScoreboardFont,
+  type ScoreboardFontId,
+} from "../../../lib/scoreboardFont";
 
 export const Route = createFileRoute("/league/$leagueId/cards")({
   component: CardsPage,
@@ -328,6 +334,35 @@ const SAMPLE_WIN_PROB_A =
   1 /
   (1 + Math.exp(-(SAMPLE_HEADER.teamA.projectedPoints - SAMPLE_HEADER.teamB.projectedPoints) / 15));
 
+// TEMPORARY - scoreboard-font comparison (see lib/scoreboardFont.ts).
+// Applies app-wide and is remembered on this device, so the pick carries
+// over to the Matchup and Team headers while comparing.
+function ScoreboardFontSwitcher() {
+  const [fontId, setFontId] = useState<ScoreboardFontId>(getScoreboardFont);
+  return (
+    <Stack gap={6}>
+      <Text fw={600}>Scoreboard font (temporary)</Text>
+      <Chip.Group
+        value={fontId}
+        onChange={(value) => {
+          const id = value as ScoreboardFontId;
+          setFontId(id);
+          applyScoreboardFont(id);
+        }}
+      >
+        <Group gap={6}>
+          {SCOREBOARD_FONTS.map((font) => (
+            <Chip key={font.id} value={font.id} size="sm">
+              {font.label}{" "}
+              <span style={{ fontFamily: font.family, fontWeight: font.weight }}>165.26</span>
+            </Chip>
+          ))}
+        </Group>
+      </Chip.Group>
+    </Stack>
+  );
+}
+
 function CardsPage() {
   return (
     <Stack gap="md">
@@ -337,6 +372,8 @@ function CardsPage() {
           Design sandbox. Sample data only.
         </Text>
       </Stack>
+
+      <ScoreboardFontSwitcher />
 
 
 

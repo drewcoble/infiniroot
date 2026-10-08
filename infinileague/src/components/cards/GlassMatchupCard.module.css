@@ -1293,29 +1293,3 @@
   height: 28px;
   font-size: 13px;
 }
-
-/* ScoreboardNumber's decimal point - one square dot, sized and spaced like
-   a single dot of Doto's dot-matrix grid (its dots are square), sitting on
-   the baseline. */
-.scoreboardDot {
-  display: inline-block;
-  width: 0.09em;
-  height: 0.09em;
-  margin: 0 0.06em;
-  border-radius: 0;
-  background: currentColor;
-  vertical-align: baseline;
-}
-
-/* Visually hidden, still read by screen readers. */
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}

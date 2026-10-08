@@ -18,9 +18,7 @@ import "@fontsource/barlow/latin-600.css";
 import "@fontsource/barlow/latin-700.css";
 // Red Hat Mono (semibold) for badge text - see index.css's --font-badge.
 import "@fontsource/red-hat-mono/latin-600.css";
-// Doto (extra-bold) for scoreboard numbers - see index.css's
-// --font-scoreboard.
-import "@fontsource/doto/latin-800.css";
+import { applyScoreboardFont, getScoreboardFont } from "./lib/scoreboardFont";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import { cssVariablesResolver, theme } from "@shared/theme";
@@ -30,6 +28,9 @@ import { installStaleChunkReload } from "@shared/errors";
 // see shared/errors.ts's own comment. Installed before the router even
 // renders so most cases reload before React ever shows an error.
 installStaleChunkReload();
+
+// TEMPORARY - restore the scoreboard font picked on the Cards tab.
+applyScoreboardFont(getScoreboardFont());
 
 // infinileague's own text font (Barlow), overriding the shared theme's
 // Inter / Space Grotesk, which infinidraft/infinifaab keep. Read from
