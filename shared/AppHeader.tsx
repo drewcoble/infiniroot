@@ -145,6 +145,7 @@ export function AppHeader({
           <AppLogo wordmark={wordmark} />
         </Link>
         <Group
+          {...(glass ? { className: glassClasses.controls } : {})}
           gap="xs"
           wrap="nowrap"
           align="center"

@@ -41,6 +41,8 @@ export function AppHeader() {
     <SharedAppHeader
       wordmark="league"
       glass
+      // ~10% wider than the shared default (150 / 220).
+      leagueButtonWidth={{ base: 165, sm: 242 }}
       selectedLeagueLabel={selectedLeague?.name}
       leagueMenuItems={
         <>

@@ -86,6 +86,13 @@
   .logoPanel {
     display: none;
   }
+
+  /* With the logo gone, the controls take the whole row: league switcher
+     at the left edge, overflow button at the right. */
+  .controls {
+    flex: 1;
+    justify-content: space-between;
+  }
 }
 
 /* Pill button (the header's league switcher). */
