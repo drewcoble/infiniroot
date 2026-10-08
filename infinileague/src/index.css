@@ -25,14 +25,14 @@
      poorly at badge size). */
   --font-badge: "Red Hat Mono", var(--app-font-body);
   --font-badge-weight: 600;
-  /* Dot-matrix numbers in Lumen's round-dot version (see the @font-face
-     rules below; its digits are all one width already): bold for the
-     scoreboard totals (Matchup and Team headers), regular for individual
-     players' actual points on the player cards and Players rows. */
+  /* Dot-matrix numbers in Lumen's round-dot version, bold (see the
+     @font-face rule below; its digits are all one width already): the
+     scoreboard totals (Matchup and Team headers) and individual players'
+     actual points on the player cards and Players rows. */
   --font-scoreboard: "Lumen Round", var(--font-numeric);
   --font-scoreboard-weight: 900;
   --font-player-points: "Lumen Round", var(--font-numeric);
-  --font-player-points-weight: 400;
+  --font-player-points-weight: 900;
   --font-numeric: "Barlow", var(--mantine-font-family);
   --font-numeric-weight: 600;
 }
@@ -43,15 +43,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Lumen (OFL 1.1 - see assets/fonts/lumen/), round-dot version, subset to
+/* Lumen (OFL 1.1 - see assets/fonts/lumen/), round-dot bold, subset to
    scoreboard characters only. */
-@font-face {
-  font-family: "Lumen Round";
-  font-weight: 400;
-  font-display: swap;
-  src: url("./assets/fonts/lumen/lumen-round-400.woff2") format("woff2");
-}
-
 @font-face {
   font-family: "Lumen Round";
   font-weight: 900;
