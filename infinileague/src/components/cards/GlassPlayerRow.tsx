@@ -73,7 +73,9 @@ export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
             </span>
           )}
         </div>
-        <div className={`${classes.widePoints} ${classes.points}`}>{data.actual}</div>
+        <div className={`${classes.widePoints} ${classes.points} ${classes.playerPoints}`}>
+          {data.actual}
+        </div>
         <div className={classes.wideDetail}>
           <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
             {data.position}

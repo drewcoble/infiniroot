@@ -133,7 +133,9 @@ export function ExpandedMatchupCard({
               </>
             ) : (
               <>
-                <span className={classes.expandedPoints}>{formatPoints(data.actualPoints)}</span>
+                <span className={`${classes.expandedPoints} ${classes.playerPoints}`}>
+                  {formatPoints(data.actualPoints)}
+                </span>
                 <span className={classes.pointsUnit}>points</span>
               </>
             )}

@@ -75,5 +75,9 @@ export function PointsHeadline({ data }: { data: GlassMatchupCardData }) {
   if (data.gameState === "pre") {
     return <span className={classes.projSmall}>Proj {formatProj(data.projectedPoints)}</span>;
   }
-  return <span className={classes.points}>{formatPoints(data.actualPoints)}</span>;
+  return (
+    <span className={`${classes.points} ${classes.playerPoints}`}>
+      {formatPoints(data.actualPoints)}
+    </span>
+  );
 }

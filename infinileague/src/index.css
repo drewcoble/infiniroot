@@ -25,12 +25,14 @@
      poorly at badge size). */
   --font-badge: "Red Hat Mono", var(--app-font-body);
   --font-badge-weight: 600;
-  /* Scoreboard numbers (the Matchup and Team headers' scores) - Lumen, a
-     dot-matrix face (see the @font-face rules below). Its digits are all
-     one width already. Kept to these big numbers: dot fonts lose
-     legibility at small sizes. */
+  /* Dot-matrix numbers in Lumen's round-dot version (see the @font-face
+     rules below; its digits are all one width already): bold for the
+     scoreboard totals (Matchup and Team headers), regular for individual
+     players' actual points on the player cards and Players rows. */
   --font-scoreboard: "Lumen Round", var(--font-numeric);
   --font-scoreboard-weight: 900;
+  --font-player-points: "Lumen Round", var(--font-numeric);
+  --font-player-points-weight: 400;
   --font-numeric: "Barlow", var(--mantine-font-family);
   --font-numeric-weight: 600;
 }
@@ -41,8 +43,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Lumen (OFL 1.1 - see assets/fonts/lumen/), subset to scoreboard
-   characters only, in its round- and square-dot versions. */
+/* Lumen (OFL 1.1 - see assets/fonts/lumen/), round-dot version, subset to
+   scoreboard characters only. */
 @font-face {
   font-family: "Lumen Round";
   font-weight: 400;
@@ -55,18 +57,4 @@
   font-weight: 900;
   font-display: swap;
   src: url("./assets/fonts/lumen/lumen-round-900.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Lumen Square";
-  font-weight: 400;
-  font-display: swap;
-  src: url("./assets/fonts/lumen/lumen-square-400.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Lumen Square";
-  font-weight: 900;
-  font-display: swap;
-  src: url("./assets/fonts/lumen/lumen-square-900.woff2") format("woff2");
 }

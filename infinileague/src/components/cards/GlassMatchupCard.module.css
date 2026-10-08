@@ -247,6 +247,16 @@
   font-weight: var(--font-numeric-weight);
 }
 
+
+/* Individual players' actual points - dot-matrix (index.css's
+   --font-player-points), with normal letter-spacing so the dots don't
+   crowd. After .points/.expandedPoints so it wins. */
+.playerPoints {
+  font-family: var(--font-player-points);
+  font-weight: var(--font-player-points-weight);
+  letter-spacing: 0;
+}
+
 .pointsPending {
   color: rgba(248, 250, 252, 0.6);
 }
