@@ -112,8 +112,8 @@ function TeamSideSkeleton({ align, name }: { align: "left" | "right"; name?: Rea
 // (a below-replacement player) counts as nothing rather than flipping the
 // split. A split within FAIR_MARGIN points of 50/50 has no winner: both
 // segments go neutral gray and the bar's fixed "Fair" zone (the same
-// 47-53% band, drawn over the middle of the bar) lights up.
-const FAIR_MARGIN = 3;
+// 46-54% band, drawn over the middle of the bar) lights up.
+const FAIR_MARGIN = 4;
 const WINNING_TINT = "#4ade80";
 const LOSING_TINT = "#f87171";
 const FAIR_TINT = "#9ca3af";
