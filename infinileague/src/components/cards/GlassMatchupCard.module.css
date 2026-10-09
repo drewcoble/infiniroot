@@ -170,11 +170,10 @@
 }
 
 /* A live game's clock in the game line ("Q3 2:58") - the dot-matrix
-   scoreboard font, a touch larger than the line's 12px so the dots read. */
+   scoreboard font, at the line's own size. */
 .liveClock {
   font-family: var(--font-scoreboard);
   font-weight: var(--font-scoreboard-weight);
-  font-size: 13px;
   letter-spacing: 0;
 }
 
