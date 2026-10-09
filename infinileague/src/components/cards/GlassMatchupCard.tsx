@@ -81,15 +81,21 @@ export function GlassMatchupCard({
           </div>
         </div>
 
-        {/* Projection small on the left (the pregame number, for every
-            state), actual score on the right once the game has started. */}
+        {/* Projection small on the left - the live pace (points so far +
+            the unplayed share of the projection) while the game is on, the
+            pregame number otherwise - and the actual score on the right
+            once the game has started. */}
         {isBye ? (
           <div className={classes.statsRow} aria-hidden>
             <PointsHeadline data={data} />
           </div>
         ) : (
           <div className={`${classes.statsRow} ${classes.statsRowSplit}`} aria-hidden>
-            <span className={classes.projSmall}>Proj {formatProj(data.projectedPoints)}</span>
+            <span className={classes.projSmall}>
+              {isLive
+                ? `Pace ${formatProj(data.liveProjectedPoints)}`
+                : `Proj ${formatProj(data.projectedPoints)}`}
+            </span>
             {data.gameState !== "pre" && (
               <span className={`${classes.points} ${classes.playerPoints}`}>
                 {formatPoints(data.actualPoints)}
