@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminDataRouteImport } from './routes/admin-data'
 import { Route as BillingRouteImport } from './routes/billing'
+import { Route as InjuriesRouteImport } from './routes/injuries'
 import { Route as BoardLeagueIdRouteImport } from './routes/board/$leagueId'
 import { Route as JoinTokenRouteImport } from './routes/join/$token'
 import { Route as LeagueLeagueIdRouteRouteImport } from './routes/league/$leagueId/route'
@@ -21,7 +22,6 @@ import { Route as SeasonLeagueIdRouteRouteImport } from './routes/season/$league
 import { Route as LeagueLeagueIdIndexRouteImport } from './routes/league/$leagueId/index'
 import { Route as LeagueLeagueIdBudgetRouteImport } from './routes/league/$leagueId/budget'
 import { Route as LeagueLeagueIdDraftRouteImport } from './routes/league/$leagueId/draft'
-import { Route as LeagueLeagueIdInjuriesRouteImport } from './routes/league/$leagueId/injuries'
 import { Route as LeagueLeagueIdKeepersRouteImport } from './routes/league/$leagueId/keepers'
 import { Route as LeagueLeagueIdLeagueRouteImport } from './routes/league/$leagueId/league'
 import { Route as LeagueLeagueIdMyTeamRouteImport } from './routes/league/$leagueId/myTeam'
@@ -48,6 +48,11 @@ const AdminDataRoute = AdminDataRouteImport.update({
 const BillingRoute = BillingRouteImport.update({
   id: '/billing',
   path: '/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InjuriesRoute = InjuriesRouteImport.update({
+  id: '/injuries',
+  path: '/injuries',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BoardLeagueIdRoute = BoardLeagueIdRouteImport.update({
@@ -88,11 +93,6 @@ const LeagueLeagueIdBudgetRoute = LeagueLeagueIdBudgetRouteImport.update({
 const LeagueLeagueIdDraftRoute = LeagueLeagueIdDraftRouteImport.update({
   id: '/draft',
   path: '/draft',
-  getParentRoute: () => LeagueLeagueIdRouteRoute,
-} as any)
-const LeagueLeagueIdInjuriesRoute = LeagueLeagueIdInjuriesRouteImport.update({
-  id: '/injuries',
-  path: '/injuries',
   getParentRoute: () => LeagueLeagueIdRouteRoute,
 } as any)
 const LeagueLeagueIdKeepersRoute = LeagueLeagueIdKeepersRouteImport.update({
@@ -136,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/admin-data': typeof AdminDataRoute
   '/billing': typeof BillingRoute
+  '/injuries': typeof InjuriesRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/season/$leagueId': typeof SeasonLeagueIdRouteRouteWithChildren
   '/board/$leagueId': typeof BoardLeagueIdRoute
@@ -143,7 +144,6 @@ export interface FileRoutesByFullPath {
   '/reportCard/$leagueId': typeof ReportCardLeagueIdRoute
   '/league/$leagueId/budget': typeof LeagueLeagueIdBudgetRoute
   '/league/$leagueId/draft': typeof LeagueLeagueIdDraftRoute
-  '/league/$leagueId/injuries': typeof LeagueLeagueIdInjuriesRoute
   '/league/$leagueId/keepers': typeof LeagueLeagueIdKeepersRoute
   '/league/$leagueId/league': typeof LeagueLeagueIdLeagueRoute
   '/league/$leagueId/myTeam': typeof LeagueLeagueIdMyTeamRoute
@@ -158,12 +158,12 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/admin-data': typeof AdminDataRoute
   '/billing': typeof BillingRoute
+  '/injuries': typeof InjuriesRoute
   '/board/$leagueId': typeof BoardLeagueIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/reportCard/$leagueId': typeof ReportCardLeagueIdRoute
   '/league/$leagueId/budget': typeof LeagueLeagueIdBudgetRoute
   '/league/$leagueId/draft': typeof LeagueLeagueIdDraftRoute
-  '/league/$leagueId/injuries': typeof LeagueLeagueIdInjuriesRoute
   '/league/$leagueId/keepers': typeof LeagueLeagueIdKeepersRoute
   '/league/$leagueId/league': typeof LeagueLeagueIdLeagueRoute
   '/league/$leagueId/myTeam': typeof LeagueLeagueIdMyTeamRoute
@@ -179,6 +179,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/admin-data': typeof AdminDataRoute
   '/billing': typeof BillingRoute
+  '/injuries': typeof InjuriesRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/season/$leagueId': typeof SeasonLeagueIdRouteRouteWithChildren
   '/board/$leagueId': typeof BoardLeagueIdRoute
@@ -186,7 +187,6 @@ export interface FileRoutesById {
   '/reportCard/$leagueId': typeof ReportCardLeagueIdRoute
   '/league/$leagueId/budget': typeof LeagueLeagueIdBudgetRoute
   '/league/$leagueId/draft': typeof LeagueLeagueIdDraftRoute
-  '/league/$leagueId/injuries': typeof LeagueLeagueIdInjuriesRoute
   '/league/$leagueId/keepers': typeof LeagueLeagueIdKeepersRoute
   '/league/$leagueId/league': typeof LeagueLeagueIdLeagueRoute
   '/league/$leagueId/myTeam': typeof LeagueLeagueIdMyTeamRoute
@@ -203,6 +203,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-data'
     | '/billing'
+    | '/injuries'
     | '/league/$leagueId'
     | '/season/$leagueId'
     | '/board/$leagueId'
@@ -210,7 +211,6 @@ export interface FileRouteTypes {
     | '/reportCard/$leagueId'
     | '/league/$leagueId/budget'
     | '/league/$leagueId/draft'
-    | '/league/$leagueId/injuries'
     | '/league/$leagueId/keepers'
     | '/league/$leagueId/league'
     | '/league/$leagueId/myTeam'
@@ -225,12 +225,12 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-data'
     | '/billing'
+    | '/injuries'
     | '/board/$leagueId'
     | '/join/$token'
     | '/reportCard/$leagueId'
     | '/league/$leagueId/budget'
     | '/league/$leagueId/draft'
-    | '/league/$leagueId/injuries'
     | '/league/$leagueId/keepers'
     | '/league/$leagueId/league'
     | '/league/$leagueId/myTeam'
@@ -245,6 +245,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-data'
     | '/billing'
+    | '/injuries'
     | '/league/$leagueId'
     | '/season/$leagueId'
     | '/board/$leagueId'
@@ -252,7 +253,6 @@ export interface FileRouteTypes {
     | '/reportCard/$leagueId'
     | '/league/$leagueId/budget'
     | '/league/$leagueId/draft'
-    | '/league/$leagueId/injuries'
     | '/league/$leagueId/keepers'
     | '/league/$leagueId/league'
     | '/league/$leagueId/myTeam'
@@ -268,6 +268,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AdminDataRoute: typeof AdminDataRoute
   BillingRoute: typeof BillingRoute
+  InjuriesRoute: typeof InjuriesRoute
   LeagueLeagueIdRouteRoute: typeof LeagueLeagueIdRouteRouteWithChildren
   SeasonLeagueIdRouteRoute: typeof SeasonLeagueIdRouteRouteWithChildren
   BoardLeagueIdRoute: typeof BoardLeagueIdRoute
@@ -303,6 +304,13 @@ declare module '@tanstack/react-router' {
       path: '/billing'
       fullPath: '/billing'
       preLoaderRoute: typeof BillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/injuries': {
+      id: '/injuries'
+      path: '/injuries'
+      fullPath: '/injuries'
+      preLoaderRoute: typeof InjuriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/board/$leagueId': {
@@ -361,13 +369,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeagueLeagueIdDraftRouteImport
       parentRoute: typeof LeagueLeagueIdRouteRoute
     }
-    '/league/$leagueId/injuries': {
-      id: '/league/$leagueId/injuries'
-      path: '/injuries'
-      fullPath: '/league/$leagueId/injuries'
-      preLoaderRoute: typeof LeagueLeagueIdInjuriesRouteImport
-      parentRoute: typeof LeagueLeagueIdRouteRoute
-    }
     '/league/$leagueId/keepers': {
       id: '/league/$leagueId/keepers'
       path: '/keepers'
@@ -423,7 +424,6 @@ declare module '@tanstack/react-router' {
 interface LeagueLeagueIdRouteRouteChildren {
   LeagueLeagueIdBudgetRoute: typeof LeagueLeagueIdBudgetRoute
   LeagueLeagueIdDraftRoute: typeof LeagueLeagueIdDraftRoute
-  LeagueLeagueIdInjuriesRoute: typeof LeagueLeagueIdInjuriesRoute
   LeagueLeagueIdKeepersRoute: typeof LeagueLeagueIdKeepersRoute
   LeagueLeagueIdLeagueRoute: typeof LeagueLeagueIdLeagueRoute
   LeagueLeagueIdMyTeamRoute: typeof LeagueLeagueIdMyTeamRoute
@@ -435,7 +435,6 @@ interface LeagueLeagueIdRouteRouteChildren {
 const LeagueLeagueIdRouteRouteChildren: LeagueLeagueIdRouteRouteChildren = {
   LeagueLeagueIdBudgetRoute: LeagueLeagueIdBudgetRoute,
   LeagueLeagueIdDraftRoute: LeagueLeagueIdDraftRoute,
-  LeagueLeagueIdInjuriesRoute: LeagueLeagueIdInjuriesRoute,
   LeagueLeagueIdKeepersRoute: LeagueLeagueIdKeepersRoute,
   LeagueLeagueIdLeagueRoute: LeagueLeagueIdLeagueRoute,
   LeagueLeagueIdMyTeamRoute: LeagueLeagueIdMyTeamRoute,
@@ -465,6 +464,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AdminDataRoute: AdminDataRoute,
   BillingRoute: BillingRoute,
+  InjuriesRoute: InjuriesRoute,
   LeagueLeagueIdRouteRoute: LeagueLeagueIdRouteRouteWithChildren,
   SeasonLeagueIdRouteRoute: SeasonLeagueIdRouteRouteWithChildren,
   BoardLeagueIdRoute: BoardLeagueIdRoute,

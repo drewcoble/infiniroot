@@ -175,20 +175,13 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
       extraOverflowItems={
         <>
           {/* NFL-wide reference page, not league content - kept out of the
-              league tabs (see league/$leagueId/route.tsx). Still routed
-              under a league since it filters and ranks by the league's
-              roster slots and scoring. */}
-          {leagueId && leagueId !== NEW_LEAGUE_VALUE && (
-            <Link
-              to="/league/$leagueId/injuries"
-              params={{ leagueId }}
-              style={{ textDecoration: "none" }}
-            >
-              <Menu.Item component="span" leftSection={<HeartPulse size={16} />}>
-                Injuries
-              </Menu.Item>
-            </Link>
-          )}
+              league tabs (see league/$leagueId/route.tsx) and reachable
+              with no league selected. */}
+          <Link to="/injuries" style={{ textDecoration: "none" }}>
+            <Menu.Item component="span" leftSection={<HeartPulse size={16} />}>
+              Injuries
+            </Menu.Item>
+          </Link>
           {BILLING_LINK_ENABLED && (
             <Link to="/billing" style={{ textDecoration: "none" }}>
               <Menu.Item

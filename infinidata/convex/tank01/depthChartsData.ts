@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import { internalMutation, query } from "../_generated/server";
 import { positionValidator } from "../positions";
 import { Doc } from "../_generated/dataModel";
+import { gatherRosProjTotals } from "../rosProjTotals";
+import type { ScoringConfig } from "../scoring";
 
 // Patch-or-insert each role slot, then prune any row for this (team,
 // position) that didn't reappear in this fetch - mirrors projections.ts's
@@ -75,20 +77,39 @@ export const listDepthChartTeams = query({
   },
 });
 
+// League-independent ranking context for one depth-chart player - the
+// Depth Charts page isn't tied to any league (no getRosVorBoard), so it's
+// computed here off the shared caches instead, in plain PPR (same default
+// the no-league Injuries page falls back to). positionRank orders every
+// player at the position by rest-of-season projected total.
+interface DepthChartPlayerStats {
+  positionRank: number;
+  rosPpg: number;
+  actualPpg: number;
+}
+
 export interface DepthChartPlayerRow {
   fpid: number;
   name: string;
+  team: string | null;
   position: Doc<"players">["position"];
   depthPosition: string;
+  // null when the player has no rest-of-season projection (deep backups,
+  // or before the daily rosProjTotals refresh has ever run).
+  stats: DepthChartPlayerStats | null;
+  injury?: { status: string; statusShort: string };
 }
+
+const DEPTH_CHART_SCORING: ScoringConfig = {
+  scoring: "PPR",
+  teScoring: "NONE",
+  sixPointPassTds: false,
+};
 
 // One team's full fantasy-relevant depth chart (QB/RB/WR/TE/K only - that's
 // all upsertTeamPositionDepthChart above ever writes), joined against
-// `players` for display name. No PPG/positionRank/rosteredByTeamName here -
-// the Depth Charts tab already has that from its own getRosVorBoard
-// subscription and joins client-side by fpid, so this stays a thin read off
-// depthCharts rather than duplicating rosVor.ts's league-wide computation
-// for a ~25-row team subset.
+// `players` for display name, plus PPR rank/PPG and injury status (see
+// DepthChartPlayerStats).
 export const getTeamDepthChart = query({
   args: { team: v.string() },
   handler: async (ctx, args): Promise<DepthChartPlayerRow[]> => {
@@ -106,6 +127,49 @@ export const getTeamDepthChart = query({
       ),
     );
 
+    const positions = [...new Set(rows.map((row) => row.position))];
+    const [nflState, injuries] = await Promise.all([
+      ctx.db.query("nflState").first(),
+      Promise.all(
+        rows.map((row) =>
+          ctx.db
+            .query("injuries")
+            .withIndex("by_fpid", (q) => q.eq("fpid", row.fpid))
+            .first(),
+        ),
+      ),
+    ]);
+
+    // Gathered one position at a time (rather than all of `positions` in
+    // one call) so each fpid's rank is against its own position's pool.
+    const rosTotals = new Map<number, { totalPoints: number; weeksIncluded: number }>();
+    const positionRankByFpid = new Map<number, number>();
+    for (const position of positions) {
+      const totals = await gatherRosProjTotals(ctx, { activePositions: [position], scoringConfig: DEPTH_CHART_SCORING });
+      for (const [fpid, total] of totals) rosTotals.set(fpid, total);
+      [...totals.entries()]
+        .sort((a, b) => b[1].totalPoints - a[1].totalPoints)
+        .forEach(([fpid], index) => positionRankByFpid.set(fpid, index + 1));
+    }
+
+    const seasonStats = nflState
+      ? await Promise.all(
+          rows.map((row) =>
+            ctx.db
+              .query("playerSeasonStats")
+              .withIndex("by_fpid_season_scoring_teScoring_sixPointPassTds", (q) =>
+                q
+                  .eq("fpid", row.fpid)
+                  .eq("season", nflState.season)
+                  .eq("scoring", DEPTH_CHART_SCORING.scoring)
+                  .eq("teScoring", DEPTH_CHART_SCORING.teScoring)
+                  .eq("sixPointPassTds", DEPTH_CHART_SCORING.sixPointPassTds),
+              )
+              .first(),
+          ),
+        )
+      : rows.map(() => null);
+
     const out: DepthChartPlayerRow[] = [];
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -115,11 +179,23 @@ export const getTeamDepthChart = query({
       // theoretically be deleted out from under this fpid afterward - skip
       // rather than render a name-less card.
       if (!row || !player) continue;
+      const rosTotal = rosTotals.get(row.fpid);
+      const actual = seasonStats[i];
+      const injury = injuries[i];
       out.push({
         fpid: row.fpid,
         name: player.name,
+        team: player.team,
         position: row.position,
         depthPosition: row.depthPosition,
+        stats: rosTotal
+          ? {
+              positionRank: positionRankByFpid.get(row.fpid) ?? 0,
+              rosPpg: rosTotal.weeksIncluded > 0 ? rosTotal.totalPoints / rosTotal.weeksIncluded : 0,
+              actualPpg: actual && actual.gamesPlayed > 0 ? actual.totalPoints / actual.gamesPlayed : 0,
+            }
+          : null,
+        ...(injury ? { injury: { status: injury.status, statusShort: injury.statusShort } } : {}),
       });
     }
     return out;

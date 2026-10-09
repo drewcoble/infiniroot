@@ -86,30 +86,18 @@ export function AppHeader() {
       extraOverflowItems={
         <>
           {/* NFL-wide reference pages, not league content - kept out of the
-              league tabs (see league/$leagueId/route.tsx). Still routed
-              under a league since both rank players by its scoring. */}
-          {leagueId && (
-            <>
-              <Link
-                to="/league/$leagueId/depthCharts"
-                params={{ leagueId }}
-                style={{ textDecoration: "none" }}
-              >
-                <Menu.Item component="span" leftSection={<LayoutGrid size={16} />}>
-                  Depth Charts
-                </Menu.Item>
-              </Link>
-              <Link
-                to="/league/$leagueId/injuries"
-                params={{ leagueId }}
-                style={{ textDecoration: "none" }}
-              >
-                <Menu.Item component="span" leftSection={<HeartPulse size={16} />}>
-                  Injuries
-                </Menu.Item>
-              </Link>
-            </>
-          )}
+              league tabs (see league/$leagueId/route.tsx) and reachable
+              with no league selected. */}
+          <Link to="/depthCharts" style={{ textDecoration: "none" }}>
+            <Menu.Item component="span" leftSection={<LayoutGrid size={16} />}>
+              Depth Charts
+            </Menu.Item>
+          </Link>
+          <Link to="/injuries" style={{ textDecoration: "none" }}>
+            <Menu.Item component="span" leftSection={<HeartPulse size={16} />}>
+              Injuries
+            </Menu.Item>
+          </Link>
           {currentUser?.role === "super-admin" && (
             <>
               {leagueId && (
