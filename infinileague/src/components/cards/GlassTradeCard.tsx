@@ -81,7 +81,7 @@ export function GlassTradeCard({
     positionLabel,
     data.team,
     data.injury?.status,
-    `season ${METRIC_SPOKEN[metric]} ${values.season}`,
+    `actual ${METRIC_SPOKEN[metric]} ${values.season}`,
     `rest-of-season ${METRIC_SPOKEN[metric]} ${values.ros}`,
   ]
     .filter(Boolean)
@@ -143,7 +143,7 @@ export function GlassTradeCard({
           className={`${classes.statsRow} ${classes.statsRowSplit} ${classes.tradeStats}`}
           aria-hidden
         >
-          <span className={classes.projSmall}>Szn {values.season}</span>
+          <span className={classes.projSmall}>Actual {values.season}</span>
           <span className={classes.tradeRos}>
             <span className={classes.tradeRosLabel}>ROS</span>
             {values.ros}
