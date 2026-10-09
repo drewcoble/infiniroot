@@ -1390,14 +1390,15 @@
     border-color 160ms ease;
 }
 
+/* Selected chips are filled solid with their color (--chip-fill), white
+   text, with just a soft top highlight left of the glass. */
 .filterChipSelected {
-  color: var(--chip-text, #f8fafc);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
-    color-mix(in srgb, var(--pill-tint) 38%, transparent),
-    color-mix(in srgb, var(--mantine-color-body) 60%, transparent);
-  border-color: color-mix(in srgb, var(--pill-tint) 50%, rgba(255, 255, 255, 0.15));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 100%),
+    var(--chip-fill);
+  border-color: color-mix(in srgb, var(--chip-fill) 70%, #fff);
 }
 
 @media (hover: hover) and (pointer: fine) {
