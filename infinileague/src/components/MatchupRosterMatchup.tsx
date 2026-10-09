@@ -23,10 +23,13 @@ interface MatchupRosterMatchupProps {
   // Shared meter scale for every card on the page (see meterScale.ts).
   scaleMax: number;
   // "Live only": rows with no live player on either side are dropped; a
-  // row with a live player on one side still shows both players. See the
-  // Matchup page's toggle.
+  // row with a live player on one side still shows both, the non-live one
+  // dimmed so the live side leads. See the Matchup page's toggle.
   liveOnly?: boolean;
 }
+
+// How far Live only fades the non-live player in a row with a live one.
+const LIVE_ONLY_DIM = 0.45;
 
 // Same wrapper both TradeRosterMatchup and this component render every row
 // cell into - flex: 1/minWidth: 0 for an even width split, grid so the card
@@ -34,12 +37,21 @@ interface MatchupRosterMatchupProps {
 function Cell({
   row,
   props,
+  dimmed = false,
 }: {
   row: TeamRosterRow | undefined;
   props: MatchupRosterMatchupProps;
+  dimmed?: boolean;
 }) {
   return (
-    <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
+    <Box
+      style={{
+        flex: 1,
+        minWidth: 0,
+        display: "grid",
+        ...(dimmed ? { opacity: LIVE_ONLY_DIM } : {}),
+      }}
+    >
       {row?.fpid !== undefined ? (
         <GlassMatchupCard
           data={props.toCardData(row)}
@@ -101,7 +113,7 @@ export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
 
   return (
     <>
-      {rows.map(({ a: aRow, b: bRow }, index) => {
+      {rows.map(({ a: aRow, b: bRow, aLive, bLive }, index) => {
         const section = rosterSection(aRow?.slot ?? bRow?.slot);
         const previous = index > 0 ? rows[index - 1] : undefined;
         const startsSection =
@@ -110,12 +122,16 @@ export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
           <Fragment key={`${aRow?.fpid ?? aRow?.slot}-${bRow?.fpid ?? bRow?.slot}-${index}`}>
             {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
             <Group wrap="nowrap" gap="xs" align="stretch">
-              <Cell row={aRow} props={props} />
+              <Cell row={aRow} props={props} dimmed={props.liveOnly === true && !aLive} />
               <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
               {props.teamBRows === undefined && props.teamBLoading ? (
                 <SkeletonCell />
               ) : (
-                <Cell row={props.teamBRows ? bRow : undefined} props={props} />
+                <Cell
+                  row={props.teamBRows ? bRow : undefined}
+                  props={props}
+                  dimmed={props.liveOnly === true && !bLive}
+                />
               )}
             </Group>
           </Fragment>
