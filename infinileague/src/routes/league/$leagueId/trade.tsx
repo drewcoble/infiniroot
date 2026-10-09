@@ -10,6 +10,8 @@ import { TradeRosterMatchup } from "../../../components/TradeRosterMatchup";
 import { MatchupRosterSkeleton } from "../../../components/MatchupRosterMatchup";
 import { GlassTradeHeader, type TradeHeaderTeam } from "../../../components/cards/GlassTradeHeader";
 import { buildShortNames } from "../../../lib/shortPlayerName";
+import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import type { TradeMetric } from "../../../components/cards/GlassTradeCard";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
 import {
   TradePowerRankingsSheet,
@@ -93,6 +95,10 @@ function TradePage() {
   const week = nflState?.week ?? null;
   const teamARoster = useTeamRoster(teamAId, week);
   const teamBRoster = useTeamRoster(teamBId, week);
+
+  // What the cards show - VOR, PPG, or overall rank, each season to date
+  // and rest of season.
+  const [metric, setMetric] = useState<TradeMetric>("ppg");
 
   const [selectedA, setSelectedA] = useState<Set<number>>(new Set());
   const [selectedB, setSelectedB] = useState<Set<number>>(new Set());
@@ -183,12 +189,26 @@ function TradePage() {
     [vorRows, teamARoster.rows, teamBRoster.rows],
   );
 
+  const metricSwitch = (
+    <GlassSegmented
+      label="Card stats"
+      value={metric}
+      onChange={setMetric}
+      options={[
+        { label: "VOR", value: "vor" as const },
+        { label: "PPG", value: "ppg" as const },
+        { label: "Ranks", value: "rank" as const },
+      ]}
+    />
+  );
+
   // Header and rows hold their shape with glass skeletons while loading,
   // like the Matchup tab, rather than a bare spinner.
   if (nflState === undefined || standings === undefined || vorRows === undefined) {
     return (
       <Stack gap="md">
-        <Title order={3}>Trade Analyzer</Title>
+        <Title order={3}>Trade</Title>
+        {metricSwitch}
         <GlassTradeHeader teamA="loading" teamB="loading" />
         <Stack gap={10}>
           <MatchupRosterSkeleton />
@@ -269,17 +289,21 @@ function TradePage() {
     return {
       name,
       sendCount: sending.length,
-      sendRosPpg: sending.reduce(
-        (total, row) => total + (vorByFpid.get(row.fpid ?? -1)?.rosPpg ?? 0),
-        0,
-      ),
+      // Ranks don't add up, so the Ranks view totals VOR - the value
+      // those ranks are ordered by.
+      sendValue: sending.reduce((total, row) => {
+        const vor = vorByFpid.get(row.fpid ?? -1);
+        return total + ((metric === "ppg" ? vor?.rosPpg : vor?.rosVor) ?? 0);
+      }, 0),
+      valueLabel: metric === "ppg" ? "ROS PPG" : "ROS VOR",
       impact,
     };
   };
 
   return (
     <Stack gap="md">
-      <Title order={3}>Trade Analyzer</Title>
+      <Title order={3}>Trade</Title>
+      {metricSwitch}
 
       {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
       {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
@@ -323,6 +347,7 @@ function TradePage() {
             teamBRows={teamBRoster.rows}
             teamBLoading={teamBId !== null}
             vorByFpid={vorByFpid}
+            metric={metric}
             shortName={shortName}
             selectedA={selectedA}
             selectedB={selectedB}

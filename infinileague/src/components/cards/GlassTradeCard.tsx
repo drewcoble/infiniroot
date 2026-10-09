@@ -21,9 +21,36 @@ export interface GlassTradeCardData {
   // it (shown as a dash rather than a made-up 0.0).
   seasonPpg: number | undefined;
   rosPpg: number | undefined;
-  // Overall rest-of-season rank, detail popover only.
+  // Value over replacement, season to date and rest of season.
+  seasonVor: number | undefined;
+  rosVor: number | undefined;
+  // Overall (all-position) VOR ranks, season to date and rest of season.
+  seasonRank: number | undefined;
   rosRank: number | undefined;
 }
+
+// Which numbers the cards show - the Trade tab's top switch. Each shows
+// season to date on the left and rest of season on the right.
+export type TradeMetric = "vor" | "ppg" | "rank";
+
+const formatRank = (rank: number | undefined) => (rank ? `#${rank}` : "—");
+
+function metricValues(
+  data: GlassTradeCardData,
+  metric: TradeMetric,
+): { season: string; ros: string } {
+  if (metric === "vor") return { season: formatProj(data.seasonVor), ros: formatProj(data.rosVor) };
+  if (metric === "rank") {
+    return { season: formatRank(data.seasonRank), ros: formatRank(data.rosRank) };
+  }
+  return { season: formatProj(data.seasonPpg), ros: formatProj(data.rosPpg) };
+}
+
+const METRIC_SPOKEN: Record<TradeMetric, string> = {
+  vor: "VOR",
+  ppg: "PPG",
+  rank: "overall rank",
+};
 
 // Half-width Trade card - the Matchup card's shape (position badge top-left,
 // name, NFL team, numbers along the bottom), but trade-relevant numbers:
@@ -35,24 +62,27 @@ export function GlassTradeCard({
   data,
   displayName = data.name,
   slot,
+  metric,
   selected,
   onToggle,
 }: {
   data: GlassTradeCardData;
   displayName?: string;
   slot: string;
+  metric: TradeMetric;
   selected: boolean;
   onToggle: () => void;
 }) {
   const positionColor = positionColorOrDefault(data.position);
   const positionLabel = `${data.position}${data.positionRank > 0 ? data.positionRank : ""}`;
+  const values = metricValues(data, metric);
   const label = [
     data.name,
     positionLabel,
     data.team,
     data.injury?.status,
-    `${formatProj(data.seasonPpg)} season PPG`,
-    `${formatProj(data.rosPpg)} rest-of-season PPG`,
+    `season ${METRIC_SPOKEN[metric]} ${values.season}`,
+    `rest-of-season ${METRIC_SPOKEN[metric]} ${values.ros}`,
   ]
     .filter(Boolean)
     .join(", ");
@@ -107,16 +137,16 @@ export function GlassTradeCard({
           </div>
         </div>
 
-        {/* Season-to-date rate small on the left, the rest-of-season rate -
-            the number a trade is really about - on the right. */}
+        {/* The switch's metric: season to date small on the left, rest of
+            season - the number a trade is really about - on the right. */}
         <div
           className={`${classes.statsRow} ${classes.statsRowSplit} ${classes.tradeStats}`}
           aria-hidden
         >
-          <span className={classes.projSmall}>Szn {formatProj(data.seasonPpg)}</span>
+          <span className={classes.projSmall}>Szn {values.season}</span>
           <span className={classes.tradeRos}>
             <span className={classes.tradeRosLabel}>ROS</span>
-            {formatProj(data.rosPpg)}
+            {values.ros}
           </span>
         </div>
       </div>
@@ -161,13 +191,16 @@ export function GlassTradeCard({
 
           <div className={classes.statGrid}>
             {[
+              { label: "Season VOR", value: formatProj(data.seasonVor) },
               { label: "Season PPG", value: formatProj(data.seasonPpg) },
+              { label: "Season rank", value: formatRank(data.seasonRank) },
+              { label: "ROS VOR", value: formatProj(data.rosVor) },
               { label: "ROS PPG", value: formatProj(data.rosPpg) },
+              { label: "ROS rank", value: formatRank(data.rosRank) },
               {
-                label: "ROS rank",
+                label: "ROS pos rank",
                 value: data.positionRank > 0 ? `${data.position}${data.positionRank}` : "—",
               },
-              { label: "Overall ROS", value: data.rosRank ? `#${data.rosRank}` : "—" },
               { label: "Slot", value: slot || "—" },
               { label: "Bye", value: data.byeWeek ? `Wk ${data.byeWeek}` : "—" },
             ].map((stat) => (

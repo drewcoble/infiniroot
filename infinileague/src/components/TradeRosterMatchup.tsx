@@ -10,7 +10,7 @@ import {
   GlassSkeletonCard,
   GlassSlotChip,
 } from "./cards/GlassMatchupCard";
-import { GlassTradeCard, type GlassTradeCardData } from "./cards/GlassTradeCard";
+import { GlassTradeCard, type GlassTradeCardData, type TradeMetric } from "./cards/GlassTradeCard";
 
 interface TradeRosterMatchupProps {
   teamARows: TeamRosterRow[];
@@ -19,6 +19,8 @@ interface TradeRosterMatchupProps {
   teamBRows: TeamRosterRow[] | undefined;
   teamBLoading: boolean;
   vorByFpid: Map<number, RosVorRow>;
+  // What the cards show (the Trade tab's top switch).
+  metric: TradeMetric;
   shortName: (fullName: string) => string;
   selectedA: Set<number>;
   selectedB: Set<number>;
@@ -37,6 +39,9 @@ function toTradeCardData(row: TeamRosterRow, vor: RosVorRow | undefined): GlassT
     byeWeek: row.byeWeek,
     seasonPpg: vor?.actualPpg,
     rosPpg: vor?.rosPpg,
+    seasonVor: vor?.actualVor,
+    rosVor: vor?.rosVor,
+    seasonRank: vor?.actualRank,
     rosRank: vor?.rosRank,
   };
 }
@@ -63,6 +68,7 @@ function Cell({
           data={toTradeCardData(row, props.vorByFpid.get(fpid))}
           displayName={props.shortName(row.name ?? "")}
           slot={slotLabel(row.slot)}
+          metric={props.metric}
           selected={selected.has(fpid)}
           onToggle={() => onToggle(fpid)}
         />

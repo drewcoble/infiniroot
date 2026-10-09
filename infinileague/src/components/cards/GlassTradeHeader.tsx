@@ -12,9 +12,11 @@ export interface TradeImpactSide {
 
 export interface TradeHeaderTeam {
   name: string;
-  // Players this team gives up, and their combined rest-of-season PPG.
+  // Players this team gives up, and their combined rest-of-season value in
+  // `valueLabel`'s units ("ROS VOR" / "ROS PPG").
   sendCount: number;
-  sendRosPpg: number;
+  sendValue: number;
+  valueLabel: string;
   // undefined = no impact to show yet (a side has nothing selected);
   // "loading" = being computed.
   impact: TradeImpactSide | "loading" | undefined;
@@ -66,10 +68,12 @@ function TeamSide({ team, align }: { team: TradeHeaderTeam; align: "left" | "rig
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
       <div className={classes.headerTeamName}>{team.name}</div>
       <div className={classes.headerTotal}>
-        {team.sendCount > 0 ? team.sendRosPpg.toFixed(1) : "—"}
+        {team.sendCount > 0 ? team.sendValue.toFixed(1) : "—"}
       </div>
       <div className={classes.tradeHeaderSends}>
-        {team.sendCount > 0 ? `Sends ${team.sendCount} · ROS PPG` : "Tap players to send"}
+        {team.sendCount > 0
+          ? `Sends ${team.sendCount} · ${team.valueLabel}`
+          : "Tap players to send"}
       </div>
       <Impact impact={team.impact} />
     </div>
@@ -88,7 +92,8 @@ function TeamSideSkeleton({ align }: { align: "left" | "right" }) {
 }
 
 // Trade tab's header in the Matchup header's glass and two-column layout:
-// each side's team name, the rest-of-season PPG it sends (the big number),
+// each side's team name, the rest-of-season value it sends (the big number -
+// VOR or PPG, following the page's switch),
 // how many players that is, and - once both sides have picked players -
 // where the trade leaves the team in the power rankings. `teamB` null = no
 // trade partner picked yet (dimmed placeholder, like the Matchup header's
@@ -104,7 +109,7 @@ export function GlassTradeHeader({
     [
       team.name,
       team.sendCount > 0
-        ? `sends ${team.sendCount} players, ${team.sendRosPpg.toFixed(1)} rest-of-season PPG`
+        ? `sends ${team.sendCount} players, ${team.sendValue.toFixed(1)} ${team.valueLabel}`
         : "no players selected",
       impactText(team),
     ]
