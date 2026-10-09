@@ -21,6 +21,10 @@ export interface GlassPlayerRowData {
   // What happened (week points / season PPG) large on the name's row - empty
   // when there's nothing yet - and the projection, small, under it.
   actual: string;
+  // Whether `actual` is points scored in a game (shown in the dot-matrix
+  // player-points font, as on the Matchup/Team cards) rather than an
+  // average like season PPG (plain number font).
+  actualIsScore: boolean;
   projection: string;
   // Labeled tiles for the long-press detail popover.
   stats: Array<{ label: string; value: string }>;
@@ -98,7 +102,9 @@ export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
             </span>
           )}
         </div>
-        <div className={`${classes.widePoints} ${classes.points} ${classes.playerPoints}`}>
+        <div
+          className={`${classes.widePoints} ${classes.points} ${data.actualIsScore ? classes.playerPoints : ""}`}
+        >
           {data.actual}
         </div>
         <div className={classes.wideDetail}>

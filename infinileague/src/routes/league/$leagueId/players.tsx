@@ -293,7 +293,10 @@ function PlayersPage() {
                     ? row.weekPoints !== undefined
                       ? row.weekPoints.toFixed(2)
                       : ""
-                    : row.actualPpg.toFixed(1),
+                    : `${row.actualPpg.toFixed(1)} PPG`,
+                  // Dot-matrix only for points actually scored this week -
+                  // season PPG is an average, so it stays plain and labeled.
+                  actualIsScore: isWeekMode,
                   projection: isWeekMode
                     ? `Proj ${row.weekPpg.toFixed(1)}`
                     : `ROS ${row.rosPpg.toFixed(1)}`,
