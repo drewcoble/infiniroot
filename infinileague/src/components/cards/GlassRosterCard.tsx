@@ -19,8 +19,8 @@ import classes from "./GlassMatchupCard.module.css";
 // Full-width (My Team) version of the glass player card - same pieces as
 // GlassMatchupCard, laid out for a full row on mobile: the roster slot chip
 // sits outside the card on the left (like the Matchup tab's slot chips
-// between columns), and inside it the full name with position/injury/game
-// beneath, status (live clock / icon) on the name's row with the projection
+// between columns), and inside it the full name (and injury badge) with
+// position/game beneath, status (live clock / icon) on the name's row with the projection
 // and actual score on the game line's row, and the meter running the width
 // underneath. Full names fit here, so no shortening.
 export function GlassRosterCard({
@@ -57,8 +57,18 @@ export function GlassRosterCard({
       >
         {/* Two shared rows so each side lines up with the other: name |
             status icon + points, then position/injury/game | projection. */}
-        <div className={`${classes.name} ${classes.wideName}`} aria-hidden>
-          {data.name}
+        {/* Injury badge after the name, same as the Matchup cards. */}
+        <div className={`${classes.nameRow} ${classes.wideName}`} aria-hidden>
+          <span className={classes.name}>{data.name}</span>
+          {data.injury && (
+            <span
+              className={classes.pill}
+              style={pillStyle(injuryColor(data.injury.status))}
+              title={data.injury.status}
+            >
+              {data.injury.statusShort}
+            </span>
+          )}
         </div>
         <div className={classes.widePoints} aria-hidden>
           {/* While live, the clock sits left of the status dot (the game
@@ -72,15 +82,6 @@ export function GlassRosterCard({
           <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
             {positionBadge(data)}
           </span>
-          {data.injury && (
-            <span
-              className={classes.pill}
-              style={pillStyle(injuryColor(data.injury.status))}
-              title={data.injury.status}
-            >
-              {data.injury.statusShort}
-            </span>
-          )}
           <span
             className={`${classes.gameLine} ${classes.wideGameLine} ${classes.wideGameLineFill}`}
           >
