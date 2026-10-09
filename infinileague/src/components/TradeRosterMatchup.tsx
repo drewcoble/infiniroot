@@ -1,165 +1,124 @@
-import type { ReactNode } from "react";
-import { Badge, Box, Card, Group, Stack, Text } from "@mantine/core";
-import { positionColorOrDefault } from "@shared/positionColors";
-import { PlayerCard } from "@shared/PlayerCard";
+import { Fragment } from "react";
+import { Box, Group } from "@mantine/core";
 import type { RosVorRow, TeamRosterRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
+import { slotLabel } from "../lib/matchupCardData";
+import { ROSTER_SECTION_LABEL, rosterSection } from "./cards/cardShared";
+import {
+  EmptyGlassCard,
+  GlassSectionDivider,
+  GlassSkeletonCard,
+  GlassSlotChip,
+} from "./cards/GlassMatchupCard";
+import { GlassTradeCard, type GlassTradeCardData } from "./cards/GlassTradeCard";
 
 interface TradeRosterMatchupProps {
   teamARows: TeamRosterRow[];
-  // undefined covers both "no opponent picked yet" and "their roster is
-  // still loading" - either way every row on the right falls back to a
-  // blank placeholder card (see PlaceholderCard's `empty`) rather than the
-  // caller needing to distinguish the two.
+  // undefined = no partner rows to show: either still on the way
+  // (teamBLoading - skeleton cards) or no partner picked yet (blank wells).
   teamBRows: TeamRosterRow[] | undefined;
+  teamBLoading: boolean;
   vorByFpid: Map<number, RosVorRow>;
+  shortName: (fullName: string) => string;
   selectedA: Set<number>;
   selectedB: Set<number>;
   onToggleA: (fpid: number) => void;
   onToggleB: (fpid: number) => void;
 }
 
-function slotLabel(slot: TeamRosterRow["slot"]): string {
-  if (slot === undefined) return "";
-  if (slot === "BENCH") return "BN";
-  if (slot === "SUPERFLEX") return "SFLEX";
-  return slot;
-}
-
-function toFallbackRow(row: TeamRosterRow, fpid: number): RosVorRow {
+function toTradeCardData(row: TeamRosterRow, vor: RosVorRow | undefined): GlassTradeCardData {
   return {
-    fpid,
     name: row.name ?? "",
-    team: row.team ?? null,
     position: row.position ?? "QB",
-    rosVor: 0,
-    rosRank: 0,
-    actualVor: 0,
-    actualRank: 0,
-    positionRank: 0,
-    rosPpg: 0,
-    actualPpg: 0,
-    weekVor: 0,
-    weekRank: 0,
-    weekPpg: 0,
-    weekPositionRank: 0,
-    rosteredByTeamName: null,
-    ...(row.injury ? { injury: row.injury } : {}),
+    positionRank: vor?.positionRank ?? 0,
+    team: row.team ?? "",
+    injury: row.injury,
+    isRookie: row.isRookie ?? false,
+    byeWeek: row.byeWeek,
+    seasonPpg: vor?.actualPpg,
+    rosPpg: vor?.rosPpg,
+    rosRank: vor?.rosRank,
   };
 }
 
-// Wrapper every row cell (a real PlayerCard or a PlaceholderCard) renders
-// into, identically - flex: 1/minWidth: 0 for an even width split of the
-// row, display: "grid" so the single child stretches to fill both axes
-// (unlike flex, grid stretches width too, not just height). Sharing this
-// one wrapper for every case, rather than each case styling its own root
-// element, is what keeps a placeholder and the real card that later
-// replaces it pixel-identical in width - a per-case style previously let
-// them drift a hair apart, which read as the layout "jumping" the moment a
-// team was picked.
-function Cell({ children }: { children: ReactNode }) {
-  return <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>{children}</Box>;
-}
-
-// `empty` (no dash, nothing) stands in for a whole team that isn't known
-// yet; the dash marks a genuinely-unfilled slot on a team whose roster IS
-// known. Height comes from Cell's grid stretch (matching whichever card in
-// the row is tallest) - minHeight here is only a floor for the rare row
-// where both sides are placeholders, so it doesn't collapse to just its own
-// padding.
-function PlaceholderCard({ empty }: { empty?: boolean }) {
-  return (
-    <Card padding="xs" radius="md" style={{ minHeight: 44 }}>
-      {!empty && (
-        <Text size="sm" c="dimmed">
-          —
-        </Text>
-      )}
-    </Card>
-  );
-}
-
-interface PlayerCellProps {
+// Same wrapper MatchupRosterMatchup renders every row cell into - flex: 1/
+// minWidth: 0 for an even width split, grid so the card stretches to match
+// whichever side of the row is taller.
+function Cell({
+  row,
+  props,
+  selected,
+  onToggle,
+}: {
   row: TeamRosterRow | undefined;
-  vorByFpid: Map<number, RosVorRow>;
+  props: TradeRosterMatchupProps;
   selected: Set<number>;
   onToggle: (fpid: number) => void;
-}
-
-function PlayerCell({ row, vorByFpid, selected, onToggle }: PlayerCellProps) {
-  if (row === undefined || row.fpid === undefined) {
-    return (
-      <Cell>
-        <PlaceholderCard empty={row === undefined} />
-      </Cell>
-    );
-  }
-  const fpid = row.fpid;
-  const vorRow = vorByFpid.get(fpid);
+}) {
+  const fpid = row?.fpid;
   return (
-    <Cell>
-      <PlayerCard
-        row={vorRow ?? toFallbackRow(row, fpid)}
-        isRookie={row.isRookie ?? false}
-        showRosteredBy={false}
-        showLeftLabel={false}
-        selectable={{ selected: selected.has(fpid), onToggle: () => onToggle(fpid) }}
-        rightStats={null}
-        footer={
-          <Stack gap={0}>
-            <Text size="xs" c="dimmed">
-              {(vorRow?.actualPpg ?? 0).toFixed(1)} PPG
-            </Text>
-            <Text size="xs" c="dimmed">
-              {(vorRow?.rosPpg ?? 0).toFixed(1)} ROS PPG
-            </Text>
-          </Stack>
-        }
-      />
-    </Cell>
+    <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
+      {row !== undefined && fpid !== undefined ? (
+        <GlassTradeCard
+          data={toTradeCardData(row, props.vorByFpid.get(fpid))}
+          displayName={props.shortName(row.name ?? "")}
+          slot={slotLabel(row.slot)}
+          selected={selected.has(fpid)}
+          onToggle={() => onToggle(fpid)}
+        />
+      ) : (
+        <EmptyGlassCard label={row ? "Empty" : ""} />
+      )}
+    </Box>
   );
 }
 
-// Both teams' rosters lined up by roster slot, with the slot badge between
-// the two teams' cards instead of on each card - a league's slot structure
-// (QB, RB, ..., BENCH) is shared by every team in it, so team A's and team
-// B's Nth alignable row are always the same slot; zipping by index rather
-// than re-deriving a canonical slot list. Team A always renders (your own
-// roster loads as soon as the page does); team B renders as blank
-// placeholder cards until an opponent's actually picked and loaded, so the
-// two-column shape never jumps around as that happens.
-export function TradeRosterMatchup({
-  teamARows,
-  teamBRows,
-  vorByFpid,
-  selectedA,
-  selectedB,
-  onToggleA,
-  onToggleB,
-}: TradeRosterMatchupProps) {
+function SkeletonCell() {
+  return (
+    <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
+      <GlassSkeletonCard />
+    </Box>
+  );
+}
+
+// Both teams' rosters lined up by roster slot, slot chip between the two
+// columns and section dividers between starters / bench / IR / taxi - the
+// Matchup tab's layout (MatchupRosterMatchup.tsx), with glass Trade cards
+// that a tap selects into the trade. Your roster always renders; the
+// partner's column holds blank wells until a team is picked, then skeleton
+// cards while their roster loads, so the two-column shape never jumps.
+export function TradeRosterMatchup(props: TradeRosterMatchupProps) {
+  const rows = alignRosterRows(props.teamARows, props.teamBRows);
   return (
     <>
-      {alignRosterRows(teamARows, teamBRows).map(({ a: aRow, b: bRow }, index) => {
-        const slot = aRow?.slot ?? bRow?.slot;
+      {rows.map(({ a: aRow, b: bRow }, index) => {
+        const section = rosterSection(aRow?.slot ?? bRow?.slot);
+        const previous = index > 0 ? rows[index - 1] : undefined;
+        const startsSection =
+          previous !== undefined && rosterSection(previous.a?.slot ?? previous.b?.slot) !== section;
         return (
-          <Group key={index} wrap="nowrap" gap="xs" align="stretch">
-            <PlayerCell row={aRow} vorByFpid={vorByFpid} selected={selectedA} onToggle={onToggleA} />
-            <Badge
-              size="sm"
-              variant="light"
-              color={positionColorOrDefault(slot ?? "")}
-              style={{ flexShrink: 0, minWidth: 50, alignSelf: "center" }}
-            >
-              {slotLabel(slot)}
-            </Badge>
-            {teamBRows ? (
-              <PlayerCell row={bRow} vorByFpid={vorByFpid} selected={selectedB} onToggle={onToggleB} />
-            ) : (
-              <Cell>
-                <PlaceholderCard empty />
-              </Cell>
-            )}
-          </Group>
+          <Fragment key={`${aRow?.fpid ?? aRow?.slot}-${bRow?.fpid ?? bRow?.slot}-${index}`}>
+            {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
+            <Group wrap="nowrap" gap="xs" align="stretch">
+              <Cell
+                row={aRow}
+                props={props}
+                selected={props.selectedA}
+                onToggle={props.onToggleA}
+              />
+              <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
+              {props.teamBRows === undefined && props.teamBLoading ? (
+                <SkeletonCell />
+              ) : (
+                <Cell
+                  row={props.teamBRows ? bRow : undefined}
+                  props={props}
+                  selected={props.selectedB}
+                  onToggle={props.onToggleB}
+                />
+              )}
+            </Group>
+          </Fragment>
         );
       })}
     </>

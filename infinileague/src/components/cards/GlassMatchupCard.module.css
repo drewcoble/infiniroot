@@ -1464,3 +1464,112 @@
 .freeAgentPopoverNotes p {
   margin: 0;
 }
+
+/* --- Trade card (GlassTradeCard) ---------------------------------------- */
+
+.tradeCard {
+  cursor: pointer;
+}
+
+/* Selected into the trade: blue-tinted glass (the app's focus blue, so it
+   never reads as the green "live" tint) with a matching border. */
+.tradeSelected {
+  background: linear-gradient(
+    150deg,
+    rgba(96, 165, 250, 0.22) 0%,
+    rgba(96, 165, 250, 0.08) 100%
+  );
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
+/* Corner selection circle - an empty glass ring, filled blue with a check
+   once selected. Same 20px box as the badges beside it. */
+.tradeCheck {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(248, 250, 252, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.tradeSelected .tradeCheck {
+  color: #f8fafc;
+  background: rgba(96, 165, 250, 0.85);
+  border-color: rgba(147, 197, 253, 0.95);
+}
+
+/* Numbers pinned to the card's bottom edge, like the Matchup card's
+   meter, so cards of uneven height still line up across a row. */
+.tradeStats {
+  margin-top: auto;
+}
+
+.tradeRos {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 15px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.tradeRosLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tradeCheck {
+    transition: none;
+  }
+}
+
+/* Trade header: what each side sends, under its team name. */
+.tradeHeaderSends {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+/* Post-trade rank move beside the points change on the header's last row. */
+.tradeHeaderImpact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.headerTeamRight .tradeHeaderImpact {
+  justify-content: flex-end;
+}
+
+.impactUp {
+  color: #4ade80;
+}
+
+.impactDown {
+  color: #f87171;
+}
+
+/* Four shared rows instead of the Matchup header's three - the
+   power-ranking impact gets its own. */
+.tradeHeaderTeams {
+  grid-template-rows: auto auto auto auto;
+}
+
+.tradeHeaderTeams .headerTeam {
+  grid-row: 1 / span 4;
+}

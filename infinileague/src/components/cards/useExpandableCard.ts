@@ -19,12 +19,15 @@ import { useLongPress } from "./useLongPress";
 // - `asLink` (team cards, whose root is a link to the team page): Enter,
 //   clicks, and screen-reader activation follow the link natively; Space
 //   opens the details instead.
+// - `onTap` (Trade cards, where a tap selects the player): a tap, Enter/
+//   Space, and a screen reader's activation all call it instead; only a
+//   long-press opens the details. The caller sets the card's role.
 // Either way, the click a long-press release can still produce (iOS
 // synthesizes one on the pressed element) is swallowed, so opening a link
 // card's popover never navigates away underneath it.
 export function useExpandableCard<T extends HTMLElement = HTMLDivElement>(
   ariaLabel: string,
-  { asLink = false }: { asLink?: boolean } = {},
+  { asLink = false, onTap }: { asLink?: boolean; onTap?: () => void } = {},
 ) {
   const cardRef = useRef<T>(null);
   // The element the detail card anchors to, captured at open time - null
@@ -51,23 +54,30 @@ export function useExpandableCard<T extends HTMLElement = HTMLDivElement>(
           "aria-description": "Press and hold, or press Space, for details",
           draggable: false,
         } as const)
-      : ({
-          tabIndex: 0,
-          role: "button",
-          "aria-haspopup": "dialog",
-          "aria-expanded": expanded,
-          "aria-description": "Press and hold for details",
-        } as const)),
+      : onTap
+        ? ({ tabIndex: 0, "aria-description": "Press and hold for details" } as const)
+        : ({
+            tabIndex: 0,
+            role: "button",
+            "aria-haspopup": "dialog",
+            "aria-expanded": expanded,
+            "aria-description": "Press and hold for details",
+          } as const)),
     onKeyDown: (event: KeyboardEvent) => {
       if (event.key === " " || (!asLink && event.key === "Enter")) {
         event.preventDefault();
-        open();
+        if (onTap) onTap();
+        else open();
       }
     },
     onClick: (event: MouseEvent) => {
       if (suppressClick.current) {
         suppressClick.current = false;
         event.preventDefault();
+        return;
+      }
+      if (onTap) {
+        onTap();
         return;
       }
       // Screen readers activate with a synthetic click (detail 0) rather

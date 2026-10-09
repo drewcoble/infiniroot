@@ -1,6 +1,6 @@
-import { Stack, Text } from "@mantine/core";
-import { RankChangeIndicator } from "./PowerRankingsList";
-import { TeamCard } from "./TeamCard";
+import { Stack } from "@mantine/core";
+import { RankChangeBadge } from "./PowerRankingsList";
+import { GlassTeamCard } from "./cards/GlassTeamCard";
 import type { PowerRankingRow } from "../types/season";
 
 interface TradePowerRankingsListProps {
@@ -16,24 +16,27 @@ interface TradePowerRankingsListProps {
   // than fabricating a delta.
   beforeRankByTeam: Map<string, number>;
   // This team's real, current (pre-trade) totalProjectedPoints - diffed
-  // against its post-trade value below for the two highlighted teams' own
-  // extra "+/- pts" line, same number the peek card shows (see
-  // TradePowerRankingsSheet.tsx).
+  // against its post-trade value for the two trading teams' "+/- pts"
+  // line, same number the header and peek card show.
   beforePointsByTeam: Map<string, number>;
   // The two teams actually in the trade - everyone else renders plain (see
   // this component's own header comment on why only these two get a rank-
-  // change indicator).
+  // change badge).
   highlightedTeamIds: Set<string>;
 }
 
+function signedPoints(value: number): string {
+  return `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(1)} pts`;
+}
+
 // Full-league power rankings recomputed as if a previewed trade happened
-// (see trade.tsx), reusing the same TeamCard/RankChangeIndicator the league
-// dashboard's real PowerRankingsList uses so this reads identically -
-// just highlighting the two trading teams and, only for those two, how many
-// spots they'd move vs. today's real ranking. Other teams' own ranks can
-// still shift around them, but that's not the decision-relevant number here
-// (see the trade tab's own framing - "how would THIS trade affect us"), so
-// they render without a rank-change badge.
+// (see trade.tsx), in the same glass team cards the league home's Power
+// Rankings tab uses (GlassTeamCard) so this reads identically - just, for
+// the two trading teams only, a badge for how many spots they'd move vs.
+// today's real ranking and their rest-of-season points change. Other
+// teams' ranks can still shift around them, but that's not the
+// decision-relevant number here ("how would THIS trade affect us"), so they
+// render without either.
 export function TradePowerRankingsList({
   leagueId,
   rows,
@@ -55,32 +58,55 @@ export function TradePowerRankingsList({
             ? row.totalProjectedPoints - beforePoints
             : undefined;
         return (
-          <TeamCard
+          <GlassTeamCard
             key={row.teamId}
-            leagueId={leagueId}
-            teamId={row.teamId}
-            name={row.name}
-            isSelf={row.isSelf}
-            leftLabel={afterRank}
-            highlighted={isHighlighted}
-            nameSuffix={isHighlighted ? <RankChangeIndicator rankChange={rankChange} /> : null}
-            stats={
-              <>
-                <Text size="sm" fw={500}>
-                  {row.totalProjectedPoints.toFixed(1)} pts
-                </Text>
-                {pointsDiff !== undefined && (
-                  <Text
-                    size="xs"
-                    fw={500}
-                    c={pointsDiff > 0 ? "green" : pointsDiff < 0 ? "red" : "dimmed"}
-                  >
-                    {pointsDiff >= 0 ? "+" : ""}
-                    {pointsDiff.toFixed(1)} pts
-                  </Text>
-                )}
-              </>
-            }
+            data={{
+              leagueId,
+              teamId: row.teamId,
+              name: row.name,
+              rank: afterRank,
+              isSelf: row.isSelf,
+              nameBadges: <RankChangeBadge rankChange={rankChange} since="after this trade" />,
+              secondaryLeft: (
+                <span className="num">
+                  {row.rosPpg !== undefined ? `${row.rosPpg.toFixed(1)} ROS PPG` : "—"}
+                </span>
+              ),
+              ...(pointsDiff !== undefined
+                ? {
+                    secondaryRight: (
+                      <span
+                        style={{
+                          color:
+                            pointsDiff > 0 ? "#4ade80" : pointsDiff < 0 ? "#f87171" : undefined,
+                        }}
+                      >
+                        {signedPoints(pointsDiff)}
+                      </span>
+                    ),
+                  }
+                : {}),
+              summary: [
+                row.rosPpg !== undefined
+                  ? `${row.rosPpg.toFixed(1)} rest-of-season PPG`
+                  : undefined,
+                pointsDiff !== undefined
+                  ? `${signedPoints(pointsDiff)} after this trade`
+                  : undefined,
+              ]
+                .filter(Boolean)
+                .join(", "),
+              stats: [
+                { label: "ROS PPG", value: row.rosPpg !== undefined ? row.rosPpg.toFixed(1) : "—" },
+                { label: "ROS proj pts", value: row.totalProjectedPoints.toFixed(0) },
+                {
+                  label: "Before trade",
+                  value: beforeRank !== undefined ? `#${beforeRank}` : "—",
+                },
+              ],
+            }}
+            positionRanks={null}
+            totalTeams={rows.length}
           />
         );
       })}

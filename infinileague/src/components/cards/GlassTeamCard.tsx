@@ -51,7 +51,10 @@ export function GlassTeamCard({
   totalTeams,
 }: {
   data: GlassTeamCardData;
-  positionRanks: TeamPositionRanks | undefined;
+  // undefined = still loading (skeleton); null = this list doesn't fetch
+  // them (the Trade tab's post-trade rankings) - no position-strength
+  // section at all.
+  positionRanks: TeamPositionRanks | undefined | null;
   totalTeams: number;
 }) {
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard<HTMLAnchorElement>(
@@ -143,7 +146,9 @@ export function GlassTeamCard({
             </div>
           )}
 
-          <TeamPositionRanksPanel positionRanks={positionRanks} totalTeams={totalTeams} />
+          {positionRanks !== null && (
+            <TeamPositionRanksPanel positionRanks={positionRanks} totalTeams={totalTeams} />
+          )}
         </GlassPopover>
       )}
     </div>

@@ -1,5 +1,5 @@
-import { Group, Stack, Text } from "@mantine/core";
-import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { Stack } from "@mantine/core";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { pillStyle } from "./cards/cardShared";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
 import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
@@ -13,30 +13,6 @@ interface PowerRankingsListProps {
   positionRanksByTeam: Map<string, TeamPositionRanks> | undefined;
 }
 
-// Same up/down convention as LineupSuggestionsCard's start/sit arrows -
-// green up, red down - plus a dash for "unchanged" and nothing at all when
-// there's no prior week to compare against (rankChange absent). Exported for
-// TradePowerRankingsList.tsx, which reuses it for trade-induced rank
-// movement instead of this list's week-over-week snapshot movement.
-export function RankChangeIndicator({ rankChange }: { rankChange: number | undefined }) {
-  if (rankChange === undefined) return null;
-  if (rankChange === 0) {
-    return <Minus size={14} color="var(--mantine-color-dimmed)" />;
-  }
-  return (
-    <Group gap={2} wrap="nowrap">
-      {rankChange > 0 ? (
-        <ArrowUp size={14} color="var(--mantine-color-green-6)" />
-      ) : (
-        <ArrowDown size={14} color="var(--mantine-color-red-6)" />
-      )}
-      <Text size="xs" c={rankChange > 0 ? "green" : "red"} span>
-        {Math.abs(rankChange)}
-      </Text>
-    </Group>
-  );
-}
-
 // Rest-of-season strength read: each team's optimal-lineup total from the
 // current week through week 18 (see convex/infinileague/season/
 // powerRankings.ts), as opposed to StandingsList's backward-looking win/
@@ -45,15 +21,22 @@ export function RankChangeIndicator({ rankChange }: { rankChange: number | undef
 // time it's computed for a season.
 // Week-over-week move as a glass badge on the team card - green up, red
 // down. Only shown when the team actually moved: no badge for no change,
-// or without a prior week to compare against.
-function RankChangeBadge({ rankChange }: { rankChange: number | undefined }) {
+// or without a prior week to compare against. Also the Trade tab's
+// post-trade move (`since` names what the move is measured against).
+export function RankChangeBadge({
+  rankChange,
+  since = "since last week",
+}: {
+  rankChange: number | undefined;
+  since?: string;
+}) {
   if (rankChange === undefined || rankChange === 0) return null;
   const Icon = rankChange > 0 ? ArrowUp : ArrowDown;
   return (
     <span
       className={classes.pill}
       style={{ ...pillStyle(rankChange > 0 ? "green" : "red"), fontFamily: "var(--font-numeric)" }}
-      aria-label={`${rankChange > 0 ? "Up" : "Down"} ${Math.abs(rankChange)} since last week`}
+      aria-label={`${rankChange > 0 ? "Up" : "Down"} ${Math.abs(rankChange)} ${since}`}
     >
       <Icon size={12} strokeWidth={3} />
       {Math.abs(rankChange)}
