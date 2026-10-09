@@ -49,6 +49,7 @@ export function GlassRosterCard({
           classes.pressable,
           isLive && classes.live,
           isBye && classes.muted,
+          data.gameState === "final" && classes.finalCard,
           pressing && classes.pressing,
           expanded && classes.hidden,
         ]

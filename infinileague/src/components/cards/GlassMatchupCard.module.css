@@ -60,8 +60,13 @@
   );
 }
 
-/* Bye / IR players - the same 45% the Matchup tab's "Live only" mode fades
-   non-live players to (MatchupRosterMatchup's LIVE_ONLY_DIM). */
+/* Card fades (cardShared.ts's FINAL_CARD_OPACITY / MUTED_CARD_OPACITY):
+   finished players a little, bye / IR players more - the latter the same
+   level the Matchup tab's "Live only" mode fades non-live players to. */
+.finalCard {
+  opacity: 0.7;
+}
+
 .muted {
   opacity: 0.45;
 }
