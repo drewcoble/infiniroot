@@ -63,13 +63,13 @@ export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
         <div className={`${classes.wideName} ${classes.teamCardName}`}>
           <span className={classes.name}>{data.name}</span>
           {data.isRookie && (
-            <span className={classes.pill} style={pillStyle("grape")}>
+            <span className={`${classes.pill} ${classes.nameBadge}`} style={pillStyle("grape")}>
               R
             </span>
           )}
           {data.injury && (
             <span
-              className={`${classes.pill} ${classes.injuryPill}`}
+              className={`${classes.pill} ${classes.nameBadge}`}
               style={pillStyle(injuryColor(data.injury.status))}
             >
               {data.injury.statusShort}
