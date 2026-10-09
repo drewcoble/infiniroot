@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Stack, Text, Title } from "@mantine/core";
+import { Group, Stack, Text, Title } from "@mantine/core";
+import type { Position } from "@shared/positionColors";
 import { api } from "@infinidata/api";
 import { GlassFreeAgentRow } from "../../../components/cards/GlassFreeAgentRow";
+import { GlassPositionFilter } from "../../../components/cards/GlassPositionFilter";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
+import { GlassSegmented } from "../../../components/cards/GlassSegmented";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
 import { compareSortValues } from "../../../lib/tableSort";
 import type {
@@ -18,16 +22,19 @@ export const Route = createFileRoute("/league/$leagueId/freeAgents")({
   component: FreeAgentsPage,
 });
 
-function sortValueFor(row: FaabSuggestionRow): number | undefined {
-  return row.suggestedBid ?? row.marketValue;
-}
+const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
+
+// "bid" = suggested bid (market value without one) - the default and the
+// list's original order; "vor" = value over replacement; "rosPpg" = rest-of-
+// season points per game from the rosVOR board (players without a board row
+// sort last). Ties fall back to VOR, then name.
+type SortKey = "bid" | "vor" | "rosPpg";
 
 // Migrated from infinidraft's src/pages/Season/FreeAgentsTab.tsx (now
 // removed there) - same advisory FAAB bid calculator, backed by the same
-// shared convex/lib/faab.ts computation. Re-shelled from a sortable table
-// into the same PlayerCard the Players/Depth Charts tabs use (with an added
-// bid/rationale footer row) rather than its own bespoke row layout, so a
-// player reads identically everywhere in the app.
+// shared convex/lib/faab.ts computation. Rendered as glass free-agent rows
+// (GlassFreeAgentRow) with the Players page's sort control and position
+// filter, so the two boards read and work alike.
 function FreeAgentsPage() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
@@ -65,6 +72,10 @@ function FreeAgentsPage() {
   );
   const rosVorByFpid = new Map((rosVorRows ?? []).map((row) => [row.fpid, row]));
 
+  // Same position filter and sort control as the Players page.
+  const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
+  const [sortKey, setSortKey] = useState<SortKey>("bid");
+
   if (result === undefined) {
     return (
       <Stack gap="md">
@@ -93,13 +104,20 @@ function FreeAgentsPage() {
   // "who should I actually bid on" - tiebroken by valueOverReplacement, the
   // same VOR the pre-draft value process ranks by (convex/draftValues.ts),
   // then name for full determinism.
-  const rows = [...result.suggestions].sort((a, b) => {
-    const primary = compareSortValues(sortValueFor(a), sortValueFor(b), "desc");
-    if (primary !== 0) return primary;
-    const secondary = compareSortValues(a.valueOverReplacement, b.valueOverReplacement, "desc");
-    if (secondary !== 0) return secondary;
-    return compareSortValues(a.name, b.name, "asc");
-  });
+  const sortValue = (row: FaabSuggestionRow, key: SortKey): number | undefined => {
+    if (key === "vor") return row.valueOverReplacement;
+    if (key === "rosPpg") return rosVorByFpid.get(row.fpid)?.rosPpg;
+    return row.suggestedBid ?? row.marketValue;
+  };
+  const rows = result.suggestions
+    .filter((row) => selectedPositions.includes(row.position))
+    .sort((a, b) => {
+      const primary = compareSortValues(sortValue(a, sortKey), sortValue(b, sortKey), "desc");
+      if (primary !== 0) return primary;
+      const secondary = compareSortValues(a.valueOverReplacement, b.valueOverReplacement, "desc");
+      if (secondary !== 0) return secondary;
+      return compareSortValues(a.name, b.name, "asc");
+    });
 
   return (
     <Stack gap="md">
@@ -110,7 +128,33 @@ function FreeAgentsPage() {
           Week {result.week} · {result.remainingWeeks} weeks remaining
         </div>
       </div>
+      <Group gap="sm" wrap="nowrap">
+        <span className={classes.strengthLabel}>Sort</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <GlassSegmented
+            compact
+            label="Sort by"
+            value={sortKey}
+            onChange={setSortKey}
+            options={[
+              { label: "Bid", value: "bid" as const },
+              { label: "VOR", value: "vor" as const },
+              { label: "ROS PPG", value: "rosPpg" as const },
+            ]}
+          />
+        </div>
+      </Group>
+      <GlassPositionFilter
+        positions={ALL_POSITIONS}
+        selected={selectedPositions}
+        onChange={setSelectedPositions}
+      />
       <Stack gap={8}>
+        {rows.length === 0 && (
+          <Text c="dimmed" size="sm" ta="center" py="md">
+            No free agents at the selected positions.
+          </Text>
+        )}
         {rows.map((row, index) => {
           const rosVorRow = rosVorByFpid.get(row.fpid);
           const bidAmount = row.suggestedBid ?? row.marketValue;
