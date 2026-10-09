@@ -7,6 +7,7 @@ import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
 import { WeekPicker } from "../../../components/WeekPicker";
+import { LiveOnlyToggle } from "../../../components/cards/LiveOnlyToggle";
 import {
   MatchupRosterMatchup,
   MatchupRosterSkeleton,
@@ -185,7 +186,13 @@ function MatchupPage() {
     [weekGames],
   );
   const now = useNow(60 * 1000);
-  const refreshMs = isCurrentWeek && isAnyGameLive(weekGames, now) ? LIVE_REFRESH_MS : null;
+  const anyGameLive = isCurrentWeek && isAnyGameLive(weekGames, now);
+  const refreshMs = anyGameLive ? LIVE_REFRESH_MS : null;
+  // "Live only" - only offered (and only applied) while a game in the
+  // viewed week is actually on, so it can't strand the page empty once the
+  // games end.
+  const [liveOnly, setLiveOnly] = useState(false);
+  const showLiveOnly = liveOnly && anyGameLive;
   // Every game in the viewed week is over - the header shows the result
   // instead of a win probability.
   const weekComplete =
@@ -384,11 +391,18 @@ function MatchupPage() {
         }
       />
 
+      {anyGameLive && teamARoster.rows !== undefined && (
+        <Group justify="flex-end">
+          <LiveOnlyToggle on={liveOnly} onChange={setLiveOnly} />
+        </Group>
+      )}
+
       <Stack gap={10}>
         {teamARoster.rows === undefined ? (
           <MatchupRosterSkeleton />
         ) : (
           <MatchupRosterMatchup
+            liveOnly={showLiveOnly}
             teamARows={teamARoster.rows}
             teamBRows={teamBRoster.rows}
             teamBLoading={opponentPending || teamBId !== null}

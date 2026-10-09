@@ -1,4 +1,4 @@
-import { Box, Group } from "@mantine/core";
+import { Box, Group, Text } from "@mantine/core";
 import type { TeamRosterRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
 import { slotLabel } from "../lib/matchupCardData";
@@ -22,6 +22,10 @@ interface MatchupRosterMatchupProps {
   shortName: (fullName: string) => string;
   // Shared meter scale for every card on the page (see meterScale.ts).
   scaleMax: number;
+  // "Live only": rows with no live player on either side are dropped, and
+  // a non-live player beside a live one shows as a blank well (keeping the
+  // columns lined up). See the Matchup page's toggle.
+  liveOnly?: boolean;
 }
 
 // Same wrapper both TradeRosterMatchup and this component render every row
@@ -30,13 +34,18 @@ interface MatchupRosterMatchupProps {
 function Cell({
   row,
   props,
+  hidden = false,
 }: {
   row: TeamRosterRow | undefined;
   props: MatchupRosterMatchupProps;
+  // Live-only mode's stand-in for a player whose game isn't live.
+  hidden?: boolean;
 }) {
   return (
     <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
-      {row?.fpid !== undefined ? (
+      {hidden ? (
+        <EmptyGlassCard label="" />
+      ) : row?.fpid !== undefined ? (
         <GlassMatchupCard
           data={props.toCardData(row)}
           displayName={props.shortName(row.name ?? "")}
@@ -81,31 +90,46 @@ export function MatchupRosterSkeleton() {
 // chip between the two columns - the glass Matchup cards (see
 // components/cards/), long-press for each player's detail card.
 export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
+  const isLive = (row: TeamRosterRow | undefined) =>
+    row?.fpid !== undefined && props.toCardData(row).gameState === "live";
+  const rows = alignRosterRows(props.teamARows, props.teamBRows)
+    .map((row) => ({ ...row, aLive: isLive(row.a), bLive: isLive(row.b) }))
+    .filter((row) => !props.liveOnly || row.aLive || row.bLive);
+
+  if (props.liveOnly && rows.length === 0) {
+    return (
+      <Text size="sm" c="dimmed" ta="center" py="md">
+        No players in this matchup are in a live game right now.
+      </Text>
+    );
+  }
+
   return (
     <>
-      {alignRosterRows(props.teamARows, props.teamBRows).map(
-        ({ a: aRow, b: bRow }, index, rows) => {
-          const section = rosterSection(aRow?.slot ?? bRow?.slot);
-          const previous = index > 0 ? rows[index - 1] : undefined;
-          const startsSection =
-            previous !== undefined &&
-            rosterSection(previous.a?.slot ?? previous.b?.slot) !== section;
-          return (
-            <Fragment key={index}>
-              {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
-              <Group wrap="nowrap" gap="xs" align="stretch">
-                <Cell row={aRow} props={props} />
-                <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
-                {props.teamBRows === undefined && props.teamBLoading ? (
-                  <SkeletonCell />
-                ) : (
-                  <Cell row={props.teamBRows ? bRow : undefined} props={props} />
-                )}
-              </Group>
-            </Fragment>
-          );
-        },
-      )}
+      {rows.map(({ a: aRow, b: bRow, aLive, bLive }, index) => {
+        const section = rosterSection(aRow?.slot ?? bRow?.slot);
+        const previous = index > 0 ? rows[index - 1] : undefined;
+        const startsSection =
+          previous !== undefined && rosterSection(previous.a?.slot ?? previous.b?.slot) !== section;
+        return (
+          <Fragment key={`${aRow?.fpid ?? aRow?.slot}-${bRow?.fpid ?? bRow?.slot}-${index}`}>
+            {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
+            <Group wrap="nowrap" gap="xs" align="stretch">
+              <Cell row={aRow} props={props} hidden={props.liveOnly === true && !aLive} />
+              <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
+              {props.teamBRows === undefined && props.teamBLoading ? (
+                <SkeletonCell />
+              ) : (
+                <Cell
+                  row={props.teamBRows ? bRow : undefined}
+                  props={props}
+                  hidden={props.liveOnly === true && !bLive}
+                />
+              )}
+            </Group>
+          </Fragment>
+        );
+      })}
     </>
   );
 }

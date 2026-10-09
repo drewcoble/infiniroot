@@ -207,6 +207,12 @@
   animation: pulse 1.6s ease-in-out infinite;
 }
 
+/* The live dot inside a chip (LiveOnlyToggle). */
+.filterChip .dot {
+  margin-right: 7px;
+  vertical-align: 0;
+}
+
 .statusSlot .dot {
   display: block;
   width: 9px;
