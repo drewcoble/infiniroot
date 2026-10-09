@@ -14,16 +14,16 @@
   color: #f8fafc;
   background: linear-gradient(
     150deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.035) 100%
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
   );
-  backdrop-filter: blur(20px) saturate(170%);
-  -webkit-backdrop-filter: blur(20px) saturate(170%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
   overflow: hidden;
   outline: none;
   transition:
@@ -40,7 +40,7 @@
   height: 45%;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 0%,
     rgba(255, 255, 255, 0) 100%
   );
   pointer-events: none;
@@ -63,31 +63,8 @@
 /* Card fades (cardShared.ts's FINAL_CARD_OPACITY / MUTED_CARD_OPACITY):
    finished players a little, bye / IR players more - the latter the same
    level the Matchup tab's "Live only" mode fades non-live players to. */
-/* Finished players' cards also carry less glass - roughly 60% of the
-   normal tint, blur, edges, and sheen - so a settled card reads quieter
-   than live and upcoming ones. */
 .finalCard {
   opacity: 0.7;
-  background: linear-gradient(
-    150deg,
-    rgba(255, 255, 255, 0.06) 0%,
-    rgba(255, 255, 255, 0.02) 100%
-  );
-  backdrop-filter: blur(12px) saturate(130%);
-  -webkit-backdrop-filter: blur(12px) saturate(130%);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.finalCard::before {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0) 100%
-  );
 }
 
 .muted {
@@ -499,12 +476,12 @@
   gap: 14px;
   padding: 16px;
   border-radius: 20px;
-  backdrop-filter: blur(28px) saturate(170%);
-  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
   box-shadow:
     0 18px 50px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
   /* Hidden until ExpandedMatchupCard's layout pass has placed it, then
      grows out of the base card's corner (transform-origin set there). */
   visibility: hidden;
@@ -573,9 +550,9 @@
   color: #f8fafc;
   cursor: pointer;
   outline: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.025) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.17);
 }
 
 /* Detail card's status - the corner icon plus its name, pushed to the end
@@ -1302,9 +1279,9 @@
   color: #f8fafc;
   cursor: pointer;
   outline: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.025) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.17);
 }
 
 .glassIconButton:disabled {
