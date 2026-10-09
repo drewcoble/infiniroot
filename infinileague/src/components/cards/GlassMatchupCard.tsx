@@ -71,13 +71,18 @@ export function GlassMatchupCard({
               </span>
             )}
           </div>
-          <GameStatusGlyph state={data.gameState} />
+          {/* While live, the clock rides in the top row beside the dot
+              (the game line below then shows just the opponent). */}
+          <div className={classes.topRowStatus}>
+            {isLive && data.status && <span className={classes.topClock}>{data.status}</span>}
+            <GameStatusGlyph state={data.gameState} />
+          </div>
         </div>
 
         <div aria-hidden>
           <div className={classes.name}>{displayName}</div>
           <div className={classes.gameLine}>
-            <GameLineText data={data} />
+            <GameLineText data={data} hideLiveClock />
           </div>
         </div>
 

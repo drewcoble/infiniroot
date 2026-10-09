@@ -102,6 +102,25 @@
   min-height: 20px;
 }
 
+
+/* Top row's right side: the live clock (Matchup card) beside the status
+   icon. */
+.topRowStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.topClock {
+  font-family: var(--font-scoreboard);
+  font-weight: var(--font-scoreboard-weight);
+  font-size: 12px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.85);
+}
+
 .pills {
   display: flex;
   align-items: center;
