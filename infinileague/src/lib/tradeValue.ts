@@ -10,6 +10,8 @@
 // in a trade as on paper, so the star side is credited that difference.
 // Two 5,000 players for one 10,000 player: 10,000 + 2,500 vs. 10,000 - the
 // star side is giving more. A 14-point throw-in barely moves anything.
+// Mirrored server-side in convex/infinileague/season/tradeValues.ts's
+// adjustedTradeTotals (trade suggestions' grading) - keep the two in step.
 const EXTRA_PIECE_DISCOUNT = 0.5;
 
 export interface TradeTotals {

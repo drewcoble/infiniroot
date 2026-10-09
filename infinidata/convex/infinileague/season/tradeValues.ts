@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { action, ActionCtx, internalMutation, internalQuery } from "../../_generated/server";
 import { api, internal } from "../../_generated/api";
+import { Id } from "../../_generated/dataModel";
 import { sleeperPlayerIdToFpid } from "../../sleeper/league";
 
 export interface TradeValueRow {
@@ -67,10 +68,9 @@ async function marketValues(
   settings: { teams: number; qbs: number; ppr: number },
 ): Promise<Map<number, number> | null> {
   const key = `${settings.teams}:${settings.qbs}:${settings.ppr}`;
-  const cached = await ctx.runQuery(
-    internal.infinileague.season.tradeValues.getCachedValues,
-    { key },
-  );
+  const cached = await ctx.runQuery(internal.infinileague.season.tradeValues.getCachedValues, {
+    key,
+  });
   const toMap = (values: { fpid: number; value: number }[]) =>
     new Map(values.map((row) => [row.fpid, row.value]));
   if (cached && Date.now() - cached.fetchedAt < CACHE_MS) return toMap(cached.values);
@@ -100,61 +100,94 @@ async function marketValues(
 // Every player on the league's rosVOR board with a FantasyCalc-style trade
 // value (thousands scale, additive) - see TradeValueRow. Blends the market
 // (FantasyCalc, matched to the league's team count, 1QB/superflex, and PPR
-// setting) with our own rest-of-season projection, half each.
+// setting) with our own rest-of-season projection, half each. Shared by
+// getTradeValues (the Trade tab's numbers) and tradeSuggestions.ts's
+// grading, so a suggestion's value read matches what loading it shows.
+export async function loadTradeValues(
+  ctx: ActionCtx,
+  seasonId: Id<"seasons">,
+): Promise<TradeValueRow[]> {
+  const { season } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
+    seasonId,
+  });
+  const teams = await ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, {
+    seasonId,
+  });
+  const nflState = await ctx.runQuery(api.nflState.getNflState, {});
+  const week = nflState ? String(Math.max(Number(nflState.week), 1)) : "1";
+  const board = await ctx.runQuery(api.rosVor.getRosVorBoard, {
+    seasonId,
+    week,
+  });
+
+  const market = await marketValues(ctx, {
+    teams: teams.length,
+    qbs: season.rosterSlots.SUPERFLEX > 0 ? 2 : 1,
+    ppr: season.scoring === "PPR" ? 1 : season.scoring === "HALF" ? 0.5 : 0,
+  });
+
+  // Rank-match our board onto the market's value curve. Without market
+  // data there's no curve to borrow - fall back to a plain rescale of
+  // rosVor (best player = 10,000).
+  const marketCurve = market ? [...market.values()].sort((a, b) => b - a) : null;
+  const byVor = [...board].sort((a, b) => b.rosVor - a.rosVor);
+  const topVor = Math.max(byVor[0]?.rosVor ?? 0, 1);
+  const projectionByFpid = new Map(
+    byVor.map((row, index) => [
+      row.fpid,
+      Math.round(
+        marketCurve ? (marketCurve[index] ?? 0) : Math.max(row.rosVor, 0) * (10000 / topVor),
+      ),
+    ]),
+  );
+
+  return board.map((row) => {
+    const projectionValue = projectionByFpid.get(row.fpid) ?? 0;
+    const marketValue =
+      market === null || UNPRICED_POSITIONS.has(row.position) ? null : (market.get(row.fpid) ?? 0);
+    return {
+      fpid: row.fpid,
+      value:
+        marketValue === null ? projectionValue : Math.round((marketValue + projectionValue) / 2),
+      marketValue,
+      projectionValue,
+    };
+  });
+}
+
 export const getTradeValues = action({
   args: { seasonId: v.id("seasons") },
-  handler: async (ctx: ActionCtx, args): Promise<TradeValueRow[]> => {
-    const { season } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
-      seasonId: args.seasonId,
-    });
-    const teams = await ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, {
-      seasonId: args.seasonId,
-    });
-    const nflState = await ctx.runQuery(api.nflState.getNflState, {});
-    const week = nflState ? String(Math.max(Number(nflState.week), 1)) : "1";
-    const board = await ctx.runQuery(api.rosVor.getRosVorBoard, {
-      seasonId: args.seasonId,
-      week,
-    });
-
-    const market = await marketValues(ctx, {
-      teams: teams.length,
-      qbs: season.rosterSlots.SUPERFLEX > 0 ? 2 : 1,
-      ppr: season.scoring === "PPR" ? 1 : season.scoring === "HALF" ? 0.5 : 0,
-    });
-
-    // Rank-match our board onto the market's value curve. Without market
-    // data there's no curve to borrow - fall back to a plain rescale of
-    // rosVor (best player = 10,000).
-    const marketCurve = market ? [...market.values()].sort((a, b) => b - a) : null;
-    const byVor = [...board].sort((a, b) => b.rosVor - a.rosVor);
-    const topVor = Math.max(byVor[0]?.rosVor ?? 0, 1);
-    const projectionByFpid = new Map(
-      byVor.map((row, index) => [
-        row.fpid,
-        Math.round(
-          marketCurve
-            ? (marketCurve[index] ?? 0)
-            : Math.max(row.rosVor, 0) * (10000 / topVor),
-        ),
-      ]),
-    );
-
-    return board.map((row) => {
-      const projectionValue = projectionByFpid.get(row.fpid) ?? 0;
-      const marketValue =
-        market === null || UNPRICED_POSITIONS.has(row.position)
-          ? null
-          : (market.get(row.fpid) ?? 0);
-      return {
-        fpid: row.fpid,
-        value:
-          marketValue === null
-            ? projectionValue
-            : Math.round((marketValue + projectionValue) / 2),
-        marketValue,
-        projectionValue,
-      };
-    });
-  },
+  handler: async (ctx: ActionCtx, args): Promise<TradeValueRow[]> =>
+    await loadTradeValues(ctx, args.seasonId),
 });
+
+// Each side's sent trade values added up, plus a consolidation credit so
+// two decent players don't automatically out-total one star. The credit
+// goes to the side sending the single most valuable player in the trade,
+// and only when that side sends fewer players: the other side's extra
+// pieces (its lowest-valued ones, as many as it sends beyond the star
+// side's count) count only (1 - EXTRA_PIECE_DISCOUNT) as much. Mirrored in
+// infinileague/src/lib/tradeValue.ts, which the Trade tab's header uses -
+// keep the two in step.
+const EXTRA_PIECE_DISCOUNT = 0.5;
+
+function consolidationCredit(starSide: number[], otherSide: number[]): number {
+  const extra = otherSide.length - starSide.length;
+  if (extra <= 0) return 0;
+  const lowest = [...otherSide].sort((a, b) => a - b).slice(0, extra);
+  return Math.round(lowest.reduce((sum, value) => sum + value, 0) * EXTRA_PIECE_DISCOUNT);
+}
+
+// Side A's and side B's sent totals, consolidation credit included.
+export function adjustedTradeTotals(
+  valuesA: number[],
+  valuesB: number[],
+): { totalA: number; totalB: number } {
+  const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+  const topA = Math.max(0, ...valuesA);
+  const topB = Math.max(0, ...valuesB);
+  return {
+    totalA: sum(valuesA) + (topA > topB ? consolidationCredit(valuesA, valuesB) : 0),
+    totalB: sum(valuesB) + (topB > topA ? consolidationCredit(valuesB, valuesA) : 0),
+  };
+}

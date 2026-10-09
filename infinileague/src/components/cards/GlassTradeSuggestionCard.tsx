@@ -2,6 +2,7 @@ import { useId, type CSSProperties } from "react";
 import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { gradeColor } from "../../lib/gradeColor";
+import { formatTradeValue } from "../../lib/tradeValue";
 import { pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
 import { useExpandableCard } from "./useExpandableCard";
@@ -24,9 +25,10 @@ export interface TradeSuggestion {
   partnerGain: number;
   gainPpg: number;
   partnerGainPpg: number;
-  // Rest-of-season VOR you get minus what you send.
-  vorNet: number;
-  // 0-100, lineup gain and vorNet blended (see tradeSuggestions.ts).
+  // Trade value you get minus what you send (consolidation credit
+  // included) - the Trade tab's FantasyCalc-style numbers.
+  valueNet: number;
+  // 0-100, lineup gain and valueNet blended (see tradeSuggestions.ts).
   grade: number;
   rankBefore: number;
   rankAfter: number;
@@ -42,6 +44,11 @@ function signed(value: number): string {
 // is (lib/gradeColor.ts).
 function gradePillStyle(grade: number): CSSProperties {
   return { ...pillStyle(gradeColor(grade)), fontFamily: "var(--font-numeric)" };
+}
+
+// "+1,250" / "−800" - trade value, signed.
+function signedValue(value: number): string {
+  return `${value >= 0 ? "+" : "−"}${formatTradeValue(Math.abs(value))}`;
 }
 
 function RankMove({ before, after }: { before: number; after: number }) {
@@ -115,7 +122,7 @@ export function GlassTradeSuggestionCard({
     `Trade with ${suggestion.partnerName}: send ${names(suggestion.send)}, get ` +
     `${names(suggestion.receive)}. Grade ${suggestion.grade}. ` +
     `${signed(suggestion.gainPpg)} points per week for you, ` +
-    `${signed(suggestion.vorNet)} VOR, ` +
+    `${signedValue(suggestion.valueNet)} trade value, ` +
     `power rank ${suggestion.rankBefore} to ${suggestion.rankAfter}`;
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label, {
     onTap: onApply,
@@ -176,14 +183,14 @@ export function GlassTradeSuggestionCard({
             {" · "}
             <span
               className={
-                suggestion.vorNet > 0
+                suggestion.valueNet > 0
                   ? classes.impactUp
-                  : suggestion.vorNet < 0
+                  : suggestion.valueNet < 0
                     ? classes.impactDown
                     : undefined
               }
             >
-              {signed(suggestion.vorNet)} VOR
+              {signedValue(suggestion.valueNet)} value
             </span>
           </span>
           <span className={classes.projSmall}>
@@ -200,7 +207,9 @@ export function GlassTradeSuggestionCard({
                 Trade with {suggestion.partnerName}
               </div>
               <div className={classes.gameLine}>
-                <span className={classes.gameLineText}>Graded on your lineup gain and VOR won</span>
+                <span className={classes.gameLineText}>
+                  Graded on your lineup gain and trade value won
+                </span>
               </div>
             </div>
             <button
@@ -233,7 +242,7 @@ export function GlassTradeSuggestionCard({
                     ? `#${suggestion.rankAfter}`
                     : `#${suggestion.rankBefore}→#${suggestion.rankAfter}`,
               },
-              { label: "VOR net", value: signed(suggestion.vorNet) },
+              { label: "Value net", value: signedValue(suggestion.valueNet) },
               { label: "Their PPG", value: signed(suggestion.partnerGainPpg) },
               {
                 label: "Their rank",

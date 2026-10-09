@@ -5,6 +5,7 @@ import { Id } from "../../_generated/dataModel";
 import { expandRosterSlots } from "../../lib/rosterSlots";
 import { POSITIONS } from "../../positions";
 import { gatherPowerRankingsInputs, type PowerRankingsInputs } from "./powerRankings";
+import { adjustedTradeTotals, loadTradeValues } from "./tradeValues";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -28,10 +29,11 @@ export interface TradeSuggestion {
   // The same gains per remaining week.
   gainPpg: number;
   partnerGainPpg: number;
-  // Rest-of-season VOR you get minus what you send (the rosVOR board's
-  // rosVor) - positive = you come out ahead on player value.
-  vorNet: number;
-  // 0-100 blend of the lineup gain and vorNet, each percentile-ranked
+  // Trade value you get minus what you send - the Trade tab's numbers
+  // (tradeValues.ts), consolidation credit included - positive = you win
+  // the value exchange.
+  valueNet: number;
+  // 0-100 blend of the lineup gain and valueNet, each percentile-ranked
   // against every trade the search considered - see GRADE_WEIGHTS.
   grade: number;
   // Power-rank positions before and after (1 = best).
@@ -62,11 +64,12 @@ const MIN_GAIN = 1;
 // approach infinidraft's report card grades teams with (reportCard.ts's
 // percentileRank/GRADE_WEIGHTS): how much it lifts your rest-of-season
 // optimal lineup (the PPG read - what it does for your starters), and the
-// rest-of-season VOR you get minus what you give (the value read - who
-// wins the talent exchange, starters or not). Tunable.
+// trade value you get minus what you give (the value read - the Trade
+// tab's FantasyCalc-style totals, who wins the exchange starters or not).
+// Tunable.
 const GRADE_WEIGHTS = {
   lineup: 0.5,
-  vor: 0.5,
+  value: 0.5,
 };
 
 // Percentile rank of each value within `all` - share strictly below, plus
@@ -191,7 +194,7 @@ interface Candidate {
   newPartnerTotal: number;
   gain: number;
   partnerGain: number;
-  vorNet: number;
+  valueNet: number;
   grade: number;
 }
 
@@ -201,8 +204,8 @@ interface Candidate {
 // 2-for-2 - the search space balloons and those are rarely the deals
 // anyone accepts). Both sides' lineups have to come out ahead - a
 // suggestion the other manager has no reason to accept isn't one worth
-// making - and the list is ordered by grade (lineup gain and VOR won,
-// blended - see GRADE_WEIGHTS). Taxi and IR players are left
+// making - and the list is ordered by grade (lineup gain and trade value
+// won, blended - see GRADE_WEIGHTS). Taxi and IR players are left
 // out on both sides, same as the power rankings' player pool.
 export const getTradeSuggestions = action({
   args: { seasonId: v.id("seasons") },
@@ -214,15 +217,20 @@ export const getTradeSuggestions = action({
     if (!self || !selfFpids) return [];
 
     const weekPoints = pointsByWeek(inputs, [...eligibleFpidsByTeam.values()].flat());
-    // Rest-of-season VOR per player, off the same rosVOR board the Trade
-    // tab's cards read. A player missing from it counts as 0.
-    const vorRows = await ctx.runQuery(api.rosVor.getRosVorBoard, {
-      seasonId: args.seasonId,
-      week: String(inputs.currentWeek),
-    });
-    const rosVorByFpid = new Map(vorRows.map((row) => [row.fpid, row.rosVor]));
-    const vorOf = (fpids: number[]) =>
-      fpids.reduce((total, fpid) => total + (rosVorByFpid.get(fpid) ?? 0), 0);
+    // Each player's trade value - the same numbers the Trade tab adds up.
+    // A player missing from them counts as 0.
+    const valueByFpid = new Map(
+      (await loadTradeValues(ctx, args.seasonId)).map((row) => [row.fpid, row.value]),
+    );
+    const valuesOf = (fpids: number[]) => fpids.map((fpid) => valueByFpid.get(fpid) ?? 0);
+    // What you get minus what you send, consolidation credit included.
+    const valueNetOf = (send: number[], receive: number[]) => {
+      const { totalA: sent, totalB: received } = adjustedTradeTotals(
+        valuesOf(send),
+        valuesOf(receive),
+      );
+      return received - sent;
+    };
     const score = makeTeamScorer(inputs, weekPoints);
     const weekCount = inputs.projectionMapsByWeek.length;
 
@@ -262,7 +270,7 @@ export const getTradeSuggestions = action({
             newPartnerTotal,
             gain,
             partnerGain,
-            vorNet: vorOf(receive) - vorOf(send),
+            valueNet: valueNetOf(send, receive),
             grade: 0,
           });
         }
@@ -270,11 +278,11 @@ export const getTradeSuggestions = action({
     }
 
     const lineupPct = percentileRanker(candidates.map((candidate) => candidate.gain));
-    const vorPct = percentileRanker(candidates.map((candidate) => candidate.vorNet));
+    const valuePct = percentileRanker(candidates.map((candidate) => candidate.valueNet));
     for (const candidate of candidates) {
       candidate.grade = Math.round(
         GRADE_WEIGHTS.lineup * lineupPct(candidate.gain) +
-          GRADE_WEIGHTS.vor * vorPct(candidate.vorNet),
+          GRADE_WEIGHTS.value * valuePct(candidate.valueNet),
       );
     }
 
@@ -340,7 +348,7 @@ export const getTradeSuggestions = action({
         partnerGain: candidate.partnerGain,
         gainPpg: perWeek(candidate.gain),
         partnerGainPpg: perWeek(candidate.partnerGain),
-        vorNet: candidate.vorNet,
+        valueNet: candidate.valueNet,
         grade: candidate.grade,
         rankBefore: rankOf(self._id, noChange),
         rankAfter: rankOf(self._id, after),
