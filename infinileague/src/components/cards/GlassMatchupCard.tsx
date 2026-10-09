@@ -62,10 +62,12 @@ export function GlassMatchupCard({
               {positionBadge(data)}
             </span>
           </div>
-          {/* While live, the clock rides in the top row beside the dot
-              (the game line below then shows just the opponent). */}
+          {/* Status in the top row: the clock beside the live dot, "FINAL"
+              once it's over, the clock icon before kickoff (the game line
+              below then shows just the opponent when live or final). */}
           <div className={classes.topRowStatus}>
             {isLive && data.status && <span className={classes.topClock}>{data.status}</span>}
+            {data.gameState === "final" && <span className={classes.topClock}>FINAL</span>}
             <GameStatusGlyph state={data.gameState} />
           </div>
         </div>
@@ -87,7 +89,7 @@ export function GlassMatchupCard({
             )}
           </div>
           <div className={classes.gameLine}>
-            <GameLineText data={data} hideLiveClock />
+            <GameLineText data={data} statusInTopRow />
           </div>
         </div>
 

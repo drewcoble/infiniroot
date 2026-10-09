@@ -71,10 +71,12 @@ export function GlassRosterCard({
           )}
         </div>
         <div className={classes.widePoints} aria-hidden>
-          {/* While live, the clock sits left of the status dot (the game
-              line below then shows just the opponent) - same as the
-              Matchup cards' top row. */}
+          {/* Status on the name row - the clock beside the live dot,
+              "FINAL" once it's over, the clock icon before kickoff (the game
+              line below then shows just the opponent when live or final) -
+              same as the Matchup cards' top row. */}
           {isLive && data.status && <span className={classes.topClock}>{data.status}</span>}
+          {data.gameState === "final" && <span className={classes.topClock}>FINAL</span>}
           <GameStatusGlyph state={data.gameState} />
         </div>
 
@@ -85,7 +87,7 @@ export function GlassRosterCard({
           <span
             className={`${classes.gameLine} ${classes.wideGameLine} ${classes.wideGameLineFill}`}
           >
-            <GameLineText data={data} hideLiveClock />
+            <GameLineText data={data} statusInTopRow />
           </span>
         </div>
         {/* The numbers share the second row: the projection spelled out
