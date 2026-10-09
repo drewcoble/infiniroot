@@ -771,7 +771,7 @@
    leaving wide gaps on both sides; pull it in hard toward the whole
    number and a little toward the decimals. */
 .scorePoint {
-  margin-left: -0.4em;
+  margin-left: -0.25em;
   margin-right: -0.1em;
 }
 
