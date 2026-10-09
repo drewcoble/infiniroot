@@ -25,7 +25,7 @@ import { glassClasses, glassMenuProps } from "./glassClasses";
 interface AppHeaderProps {
   wordmark: "draft" | "faab" | "league";
   // Hides just the league picker + modeSwitchSlot, keeping the overflow
-  // menu (extraOverflowItems, theme, sign out) - for a dashboard that has a
+  // menu - for a dashboard that has a
   // signed-in user but no "current league" to show either of those for.
   hideLeagueControls?: boolean;
   // Both computed by the caller (each app fetches league data from its own
@@ -34,9 +34,15 @@ interface AppHeaderProps {
   leagueMenuItems?: ReactNode;
   // infinidraft's Setup/Draft Room mode-switch button; omitted elsewhere.
   modeSwitchSlot?: ReactNode;
-  // App-specific overflow items rendered before the built-in theme
-  // toggle/sign-out (e.g. infinidraft's Billing/Admin/Data links).
-  extraOverflowItems?: ReactNode;
+  // App-specific overflow items, one slot per labeled group: NFL-wide
+  // reference pages (Depth Charts, Injuries), super-admin tools, and
+  // account items (e.g. infinidraft's Billing), which the built-in theme
+  // toggle/sign-out are appended to. Pass a falsy value for a group with
+  // nothing to show (e.g. admin for a non-admin) and it's omitted, label,
+  // divider and all.
+  nflMenuItems?: ReactNode;
+  adminMenuItems?: ReactNode;
+  userMenuItems?: ReactNode;
   // infinidraft narrows this to make room for modeSwitchSlot on mobile.
   leagueButtonWidth?: { base: number; sm: number };
   // Glass chrome (see glass.module.css): no bar at all - the logo, league
@@ -58,8 +64,8 @@ const GLASS_HEADER_HEIGHT = MOBILE_HEADER_HEIGHT - GLASS_HEADER_TOP;
 // its league list from a different Convex query and renders its own
 // footer action - "New League" vs "Connect League" - and any per-item
 // decoration like infinidraft's draft-status badges), an optional
-// mode-switch slot, and an overflow menu (app-specific items, then the
-// built-in theme toggle + sign out).
+// mode-switch slot, and an overflow menu (NFL/Admin/User groups - the User
+// group always ends with the built-in theme toggle + sign out).
 //
 // Fixed to the top of the viewport on mobile (native-app-style) rather than
 // scrolling away with the page - callers must reserve MOBILE_HEADER_HEIGHT
@@ -71,7 +77,9 @@ export function AppHeader({
   selectedLeagueLabel,
   leagueMenuItems,
   modeSwitchSlot,
-  extraOverflowItems,
+  nflMenuItems,
+  adminMenuItems,
+  userMenuItems,
   leagueButtonWidth = { base: 150, sm: 220 },
   glass = false,
 }: AppHeaderProps) {
@@ -210,7 +218,22 @@ export function AppHeader({
               )}
             </Menu.Target>
             <Menu.Dropdown>
-              {extraOverflowItems}
+              {nflMenuItems && (
+                <>
+                  <Menu.Label>NFL</Menu.Label>
+                  {nflMenuItems}
+                  <Menu.Divider />
+                </>
+              )}
+              {adminMenuItems && (
+                <>
+                  <Menu.Label>Admin</Menu.Label>
+                  {adminMenuItems}
+                  <Menu.Divider />
+                </>
+              )}
+              <Menu.Label>User</Menu.Label>
+              {userMenuItems}
               <Menu.Item
                 leftSection={isDark ? <Sun size={16} /> : <Moon size={16} />}
                 onClick={() => setColorScheme(isDark ? "light" : "dark")}

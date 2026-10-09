@@ -83,11 +83,11 @@ export function AppHeader() {
           </Menu.Item>
         </>
       }
-      extraOverflowItems={
+      // NFL-wide reference pages, not league content - kept out of the
+      // league tabs (see league/$leagueId/route.tsx) and reachable with no
+      // league selected.
+      nflMenuItems={
         <>
-          {/* NFL-wide reference pages, not league content - kept out of the
-              league tabs (see league/$leagueId/route.tsx) and reachable
-              with no league selected. */}
           <Link to="/depthCharts" style={{ textDecoration: "none" }}>
             <Menu.Item component="span" leftSection={<LayoutGrid size={16} />}>
               Depth Charts
@@ -98,36 +98,38 @@ export function AppHeader() {
               Injuries
             </Menu.Item>
           </Link>
-          {currentUser?.role === "super-admin" && (
-            <>
-              {leagueId && (
-                // Design sandbox for the player-card redesign - see cards.tsx.
-                <Link
-                  to="/league/$leagueId/cards"
-                  params={{ leagueId }}
-                  style={{ textDecoration: "none" }}
-                >
-                  <Menu.Item
-                    component="span"
-                    leftSection={<GalleryVerticalEnd size={16} />}
-                  >
-                    Cards
-                  </Menu.Item>
-                </Link>
-              )}
-              <Link to="/admin" style={{ textDecoration: "none" }}>
-                <Menu.Item component="span" leftSection={<ShieldCheck size={16} />}>
-                  Admin
-                </Menu.Item>
-              </Link>
-              <Link to="/admin-data" style={{ textDecoration: "none" }}>
-                <Menu.Item component="span" leftSection={<Database size={16} />}>
-                  Data
-                </Menu.Item>
-              </Link>
-            </>
-          )}
         </>
+      }
+      adminMenuItems={
+        currentUser?.role === "super-admin" && (
+          <>
+            {leagueId && (
+              // Design sandbox for the player-card redesign - see cards.tsx.
+              <Link
+                to="/league/$leagueId/cards"
+                params={{ leagueId }}
+                style={{ textDecoration: "none" }}
+              >
+                <Menu.Item
+                  component="span"
+                  leftSection={<GalleryVerticalEnd size={16} />}
+                >
+                  Cards
+                </Menu.Item>
+              </Link>
+            )}
+            <Link to="/admin" style={{ textDecoration: "none" }}>
+              <Menu.Item component="span" leftSection={<ShieldCheck size={16} />}>
+                Admin
+              </Menu.Item>
+            </Link>
+            <Link to="/admin-data" style={{ textDecoration: "none" }}>
+              <Menu.Item component="span" leftSection={<Database size={16} />}>
+                Data
+              </Menu.Item>
+            </Link>
+          </>
+        )
       }
     />
   );

@@ -42,11 +42,11 @@ export function WithModeSwitchAndOverflow() {
             </Text>
           </Button>
         }
-        extraOverflowItems={
-          <>
-            <Menu.Item leftSection={<CreditCard size={16} />}>Billing</Menu.Item>
-            <Menu.Item leftSection={<ShieldCheck size={16} />}>Admin</Menu.Item>
-          </>
+        adminMenuItems={
+          <Menu.Item leftSection={<ShieldCheck size={16} />}>Admin</Menu.Item>
+        }
+        userMenuItems={
+          <Menu.Item leftSection={<CreditCard size={16} />}>Billing</Menu.Item>
         }
       />
     </PreviewRouter>

@@ -145,7 +145,7 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
   // - there's no forward direction into it anymore (see the removed "Enter
   // Season" button; the app is scoped to purely a draft tool, and Report
   // Card - the one thing that used to live in Season - moved to its own
-  // public link, surfaced via extraOverflowItems below). Renders nothing
+  // public link, surfaced via the league tabs). Renders nothing
   // otherwise (e.g. already on the League view, or no real league
   // selected).
   const modeSwitchSlot = inSeason ? (
@@ -172,47 +172,49 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
       leagueMenuItems={leagueMenuItems}
       modeSwitchSlot={modeSwitchSlot}
       leagueButtonWidth={{ base: 130, sm: 220 }}
-      extraOverflowItems={
-        <>
-          {/* NFL-wide reference page, not league content - kept out of the
-              league tabs (see league/$leagueId/route.tsx) and reachable
-              with no league selected. */}
-          <Link to="/injuries" style={{ textDecoration: "none" }}>
-            <Menu.Item component="span" leftSection={<HeartPulse size={16} />}>
-              Injuries
-            </Menu.Item>
-          </Link>
-          {BILLING_LINK_ENABLED && (
-            <Link to="/billing" style={{ textDecoration: "none" }}>
-              <Menu.Item
-                component="span"
-                leftSection={
-                  entitlement?.hasProAccess ? (
-                    <CreditCard size={16} />
-                  ) : (
-                    <Trophy size={16} />
-                  )
-                }
-              >
-                {entitlement?.hasProAccess ? "Billing" : "Go Pro"}
+      // NFL-wide reference page, not league content - kept out of the
+      // league tabs (see league/$leagueId/route.tsx) and reachable with no
+      // league selected.
+      nflMenuItems={
+        <Link to="/injuries" style={{ textDecoration: "none" }}>
+          <Menu.Item component="span" leftSection={<HeartPulse size={16} />}>
+            Injuries
+          </Menu.Item>
+        </Link>
+      }
+      adminMenuItems={
+        currentUser?.role === "super-admin" && (
+          <>
+            <Link to="/admin" style={{ textDecoration: "none" }}>
+              <Menu.Item component="span" leftSection={<ShieldCheck size={16} />}>
+                Admin
               </Menu.Item>
             </Link>
-          )}
-          {currentUser?.role === "super-admin" && (
-            <>
-              <Link to="/admin" style={{ textDecoration: "none" }}>
-                <Menu.Item component="span" leftSection={<ShieldCheck size={16} />}>
-                  Admin
-                </Menu.Item>
-              </Link>
-              <Link to="/admin-data" style={{ textDecoration: "none" }}>
-                <Menu.Item component="span" leftSection={<Database size={16} />}>
-                  Data
-                </Menu.Item>
-              </Link>
-            </>
-          )}
-        </>
+            <Link to="/admin-data" style={{ textDecoration: "none" }}>
+              <Menu.Item component="span" leftSection={<Database size={16} />}>
+                Data
+              </Menu.Item>
+            </Link>
+          </>
+        )
+      }
+      userMenuItems={
+        BILLING_LINK_ENABLED && (
+          <Link to="/billing" style={{ textDecoration: "none" }}>
+            <Menu.Item
+              component="span"
+              leftSection={
+                entitlement?.hasProAccess ? (
+                  <CreditCard size={16} />
+                ) : (
+                  <Trophy size={16} />
+                )
+              }
+            >
+              {entitlement?.hasProAccess ? "Billing" : "Go Pro"}
+            </Menu.Item>
+          </Link>
+        )
       }
     />
   );
