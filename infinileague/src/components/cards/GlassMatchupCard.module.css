@@ -1573,3 +1573,46 @@
 .tradeHeaderTeams .headerTeam {
   grid-row: 1 / span 4;
 }
+
+/* Trade header's partner picker - the right side's team name with a
+   chevron, an invisible native select laid over both so tapping opens the
+   phone's own picker. Clamped to one line so the chevron stays visible. */
+.partnerPicker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.partnerPickerText {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.partnerPickerChevron {
+  flex-shrink: 0;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.partnerPickerSelect {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  opacity: 0;
+  cursor: pointer;
+  /* iOS zooms the page into a focused select under 16px. */
+  font-size: 16px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .partnerPicker:has(.partnerPickerSelect:focus-visible) {
+    outline: 2px solid rgba(96, 165, 250, 0.95);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}

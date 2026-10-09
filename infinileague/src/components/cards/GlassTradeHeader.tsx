@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowUp } from "lucide-react";
+import type { ReactNode } from "react";
+import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
 import classes from "./GlassMatchupCard.module.css";
 
 // Where this team lands in the league's power rankings if the trade goes
@@ -63,27 +64,42 @@ function Impact({ impact }: { impact: TradeHeaderTeam["impact"] }) {
   );
 }
 
-function TeamSide({ team, align }: { team: TradeHeaderTeam; align: "left" | "right" }) {
+function TeamSide({
+  team,
+  align,
+  name,
+}: {
+  team: TradeHeaderTeam;
+  align: "left" | "right";
+  // Replaces the plain name - the partner picker, on the right.
+  name?: ReactNode;
+}) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
-      <div className={classes.headerTeamName}>{team.name}</div>
-      <div className={classes.headerTotal}>
+      {name ?? (
+        <div className={classes.headerTeamName} aria-hidden>
+          {team.name}
+        </div>
+      )}
+      <div className={classes.headerTotal} aria-hidden>
         {team.sendCount > 0 ? team.sendValue.toFixed(1) : "—"}
       </div>
-      <div className={classes.tradeHeaderSends}>
+      <div className={classes.tradeHeaderSends} aria-hidden>
         {team.sendCount > 0
           ? `Sends ${team.sendCount} · ${team.valueLabel}`
           : "Tap players to send"}
       </div>
-      <Impact impact={team.impact} />
+      <div aria-hidden>
+        <Impact impact={team.impact} />
+      </div>
     </div>
   );
 }
 
-function TeamSideSkeleton({ align }: { align: "left" | "right" }) {
+function TeamSideSkeleton({ align, name }: { align: "left" | "right"; name?: ReactNode }) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
-      <span className={classes.skeletonBar} style={{ width: "70%", height: 14 }} />
+      {name ?? <span className={classes.skeletonBar} style={{ width: "70%", height: 14 }} />}
       <span className={classes.skeletonBar} style={{ width: "40%", height: 28, marginTop: 4 }} />
       <span className={classes.skeletonBar} style={{ width: "52%", height: 11, marginTop: 4 }} />
       <span />
@@ -91,19 +107,76 @@ function TeamSideSkeleton({ align }: { align: "left" | "right" }) {
   );
 }
 
+export interface TradePartnerOption {
+  value: string;
+  label: string;
+}
+
+// The right side's team name doubles as the trade-partner picker: a native
+// select (the phone's own picker wheel/sheet) laid invisibly over the name
+// and its chevron, so it reads as the header's title rather than a form
+// field.
+function PartnerPicker({
+  options,
+  value,
+  onChange,
+}: {
+  options: TradePartnerOption[];
+  value: string | null;
+  onChange: (teamId: string | null) => void;
+}) {
+  const label = options.find((option) => option.value === value)?.label;
+  return (
+    <div className={`${classes.headerTeamName} ${classes.partnerPicker}`}>
+      <span className={classes.partnerPickerText} aria-hidden>
+        {label ?? "Pick a team"}
+      </span>
+      <ChevronDown
+        size={14}
+        strokeWidth={2.5}
+        className={classes.partnerPickerChevron}
+        aria-hidden
+      />
+      <select
+        className={classes.partnerPickerSelect}
+        aria-label="Trading with"
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value || null)}
+      >
+        {value === null && (
+          <option value="" disabled>
+            Pick a team
+          </option>
+        )}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 // Trade tab's header in the Matchup header's glass and two-column layout:
 // each side's team name, the rest-of-season value it sends (the big number -
-// VOR or PPG, following the page's switch),
-// how many players that is, and - once both sides have picked players -
-// where the trade leaves the team in the power rankings. `teamB` null = no
-// trade partner picked yet (dimmed placeholder, like the Matchup header's
-// missing opponent).
+// VOR or PPG, following the page's switch), how many players that is, and -
+// once both sides have picked players - where the trade leaves the team in
+// the power rankings. The right side's name is the trade-partner picker;
+// `teamB` null = no partner picked yet (the rest of that side dimmed, like
+// the Matchup header's missing opponent).
 export function GlassTradeHeader({
   teamA,
   teamB,
+  partnerOptions,
+  partnerId,
+  onPartnerChange,
 }: {
   teamA: TradeHeaderTeam | "loading";
   teamB: TradeHeaderTeam | "loading" | null;
+  partnerOptions: TradePartnerOption[];
+  partnerId: string | null;
+  onPartnerChange: (teamId: string | null) => void;
 }) {
   const teamText = (team: TradeHeaderTeam) =>
     [
@@ -121,6 +194,9 @@ export function GlassTradeHeader({
       : teamB === "loading" || teamB === null
         ? teamText(teamA)
         : `${teamText(teamA)}; ${teamText(teamB)}`;
+  const picker = (
+    <PartnerPicker options={partnerOptions} value={partnerId} onChange={onPartnerChange} />
+  );
   return (
     <div
       className={`${classes.card} ${classes.header}`}
@@ -128,23 +204,25 @@ export function GlassTradeHeader({
       aria-label={ariaLabel}
       aria-busy={teamA === "loading" || teamB === "loading"}
     >
-      <div className={`${classes.headerTeams} ${classes.tradeHeaderTeams}`} aria-hidden>
+      <div className={`${classes.headerTeams} ${classes.tradeHeaderTeams}`}>
         {teamA === "loading" ? (
           <TeamSideSkeleton align="left" />
         ) : (
           <TeamSide team={teamA} align="left" />
         )}
         {teamB === "loading" ? (
-          <TeamSideSkeleton align="right" />
+          <TeamSideSkeleton align="right" name={picker} />
         ) : teamB ? (
-          <TeamSide team={teamB} align="right" />
+          <TeamSide team={teamB} align="right" name={picker} />
         ) : (
-          <div
-            className={`${classes.headerTeam} ${classes.headerTeamRight} ${classes.headerPending}`}
-          >
-            <div className={classes.headerTeamName}>Trade partner</div>
-            <div className={classes.headerTotal}>—</div>
-            <div className={classes.tradeHeaderSends}>Pick a team</div>
+          <div className={`${classes.headerTeam} ${classes.headerTeamRight}`}>
+            {picker}
+            <div className={`${classes.headerTotal} ${classes.headerPending}`} aria-hidden>
+              —
+            </div>
+            <div className={`${classes.tradeHeaderSends} ${classes.headerPending}`} aria-hidden>
+              Trade partner
+            </div>
             <span />
           </div>
         )}

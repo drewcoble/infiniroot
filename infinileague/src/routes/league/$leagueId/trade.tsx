@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Box, Select, Stack, Text, Title } from "@mantine/core";
+import { Alert, Box, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
@@ -209,7 +209,13 @@ function TradePage() {
       <Stack gap="md">
         <Title order={3}>Trade</Title>
         {metricSwitch}
-        <GlassTradeHeader teamA="loading" teamB="loading" />
+        <GlassTradeHeader
+          teamA="loading"
+          teamB="loading"
+          partnerOptions={[]}
+          partnerId={teamBId}
+          onPartnerChange={setTeamBId}
+        />
         <Stack gap={10}>
           <MatchupRosterSkeleton />
         </Stack>
@@ -313,16 +319,6 @@ function TradePage() {
         </Alert>
       )}
 
-      <Select
-        label="Trading with"
-        placeholder="Select a team"
-        data={teamBOptions}
-        value={teamBId}
-        onChange={setTeamBId}
-        clearable
-        w={{ base: "100%", sm: 220 }}
-      />
-
       <GlassTradeHeader
         teamA={
           teamAId === null || teamARoster.rows === undefined
@@ -336,6 +332,9 @@ function TradePage() {
               ? "loading"
               : headerTeam(teamBId, teamBName, teamBRoster.rows, selectedB)
         }
+        partnerOptions={teamBOptions}
+        partnerId={teamBId}
+        onPartnerChange={setTeamBId}
       />
 
       <Stack gap={10}>
