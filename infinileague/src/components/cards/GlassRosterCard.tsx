@@ -61,6 +61,10 @@ export function GlassRosterCard({
           {data.name}
         </div>
         <div className={classes.widePoints} aria-hidden>
+          {/* While live, the clock sits left of the status dot (the game
+              line below then shows just the opponent) - same as the
+              Matchup cards' top row. */}
+          {isLive && data.status && <span className={classes.topClock}>{data.status}</span>}
           <GameStatusGlyph state={data.gameState} />
           {/* Nothing scored yet before kickoff - the number slot stays
               empty and the projection sits on the row below as usual. */}
@@ -87,7 +91,7 @@ export function GlassRosterCard({
           <span
             className={`${classes.gameLine} ${classes.wideGameLine} ${classes.wideGameLineFill}`}
           >
-            <GameLineText data={data} />
+            <GameLineText data={data} hideLiveClock />
           </span>
         </div>
         {/* Start/sit is what this screen is for, so the projection is
