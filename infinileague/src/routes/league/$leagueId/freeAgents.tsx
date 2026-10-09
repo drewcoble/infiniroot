@@ -142,13 +142,7 @@ function FreeAgentsPage() {
 
   return (
     <Stack gap="md">
-      {/* Same title + quiet status line as the league home. */}
-      <div>
-        <Title order={3}>Free Agents</Title>
-        <div className={classes.pageHeaderStatus}>
-          Week {result.week} · {result.remainingWeeks} weeks remaining
-        </div>
-      </div>
+      <Title order={3}>Free Agents</Title>
       <GlassSegmented
         label="Ranking view"
         value={view}
