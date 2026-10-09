@@ -5,13 +5,13 @@ import { positionColorOrDefault } from "@shared/positionColors";
 import {
   formatPoints,
   formatProj,
-  gameLine,
   paceFor,
   pillStyle,
   positionBadge,
   type GlassMatchupCardData,
   type Pace,
 } from "./cardShared";
+import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassPopover } from "./GlassPopover";
 import { PointsMeter } from "./PointsMeter";
@@ -90,7 +90,7 @@ export function ExpandedMatchupCard({
           </div>
           <div className={classes.gameLine}>
             <span className={classes.gameLineText}>
-              {data.team} {gameLine(data)}
+              {data.team} <GameLineText data={data} />
             </span>
           </div>
         </div>

@@ -3,12 +3,12 @@ import { positionColorOrDefault } from "@shared/positionColors";
 import {
   ariaSummary,
   formatProj,
-  gameLine,
   pillStyle,
   positionBadge,
   type GlassMatchupCardData,
 } from "./cardShared";
 import { ExpandedMatchupCard } from "./ExpandedMatchupCard";
+import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassSlotChip } from "./GlassMatchupCard";
 import { PointsHeadline, PointsMeter } from "./PointsMeter";
@@ -85,7 +85,9 @@ export function GlassRosterCard({
             </span>
           )}
           <span className={`${classes.gameLine} ${classes.wideGameLine}`}>
-            <span className={classes.gameLineText}>{gameLine(data)}</span>
+            <span className={classes.gameLineText}>
+              <GameLineText data={data} />
+            </span>
           </span>
         </div>
         {/* Start/sit is what this screen is for, so the projection is
