@@ -7,8 +7,10 @@ import classes from "./GlassMatchupCard.module.css";
 export interface TradeImpactSide {
   beforeRank: number | undefined;
   afterRank: number;
-  // Rest-of-season optimal-lineup points, after minus before.
+  // Rest-of-season optimal-lineup points, after minus before - in total,
+  // and per remaining week (the power rankings' ROS PPG).
   pointsDiff: number | undefined;
+  ppgDiff: number | undefined;
 }
 
 export interface TradeHeaderTeam {
@@ -18,6 +20,9 @@ export interface TradeHeaderTeam {
   sendCount: number;
   sendValue: number;
   valueLabel: string;
+  // Combined rest-of-season VOR of the players sent, whatever the switch
+  // shows - one half of the winner bar (see tradeBalanceA).
+  sendVor: number;
   // undefined = no impact to show yet (a side has nothing selected);
   // "loading" = being computed.
   impact: TradeImpactSide | "loading" | undefined;
@@ -107,24 +112,47 @@ function TeamSideSkeleton({ align, name }: { align: "left" | "right"; name?: Rea
   );
 }
 
-// "Who's winning" split: each side's segment is its share of the value
-// changing hands, counting what it SENDS - so the side giving up more has
-// the bigger segment, tinted red (it's losing the trade), and the side
-// giving up less is the smaller, green one. Negative VOR (a
-// below-replacement player) counts as nothing rather than flipping the
-// split. A split within FAIR_MARGIN points of 50/50 has no winner: both
+// "Who's winning" split - each side's segment is how much it's LOSING the
+// trade, so the loser's segment is the bigger, red one and the winner's
+// the smaller, green one. Blends two reads, half each (BALANCE_WEIGHTS):
+// - VOR: each side's share of the rest-of-season VOR changing hands,
+//   counting what it sends (negative VOR - a below-replacement player -
+//   counts as nothing rather than flipping the split).
+// - Lineup: the power rankings' read - how each team's rest-of-season
+//   optimal-lineup PPG changes. The side whose lineup gains less is losing
+//   that half, on a logistic curve over the gap (LINEUP_PPG_SCALE: a 1 PPG
+//   gap reads ~73/27, 2 PPG ~88/12).
+// Until the power-rankings impact comes back, the split is VOR alone, held
+// dimmed. A split within FAIR_MARGIN points of 50/50 has no winner: both
 // segments go neutral gray and the bar's fixed "Fair" zone (the same
 // 46-54% band, drawn over the middle of the bar) lights up.
+const BALANCE_WEIGHTS = { vor: 0.5, lineup: 0.5 };
+const LINEUP_PPG_SCALE = 1;
 const FAIR_MARGIN = 4;
 const WINNING_TINT = "#4ade80";
 const LOSING_TINT = "#f87171";
 const FAIR_TINT = "#9ca3af";
 
-function sentShareA(teamA: TradeHeaderTeam, teamB: TradeHeaderTeam): number {
-  const sentA = Math.max(teamA.sendValue, 0);
-  const sentB = Math.max(teamB.sendValue, 0);
-  const total = sentA + sentB;
-  return total > 0 ? sentA / total : 0.5;
+function ppgDiffOf(team: TradeHeaderTeam): number | undefined {
+  return team.impact !== undefined && team.impact !== "loading" ? team.impact.ppgDiff : undefined;
+}
+
+// Team A's losing share (0-1), and whether the lineup half is in yet.
+function tradeBalanceA(
+  teamA: TradeHeaderTeam,
+  teamB: TradeHeaderTeam,
+): { shareA: number; complete: boolean } {
+  const sentA = Math.max(teamA.sendVor, 0);
+  const sentB = Math.max(teamB.sendVor, 0);
+  const vorShareA = sentA + sentB > 0 ? sentA / (sentA + sentB) : 0.5;
+  const gainA = ppgDiffOf(teamA);
+  const gainB = ppgDiffOf(teamB);
+  if (gainA === undefined || gainB === undefined) return { shareA: vorShareA, complete: false };
+  const lineupShareA = 1 / (1 + Math.exp((gainA - gainB) / LINEUP_PPG_SCALE));
+  return {
+    shareA: BALANCE_WEIGHTS.vor * vorShareA + BALANCE_WEIGHTS.lineup * lineupShareA,
+    complete: true,
+  };
 }
 
 function isFair(pct: number): boolean {
@@ -140,14 +168,15 @@ function segmentTint(pct: number): string {
 // balance point - with the "Fair" zone as a fixed overlay on the bar's
 // middle: it stays put while the split moves, and highlights when the
 // split lands inside it. `pctA` null = not both sides have picked players
-// yet - held at a dimmed 50/50.
-function TradeBalanceBar({ pctA }: { pctA: number | null }) {
+// yet - held at a dimmed 50/50; `pending` = VOR-only while the lineup half
+// is still being computed, dimmed.
+function TradeBalanceBar({ pctA, pending }: { pctA: number | null; pending: boolean }) {
   const a = pctA ?? 50;
   const b = 100 - a;
-  const fair = pctA !== null && isFair(a);
+  const fair = pctA !== null && !pending && isFair(a);
   return (
     <div
-      className={`${classes.winRow} ${classes.tradeBalanceRow} ${pctA === null ? classes.headerPending : ""}`}
+      className={`${classes.winRow} ${classes.tradeBalanceRow} ${pctA === null || pending ? classes.headerPending : ""}`}
       aria-hidden
     >
       <span>{pctA === null ? "–" : `${a}%`}</span>
@@ -172,10 +201,10 @@ function TradeBalanceBar({ pctA }: { pctA: number | null }) {
   );
 }
 
-// `name` = the side sending less (the winner).
+// `name` = the side with the smaller (winning) share.
 function balanceText(name: string, pctA: number): string {
-  if (isFair(pctA)) return `fair trade, sending ${pctA}% and ${100 - pctA}% of the value`;
-  return `${name} wins the trade, sending ${Math.min(pctA, 100 - pctA)}% of the value`;
+  if (isFair(pctA)) return `fair trade, ${pctA}% to ${100 - pctA}%`;
+  return `${name} wins the trade, ${Math.min(pctA, 100 - pctA)}% to ${Math.max(pctA, 100 - pctA)}%`;
 }
 
 export interface TradePartnerOption {
@@ -260,17 +289,19 @@ export function GlassTradeHeader({
       .filter(Boolean)
       .join(", ");
   const bothLoaded = teamA !== "loading" && teamB !== "loading" && teamB !== null;
-  const pctA =
-    bothLoaded && teamA.sendCount > 0 && teamB.sendCount > 0
-      ? Math.round(sentShareA(teamA, teamB) * 100)
-      : null;
+  const balance =
+    bothLoaded && teamA.sendCount > 0 && teamB.sendCount > 0 ? tradeBalanceA(teamA, teamB) : null;
+  const pctA = balance !== null ? Math.round(balance.shareA * 100) : null;
+  const balancePending = balance !== null && !balance.complete;
   const ariaLabel =
     teamA === "loading"
       ? "Loading trade"
       : teamB === "loading" || teamB === null
         ? teamText(teamA)
         : `${teamText(teamA)}; ${teamText(teamB)}` +
-          (pctA !== null ? `; ${balanceText(pctA <= 50 ? teamA.name : teamB.name, pctA)}` : "");
+          (pctA !== null && !balancePending
+            ? `; ${balanceText(pctA <= 50 ? teamA.name : teamB.name, pctA)}`
+            : "");
   const picker = (
     <PartnerPicker options={partnerOptions} value={partnerId} onChange={onPartnerChange} />
   );
@@ -304,7 +335,7 @@ export function GlassTradeHeader({
           </div>
         )}
       </div>
-      {teamB !== null && <TradeBalanceBar pctA={pctA} />}
+      {teamB !== null && <TradeBalanceBar pctA={pctA} pending={balancePending} />}
     </div>
   );
 }

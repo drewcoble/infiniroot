@@ -362,6 +362,7 @@ function TradePage() {
       } else {
         const afterIndex = latestImpact.after.findIndex((row) => row.teamId === teamId);
         const beforePoints = beforePointsByTeam.get(teamId);
+        const beforePpg = latestImpact.before.find((row) => row.teamId === teamId)?.rosPpg;
         const after = latestImpact.after[afterIndex];
         impact =
           after === undefined
@@ -372,6 +373,10 @@ function TradePage() {
                 pointsDiff:
                   beforePoints !== undefined
                     ? after.totalProjectedPoints - beforePoints
+                    : undefined,
+                ppgDiff:
+                  beforePpg !== undefined && after.rosPpg !== undefined
+                    ? after.rosPpg - beforePpg
                     : undefined,
               };
       }
@@ -386,6 +391,10 @@ function TradePage() {
         return total + ((metric === "ppg" ? vor?.rosPpg : vor?.rosVor) ?? 0);
       }, 0),
       valueLabel: metric === "ppg" ? "ROS PPG" : "ROS VOR",
+      sendVor: sending.reduce(
+        (total, row) => total + (vorByFpid.get(row.fpid ?? -1)?.rosVor ?? 0),
+        0,
+      ),
       impact,
     };
   };
