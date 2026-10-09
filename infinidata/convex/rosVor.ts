@@ -1,7 +1,9 @@
-import { v } from "convex/values";
-import { internalMutation, query } from "./_generated/server";
+import { v, type Infer } from "convex/values";
+import { internalMutation, internalQuery, query, type ActionCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
 import { POSITIONS, positionValidator } from "./positions";
-import { scoringConfigFromSeason } from "./scoring";
+import { scoringConfigFromSeason, scoringConfigValidator, type ScoringConfig } from "./scoring";
 import { requireSeasonOwner } from "./lib/access";
 import { loadWeekPoints } from "./lib/weekPoints";
 import { computeReplacementLevels, findInjuryBoosts, forwardRate, gatherPlayerForms, momentumMultiplier, type ValuedPlayer } from "./lib/playerValue";
@@ -68,11 +70,11 @@ export interface RosVorRow {
   isOnMyTeam: boolean;
 }
 
-// Recomputes and upserts one week's full rosVorSnapshots board for one
-// season - called for every season from convex/fetchAllData.ts's daily
-// refreshCachedComputations loop, same as draftValues' own per-season
-// refresh. Upserted by (seasonId, week, fpid): a same-week rerun (the cron
-// runs daily, this is meant to read as weekly) just refreshes that week's
+// Recomputes and upserts one week's full rosVorSnapshots board for every
+// season - called from convex/fetchAllData.ts's daily
+// refreshCachedComputations, same as draftValues' own per-season refresh.
+// Upserted by (seasonId, week, fpid): a same-week rerun (the cron runs
+// daily, this is meant to read as weekly) just refreshes that week's
 // numbers in place, and a new row per player only appears once the NFL
 // week actually advances - same trick convex/infinileague/season/
 // powerRankings.ts's snapshot upsert uses, just at per-player instead of
@@ -80,48 +82,118 @@ export interface RosVorRow {
 // weeks - the full history is the point (next season's draft prep wants
 // every week's board, not just the latest).
 //
+// Split in two so the expensive part runs once per scoring setup, not
+// once per league: computeRosVorInputs does every heavy read (projections,
+// recent playerPoints, playerSeasonStats, injuries, rosProjTotalSets) and
+// produces each player's league-independent values, and refreshRosVor
+// then only does the cheap per-league part (replacement levels off the
+// league's own roster settings, VOR, ranks, upsert). Every input to a
+// player's values is scoped to that player's own position (injury boosts
+// only match same-position teammates), so computing over the union of a
+// group's positions gives each league exactly what it would have computed
+// alone.
+//
 // `scheduled` marks a daily-cron run. On a deployment with the
 // ROS_VOR_WEEKLY_ONLY env var set to "true" (dev - this refresh is one of
 // the biggest DB I/O costs there, and dev doesn't need daily numbers), a
 // scheduled run only does real work on Thursday's run (the cron fires at
-// 12:00 UTC, so Wed night/Thu morning US time) - or any day the current
-// week has no board yet, so a week rollover never leaves the Players/Trade
-// tabs empty until Thursday. Manual runs (fetchAll/refreshCaches) always
-// refresh.
+// 12:00 UTC, so Wed night/Thu morning US time) - or for any season whose
+// current week has no board yet, so a week rollover never leaves the
+// Players/Trade tabs empty until Thursday. Manual runs (fetchAll/
+// refreshCaches) always refresh.
 const WEEKLY_REFRESH_UTC_DAY = 4; // Thursday
-export const refreshRosVor = internalMutation({
-  args: { seasonId: v.id("seasons"), scheduled: v.optional(v.boolean()) },
-  handler: async (ctx, args) => {
-    const settings = await ctx.db.get(args.seasonId);
-    if (!settings) return;
+export async function refreshAllRosVor(
+  ctx: ActionCtx,
+  args: { seasons: Doc<"seasons">[]; scheduled?: boolean },
+): Promise<void> {
+  // Same "not currently in an NFL regular season week" guard as
+  // convex/lib/faab.ts's computeFaabSuggestions - rosVor is an in-season
+  // concept (needs actual playerPoints history, injury freshness tied to
+  // a real week), unlike draftValues, which stays meaningful year-round.
+  const week = await ctx.runQuery(internal.rosVor.getRosVorWeek, {});
+  if (week === null) return;
 
-    // Same "not currently in an NFL regular season week" guard as
-    // convex/lib/faab.ts's computeFaabSuggestions - rosVor is an in-season
-    // concept (needs actual playerPoints history, injury freshness tied to
-    // a real week), unlike draftValues, which stays meaningful year-round.
-    const nflState = await ctx.db.query("nflState").first();
-    if (!nflState || nflState.seasonType !== "regular") return;
+  const throttled =
+    args.scheduled === true && process.env.ROS_VOR_WEEKLY_ONLY === "true" && new Date().getUTCDay() !== WEEKLY_REFRESH_UTC_DAY;
 
-    if (args.scheduled && process.env.ROS_VOR_WEEKLY_ONLY === "true" && new Date().getUTCDay() !== WEEKLY_REFRESH_UTC_DAY) {
-      const hasBoard = await ctx.db
-        .query("rosVorSnapshots")
-        .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", nflState.week))
-        .first();
-      if (hasBoard) return;
+  const groups = new Map<string, { scoringConfig: ScoringConfig; positions: Set<Position>; seasonIds: Id<"seasons">[] }>();
+  for (const season of args.seasons) {
+    if (throttled && (await ctx.runQuery(internal.rosVor.hasRosVorBoard, { seasonId: season._id, week }))) continue;
+    const scoringConfig = scoringConfigFromSeason(season);
+    const key = `${scoringConfig.scoring}|${scoringConfig.teScoring}|${scoringConfig.sixPointPassTds}`;
+    const group = groups.get(key) ?? { scoringConfig, positions: new Set<Position>(), seasonIds: [] };
+    for (const pos of activePositionsFor(season)) group.positions.add(pos);
+    group.seasonIds.push(season._id);
+    groups.set(key, group);
+  }
+
+  for (const group of groups.values()) {
+    const players = await ctx.runQuery(internal.rosVor.computeRosVorInputs, {
+      week,
+      positions: POSITIONS.filter((pos) => group.positions.has(pos)),
+      scoringConfig: group.scoringConfig,
+    });
+    for (const seasonId of group.seasonIds) {
+      await ctx.runMutation(internal.rosVor.refreshRosVor, { seasonId, week, players });
     }
+  }
+}
 
-    const remainingWeeks = Math.max(18 - Number(nflState.week) + 1, 0);
-    const activePositions = POSITIONS.filter(
-      (pos) => settings.rosterSlots[pos] > 0 || settings.flexPositions.includes(pos) || settings.superflexPositions.includes(pos),
-    );
-    const scoringConfig = scoringConfigFromSeason(settings);
+function activePositionsFor(settings: Doc<"seasons">): Position[] {
+  return POSITIONS.filter(
+    (pos) => settings.rosterSlots[pos] > 0 || settings.flexPositions.includes(pos) || settings.superflexPositions.includes(pos),
+  );
+}
+
+export const getRosVorWeek = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<string | null> => {
+    const nflState = await ctx.db.query("nflState").first();
+    return nflState && nflState.seasonType === "regular" ? nflState.week : null;
+  },
+});
+
+export const hasRosVorBoard = internalQuery({
+  args: { seasonId: v.id("seasons"), week: v.string() },
+  handler: async (ctx, args): Promise<boolean> => {
+    const row = await ctx.db
+      .query("rosVorSnapshots")
+      .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
+      .first();
+    return row !== null;
+  },
+});
+
+// One player's league-independent values for one scoring setup - see
+// refreshAllRosVor's comment above for the split.
+const rosVorInputValidator = v.object({
+  fpid: v.number(),
+  name: v.string(),
+  team: v.union(v.string(), v.null()),
+  position: positionValidator,
+  rosValue: v.number(),
+  rosPpg: v.number(),
+  weekValue: v.number(),
+  weekPpg: v.number(),
+  actualPoints: v.number(),
+  actualPpg: v.number(),
+  boostReason: v.union(v.string(), v.null()),
+});
+type RosVorInput = Infer<typeof rosVorInputValidator>;
+
+export const computeRosVorInputs = internalQuery({
+  args: { week: v.string(), positions: v.array(positionValidator), scoringConfig: scoringConfigValidator },
+  handler: async (ctx, args): Promise<RosVorInput[]> => {
+    const { week, positions: activePositions, scoringConfig } = args;
+    const nflState = await ctx.db.query("nflState").first();
+    if (!nflState) return [];
+    const remainingWeeks = Math.max(18 - Number(week) + 1, 0);
 
     // No rosterPlayers read here (unlike convex/lib/faab.ts) - replacement
-    // level is now computed against the full player pool regardless of
-    // rostered status (see below), and rosVor/rosRank/actualVor/actualRank
-    // are stored for every player either way, so this function has no
-    // remaining use for "who's on which team."
-    const forms = await gatherPlayerForms(ctx, { activePositions, week: nflState.week, season: nflState.season, scoringConfig });
+    // level is computed against the full player pool regardless of
+    // rostered status (see refreshRosVor), and rosVor/rosRank/actualVor/
+    // actualRank are stored for every player either way.
+    const forms = await gatherPlayerForms(ctx, { activePositions, week, season: nflState.season, scoringConfig });
 
     // Real per-remaining-week projection sum (bye-aware - a bye week simply
     // has no projections row to add), rebuilt daily across every scoring
@@ -137,74 +209,9 @@ export const refreshRosVor = internalMutation({
     // is this player right now" ranking should reflect a role bump
     // whether or not anyone happens to already roster them.
     const boosts = await findInjuryBoosts(ctx, { forms });
-    const rosValueByFpid = new Map<number, number>();
-    const rosWeeksByFpid = new Map<number, number>();
-    for (const form of forms.values()) {
-      const cached = rosProjTotals.get(form.fpid);
-      const totalRawProjection = cached ? cached.totalPoints : form.currentWeekProjection * remainingWeeks;
-      const weeksIncluded = cached ? cached.weeksIncluded : remainingWeeks;
-      let value = totalRawProjection * momentumMultiplier(form);
-      const boost = boosts.get(form.fpid);
-      if (boost) {
-        const boostedWeeks = Math.min(boost.boostedWeeks, remainingWeeks);
-        value += Math.max(boost.boostedRate - forwardRate(form), 0) * boostedWeeks;
-      }
-      rosValueByFpid.set(form.fpid, value);
-      rosWeeksByFpid.set(form.fpid, weeksIncluded);
-    }
 
-    // Forward replacement level - the FULL pool (rostered + free agent)
-    // ranked by the momentum-adjusted rosValue above, same as the pre-draft
-    // engine's own pool (convex/draftValues.ts). computeReplacementLevels'
-    // demand-offset math (teamCount * rosterSlots[pos]) assumes it's
-    // indexing into an undivided pool - feeding it the free-agent-only
-    // pool would double-count demand already satisfied by the rostered
-    // players excluded from it, pushing "replacement level" absurdly deep
-    // (confirmed live: every QB in a 2-QB league showed replacement=0,
-    // since the offset landed past the end of the free-agent list
-    // entirely).
-    const allPlayersByRosValue = new Map<Position, ValuedPlayer[]>();
-    for (const pos of activePositions) {
-      const rows = [...forms.values()]
-        .filter((form) => form.position === pos)
-        .map((form) => ({ fpid: form.fpid, name: form.name, team: form.team, position: form.position, rosValue: rosValueByFpid.get(form.fpid) ?? 0 }))
-        .sort((a, b) => b.rosValue - a.rosValue);
-      allPlayersByRosValue.set(pos, rows);
-    }
-    const rosReplacementValues = computeReplacementLevels(settings, activePositions, allPlayersByRosValue);
-
-    // Single-week value - same momentum-adjusted rate rosValue is built
-    // from, but for just the current week (no remainingWeeks multiplier),
-    // with an injury boost applied for one week only rather than the full
-    // boostedWeeks span. Replacement level is computed off this pool
-    // separately from rosReplacementValues above - the "next player up"
-    // this week isn't necessarily the same player it is for the rest of
-    // the season.
-    const weekValueByFpid = new Map<number, number>();
-    for (const form of forms.values()) {
-      let value = forwardRate(form);
-      const boost = boosts.get(form.fpid);
-      if (boost && remainingWeeks > 0) {
-        value += Math.max(boost.boostedRate - forwardRate(form), 0);
-      }
-      weekValueByFpid.set(form.fpid, value);
-    }
-    const allPlayersByWeekValue = new Map<Position, ValuedPlayer[]>();
-    for (const pos of activePositions) {
-      const rows = [...forms.values()]
-        .filter((form) => form.position === pos)
-        .map((form) => ({ fpid: form.fpid, name: form.name, team: form.team, position: form.position, rosValue: weekValueByFpid.get(form.fpid) ?? 0 }))
-        .sort((a, b) => b.rosValue - a.rosValue);
-      allPlayersByWeekValue.set(pos, rows);
-    }
-    const weekReplacementValues = computeReplacementLevels(settings, activePositions, allPlayersByWeekValue);
-
-    // Backward replacement level - same full-pool reasoning as above, but
-    // ranked by cumulative actual points scored this season instead of
-    // rosValue (computeReplacementLevels only cares that its input is
-    // sorted by "rosValue" descending, not what that number represents).
-    // gamesPlayed rides along for actualPpg below, not used by the
-    // replacement-level math itself.
+    // gamesPlayed rides along for actualPpg, not used by the replacement-
+    // level math itself.
     const actualStatsByFpid = new Map<number, { totalPoints: number; gamesPlayed: number }>();
     for (const pos of activePositions) {
       const rows = await ctx.db
@@ -220,65 +227,116 @@ export const refreshRosVor = internalMutation({
         .collect();
       for (const row of rows) actualStatsByFpid.set(row.fpid, { totalPoints: row.totalPoints, gamesPlayed: row.gamesPlayed });
     }
-    const allPlayersByActualPoints = new Map<Position, ValuedPlayer[]>();
-    for (const pos of activePositions) {
-      const rows = [...forms.values()]
-        .filter((form) => form.position === pos)
-        .map((form) => ({
-          fpid: form.fpid,
-          name: form.name,
-          team: form.team,
-          position: form.position,
-          rosValue: actualStatsByFpid.get(form.fpid)?.totalPoints ?? 0,
-        }))
-        .sort((a, b) => b.rosValue - a.rosValue);
-      allPlayersByActualPoints.set(pos, rows);
-    }
-    const actualReplacementValues = computeReplacementLevels(settings, activePositions, allPlayersByActualPoints);
+
+    return [...forms.values()].map((form) => {
+      const cached = rosProjTotals.get(form.fpid);
+      const totalRawProjection = cached ? cached.totalPoints : form.currentWeekProjection * remainingWeeks;
+      // Divides by this player's own weeksIncluded (which excludes any bye
+      // still ahead of them), not the season-wide remainingWeeks - two
+      // players with the same rosValue but different bye timing should
+      // still show the same per-game rate.
+      const rosWeeks = cached ? cached.weeksIncluded : remainingWeeks;
+      const boost = boosts.get(form.fpid);
+      let rosValue = totalRawProjection * momentumMultiplier(form);
+      if (boost) {
+        const boostedWeeks = Math.min(boost.boostedWeeks, remainingWeeks);
+        rosValue += Math.max(boost.boostedRate - forwardRate(form), 0) * boostedWeeks;
+      }
+
+      // Single-week value - same momentum-adjusted rate rosValue is built
+      // from, but for just the current week (no remainingWeeks multiplier),
+      // with an injury boost applied for one week only rather than the full
+      // boostedWeeks span.
+      let weekValue = forwardRate(form);
+      if (boost && remainingWeeks > 0) {
+        weekValue += Math.max(boost.boostedRate - forwardRate(form), 0);
+      }
+
+      const actualStats = actualStatsByFpid.get(form.fpid);
+      return {
+        fpid: form.fpid,
+        name: form.name,
+        team: form.team,
+        position: form.position,
+        rosValue,
+        rosPpg: rosWeeks > 0 ? rosValue / rosWeeks : 0,
+        weekValue,
+        // The plain, un-momentum-adjusted projection - see PlayerForm.
+        // currentWeekProjectionRaw's comment for why this (not weekValue)
+        // is what gets displayed.
+        weekPpg: form.currentWeekProjectionRaw,
+        actualPoints: actualStats?.totalPoints ?? 0,
+        actualPpg: actualStats && actualStats.gamesPlayed > 0 ? actualStats.totalPoints / actualStats.gamesPlayed : 0,
+        boostReason: boost?.reason ?? null,
+      };
+    });
+  },
+});
+
+// Per-league half of the refresh - see refreshAllRosVor's comment above.
+export const refreshRosVor = internalMutation({
+  args: { seasonId: v.id("seasons"), week: v.string(), players: v.array(rosVorInputValidator) },
+  handler: async (ctx, args) => {
+    const settings = await ctx.db.get(args.seasonId);
+    if (!settings) return;
+
+    const activePositions = activePositionsFor(settings);
+    const active = new Set<Position>(activePositions);
+    const players = args.players.filter((player) => active.has(player.position));
+
+    // Replacement level - the FULL pool (rostered + free agent), ranked by
+    // whichever value is being measured (computeReplacementLevels only
+    // cares that its input is sorted by "rosValue" descending, not what
+    // that number represents), same as the pre-draft engine's own pool
+    // (convex/draftValues.ts). computeReplacementLevels' demand-offset math
+    // (teamCount * rosterSlots[pos]) assumes it's indexing into an
+    // undivided pool - feeding it the free-agent-only pool would double-
+    // count demand already satisfied by the rostered players excluded from
+    // it, pushing "replacement level" absurdly deep (confirmed live: every
+    // QB in a 2-QB league showed replacement=0, since the offset landed
+    // past the end of the free-agent list entirely). Computed separately
+    // for forward (rosValue), single-week (weekValue - the "next player
+    // up" this week isn't necessarily the same player it is for the rest
+    // of the season), and backward (actual points scored this season).
+    const replacementLevels = (valueOf: (player: RosVorInput) => number) => {
+      const byPosition = new Map<Position, ValuedPlayer[]>();
+      for (const pos of activePositions) {
+        const rows = players
+          .filter((player) => player.position === pos)
+          .map((player) => ({ fpid: player.fpid, name: player.name, team: player.team, position: player.position, rosValue: valueOf(player) }))
+          .sort((a, b) => b.rosValue - a.rosValue);
+        byPosition.set(pos, rows);
+      }
+      return computeReplacementLevels(settings, activePositions, byPosition);
+    };
+    const rosReplacementValues = replacementLevels((player) => player.rosValue);
+    const weekReplacementValues = replacementLevels((player) => player.weekValue);
+    const actualReplacementValues = replacementLevels((player) => player.actualPoints);
 
     // Global (not per-position) rank for both metrics - a real "overall"
     // fantasy board mixes positions, ranked purely by how far above
     // replacement each player is, which is exactly what VOR puts on a
     // comparable cross-position scale.
-    const valued = [...forms.values()].map((form) => {
-      const rosValue = rosValueByFpid.get(form.fpid) ?? 0;
-      const weekValue = weekValueByFpid.get(form.fpid) ?? 0;
-      const actualStats = actualStatsByFpid.get(form.fpid);
-      // Divides by this player's own weeksIncluded (which excludes any bye
-      // still ahead of them), not the season-wide remainingWeeks - two
-      // players with the same rosValue but different bye timing should
-      // still show the same per-game rate.
-      const rosWeeks = rosWeeksByFpid.get(form.fpid) ?? remainingWeeks;
-      return {
-        form,
-        rosValue,
-        rosVor: rosValue - rosReplacementValues[form.position],
-        actualVor: (actualStats?.totalPoints ?? 0) - actualReplacementValues[form.position],
-        rosPpg: rosWeeks > 0 ? rosValue / rosWeeks : 0,
-        actualPpg: actualStats && actualStats.gamesPlayed > 0 ? actualStats.totalPoints / actualStats.gamesPlayed : 0,
-        weekVor: weekValue - weekReplacementValues[form.position],
-        // The plain, un-momentum-adjusted projection - see PlayerForm.
-        // currentWeekProjectionRaw's comment for why this (not weekValue)
-        // is what gets displayed.
-        weekPpg: form.currentWeekProjectionRaw,
-      };
-    });
-    const rosRankByFpid = new Map<number, number>();
-    [...valued]
-      .sort((a, b) => b.rosVor - a.rosVor)
-      .forEach((row, index) => rosRankByFpid.set(row.form.fpid, index + 1));
-    const actualRankByFpid = new Map<number, number>();
-    [...valued]
-      .sort((a, b) => b.actualVor - a.actualVor)
-      .forEach((row, index) => actualRankByFpid.set(row.form.fpid, index + 1));
-    const weekRankByFpid = new Map<number, number>();
-    [...valued]
-      .sort((a, b) => b.weekVor - a.weekVor)
-      .forEach((row, index) => weekRankByFpid.set(row.form.fpid, index + 1));
+    const valued = players.map((player) => ({
+      player,
+      rosVor: player.rosValue - rosReplacementValues[player.position],
+      actualVor: player.actualPoints - actualReplacementValues[player.position],
+      weekVor: player.weekValue - weekReplacementValues[player.position],
+    }));
+    const rankBy = (valueOf: (row: (typeof valued)[number]) => number) => {
+      const ranks = new Map<number, number>();
+      [...valued]
+        .sort((a, b) => valueOf(b) - valueOf(a))
+        .forEach((row, index) => ranks.set(row.player.fpid, index + 1));
+      return ranks;
+    };
+    const rosRankByFpid = rankBy((row) => row.rosVor);
+    const actualRankByFpid = rankBy((row) => row.actualVor);
+    const weekRankByFpid = rankBy((row) => row.weekVor);
 
     const existing = await ctx.db
       .query("rosVorSnapshots")
-      .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", nflState.week))
+      .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
       .collect();
     const existingByFpid = new Map(existing.map((row) => [row.fpid, row]));
     const now = Date.now();
@@ -290,33 +348,33 @@ export const refreshRosVor = internalMutation({
     // alone always differed) was rewriting the whole table every run.
     // Floats are rounded so sub-display noise doesn't count as a change;
     // computedAt therefore means "last time this row's values changed."
-    for (const { form, rosValue, rosVor, actualVor, rosPpg, actualPpg, weekVor, weekPpg } of valued) {
-      seen.add(form.fpid);
+    for (const { player, rosVor, actualVor, weekVor } of valued) {
+      seen.add(player.fpid);
       const fields = {
-        position: form.position,
-        name: form.name,
-        team: form.team,
-        rosValue: round2(rosValue),
-        rosPpg: round2(rosPpg),
-        actualPpg: round2(actualPpg),
-        boostReason: boosts.get(form.fpid)?.reason ?? null,
+        position: player.position,
+        name: player.name,
+        team: player.team,
+        rosValue: round2(player.rosValue),
+        rosPpg: round2(player.rosPpg),
+        actualPpg: round2(player.actualPpg),
+        boostReason: player.boostReason,
         rosVor: round2(rosVor),
-        rosRank: rosRankByFpid.get(form.fpid) ?? 0,
+        rosRank: rosRankByFpid.get(player.fpid) ?? 0,
         actualVor: round2(actualVor),
-        actualRank: actualRankByFpid.get(form.fpid) ?? 0,
+        actualRank: actualRankByFpid.get(player.fpid) ?? 0,
         weekVor: round2(weekVor),
-        weekRank: weekRankByFpid.get(form.fpid) ?? 0,
-        weekPpg: round2(weekPpg),
+        weekRank: weekRankByFpid.get(player.fpid) ?? 0,
+        weekPpg: round2(player.weekPpg),
       };
-      const match = existingByFpid.get(form.fpid);
+      const match = existingByFpid.get(player.fpid);
       if (match) {
         const changed = (Object.keys(fields) as (keyof typeof fields)[]).some((key) => match[key] !== fields[key]);
         if (changed) await ctx.db.patch(match._id, { ...fields, computedAt: now });
       } else {
         await ctx.db.insert("rosVorSnapshots", {
           seasonId: args.seasonId,
-          week: nflState.week,
-          fpid: form.fpid,
+          week: args.week,
+          fpid: player.fpid,
           ...fields,
           computedAt: now,
         });

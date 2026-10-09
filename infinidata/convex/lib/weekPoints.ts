@@ -26,7 +26,7 @@ export async function loadWeekPoints(
   // playerPoints (daily sync) and one read instead of ~1,800. Falls back
   // to playerPoints otherwise (no game live yet this week, or a past week
   // whose live copy the daily sync has already pruned). Same
-  // nflState.season refreshRosVor's own playerPoints reads use.
+  // nflState.season rosVor.ts's computeRosVorInputs playerPoints reads use.
   const liveWeek = await ctx.db
     .query("liveWeekPoints")
     .withIndex("by_season_week", (q) => q.eq("season", nflState.season).eq("week", week))

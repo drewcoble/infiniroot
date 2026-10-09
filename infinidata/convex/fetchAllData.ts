@@ -5,6 +5,7 @@ import { requireSuperAdmin, currentSeason } from "./lib/dataFetch";
 import { fetchCurrentNflWeek, fetchNflSeasonState } from "./sleeper/state";
 import { ALL_SCORING_CONFIGS, scoringConfigFromSeason } from "./scoring";
 import { BLENDED_POSITIONS } from "./positions";
+import { refreshAllRosVor } from "./rosVor";
 
 // Prefetches every remaining week's projections, not just the current one,
 // so a team page browsing ahead (see infinileague's team page) isn't
@@ -75,14 +76,15 @@ async function refreshCachedComputations(
   // real seasons/drafts row like any other, so listAllSeasons picks it up
   // and refreshes its one (fixed) scoring combo here with no special-casing.
   const seasons = await ctx.runQuery(internal.leagues.listAllSeasons, {});
-  for (const season of seasons) {
-    // No draftId dependency (unlike draftValues below) - rosVor only needs
-    // the season's own roster/scoring settings, and no-ops on its own if
-    // it's not currently an NFL regular season week (see rosVor.ts).
-    // `scheduled` lets refreshRosVor apply its weekly-only throttle on dev
-    // (see ROS_VOR_WEEKLY_ONLY in rosVor.ts) - manual runs always refresh.
-    await ctx.runMutation(internal.rosVor.refreshRosVor, { seasonId: season._id, scheduled: args.scheduled });
+  // No draftId dependency (unlike draftValues below) - rosVor only needs
+  // each season's own roster/scoring settings, and no-ops on its own if
+  // it's not currently an NFL regular season week. Heavy reads run once
+  // per scoring setup, not per season; `scheduled` lets it apply its
+  // weekly-only throttle on dev (see both in rosVor.ts's refreshAllRosVor)
+  // - manual runs always refresh.
+  await refreshAllRosVor(ctx, { seasons, scheduled: args.scheduled });
 
+  for (const season of seasons) {
     const draft = await ctx.runQuery(internal.infinidraft.draft.fetchHelpers.getRealDraftInternal, {
       seasonId: season._id,
     });
