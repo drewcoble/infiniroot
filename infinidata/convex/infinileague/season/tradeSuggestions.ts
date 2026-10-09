@@ -28,6 +28,12 @@ export interface TradeSuggestion {
   // The same gains per remaining week.
   gainPpg: number;
   partnerGainPpg: number;
+  // Rest-of-season VOR you get minus what you send (the rosVOR board's
+  // rosVor) - positive = you come out ahead on player value.
+  vorNet: number;
+  // 0-100 blend of the lineup gain and vorNet, each percentile-ranked
+  // against every trade the search considered - see GRADE_WEIGHTS.
+  grade: number;
   // Power-rank positions before and after (1 = best).
   rankBefore: number;
   rankAfter: number;
@@ -50,6 +56,42 @@ const PAIR_POOL_SIZE = 10;
 // A trade has to move both teams' rest-of-season totals by at least this
 // much (points over the season) to count - below it, the "gain" is noise.
 const MIN_GAIN = 1;
+
+// A trade's grade blends two reads of it, each percentile-ranked against
+// every candidate trade first since they're on different scales - the same
+// approach infinidraft's report card grades teams with (reportCard.ts's
+// percentileRank/GRADE_WEIGHTS): how much it lifts your rest-of-season
+// optimal lineup (the PPG read - what it does for your starters), and the
+// rest-of-season VOR you get minus what you give (the value read - who
+// wins the talent exchange, starters or not). Tunable.
+const GRADE_WEIGHTS = {
+  lineup: 0.5,
+  vor: 0.5,
+};
+
+// Percentile rank of each value within `all` - share strictly below, plus
+// half credit for ties - range (0, 100]; 50 with nothing to compare
+// against. Same definition as reportCard.ts's percentileRank, done with a
+// sort and binary search since the field here is thousands of trades.
+function percentileRanker(all: number[]): (value: number) => number {
+  const sorted = [...all].sort((a, b) => a - b);
+  const firstIndexAtLeast = (value: number, strict: boolean) => {
+    let lo = 0;
+    let hi = sorted.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (strict ? sorted[mid]! <= value : sorted[mid]! < value) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+  return (value) => {
+    if (sorted.length <= 1) return 50;
+    const below = firstIndexAtLeast(value, false);
+    const equal = firstIndexAtLeast(value, true) - below;
+    return ((below + equal / 2) / sorted.length) * 100;
+  };
+}
 
 // Each player's fantasy points per remaining week, in the league's scoring -
 // read once up front rather than per lineup evaluation, since the search
@@ -149,15 +191,18 @@ interface Candidate {
   newPartnerTotal: number;
   gain: number;
   partnerGain: number;
+  vorNet: number;
+  grade: number;
 }
 
 // Trades that would help your team AND the other team, by the same
 // rest-of-season optimal-lineup totals the power rankings use: every
 // 1-for-1, 2-for-1, and 1-for-2 with every other team in the league (no
 // 2-for-2 - the search space balloons and those are rarely the deals
-// anyone accepts). Both sides have to come out ahead - a suggestion the
-// other manager has no reason to accept isn't one worth making - and the
-// list is ordered by how much it helps you. Taxi and IR players are left
+// anyone accepts). Both sides' lineups have to come out ahead - a
+// suggestion the other manager has no reason to accept isn't one worth
+// making - and the list is ordered by grade (lineup gain and VOR won,
+// blended - see GRADE_WEIGHTS). Taxi and IR players are left
 // out on both sides, same as the power rankings' player pool.
 export const getTradeSuggestions = action({
   args: { seasonId: v.id("seasons") },
@@ -169,6 +214,15 @@ export const getTradeSuggestions = action({
     if (!self || !selfFpids) return [];
 
     const weekPoints = pointsByWeek(inputs, [...eligibleFpidsByTeam.values()].flat());
+    // Rest-of-season VOR per player, off the same rosVOR board the Trade
+    // tab's cards read. A player missing from it counts as 0.
+    const vorRows = await ctx.runQuery(api.rosVor.getRosVorBoard, {
+      seasonId: args.seasonId,
+      week: String(inputs.currentWeek),
+    });
+    const rosVorByFpid = new Map(vorRows.map((row) => [row.fpid, row.rosVor]));
+    const vorOf = (fpids: number[]) =>
+      fpids.reduce((total, fpid) => total + (rosVorByFpid.get(fpid) ?? 0), 0);
     const score = makeTeamScorer(inputs, weekPoints);
     const weekCount = inputs.projectionMapsByWeek.length;
 
@@ -208,15 +262,29 @@ export const getTradeSuggestions = action({
             newPartnerTotal,
             gain,
             partnerGain,
+            vorNet: vorOf(receive) - vorOf(send),
+            grade: 0,
           });
         }
       }
     }
 
-    // Best for you first; on a near-tie, the simpler (fewer players) deal.
+    const lineupPct = percentileRanker(candidates.map((candidate) => candidate.gain));
+    const vorPct = percentileRanker(candidates.map((candidate) => candidate.vorNet));
+    for (const candidate of candidates) {
+      candidate.grade = Math.round(
+        GRADE_WEIGHTS.lineup * lineupPct(candidate.gain) +
+          GRADE_WEIGHTS.vor * vorPct(candidate.vorNet),
+      );
+    }
+
+    // Best grade first; then the bigger lineup gain; then the simpler
+    // (fewer players) deal.
     candidates.sort(
       (a, b) =>
-        b.gain - a.gain || a.send.length + a.receive.length - (b.send.length + b.receive.length),
+        b.grade - a.grade ||
+        b.gain - a.gain ||
+        a.send.length + a.receive.length - (b.send.length + b.receive.length),
     );
     const picked: Candidate[] = [];
     const perPartner = new Map<Id<"seasonTeams">, number>();
@@ -272,6 +340,8 @@ export const getTradeSuggestions = action({
         partnerGain: candidate.partnerGain,
         gainPpg: perWeek(candidate.gain),
         partnerGainPpg: perWeek(candidate.partnerGain),
+        vorNet: candidate.vorNet,
+        grade: candidate.grade,
         rankBefore: rankOf(self._id, noChange),
         rankAfter: rankOf(self._id, after),
         partnerRankBefore: rankOf(candidate.partnerTeamId, noChange),

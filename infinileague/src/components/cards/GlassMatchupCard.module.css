@@ -1828,3 +1828,20 @@
   font-size: 13px;
   color: rgba(248, 250, 252, 0.6);
 }
+
+/* Suggestion card's first row: partner name, grade badge at the right. */
+.suggestionTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.suggestionTop .pill {
+  flex-shrink: 0;
+}
+
+.suggestionTop .suggestionPartner {
+  min-width: 0;
+}

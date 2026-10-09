@@ -1,6 +1,7 @@
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
+import { gradeColor } from "../../lib/gradeColor";
 import { pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
 import { useExpandableCard } from "./useExpandableCard";
@@ -23,6 +24,10 @@ export interface TradeSuggestion {
   partnerGain: number;
   gainPpg: number;
   partnerGainPpg: number;
+  // Rest-of-season VOR you get minus what you send.
+  vorNet: number;
+  // 0-100, lineup gain and vorNet blended (see tradeSuggestions.ts).
+  grade: number;
   rankBefore: number;
   rankAfter: number;
   partnerRankBefore: number;
@@ -31,6 +36,12 @@ export interface TradeSuggestion {
 
 function signed(value: number): string {
   return `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(1)}`;
+}
+
+// The grade as a glass badge, colored the way the league home's team grade
+// is (lib/gradeColor.ts).
+function gradePillStyle(grade: number): CSSProperties {
+  return { ...pillStyle(gradeColor(grade)), fontFamily: "var(--font-numeric)" };
 }
 
 function RankMove({ before, after }: { before: number; after: number }) {
@@ -102,7 +113,9 @@ export function GlassTradeSuggestionCard({
     players.map((player) => player.name).join(" and ");
   const label =
     `Trade with ${suggestion.partnerName}: send ${names(suggestion.send)}, get ` +
-    `${names(suggestion.receive)}. ${signed(suggestion.gainPpg)} points per week for you, ` +
+    `${names(suggestion.receive)}. Grade ${suggestion.grade}. ` +
+    `${signed(suggestion.gainPpg)} points per week for you, ` +
+    `${signed(suggestion.vorNet)} VOR, ` +
     `power rank ${suggestion.rankBefore} to ${suggestion.rankAfter}`;
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label, {
     onTap: onApply,
@@ -144,8 +157,11 @@ export function GlassTradeSuggestionCard({
           .filter(Boolean)
           .join(" ")}
       >
-        <div className={classes.suggestionPartner} aria-hidden>
-          {suggestion.partnerName}
+        <div className={classes.suggestionTop} aria-hidden>
+          <span className={classes.suggestionPartner}>{suggestion.partnerName}</span>
+          <span className={classes.pill} style={gradePillStyle(suggestion.grade)}>
+            {suggestion.grade}
+          </span>
         </div>
         <div aria-hidden>
           <PlayerLine label="Send" players={suggestion.send} shortName={shortName} />
@@ -155,8 +171,20 @@ export function GlassTradeSuggestionCard({
           className={`${classes.statsRow} ${classes.statsRowSplit} ${classes.tradeStats}`}
           aria-hidden
         >
-          <span className={`${classes.projSmall} ${classes.impactUp}`}>
-            {signed(suggestion.gainPpg)} PPG
+          <span className={classes.projSmall}>
+            <span className={classes.impactUp}>{signed(suggestion.gainPpg)} PPG</span>
+            {" · "}
+            <span
+              className={
+                suggestion.vorNet > 0
+                  ? classes.impactUp
+                  : suggestion.vorNet < 0
+                    ? classes.impactDown
+                    : undefined
+              }
+            >
+              {signed(suggestion.vorNet)} VOR
+            </span>
           </span>
           <span className={classes.projSmall}>
             <RankMove before={suggestion.rankBefore} after={suggestion.rankAfter} />
@@ -172,7 +200,7 @@ export function GlassTradeSuggestionCard({
                 Trade with {suggestion.partnerName}
               </div>
               <div className={classes.gameLine}>
-                <span className={classes.gameLineText}>Helps both teams&apos; rest of season</span>
+                <span className={classes.gameLineText}>Graded on your lineup gain and VOR won</span>
               </div>
             </div>
             <button
@@ -196,8 +224,8 @@ export function GlassTradeSuggestionCard({
 
           <div className={classes.statGrid}>
             {[
+              { label: "Grade", value: String(suggestion.grade) },
               { label: "Your PPG", value: signed(suggestion.gainPpg) },
-              { label: "Your ROS pts", value: signed(suggestion.gain) },
               {
                 label: "Your rank",
                 value:
@@ -205,8 +233,8 @@ export function GlassTradeSuggestionCard({
                     ? `#${suggestion.rankAfter}`
                     : `#${suggestion.rankBefore}→#${suggestion.rankAfter}`,
               },
+              { label: "VOR net", value: signed(suggestion.vorNet) },
               { label: "Their PPG", value: signed(suggestion.partnerGainPpg) },
-              { label: "Their ROS pts", value: signed(suggestion.partnerGain) },
               {
                 label: "Their rank",
                 value:
