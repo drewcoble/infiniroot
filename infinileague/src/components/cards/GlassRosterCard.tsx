@@ -93,7 +93,10 @@ export function GlassRosterCard({
             Status (clock / dot) stays on the row above. */}
         {data.gameState !== "bye" && (
           <div className={`${classes.wideProj} ${classes.wideNumbers}`} aria-hidden>
-            <span>Proj {formatProj(data.projectedPoints)}</span>
+            {/* Live: the live projection (points so far + the unplayed share
+                of the projection), still labeled "Proj" - same as the
+                Matchup cards. */}
+            <span>Proj {formatProj(isLive ? data.liveProjectedPoints : data.projectedPoints)}</span>
             {data.gameState !== "pre" && (
               <span className={`${classes.points} ${classes.playerPoints}`}>
                 {formatPoints(data.actualPoints)}
