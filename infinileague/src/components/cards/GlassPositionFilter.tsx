@@ -4,8 +4,8 @@ import classes from "./GlassMatchupCard.module.css";
 
 // Players board position filter: a row of glass chips that sticks just under
 // the header while the list scrolls (no bar behind it - each chip carries
-// its own glass, like the header's pieces). Selected chips fill solid with
-// their position's color.
+// its own glass, like the header's pieces). Selected chips take the glass
+// badge look in their position's color.
 //
 // Taps: with everything showing, tapping a position isolates it (the old
 // filter's "only" badge, without the extra control); after that, taps add
@@ -38,7 +38,7 @@ export function GlassPositionFilter({
       <button
         type="button"
         className={`${classes.filterChip} ${allSelected ? classes.filterChipSelected : ""}`}
-        style={{ "--chip-fill": "var(--mantine-color-gray-7)" } as CSSProperties}
+        style={{ "--pill-tint": "var(--mantine-color-gray-5)" } as CSSProperties}
         aria-pressed={allSelected}
         onClick={() => onChange([...positions])}
       >
@@ -54,7 +54,10 @@ export function GlassPositionFilter({
             className={`${classes.filterChip} ${isSelected ? classes.filterChipSelected : ""}`}
             style={
               {
-                "--chip-fill": `var(--mantine-color-${color}-7)`,
+                // Same tint/text as the position badges (cardShared's
+                // pillStyle).
+                "--pill-tint": `var(--mantine-color-${color}-4)`,
+                "--chip-text": `color-mix(in srgb, var(--mantine-color-${color}-1) 30%, #fff)`,
               } as CSSProperties
             }
             aria-pressed={isSelected}
