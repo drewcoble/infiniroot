@@ -222,7 +222,7 @@ function PlayersPage() {
         onChange={setMetric}
         options={[
           { label: `Week ${nflState.week}`, value: "week" as const },
-          { label: "Rest of Season", value: "ros" as const },
+          { label: "Season", value: "ros" as const },
         ]}
       />
       <Group gap="sm" wrap="nowrap">

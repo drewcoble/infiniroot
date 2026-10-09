@@ -24,11 +24,19 @@ export const Route = createFileRoute("/league/$leagueId/freeAgents")({
 
 const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 
-// "bid" = suggested bid (market value without one) - the default and the
-// list's original order; "vor" = value over replacement; "rosPpg" = rest-of-
-// season points per game from the rosVOR board (players without a board row
-// sort last). Ties fall back to VOR, then name.
-type SortKey = "bid" | "vor" | "rosPpg";
+// Same Week / Season views and sorts as the Players page, plus Bid:
+// "rank" = the view's rosVOR rank (weekRank / rosRank); "bid" = suggested
+// bid (market value without one) - the default; "actual" / "projected" =
+// this week's points / projection in Week view, season PPG / ROS PPG in
+// Season view. Players with no rosVOR board row (or no points yet) sort
+// last; ties fall back to the bid, then name.
+type View = "week" | "ros";
+type SortKey = "rank" | "bid" | "actual" | "projected";
+
+const SORT_LABELS: Record<View, { actual: string; projected: string }> = {
+  week: { actual: "Actual", projected: "Proj" },
+  ros: { actual: "PPG", projected: "ROS PPG" },
+};
 
 // Migrated from infinidraft's src/pages/Season/FreeAgentsTab.tsx (now
 // removed there) - same advisory FAAB bid calculator, backed by the same
@@ -74,7 +82,16 @@ function FreeAgentsPage() {
 
   // Same position filter and sort control as the Players page.
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
+  const [view, setView] = useState<View>("ros");
   const [sortKey, setSortKey] = useState<SortKey>("bid");
+
+  // This week's actual points (live during games) for the Week view's
+  // Actual sort - same query the Players page uses.
+  const weekPoints = useQuery(
+    api.rosVor.getWeekPoints,
+    isAuthenticated && result?.week ? { seasonId, week: result.week } : "skip",
+  );
+  const weekPointsByFpid = new Map((weekPoints ?? []).map((entry) => [entry.fpid, entry.points]));
 
   if (result === undefined) {
     return (
@@ -100,21 +117,25 @@ function FreeAgentsPage() {
     );
   }
 
-  // Highest suggested bid first - the single number most directly answers
-  // "who should I actually bid on" - tiebroken by valueOverReplacement, the
-  // same VOR the pre-draft value process ranks by (convex/draftValues.ts),
-  // then name for full determinism.
+  // Higher-is-better value for a sort key (rank is negated so "desc"
+  // still puts #1 first).
   const sortValue = (row: FaabSuggestionRow, key: SortKey): number | undefined => {
-    if (key === "vor") return row.valueOverReplacement;
-    if (key === "rosPpg") return rosVorByFpid.get(row.fpid)?.rosPpg;
-    return row.suggestedBid ?? row.marketValue;
+    const board = rosVorByFpid.get(row.fpid);
+    const isWeek = view === "week";
+    if (key === "bid") return row.suggestedBid ?? row.marketValue;
+    if (key === "rank") {
+      const rank = board ? (isWeek ? board.weekRank : board.rosRank) : undefined;
+      return rank ? -rank : undefined;
+    }
+    if (key === "actual") return isWeek ? weekPointsByFpid.get(row.fpid) : board?.actualPpg;
+    return isWeek ? board?.weekPpg : board?.rosPpg;
   };
   const rows = result.suggestions
     .filter((row) => selectedPositions.includes(row.position))
     .sort((a, b) => {
       const primary = compareSortValues(sortValue(a, sortKey), sortValue(b, sortKey), "desc");
       if (primary !== 0) return primary;
-      const secondary = compareSortValues(a.valueOverReplacement, b.valueOverReplacement, "desc");
+      const secondary = compareSortValues(sortValue(a, "bid"), sortValue(b, "bid"), "desc");
       if (secondary !== 0) return secondary;
       return compareSortValues(a.name, b.name, "asc");
     });
@@ -128,6 +149,15 @@ function FreeAgentsPage() {
           Week {result.week} · {result.remainingWeeks} weeks remaining
         </div>
       </div>
+      <GlassSegmented
+        label="Ranking view"
+        value={view}
+        onChange={setView}
+        options={[
+          { label: `Week ${result.week}`, value: "week" as const },
+          { label: "Season", value: "ros" as const },
+        ]}
+      />
       <Group gap="sm" wrap="nowrap">
         <span className={classes.strengthLabel}>Sort</span>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -137,9 +167,10 @@ function FreeAgentsPage() {
             value={sortKey}
             onChange={setSortKey}
             options={[
+              { label: "Rank", value: "rank" as const },
               { label: "Bid", value: "bid" as const },
-              { label: "VOR", value: "vor" as const },
-              { label: "ROS PPG", value: "rosPpg" as const },
+              { label: SORT_LABELS[view].actual, value: "actual" as const },
+              { label: SORT_LABELS[view].projected, value: "projected" as const },
             ]}
           />
         </div>
@@ -183,7 +214,10 @@ function FreeAgentsPage() {
                   { label: "Market", value: `$${row.marketValue}` },
                   { label: "Your value", value: row.myValue !== null ? `$${row.myValue}` : "—" },
                   { label: "Teams in need", value: String(row.demandCount) },
-                  { label: "VOR", value: row.valueOverReplacement.toFixed(1) },
+                  {
+                    label: "Season PPG",
+                    value: rosVorRow ? rosVorRow.actualPpg.toFixed(1) : "—",
+                  },
                   {
                     label: "ROS PPG",
                     value: rosVorRow ? rosVorRow.rosPpg.toFixed(1) : "—",
