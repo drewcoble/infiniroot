@@ -240,9 +240,10 @@
   margin-top: 2px;
 }
 
-/* Matchup card: points on the right edge, under the live clock. */
-.statsRowEnd {
-  justify-content: flex-end;
+/* Matchup card: projection at the left, actual points at the right edge
+   (under the live clock). */
+.statsRowSplit {
+  justify-content: space-between;
 }
 
 .points {

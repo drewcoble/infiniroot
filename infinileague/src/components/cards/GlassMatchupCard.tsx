@@ -1,6 +1,13 @@
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault } from "@shared/positionColors";
-import { ariaSummary, pillStyle, positionBadge, type GlassMatchupCardData } from "./cardShared";
+import {
+  ariaSummary,
+  formatPoints,
+  formatProj,
+  pillStyle,
+  positionBadge,
+  type GlassMatchupCardData,
+} from "./cardShared";
 import { ExpandedMatchupCard } from "./ExpandedMatchupCard";
 import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
@@ -74,9 +81,22 @@ export function GlassMatchupCard({
           </div>
         </div>
 
-        <div className={`${classes.statsRow} ${classes.statsRowEnd}`} aria-hidden>
-          <PointsHeadline data={data} />
-        </div>
+        {/* Projection small on the left (the pregame number, for every
+            state), actual score on the right once the game has started. */}
+        {isBye ? (
+          <div className={classes.statsRow} aria-hidden>
+            <PointsHeadline data={data} />
+          </div>
+        ) : (
+          <div className={`${classes.statsRow} ${classes.statsRowSplit}`} aria-hidden>
+            <span className={classes.projSmall}>Proj {formatProj(data.projectedPoints)}</span>
+            {data.gameState !== "pre" && (
+              <span className={`${classes.points} ${classes.playerPoints}`}>
+                {formatPoints(data.actualPoints)}
+              </span>
+            )}
+          </div>
+        )}
         {!isBye && (
           <PointsMeter
             actual={data.actualPoints ?? 0}
