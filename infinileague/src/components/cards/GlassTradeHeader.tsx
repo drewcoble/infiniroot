@@ -88,7 +88,7 @@ function TeamSide({
           {team.name}
         </div>
       )}
-      <div className={classes.headerTotal} aria-hidden>
+      <div className={`${classes.headerTotal} ${classes.tradeHeaderTotal}`} aria-hidden>
         {team.sendCount > 0 ? team.sendDisplay : "—"}
       </div>
       <div className={classes.tradeHeaderSends} aria-hidden>
@@ -349,7 +349,10 @@ export function GlassTradeHeader({
         ) : (
           <div className={`${classes.headerTeam} ${classes.headerTeamRight}`}>
             {picker}
-            <div className={`${classes.headerTotal} ${classes.headerPending}`} aria-hidden>
+            <div
+              className={`${classes.headerTotal} ${classes.tradeHeaderTotal} ${classes.headerPending}`}
+              aria-hidden
+            >
               —
             </div>
             <div className={`${classes.tradeHeaderSends} ${classes.headerPending}`} aria-hidden>

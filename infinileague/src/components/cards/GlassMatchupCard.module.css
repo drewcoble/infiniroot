@@ -1869,3 +1869,12 @@
   font-size: 11px;
   color: rgba(248, 250, 252, 0.6);
 }
+
+/* Trade header's sent totals: the app's numeric font, not the Matchup
+   header's dot-matrix scoreboard font - that's reserved for live scores. */
+.tradeHeaderTotal {
+  font-size: 28px;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+  letter-spacing: -0.01em;
+}
