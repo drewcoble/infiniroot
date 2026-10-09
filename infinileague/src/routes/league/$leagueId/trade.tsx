@@ -12,6 +12,12 @@ import { GlassTradeHeader, type TradeHeaderTeam } from "../../../components/card
 import { buildShortNames } from "../../../lib/shortPlayerName";
 import { GlassSegmented } from "../../../components/cards/GlassSegmented";
 import type { TradeMetric } from "../../../components/cards/GlassTradeCard";
+import {
+  GlassTradeSuggestionCard,
+  GlassTradeSuggestionSkeleton,
+  type TradeSuggestion,
+} from "../../../components/cards/GlassTradeSuggestionCard";
+import classes from "../../../components/cards/GlassMatchupCard.module.css";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
 import {
   TradePowerRankingsSheet,
@@ -102,9 +108,53 @@ function TradePage() {
 
   const [selectedA, setSelectedA] = useState<Set<number>>(new Set());
   const [selectedB, setSelectedB] = useState<Set<number>>(new Set());
-  useEffect(() => {
+  // Picking a different partner clears their side's picks (they were the
+  // old partner's players); your own side's stay.
+  const changePartner = (teamId: string | null) => {
+    setTeamBId(teamId);
     setSelectedB(new Set());
-  }, [teamBId]);
+  };
+
+  // Suggested trades for the strip under the title - computed server-side
+  // across every team in the league (see convex/infinileague/season/
+  // tradeSuggestions.ts), once per visit.
+  const getTradeSuggestions = useAction(
+    api.infinileague.season.tradeSuggestions.getTradeSuggestions,
+  );
+  const [suggestions, setSuggestions] = useState<TradeSuggestion[] | undefined>(undefined);
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    setSuggestions(undefined);
+    setSuggestionsError(null);
+    getTradeSuggestions({ seasonId })
+      .then((result) => {
+        if (!cancelled) setSuggestions(result);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setSuggestionsError(getErrorMessage(err, "Couldn't load trade suggestions."));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [seasonId, isAuthenticated, getTradeSuggestions]);
+
+  // A tap on a suggestion loads it into the analyzer: its partner, and
+  // exactly its players selected on both sides.
+  const applySuggestion = (suggestion: TradeSuggestion) => {
+    setTeamBId(suggestion.partnerTeamId);
+    setSelectedA(new Set(suggestion.send.map((player) => player.fpid)));
+    setSelectedB(new Set(suggestion.receive.map((player) => player.fpid)));
+  };
+  const sameFpids = (set: Set<number>, players: { fpid: number }[]) =>
+    set.size === players.length && players.every((player) => set.has(player.fpid));
+  const isActiveSuggestion = (suggestion: TradeSuggestion) =>
+    teamBId === suggestion.partnerTeamId &&
+    sameFpids(selectedA, suggestion.send) &&
+    sameFpids(selectedB, suggestion.receive);
 
   const toggleA = (fpid: number) =>
     setSelectedA((prev) => {
@@ -185,8 +235,41 @@ function TradePage() {
         ...(vorRows ?? []).map((row) => row.name),
         ...(teamARoster.rows ?? []).flatMap((row) => (row.name ? [row.name] : [])),
         ...(teamBRoster.rows ?? []).flatMap((row) => (row.name ? [row.name] : [])),
+        ...(suggestions ?? []).flatMap((suggestion) =>
+          [...suggestion.send, ...suggestion.receive].map((player) => player.name),
+        ),
       ]),
-    [vorRows, teamARoster.rows, teamBRoster.rows],
+    [vorRows, teamARoster.rows, teamBRoster.rows, suggestions],
+  );
+
+  const suggestionStrip = (
+    <div className={classes.suggestionStrip} role="list" aria-label="Suggested trades">
+      {suggestionsError ? (
+        <span className={classes.suggestionEmpty}>Trade suggestions aren&apos;t available.</span>
+      ) : suggestions === undefined ? (
+        Array.from({ length: 3 }, (_, index) => <GlassTradeSuggestionSkeleton key={index} />)
+      ) : suggestions.length === 0 ? (
+        <span className={classes.suggestionEmpty}>
+          No trades found that help both teams right now.
+        </span>
+      ) : (
+        suggestions.map((suggestion) => (
+          <div
+            key={`${suggestion.partnerTeamId}-${suggestion.send.map((p) => p.fpid).join(",")}-${suggestion.receive.map((p) => p.fpid).join(",")}`}
+            role="listitem"
+            style={{ display: "contents" }}
+          >
+            <GlassTradeSuggestionCard
+              suggestion={suggestion}
+              shortName={shortName}
+              rosPpgFor={(fpid) => vorByFpid.get(fpid)?.rosPpg}
+              active={isActiveSuggestion(suggestion)}
+              onApply={() => applySuggestion(suggestion)}
+            />
+          </div>
+        ))
+      )}
+    </div>
   );
 
   const metricSwitch = (
@@ -208,13 +291,14 @@ function TradePage() {
     return (
       <Stack gap="md">
         <Title order={3}>Trade</Title>
+        {suggestionStrip}
         {metricSwitch}
         <GlassTradeHeader
           teamA="loading"
           teamB="loading"
           partnerOptions={[]}
           partnerId={teamBId}
-          onPartnerChange={setTeamBId}
+          onPartnerChange={changePartner}
         />
         <Stack gap={10}>
           <MatchupRosterSkeleton />
@@ -309,6 +393,7 @@ function TradePage() {
   return (
     <Stack gap="md">
       <Title order={3}>Trade</Title>
+      {suggestionStrip}
       {metricSwitch}
 
       {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
@@ -334,7 +419,7 @@ function TradePage() {
         }
         partnerOptions={teamBOptions}
         partnerId={teamBId}
-        onPartnerChange={setTeamBId}
+        onPartnerChange={changePartner}
       />
 
       <Stack gap={10}>
