@@ -1,11 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
-import { PlayerCard } from "@shared/PlayerCard";
+import { GlassFreeAgentRow } from "../../../components/cards/GlassFreeAgentRow";
+import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
+import classes from "../../../components/cards/GlassMatchupCard.module.css";
 import { compareSortValues } from "../../../lib/tableSort";
-import type { FaabSuggestionRow, FaabSuggestionsResult, RosVorRow, StandingsRow } from "../../../types/season";
+import type {
+  FaabSuggestionRow,
+  FaabSuggestionsResult,
+  RosVorRow,
+  StandingsRow,
+} from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/freeAgents")({
   component: FreeAgentsPage,
@@ -34,10 +41,7 @@ function FreeAgentsPage() {
   );
   const selfTeamId = standings?.find((row) => row.isSelf)?.teamId;
 
-  const rookieFpids = useQuery(
-    api.players.getRookieFpids,
-    isAuthenticated ? {} : "skip",
-  );
+  const rookieFpids = useQuery(api.players.getRookieFpids, isAuthenticated ? {} : "skip");
   const rookieFpidSet = new Set(rookieFpids ?? []);
 
   const result: FaabSuggestionsResult | undefined = useQuery(
@@ -62,7 +66,16 @@ function FreeAgentsPage() {
   const rosVorByFpid = new Map((rosVorRows ?? []).map((row) => [row.fpid, row]));
 
   if (result === undefined) {
-    return <Loader />;
+    return (
+      <Stack gap="md">
+        <Title order={3}>Free Agents</Title>
+        <Stack gap={8}>
+          {Array.from({ length: 8 }, (_, index) => (
+            <GlassRosterSkeletonCard key={index} />
+          ))}
+        </Stack>
+      </Stack>
+    );
   }
 
   if (result.week === null) {
@@ -90,80 +103,49 @@ function FreeAgentsPage() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" wrap="wrap">
-        <Title order={3}>Free Agents — Week {result.week}</Title>
-        <Text c="dimmed" size="sm">
-          {result.remainingWeeks} weeks remaining this season
-        </Text>
-      </Group>
+      {/* Same title + quiet status line as the league home. */}
+      <div>
+        <Title order={3}>Free Agents</Title>
+        <div className={classes.pageHeaderStatus}>
+          Week {result.week} · {result.remainingWeeks} weeks remaining
+        </div>
+      </div>
       <Stack gap={8}>
-        {rows.map((row) => {
-          // Injury note gets its own untruncated line - it's the longest
-          // text here and the one that explains a surprising number. A
-          // $0/$0 bid line is just noise, so it's dropped - and with no
-          // injury note either, the footer (and PlayerCard's divider above
-          // it) goes entirely.
-          const showBidLine = (row.suggestedBid ?? row.marketValue) > 0 || row.marketValue > 0;
-          const bidFooter =
-            showBidLine || row.boostReason ? (
-              <Stack gap={2}>
-                {showBidLine && (
-                  <Group gap={8} wrap="nowrap">
-                    <Text size="sm" className="num">
-                      {`$${row.suggestedBid ?? row.marketValue}`}
-                    </Text>
-                    <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
-                      <span className="num">{`Market $${row.marketValue}`}</span>
-                      {row.rationale ? ` · ${row.rationale}` : ""}
-                    </Text>
-                  </Group>
-                )}
-                {row.boostReason && (
-                  <Text size="xs" c="dimmed">
-                    {row.boostReason}
-                  </Text>
-                )}
-              </Stack>
-            ) : undefined;
-
+        {rows.map((row, index) => {
           const rosVorRow = rosVorByFpid.get(row.fpid);
-          if (rosVorRow) {
-            return (
-              <PlayerCard
-                key={row.fpid}
-                row={rosVorRow}
-                isRookie={rookieFpidSet.has(row.fpid)}
-                footer={bidFooter}
-              />
-            );
-          }
-
-          // No rosVOR row for this fpid - a minimal stand-in PlayerCardRow
-          // (PPG/rank fields zeroed) rather than a second bespoke card
-          // layout, so the bid footer still renders through the same
-          // component. positionRank is deliberately 0 (PlayerCard's "don't
-          // show a rank" sentinel), NOT row.positionRank -
-          // FaabSuggestionRow's own positionRank is this player's rank
-          // among free agents only (see faab.ts's freeAgentsByPosition),
-          // not the all-players rank the badge shows everywhere else in the
-          // app - showing it here would silently mean something different
-          // depending on which branch rendered the card.
+          const bidAmount = row.suggestedBid ?? row.marketValue;
+          // No bid line for a player nobody's bidding on ($0/$0).
+          const hasBid = bidAmount > 0 || row.marketValue > 0;
           return (
-            <PlayerCard
+            <GlassFreeAgentRow
               key={row.fpid}
-              row={{
+              data={{
+                rank: index + 1,
                 name: row.name,
-                team: row.team,
                 position: row.position,
-                rosRank: 0,
-                positionRank: 0,
-                rosPpg: 0,
-                actualPpg: 0,
-                rosteredByTeamName: null,
+                positionRank: rosVorRow?.positionRank ?? row.positionRank,
+                team: row.team,
+                isRookie: rookieFpidSet.has(row.fpid),
+                injury: rosVorRow?.injury,
+                bid: hasBid ? `$${bidAmount}` : "",
+                market: hasBid ? `Mkt $${row.marketValue}` : "",
+                rationale: row.rationale,
+                boostReason: row.boostReason,
+                stats: [
+                  {
+                    label: "Your bid",
+                    value: row.suggestedBid !== null ? `$${row.suggestedBid}` : "—",
+                  },
+                  { label: "Market", value: `$${row.marketValue}` },
+                  { label: "Your value", value: row.myValue !== null ? `$${row.myValue}` : "—" },
+                  { label: "Teams in need", value: String(row.demandCount) },
+                  { label: "VOR", value: row.valueOverReplacement.toFixed(1) },
+                  {
+                    label: "ROS PPG",
+                    value: rosVorRow ? rosVorRow.rosPpg.toFixed(1) : "—",
+                  },
+                ],
               }}
-              isRookie={rookieFpidSet.has(row.fpid)}
-              leftLabel="—"
-              footer={bidFooter}
             />
           );
         })}

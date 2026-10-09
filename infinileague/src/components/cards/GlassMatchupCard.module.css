@@ -1432,3 +1432,35 @@
   height: 28px;
   font-size: 13px;
 }
+
+/* --- Free Agents row (GlassFreeAgentRow) ------------------------------- */
+
+/* With a rationale: a third, full-width row for it. */
+.freeAgentRowNoted {
+  grid-template-areas:
+    "name points"
+    "detail proj"
+    "note note";
+}
+
+.freeAgentNote {
+  grid-area: note;
+  display: flex;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.3;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.freeAgentPopoverNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(248, 250, 252, 0.78);
+}
+
+.freeAgentPopoverNotes p {
+  margin: 0;
+}
