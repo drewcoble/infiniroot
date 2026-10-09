@@ -757,6 +757,14 @@
   font-weight: var(--font-scoreboard-weight);
 }
 
+/* The header score's decimals (".26") - smaller and softer, on the score's
+   baseline. */
+.scoreDecimals {
+  font-size: 0.55em;
+  opacity: 0.75;
+  margin-left: 1px;
+}
+
 .headerProj {
   display: flex;
   flex-wrap: wrap;

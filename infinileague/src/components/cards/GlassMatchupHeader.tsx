@@ -29,6 +29,18 @@ function segmentTint(pct: number): string {
 
 // `hideFinal`: the header's result line already says the week is over, so
 // the per-side "Final" would just repeat it.
+// Header score with the decimals as smaller subtext on the same baseline -
+// "165" leads, ".26" trails quietly.
+function ScoreWithDecimals({ value }: { value: number }) {
+  const [whole, fraction] = value.toFixed(2).split(".");
+  return (
+    <>
+      {whole}
+      <span className={classes.scoreDecimals}>.{fraction}</span>
+    </>
+  );
+}
+
 function TeamSide({
   team,
   align,
@@ -42,7 +54,7 @@ function TeamSide({
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
       <div className={classes.headerTeamName}>{team.name}</div>
       <div className={classes.headerTotal}>
-        {team.actualPoints.toFixed(2)}
+        <ScoreWithDecimals value={team.actualPoints} />
       </div>
       {/* Projection and what's left on one line - the same dot/clock as the
           player cards' corners, so the counts need no words here (the
