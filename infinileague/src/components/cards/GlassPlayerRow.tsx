@@ -68,7 +68,10 @@ export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
             </span>
           )}
           {data.injury && (
-            <span className={classes.pill} style={pillStyle(injuryColor(data.injury.status))}>
+            <span
+              className={`${classes.pill} ${classes.injuryPill}`}
+              style={pillStyle(injuryColor(data.injury.status))}
+            >
               {data.injury.statusShort}
             </span>
           )}

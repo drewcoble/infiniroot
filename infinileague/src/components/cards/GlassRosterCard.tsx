@@ -62,7 +62,7 @@ export function GlassRosterCard({
           <span className={classes.name}>{data.name}</span>
           {data.injury && (
             <span
-              className={classes.pill}
+              className={`${classes.pill} ${classes.injuryPill}`}
               style={pillStyle(injuryColor(data.injury.status))}
               title={data.injury.status}
             >

@@ -160,6 +160,15 @@
 
 /* Name + injury badge (Matchup card): the name truncates first, the badge
    never shrinks. */
+
+/* Injury badge beside a player's name - a few px shorter than the other
+   badges so it doesn't crowd the name line. */
+.injuryPill {
+  height: 17px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
 .nameRow {
   display: flex;
   align-items: center;

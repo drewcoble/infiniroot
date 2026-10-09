@@ -78,7 +78,7 @@ export function GlassMatchupCard({
             <span className={classes.name}>{displayName}</span>
             {data.injury && (
               <span
-                className={classes.pill}
+                className={`${classes.pill} ${classes.injuryPill}`}
                 style={pillStyle(injuryColor(data.injury.status))}
                 title={data.injury.status}
               >
