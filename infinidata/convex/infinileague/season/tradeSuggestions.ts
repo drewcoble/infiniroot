@@ -59,6 +59,16 @@ const PAIR_POOL_SIZE = 10;
 // much (points over the season) to count - below it, the "gain" is noise.
 const MIN_GAIN = 1;
 
+// How lopsided a trade's value can be and still be suggested, as your
+// share of the trade value changing hands (what you send, consolidation
+// credit included - the Trade tab bar's own split). The other manager
+// won't take a trade that hands you much more value than they get, so
+// you have to send at least MIN_SENT_SHARE - just outside the bar's Fair
+// zone (46-54%), a small edge for you at most. MAX_SENT_SHARE keeps out
+// trades where you overpay by a lot, even when they'd help your lineup.
+const MIN_SENT_SHARE = 0.44;
+const MAX_SENT_SHARE = 0.6;
+
 // A trade's grade blends two reads of it, each percentile-ranked against
 // every candidate trade first since they're on different scales - the same
 // approach infinidraft's report card grades teams with (reportCard.ts's
@@ -202,7 +212,8 @@ interface Candidate {
 // rest-of-season optimal-lineup totals the power rankings use: every
 // 1-for-1, 2-for-1, and 1-for-2 with every other team in the league (no
 // 2-for-2 - the search space balloons and those are rarely the deals
-// anyone accepts). Both sides' lineups have to come out ahead - a
+// anyone accepts). Both sides' lineups have to come out ahead and the
+// trade value has to be close to even (MIN_SENT_SHARE / MAX_SENT_SHARE) - a
 // suggestion the other manager has no reason to accept isn't one worth
 // making - and the list is ordered by grade (lineup gain and trade value
 // won, blended - see GRADE_WEIGHTS). Taxi and IR players are left
@@ -224,12 +235,15 @@ export const getTradeSuggestions = action({
     );
     const valuesOf = (fpids: number[]) => fpids.map((fpid) => valueByFpid.get(fpid) ?? 0);
     // What you get minus what you send, consolidation credit included.
-    const valueNetOf = (send: number[], receive: number[]) => {
+    const valueSplit = (send: number[], receive: number[]) => {
       const { totalA: sent, totalB: received } = adjustedTradeTotals(
         valuesOf(send),
         valuesOf(receive),
       );
-      return received - sent;
+      return {
+        valueNet: received - sent,
+        sentShare: sent + received > 0 ? sent / (sent + received) : 0.5,
+      };
     };
     const score = makeTeamScorer(inputs, weekPoints);
     const weekCount = inputs.projectionMapsByWeek.length;
@@ -262,6 +276,8 @@ export const getTradeSuggestions = action({
           const newPartnerTotal = score(newPartner);
           const partnerGain = newPartnerTotal - partnerTotal;
           if (partnerGain < MIN_GAIN) continue;
+          const { valueNet, sentShare } = valueSplit(send, receive);
+          if (sentShare < MIN_SENT_SHARE || sentShare > MAX_SENT_SHARE) continue;
           candidates.push({
             partnerTeamId: partner._id,
             send,
@@ -270,7 +286,7 @@ export const getTradeSuggestions = action({
             newPartnerTotal,
             gain,
             partnerGain,
-            valueNet: valueNetOf(send, receive),
+            valueNet,
             grade: 0,
           });
         }
