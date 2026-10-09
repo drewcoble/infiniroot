@@ -107,9 +107,11 @@ function TeamSideSkeleton({ align, name }: { align: "left" | "right"; name?: Rea
   );
 }
 
-// "Who's winning" split: each side's share of the value changing hands,
-// counting what it receives - the other side's sent total. Negative VOR
-// (a below-replacement player) counts as nothing rather than flipping the
+// "Who's winning" split: each side's segment is its share of the value
+// changing hands, counting what it SENDS - so the side giving up more has
+// the bigger segment, tinted red (it's losing the trade), and the side
+// giving up less is the smaller, green one. Negative VOR (a
+// below-replacement player) counts as nothing rather than flipping the
 // split. A split within FAIR_MARGIN points of 50/50 has no winner: both
 // segments go neutral gray and the bar's fixed "Fair" zone (the same
 // 46-54% band, drawn over the middle of the bar) lights up.
@@ -118,11 +120,11 @@ const WINNING_TINT = "#4ade80";
 const LOSING_TINT = "#f87171";
 const FAIR_TINT = "#9ca3af";
 
-function winningShareA(teamA: TradeHeaderTeam, teamB: TradeHeaderTeam): number {
-  const receivedA = Math.max(teamB.sendValue, 0);
-  const receivedB = Math.max(teamA.sendValue, 0);
-  const total = receivedA + receivedB;
-  return total > 0 ? receivedA / total : 0.5;
+function sentShareA(teamA: TradeHeaderTeam, teamB: TradeHeaderTeam): number {
+  const sentA = Math.max(teamA.sendValue, 0);
+  const sentB = Math.max(teamB.sendValue, 0);
+  const total = sentA + sentB;
+  return total > 0 ? sentA / total : 0.5;
 }
 
 function isFair(pct: number): boolean {
@@ -131,7 +133,7 @@ function isFair(pct: number): boolean {
 
 function segmentTint(pct: number): string {
   if (isFair(pct)) return FAIR_TINT;
-  return pct > 50 ? WINNING_TINT : LOSING_TINT;
+  return pct > 50 ? LOSING_TINT : WINNING_TINT;
 }
 
 // The Matchup header's win bar - two segments split at the trade's
@@ -170,9 +172,10 @@ function TradeBalanceBar({ pctA }: { pctA: number | null }) {
   );
 }
 
+// `name` = the side sending less (the winner).
 function balanceText(name: string, pctA: number): string {
-  if (isFair(pctA)) return `fair trade, ${pctA}% to ${100 - pctA}%`;
-  return `${name} wins the trade, ${Math.max(pctA, 100 - pctA)}% of the value`;
+  if (isFair(pctA)) return `fair trade, sending ${pctA}% and ${100 - pctA}% of the value`;
+  return `${name} wins the trade, sending ${Math.min(pctA, 100 - pctA)}% of the value`;
 }
 
 export interface TradePartnerOption {
@@ -259,7 +262,7 @@ export function GlassTradeHeader({
   const bothLoaded = teamA !== "loading" && teamB !== "loading" && teamB !== null;
   const pctA =
     bothLoaded && teamA.sendCount > 0 && teamB.sendCount > 0
-      ? Math.round(winningShareA(teamA, teamB) * 100)
+      ? Math.round(sentShareA(teamA, teamB) * 100)
       : null;
   const ariaLabel =
     teamA === "loading"
@@ -267,7 +270,7 @@ export function GlassTradeHeader({
       : teamB === "loading" || teamB === null
         ? teamText(teamA)
         : `${teamText(teamA)}; ${teamText(teamB)}` +
-          (pctA !== null ? `; ${balanceText(pctA >= 50 ? teamA.name : teamB.name, pctA)}` : "");
+          (pctA !== null ? `; ${balanceText(pctA <= 50 ? teamA.name : teamB.name, pctA)}` : "");
   const picker = (
     <PartnerPicker options={partnerOptions} value={partnerId} onChange={onPartnerChange} />
   );
