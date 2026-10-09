@@ -240,6 +240,11 @@
   margin-top: 2px;
 }
 
+/* Matchup card: points on the right edge, under the live clock. */
+.statsRowEnd {
+  justify-content: flex-end;
+}
+
 .points {
   font-size: 15px;
   line-height: 1.2;

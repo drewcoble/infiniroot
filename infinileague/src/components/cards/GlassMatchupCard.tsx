@@ -74,7 +74,7 @@ export function GlassMatchupCard({
           </div>
         </div>
 
-        <div className={classes.statsRow} aria-hidden>
+        <div className={`${classes.statsRow} ${classes.statsRowEnd}`} aria-hidden>
           <PointsHeadline data={data} />
         </div>
         {!isBye && (
