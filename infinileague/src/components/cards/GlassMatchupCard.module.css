@@ -170,8 +170,12 @@
 }
 
 /* A live game's clock in the game line ("Q3 2:58") - the dot-matrix
-   scoreboard font, at the line's own size. */
+   scoreboard font, at the line's own size, pushed to the row's right
+   edge (see GameLineText). */
 .liveClock {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 8px;
   font-family: var(--font-scoreboard);
   font-weight: var(--font-scoreboard-weight);
   letter-spacing: 0;
@@ -861,6 +865,12 @@
 
 .wideGameLine {
   margin-left: 4px;
+}
+
+/* Roster card: the game line takes the rest of the detail row, so a live
+   clock can sit at its right edge (see GameLineText). */
+.wideGameLineFill {
+  flex: 1;
 }
 
 .wideProj {

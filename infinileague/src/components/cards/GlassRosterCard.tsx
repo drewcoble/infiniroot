@@ -84,10 +84,10 @@ export function GlassRosterCard({
               {data.injury.statusShort}
             </span>
           )}
-          <span className={`${classes.gameLine} ${classes.wideGameLine}`}>
-            <span className={classes.gameLineText}>
-              <GameLineText data={data} />
-            </span>
+          <span
+            className={`${classes.gameLine} ${classes.wideGameLine} ${classes.wideGameLineFill}`}
+          >
+            <GameLineText data={data} />
           </span>
         </div>
         {/* Start/sit is what this screen is for, so the projection is

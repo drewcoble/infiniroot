@@ -70,9 +70,7 @@ export function GlassMatchupCard({
         <div aria-hidden>
           <div className={classes.name}>{displayName}</div>
           <div className={classes.gameLine}>
-            <span className={classes.gameLineText}>
-              <GameLineText data={data} />
-            </span>
+            <GameLineText data={data} />
           </div>
         </div>
 

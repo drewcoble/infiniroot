@@ -89,9 +89,7 @@ export function ExpandedMatchupCard({
             {data.name}
           </div>
           <div className={classes.gameLine}>
-            <span className={classes.gameLineText}>
-              {data.team} <GameLineText data={data} />
-            </span>
+            <GameLineText data={data} prefix={data.team} />
           </div>
         </div>
         <button type="button" className={classes.closeButton} onClick={onClose} aria-label="Close">
