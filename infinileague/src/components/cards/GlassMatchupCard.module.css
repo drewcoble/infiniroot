@@ -1617,19 +1617,63 @@
   }
 }
 
-/* Trade header's balance bar: the fixed neutral block between the two
-   sides' segments (GlassTradeHeader's FAIR_BLOCK_PCT), labeled under it. */
-.fairBlock {
-  flex-shrink: 0;
-  opacity: 0.85;
+/* Trade header's balance bar: room under the bar for the Fair zone's
+   label. */
+.tradeBalanceRow {
+  padding-bottom: 14px;
+}
+
+.tradeBalanceBar {
+  position: relative;
+}
+
+/* The fixed "Fair" zone over the bar's middle (GlassTradeHeader's
+   FAIR_MARGIN band) - a faint glass frame a little taller than the bar,
+   so the split can be seen moving through it. Lights up when the split
+   lands inside it (no winner). */
+.fairZone {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.fairZoneActive {
+  border-color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 10px rgba(255, 255, 255, 0.25);
 }
 
 .fairLabel {
-  margin-top: 4px;
-  text-align: center;
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.55);
+  color: rgba(248, 250, 252, 0.45);
+  transition: color 200ms ease;
+}
+
+.fairZoneActive .fairLabel {
+  color: rgba(248, 250, 252, 0.95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fairZone,
+  .fairLabel {
+    transition: none;
+  }
 }

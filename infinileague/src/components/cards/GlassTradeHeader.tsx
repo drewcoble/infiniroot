@@ -110,11 +110,10 @@ function TeamSideSkeleton({ align, name }: { align: "left" | "right"; name?: Rea
 // "Who's winning" split: each side's share of the value changing hands,
 // counting what it receives - the other side's sent total. Negative VOR
 // (a below-replacement player) counts as nothing rather than flipping the
-// split. Within FAIR_MARGIN points of 50/50 the trade reads as fair: both
-// segments go neutral, matching the bar's fixed "Fair" block in the middle
-// (FAIR_BLOCK_PCT of the bar - the same ±3 band, drawn).
+// split. A split within FAIR_MARGIN points of 50/50 has no winner: both
+// segments go neutral gray and the bar's fixed "Fair" zone (the same
+// 47-53% band, drawn over the middle of the bar) lights up.
 const FAIR_MARGIN = 3;
-const FAIR_BLOCK_PCT = 6;
 const WINNING_TINT = "#4ade80";
 const LOSING_TINT = "#f87171";
 const FAIR_TINT = "#9ca3af";
@@ -126,46 +125,53 @@ function winningShareA(teamA: TradeHeaderTeam, teamB: TradeHeaderTeam): number {
   return total > 0 ? receivedA / total : 0.5;
 }
 
-function segmentTint(pct: number): string {
-  if (pct > 50 + FAIR_MARGIN) return WINNING_TINT;
-  if (pct < 50 - FAIR_MARGIN) return LOSING_TINT;
-  return FAIR_TINT;
+function isFair(pct: number): boolean {
+  return Math.abs(pct - 50) <= FAIR_MARGIN;
 }
 
-// The Matchup header's win bar, with a neutral "Fair" block between the two
-// sides. `pctA` null = not both sides have picked players yet - held at a
-// dimmed 50/50.
+function segmentTint(pct: number): string {
+  if (isFair(pct)) return FAIR_TINT;
+  return pct > 50 ? WINNING_TINT : LOSING_TINT;
+}
+
+// The Matchup header's win bar - two segments split at the trade's
+// balance point - with the "Fair" zone as a fixed overlay on the bar's
+// middle: it stays put while the split moves, and highlights when the
+// split lands inside it. `pctA` null = not both sides have picked players
+// yet - held at a dimmed 50/50.
 function TradeBalanceBar({ pctA }: { pctA: number | null }) {
   const a = pctA ?? 50;
   const b = 100 - a;
-  const scale = (100 - FAIR_BLOCK_PCT) / 100;
+  const fair = pctA !== null && isFair(a);
   return (
-    <div className={pctA === null ? classes.headerPending : undefined} aria-hidden>
-      <div className={classes.winRow}>
-        <span>{pctA === null ? "–" : `${a}%`}</span>
-        <div className={classes.winBar}>
-          <div
-            className={classes.winSegment}
-            style={{ width: `${a * scale}%`, ["--pill-tint" as string]: segmentTint(a) }}
-          />
-          <div
-            className={`${classes.winSegment} ${classes.fairBlock}`}
-            style={{ width: `${FAIR_BLOCK_PCT}%`, ["--pill-tint" as string]: FAIR_TINT }}
-          />
-          <div
-            className={classes.winSegment}
-            style={{ width: `${b * scale}%`, ["--pill-tint" as string]: segmentTint(b) }}
-          />
+    <div
+      className={`${classes.winRow} ${classes.tradeBalanceRow} ${pctA === null ? classes.headerPending : ""}`}
+      aria-hidden
+    >
+      <span>{pctA === null ? "–" : `${a}%`}</span>
+      <div className={`${classes.winBar} ${classes.tradeBalanceBar}`}>
+        <div
+          className={classes.winSegment}
+          style={{ width: `${a}%`, ["--pill-tint" as string]: segmentTint(a) }}
+        />
+        <div
+          className={classes.winSegment}
+          style={{ width: `${b}%`, ["--pill-tint" as string]: segmentTint(b) }}
+        />
+        <div
+          className={`${classes.fairZone} ${fair ? classes.fairZoneActive : ""}`}
+          style={{ left: `${50 - FAIR_MARGIN}%`, width: `${FAIR_MARGIN * 2}%` }}
+        >
+          <span className={classes.fairLabel}>Fair</span>
         </div>
-        <span>{pctA === null ? "–" : `${b}%`}</span>
       </div>
-      <div className={classes.fairLabel}>Fair</div>
+      <span>{pctA === null ? "–" : `${b}%`}</span>
     </div>
   );
 }
 
 function balanceText(name: string, pctA: number): string {
-  if (Math.abs(pctA - 50) <= FAIR_MARGIN) return `fair trade, ${pctA}% to ${100 - pctA}%`;
+  if (isFair(pctA)) return `fair trade, ${pctA}% to ${100 - pctA}%`;
   return `${name} wins the trade, ${Math.max(pctA, 100 - pctA)}% of the value`;
 }
 
