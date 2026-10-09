@@ -107,6 +107,68 @@ function TeamSideSkeleton({ align, name }: { align: "left" | "right"; name?: Rea
   );
 }
 
+// "Who's winning" split: each side's share of the value changing hands,
+// counting what it receives - the other side's sent total. Negative VOR
+// (a below-replacement player) counts as nothing rather than flipping the
+// split. Within FAIR_MARGIN points of 50/50 the trade reads as fair: both
+// segments go neutral, matching the bar's fixed "Fair" block in the middle
+// (FAIR_BLOCK_PCT of the bar - the same ±3 band, drawn).
+const FAIR_MARGIN = 3;
+const FAIR_BLOCK_PCT = 6;
+const WINNING_TINT = "#4ade80";
+const LOSING_TINT = "#f87171";
+const FAIR_TINT = "#9ca3af";
+
+function winningShareA(teamA: TradeHeaderTeam, teamB: TradeHeaderTeam): number {
+  const receivedA = Math.max(teamB.sendValue, 0);
+  const receivedB = Math.max(teamA.sendValue, 0);
+  const total = receivedA + receivedB;
+  return total > 0 ? receivedA / total : 0.5;
+}
+
+function segmentTint(pct: number): string {
+  if (pct > 50 + FAIR_MARGIN) return WINNING_TINT;
+  if (pct < 50 - FAIR_MARGIN) return LOSING_TINT;
+  return FAIR_TINT;
+}
+
+// The Matchup header's win bar, with a neutral "Fair" block between the two
+// sides. `pctA` null = not both sides have picked players yet - held at a
+// dimmed 50/50.
+function TradeBalanceBar({ pctA }: { pctA: number | null }) {
+  const a = pctA ?? 50;
+  const b = 100 - a;
+  const scale = (100 - FAIR_BLOCK_PCT) / 100;
+  return (
+    <div className={pctA === null ? classes.headerPending : undefined} aria-hidden>
+      <div className={classes.winRow}>
+        <span>{pctA === null ? "–" : `${a}%`}</span>
+        <div className={classes.winBar}>
+          <div
+            className={classes.winSegment}
+            style={{ width: `${a * scale}%`, ["--pill-tint" as string]: segmentTint(a) }}
+          />
+          <div
+            className={`${classes.winSegment} ${classes.fairBlock}`}
+            style={{ width: `${FAIR_BLOCK_PCT}%`, ["--pill-tint" as string]: FAIR_TINT }}
+          />
+          <div
+            className={classes.winSegment}
+            style={{ width: `${b * scale}%`, ["--pill-tint" as string]: segmentTint(b) }}
+          />
+        </div>
+        <span>{pctA === null ? "–" : `${b}%`}</span>
+      </div>
+      <div className={classes.fairLabel}>Fair</div>
+    </div>
+  );
+}
+
+function balanceText(name: string, pctA: number): string {
+  if (Math.abs(pctA - 50) <= FAIR_MARGIN) return `fair trade, ${pctA}% to ${100 - pctA}%`;
+  return `${name} wins the trade, ${Math.max(pctA, 100 - pctA)}% of the value`;
+}
+
 export interface TradePartnerOption {
   value: string;
   label: string;
@@ -188,12 +250,18 @@ export function GlassTradeHeader({
     ]
       .filter(Boolean)
       .join(", ");
+  const bothLoaded = teamA !== "loading" && teamB !== "loading" && teamB !== null;
+  const pctA =
+    bothLoaded && teamA.sendCount > 0 && teamB.sendCount > 0
+      ? Math.round(winningShareA(teamA, teamB) * 100)
+      : null;
   const ariaLabel =
     teamA === "loading"
       ? "Loading trade"
       : teamB === "loading" || teamB === null
         ? teamText(teamA)
-        : `${teamText(teamA)}; ${teamText(teamB)}`;
+        : `${teamText(teamA)}; ${teamText(teamB)}` +
+          (pctA !== null ? `; ${balanceText(pctA >= 50 ? teamA.name : teamB.name, pctA)}` : "");
   const picker = (
     <PartnerPicker options={partnerOptions} value={partnerId} onChange={onPartnerChange} />
   );
@@ -227,6 +295,7 @@ export function GlassTradeHeader({
           </div>
         )}
       </div>
+      {teamB !== null && <TradeBalanceBar pctA={pctA} />}
     </div>
   );
 }

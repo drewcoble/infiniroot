@@ -1616,3 +1616,20 @@
     border-radius: 6px;
   }
 }
+
+/* Trade header's balance bar: the fixed neutral block between the two
+   sides' segments (GlassTradeHeader's FAIR_BLOCK_PCT), labeled under it. */
+.fairBlock {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.fairLabel {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
