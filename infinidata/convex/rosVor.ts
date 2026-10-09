@@ -9,6 +9,10 @@ import { gatherRosProjTotals } from "./rosProjTotals";
 
 type Position = (typeof POSITIONS)[number];
 
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 export interface RosVorRow {
   fpid: number;
   name: string;
@@ -75,8 +79,18 @@ export interface RosVorRow {
 // per-team granularity, and this table (unlike that one) never prunes old
 // weeks - the full history is the point (next season's draft prep wants
 // every week's board, not just the latest).
+//
+// `scheduled` marks a daily-cron run. On a deployment with the
+// ROS_VOR_WEEKLY_ONLY env var set to "true" (dev - this refresh is one of
+// the biggest DB I/O costs there, and dev doesn't need daily numbers), a
+// scheduled run only does real work on Thursday's run (the cron fires at
+// 12:00 UTC, so Wed night/Thu morning US time) - or any day the current
+// week has no board yet, so a week rollover never leaves the Players/Trade
+// tabs empty until Thursday. Manual runs (fetchAll/refreshCaches) always
+// refresh.
+const WEEKLY_REFRESH_UTC_DAY = 4; // Thursday
 export const refreshRosVor = internalMutation({
-  args: { seasonId: v.id("seasons") },
+  args: { seasonId: v.id("seasons"), scheduled: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const settings = await ctx.db.get(args.seasonId);
     if (!settings) return;
@@ -87,6 +101,14 @@ export const refreshRosVor = internalMutation({
     // a real week), unlike draftValues, which stays meaningful year-round.
     const nflState = await ctx.db.query("nflState").first();
     if (!nflState || nflState.seasonType !== "regular") return;
+
+    if (args.scheduled && process.env.ROS_VOR_WEEKLY_ONLY === "true" && new Date().getUTCDay() !== WEEKLY_REFRESH_UTC_DAY) {
+      const hasBoard = await ctx.db
+        .query("rosVorSnapshots")
+        .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", nflState.week))
+        .first();
+      if (hasBoard) return;
+    }
 
     const remainingWeeks = Math.max(18 - Number(nflState.week) + 1, 0);
     const activePositions = POSITIONS.filter(
@@ -262,34 +284,41 @@ export const refreshRosVor = internalMutation({
     const now = Date.now();
     const seen = new Set<number>();
 
+    // Only write rows whose values actually changed - most of the board is
+    // identical day to day (deep bench players, anyone whose projection
+    // didn't move), and unconditionally patching every row (computedAt
+    // alone always differed) was rewriting the whole table every run.
+    // Floats are rounded so sub-display noise doesn't count as a change;
+    // computedAt therefore means "last time this row's values changed."
     for (const { form, rosValue, rosVor, actualVor, rosPpg, actualPpg, weekVor, weekPpg } of valued) {
       seen.add(form.fpid);
       const fields = {
         position: form.position,
         name: form.name,
         team: form.team,
-        rosValue,
-        rosPpg,
-        actualPpg,
+        rosValue: round2(rosValue),
+        rosPpg: round2(rosPpg),
+        actualPpg: round2(actualPpg),
         boostReason: boosts.get(form.fpid)?.reason ?? null,
-        rosVor,
+        rosVor: round2(rosVor),
         rosRank: rosRankByFpid.get(form.fpid) ?? 0,
-        actualVor,
+        actualVor: round2(actualVor),
         actualRank: actualRankByFpid.get(form.fpid) ?? 0,
-        weekVor,
+        weekVor: round2(weekVor),
         weekRank: weekRankByFpid.get(form.fpid) ?? 0,
-        weekPpg,
-        computedAt: now,
+        weekPpg: round2(weekPpg),
       };
       const match = existingByFpid.get(form.fpid);
       if (match) {
-        await ctx.db.patch(match._id, fields);
+        const changed = (Object.keys(fields) as (keyof typeof fields)[]).some((key) => match[key] !== fields[key]);
+        if (changed) await ctx.db.patch(match._id, { ...fields, computedAt: now });
       } else {
         await ctx.db.insert("rosVorSnapshots", {
           seasonId: args.seasonId,
           week: nflState.week,
           fpid: form.fpid,
           ...fields,
+          computedAt: now,
         });
       }
     }
