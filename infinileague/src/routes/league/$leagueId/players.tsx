@@ -46,6 +46,11 @@ const SORT_LABELS: Record<"week" | "ros", Record<Exclude<SortKey, "rank">, strin
   ros: { actual: "PPG", projected: "ROS PPG" },
 };
 
+// "RB12", or "—" when there's no rank (0).
+function positionRankLabel(position: string, rank: number): string {
+  return rank > 0 ? `${position}${rank}` : "—";
+}
+
 // Overall + positional ranks for a stat sort, so the rank chip and the
 // position badge ("RB12") always describe the order the list is actually
 // in - the backend's rosRank/positionRank are rosVOR ranks and would read
@@ -292,6 +297,22 @@ function PlayersPage() {
                   projection: isWeekMode
                     ? `Proj ${row.weekPpg.toFixed(1)}`
                     : `ROS ${row.rosPpg.toFixed(1)}`,
+                  // Long-press popover tiles - both views' numbers at once,
+                  // whichever view the list is in.
+                  stats: [
+                    { label: "Season PPG", value: row.actualPpg.toFixed(1) },
+                    { label: "ROS PPG", value: row.rosPpg.toFixed(1) },
+                    { label: "ROS rank", value: positionRankLabel(row.position, row.positionRank) },
+                    { label: `Wk ${nflState.week} proj`, value: row.weekPpg.toFixed(1) },
+                    {
+                      label: `Wk ${nflState.week} pts`,
+                      value: row.weekPoints !== undefined ? row.weekPoints.toFixed(2) : "—",
+                    },
+                    {
+                      label: "Wk proj rank",
+                      value: positionRankLabel(row.position, row.weekPositionRank),
+                    },
+                  ],
                 }}
               />
             </div>

@@ -1,7 +1,10 @@
-import type { CSSProperties } from "react";
+import { useId, type CSSProperties } from "react";
+import { X } from "lucide-react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { pillStyle } from "./cardShared";
+import { GlassPopover } from "./GlassPopover";
+import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassPlayerRowData {
@@ -19,6 +22,8 @@ export interface GlassPlayerRowData {
   // when there's nothing yet - and the projection, small, under it.
   actual: string;
   projection: string;
+  // Labeled tiles for the long-press detail popover.
+  stats: Array<{ label: string; value: string }>;
 }
 
 // Rank chip outside the row - glass gray, saddlebrown for your own players
@@ -33,7 +38,9 @@ function rankChipStyle(isOnMyTeam: boolean): CSSProperties {
 
 // One row of the Players board in the full-width glass card layout (see
 // GlassRosterCard): name with rookie/injury badges | actual number, then
-// position + NFL team + who rosters them | projection.
+// position + NFL team + who rosters them | projection. Long-press (or
+// Enter/Space) opens the player's detail popover - badges spelled out, the
+// owner, and season / rest-of-season / this-week stat tiles.
 export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
   const owner = data.rosteredByTeamName;
   const label = [
@@ -50,8 +57,11 @@ export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
     .filter(Boolean)
     .join(", ");
 
+  const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label);
+  const titleId = useId();
+
   return (
-    <div className={classes.rosterRow} role="group" aria-label={label}>
+    <div className={classes.rosterRow}>
       <span
         className={`${classes.pill} ${classes.slotChip}`}
         style={rankChipStyle(data.isOnMyTeam)}
@@ -59,7 +69,19 @@ export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
       >
         {data.rank}
       </span>
-      <div className={`${classes.card} ${classes.wide} ${classes.playerRow}`} aria-hidden>
+      <div
+        {...cardProps}
+        className={[
+          classes.card,
+          classes.wide,
+          classes.playerRow,
+          classes.pressable,
+          pressing && classes.pressing,
+          expanded && classes.hidden,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <div className={`${classes.wideName} ${classes.teamCardName}`}>
           <span className={classes.name}>{data.name}</span>
           {data.isRookie && (
@@ -113,6 +135,60 @@ export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
         </div>
         <div className={classes.wideProj}>{data.projection}</div>
       </div>
+      {anchor && (
+        <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
+          <div className={classes.expandedHeader}>
+            <div className={classes.teamCardPopoverTitle}>
+              <span className={classes.pill} style={rankChipStyle(data.isOnMyTeam)}>
+                #{data.rank}
+              </span>
+              <span id={titleId} className={classes.expandedName}>
+                {data.name}
+              </span>
+            </div>
+            <button
+              type="button"
+              className={classes.closeButton}
+              onClick={close}
+              aria-label="Close"
+            >
+              <X size={16} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          <div className={classes.pills}>
+            <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
+              {data.position}
+              {data.positionRank > 0 ? data.positionRank : ""}
+            </span>
+            {data.injury && (
+              <span className={classes.pill} style={pillStyle(injuryColor(data.injury.status))}>
+                {data.injury.status}
+              </span>
+            )}
+            {data.isRookie && (
+              <span className={classes.pill} style={pillStyle("grape")}>
+                Rookie
+              </span>
+            )}
+          </div>
+
+          <div className={classes.gameLine}>
+            <span className={classes.gameLineText}>
+              {[data.team, owner ?? "Free agent"].filter(Boolean).join(" · ")}
+            </span>
+          </div>
+
+          <div className={classes.statGrid}>
+            {data.stats.map((stat) => (
+              <div key={stat.label} className={classes.stat}>
+                <div className={classes.statValue}>{stat.value}</div>
+                <div className={classes.statLabel}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </GlassPopover>
+      )}
     </div>
   );
 }
