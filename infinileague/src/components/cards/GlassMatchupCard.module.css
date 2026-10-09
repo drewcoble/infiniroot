@@ -60,8 +60,10 @@
   );
 }
 
+/* Bye / IR players - the same 45% the Matchup tab's "Live only" mode fades
+   non-live players to (MatchupRosterMatchup's LIVE_ONLY_DIM). */
 .muted {
-  opacity: 0.72;
+  opacity: 0.45;
 }
 
 /* Empty slots are a recess in the page rather than a card - a well a

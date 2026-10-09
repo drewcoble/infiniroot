@@ -28,7 +28,8 @@ interface MatchupRosterMatchupProps {
   liveOnly?: boolean;
 }
 
-// How far Live only fades the non-live player in a row with a live one.
+// How far Live only fades the non-live player in a row with a live one -
+// the same level bye/IR cards sit at (.muted).
 const LIVE_ONLY_DIM = 0.45;
 
 // Same wrapper both TradeRosterMatchup and this component render every row
@@ -97,11 +98,15 @@ export function MatchupRosterSkeleton() {
 // chip between the two columns - the glass Matchup cards (see
 // components/cards/), long-press for each player's detail card.
 export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
-  const isLive = (row: TeamRosterRow | undefined) =>
-    row?.fpid !== undefined && props.toCardData(row).gameState === "live";
-  const rows = alignRosterRows(props.teamARows, props.teamBRows)
-    .map((row) => ({ ...row, aLive: isLive(row.a), bLive: isLive(row.b) }))
-    .filter((row) => !props.liveOnly || row.aLive || row.bLive);
+  const stateOf = (row: TeamRosterRow | undefined) =>
+    row?.fpid !== undefined ? props.toCardData(row).gameState : undefined;
+  // Live-only dims a non-live player - unless its card is already faded to
+  // the same level (bye/IR), so the two never stack.
+  const shouldDim = (row: TeamRosterRow | undefined) =>
+    props.liveOnly === true && stateOf(row) !== "live" && stateOf(row) !== "bye";
+  const rows = alignRosterRows(props.teamARows, props.teamBRows).filter(
+    (row) => !props.liveOnly || stateOf(row.a) === "live" || stateOf(row.b) === "live",
+  );
 
   if (props.liveOnly && rows.length === 0) {
     return (
@@ -113,7 +118,7 @@ export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
 
   return (
     <>
-      {rows.map(({ a: aRow, b: bRow, aLive, bLive }, index) => {
+      {rows.map(({ a: aRow, b: bRow }, index) => {
         const section = rosterSection(aRow?.slot ?? bRow?.slot);
         const previous = index > 0 ? rows[index - 1] : undefined;
         const startsSection =
@@ -122,7 +127,7 @@ export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
           <Fragment key={`${aRow?.fpid ?? aRow?.slot}-${bRow?.fpid ?? bRow?.slot}-${index}`}>
             {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
             <Group wrap="nowrap" gap="xs" align="stretch">
-              <Cell row={aRow} props={props} dimmed={props.liveOnly === true && !aLive} />
+              <Cell row={aRow} props={props} dimmed={shouldDim(aRow)} />
               <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
               {props.teamBRows === undefined && props.teamBLoading ? (
                 <SkeletonCell />
@@ -130,7 +135,7 @@ export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
                 <Cell
                   row={props.teamBRows ? bRow : undefined}
                   props={props}
-                  dimmed={props.liveOnly === true && !bLive}
+                  dimmed={shouldDim(bRow)}
                 />
               )}
             </Group>
