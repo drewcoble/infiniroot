@@ -1845,3 +1845,27 @@
 .suggestionTop .suggestionPartner {
   min-width: 0;
 }
+
+/* Trade header's verdict over the value bar - "X wins by 2,079" / "Fair
+   trade", with any consolidation credit in a quieter line under it. */
+.tradeVerdict {
+  text-align: center;
+}
+
+.tradeVerdictMain {
+  font-size: 14px;
+  font-weight: 650;
+  color: rgba(248, 250, 252, 0.92);
+}
+
+.tradeVerdictMain strong {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.tradeVerdictNote {
+  margin-top: 2px;
+  font-size: 11px;
+  color: rgba(248, 250, 252, 0.6);
+}

@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { Box, Group } from "@mantine/core";
-import type { RosVorRow, TeamRosterRow } from "../types/season";
+import type { RosVorRow, TeamRosterRow, TradeValueRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
 import { slotLabel } from "../lib/matchupCardData";
 import { ROSTER_SECTION_LABEL, rosterSection } from "./cards/cardShared";
@@ -19,6 +19,8 @@ interface TradeRosterMatchupProps {
   teamBRows: TeamRosterRow[] | undefined;
   teamBLoading: boolean;
   vorByFpid: Map<number, RosVorRow>;
+  // Trade values - undefined while they load.
+  valueByFpid: Map<number, TradeValueRow> | undefined;
   // What the cards show (the Trade tab's top switch).
   metric: TradeMetric;
   shortName: (fullName: string) => string;
@@ -28,7 +30,14 @@ interface TradeRosterMatchupProps {
   onToggleB: (fpid: number) => void;
 }
 
-function toTradeCardData(row: TeamRosterRow, vor: RosVorRow | undefined): GlassTradeCardData {
+function toTradeCardData(
+  row: TeamRosterRow,
+  vor: RosVorRow | undefined,
+  values: Map<number, TradeValueRow> | undefined,
+): GlassTradeCardData {
+  const value = row.fpid !== undefined ? values?.get(row.fpid) : undefined;
+  // Loaded, but this player isn't on the board - worth nothing in a trade.
+  const missing = values !== undefined && value === undefined;
   return {
     name: row.name ?? "",
     position: row.position ?? "QB",
@@ -43,6 +52,9 @@ function toTradeCardData(row: TeamRosterRow, vor: RosVorRow | undefined): GlassT
     rosVor: vor?.rosVor,
     seasonRank: vor?.actualRank,
     rosRank: vor?.rosRank,
+    tradeValue: missing ? 0 : value?.value,
+    marketValue: missing ? null : value?.marketValue,
+    projectionValue: missing ? 0 : value?.projectionValue,
   };
 }
 
@@ -65,7 +77,7 @@ function Cell({
     <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
       {row !== undefined && fpid !== undefined ? (
         <GlassTradeCard
-          data={toTradeCardData(row, props.vorByFpid.get(fpid))}
+          data={toTradeCardData(row, props.vorByFpid.get(fpid), props.valueByFpid)}
           displayName={props.shortName(row.name ?? "")}
           slot={slotLabel(row.slot)}
           metric={props.metric}

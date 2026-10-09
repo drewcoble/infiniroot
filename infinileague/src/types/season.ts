@@ -224,3 +224,14 @@ export interface TeamRosterRow {
   actualPoints?: number;
   projectedPoints?: number;
 }
+
+// Mirrors convex/infinileague/season/tradeValues.ts's TradeValueRow - a
+// FantasyCalc-style trade value per player (thousands scale, additive):
+// the blend of FantasyCalc's market value (null for K/DST, which it
+// doesn't price) and our rest-of-season VOR put on the same scale.
+export interface TradeValueRow {
+  fpid: number;
+  value: number;
+  marketValue: number | null;
+  projectionValue: number;
+}

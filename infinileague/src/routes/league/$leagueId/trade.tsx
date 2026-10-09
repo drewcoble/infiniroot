@@ -18,6 +18,7 @@ import {
   type TradeSuggestion,
 } from "../../../components/cards/GlassTradeSuggestionCard";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
+import { formatTradeValue, tradeTotals } from "../../../lib/tradeValue";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
 import {
   TradePowerRankingsSheet,
@@ -28,6 +29,7 @@ import type {
   RosVorRow,
   StandingsRow,
   TeamRosterRow,
+  TradeValueRow,
 } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/trade")({
@@ -104,7 +106,32 @@ function TradePage() {
 
   // What the cards show - VOR, PPG, or overall rank, each season to date
   // and rest of season.
-  const [metric, setMetric] = useState<TradeMetric>("ppg");
+  const [metric, setMetric] = useState<TradeMetric>("value");
+
+  // FantasyCalc-style trade value per player - FantasyCalc's market value
+  // blended with our rest-of-season VOR (see convex/infinileague/season/
+  // tradeValues.ts). What the header adds up and the bar compares.
+  const getTradeValues = useAction(api.infinileague.season.tradeValues.getTradeValues);
+  const [tradeValues, setTradeValues] = useState<TradeValueRow[] | undefined>(undefined);
+  const [tradeValuesError, setTradeValuesError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    getTradeValues({ seasonId })
+      .then((rows) => {
+        if (!cancelled) setTradeValues(rows);
+      })
+      .catch((err) => {
+        if (!cancelled) setTradeValuesError(getErrorMessage(err, "Couldn't load trade values."));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [seasonId, isAuthenticated, getTradeValues]);
+  const valueByFpid = useMemo(
+    () => (tradeValues ? new Map(tradeValues.map((row) => [row.fpid, row])) : undefined),
+    [tradeValues],
+  );
 
   const [selectedA, setSelectedA] = useState<Set<number>>(new Set());
   const [selectedB, setSelectedB] = useState<Set<number>>(new Set());
@@ -278,6 +305,7 @@ function TradePage() {
       value={metric}
       onChange={setMetric}
       options={[
+        { label: "Value", value: "value" as const },
         { label: "VOR", value: "vor" as const },
         { label: "PPG", value: "ppg" as const },
         { label: "Ranks", value: "rank" as const },
@@ -348,7 +376,19 @@ function TradePage() {
     (latestImpact?.before ?? []).map((row) => [row.teamId, row.totalProjectedPoints]),
   );
 
+  // Each side's sent players' trade values, and the totals with any
+  // consolidation credit (lib/tradeValue.ts) - undefined while the values
+  // load. A player missing from the values is worth 0.
+  const sentValues = (rows: TeamRosterRow[] | undefined, selected: Set<number>) =>
+    (rows ?? [])
+      .filter((row) => row.fpid !== undefined && selected.has(row.fpid))
+      .map((row) => valueByFpid?.get(row.fpid ?? -1)?.value ?? 0);
+  const totals = valueByFpid
+    ? tradeTotals(sentValues(teamARoster.rows, selectedA), sentValues(teamBRoster.rows, selectedB))
+    : undefined;
+
   const headerTeam = (
+    side: "A" | "B",
     teamId: string,
     name: string,
     rows: TeamRosterRow[] | undefined,
@@ -362,7 +402,6 @@ function TradePage() {
       } else {
         const afterIndex = latestImpact.after.findIndex((row) => row.teamId === teamId);
         const beforePoints = beforePointsByTeam.get(teamId);
-        const beforePpg = latestImpact.before.find((row) => row.teamId === teamId)?.rosPpg;
         const after = latestImpact.after[afterIndex];
         impact =
           after === undefined
@@ -374,27 +413,28 @@ function TradePage() {
                   beforePoints !== undefined
                     ? after.totalProjectedPoints - beforePoints
                     : undefined,
-                ppgDiff:
-                  beforePpg !== undefined && after.rosPpg !== undefined
-                    ? after.rosPpg - beforePpg
-                    : undefined,
               };
       }
     }
+    const tradeValue = totals ? (side === "A" ? totals.rawA : totals.rawB) : undefined;
+    // The big number follows the switch. Ranks don't add up, so the Ranks
+    // view totals VOR - the value those ranks are ordered by.
+    const statTotal = sending.reduce((total, row) => {
+      const vor = vorByFpid.get(row.fpid ?? -1);
+      return total + ((metric === "ppg" ? vor?.rosPpg : vor?.rosVor) ?? 0);
+    }, 0);
     return {
       name,
       sendCount: sending.length,
-      // Ranks don't add up, so the Ranks view totals VOR - the value
-      // those ranks are ordered by.
-      sendValue: sending.reduce((total, row) => {
-        const vor = vorByFpid.get(row.fpid ?? -1);
-        return total + ((metric === "ppg" ? vor?.rosPpg : vor?.rosVor) ?? 0);
-      }, 0),
-      valueLabel: metric === "ppg" ? "ROS PPG" : "ROS VOR",
-      sendVor: sending.reduce(
-        (total, row) => total + (vorByFpid.get(row.fpid ?? -1)?.rosVor ?? 0),
-        0,
-      ),
+      sendDisplay:
+        metric === "value"
+          ? tradeValue !== undefined
+            ? formatTradeValue(tradeValue)
+            : "…"
+          : statTotal.toFixed(1),
+      valueLabel: metric === "value" ? "Value" : metric === "ppg" ? "ROS PPG" : "ROS VOR",
+      tradeValue,
+      valueAdjustment: totals ? (side === "A" ? totals.adjustmentA : totals.adjustmentB) : 0,
       impact,
     };
   };
@@ -406,6 +446,7 @@ function TradePage() {
       {metricSwitch}
 
       {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
+      {tradeValuesError && <Alert color="red">{tradeValuesError}</Alert>}
       {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
       {impactError && (
         <Alert color="red" withCloseButton onClose={() => setTradeImpactError(null)}>
@@ -417,14 +458,14 @@ function TradePage() {
         teamA={
           teamAId === null || teamARoster.rows === undefined
             ? "loading"
-            : headerTeam(teamAId, selfTeamName, teamARoster.rows, selectedA)
+            : headerTeam("A", teamAId, selfTeamName, teamARoster.rows, selectedA)
         }
         teamB={
           teamBId === null
             ? null
             : teamBRoster.rows === undefined
               ? "loading"
-              : headerTeam(teamBId, teamBName, teamBRoster.rows, selectedB)
+              : headerTeam("B", teamBId, teamBName, teamBRoster.rows, selectedB)
         }
         partnerOptions={teamBOptions}
         partnerId={teamBId}
@@ -440,6 +481,7 @@ function TradePage() {
             teamBRows={teamBRoster.rows}
             teamBLoading={teamBId !== null}
             vorByFpid={vorByFpid}
+            valueByFpid={valueByFpid}
             metric={metric}
             shortName={shortName}
             selectedA={selectedA}

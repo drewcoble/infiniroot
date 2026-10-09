@@ -1882,4 +1882,15 @@ export default defineSchema({
   genericLeagueConfig: defineTable({
     seasonId: v.id("seasons"),
   }),
+
+  // FantasyCalc's redraft trade values (api.fantasycalc.com), cached per
+  // league-settings combination - `key` is "teams:qbs:ppr", e.g. "12:1:1" -
+  // so the Trade tab's player values don't call out to FantasyCalc on every
+  // page load. Refreshed when older than tradeValues.ts's CACHE_MS. fpid is
+  // the Sleeper player id (FantasyCalc's sleeperId), which is our fpid.
+  fantasyCalcValues: defineTable({
+    key: v.string(),
+    fetchedAt: v.number(),
+    values: v.array(v.object({ fpid: v.number(), value: v.number() })),
+  }).index("by_key", ["key"]),
 });

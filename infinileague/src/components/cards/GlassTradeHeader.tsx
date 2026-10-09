@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
+import { formatTradeValue } from "../../lib/tradeValue";
 import classes from "./GlassMatchupCard.module.css";
 
 // Where this team lands in the league's power rankings if the trade goes
@@ -7,22 +8,23 @@ import classes from "./GlassMatchupCard.module.css";
 export interface TradeImpactSide {
   beforeRank: number | undefined;
   afterRank: number;
-  // Rest-of-season optimal-lineup points, after minus before - in total,
-  // and per remaining week (the power rankings' ROS PPG).
+  // Rest-of-season optimal-lineup points, after minus before.
   pointsDiff: number | undefined;
-  ppgDiff: number | undefined;
 }
 
 export interface TradeHeaderTeam {
   name: string;
-  // Players this team gives up, and their combined rest-of-season value in
-  // `valueLabel`'s units ("ROS VOR" / "ROS PPG").
+  // Players this team gives up, and their combined total in the switch's
+  // metric - already formatted (`sendDisplay`), labeled by `valueLabel`
+  // ("Value" / "ROS VOR" / "ROS PPG").
   sendCount: number;
-  sendValue: number;
+  sendDisplay: string;
   valueLabel: string;
-  // Combined rest-of-season VOR of the players sent, whatever the switch
-  // shows - one half of the winner bar (see tradeBalanceA).
-  sendVor: number;
+  // Combined trade value of the players sent (lib/tradeValue.ts), whatever
+  // the switch shows - what the bar compares - plus any consolidation
+  // credit this side gets. undefined while the values load.
+  tradeValue: number | undefined;
+  valueAdjustment: number;
   // undefined = no impact to show yet (a side has nothing selected);
   // "loading" = being computed.
   impact: TradeImpactSide | "loading" | undefined;
@@ -87,7 +89,7 @@ function TeamSide({
         </div>
       )}
       <div className={classes.headerTotal} aria-hidden>
-        {team.sendCount > 0 ? team.sendValue.toFixed(1) : "—"}
+        {team.sendCount > 0 ? team.sendDisplay : "—"}
       </div>
       <div className={classes.tradeHeaderSends} aria-hidden>
         {team.sendCount > 0
@@ -112,47 +114,28 @@ function TeamSideSkeleton({ align, name }: { align: "left" | "right"; name?: Rea
   );
 }
 
-// "Who's winning" split - each side's segment is how much it's LOSING the
-// trade, so the loser's segment is the bigger, red one and the winner's
-// the smaller, green one. Blends two reads, half each (BALANCE_WEIGHTS):
-// - VOR: each side's share of the rest-of-season VOR changing hands,
-//   counting what it sends (negative VOR - a below-replacement player -
-//   counts as nothing rather than flipping the split).
-// - Lineup: the power rankings' read - how each team's rest-of-season
-//   optimal-lineup PPG changes. The side whose lineup gains less is losing
-//   that half, on a logistic curve over the gap (LINEUP_PPG_SCALE: a 1 PPG
-//   gap reads ~73/27, 2 PPG ~88/12).
-// Until the power-rankings impact comes back, the split is VOR alone, held
-// dimmed. A split within FAIR_MARGIN points of 50/50 has no winner: both
-// segments go neutral gray and the bar's fixed "Fair" zone (the same
-// 46-54% band, drawn over the middle of the bar) lights up.
-const BALANCE_WEIGHTS = { vor: 0.5, lineup: 0.5 };
-const LINEUP_PPG_SCALE = 1;
+// "Who's winning" split, FantasyCalc-style: each side's segment is its
+// share of the trade value changing hands, counting what it SENDS (plus
+// any consolidation credit - see lib/tradeValue.ts) - so the side giving
+// up more value has the bigger, red segment (it's losing the trade) and
+// the side giving up less the smaller, green one. A split within
+// FAIR_MARGIN points of 50/50 has no winner: both segments go neutral gray
+// and the bar's fixed "Fair" zone (the same 46-54% band, drawn over the
+// middle of the bar) lights up.
 const FAIR_MARGIN = 4;
 const WINNING_TINT = "#4ade80";
 const LOSING_TINT = "#f87171";
 const FAIR_TINT = "#9ca3af";
 
-function ppgDiffOf(team: TradeHeaderTeam): number | undefined {
-  return team.impact !== undefined && team.impact !== "loading" ? team.impact.ppgDiff : undefined;
+function adjustedValue(team: TradeHeaderTeam): number {
+  return (team.tradeValue ?? 0) + team.valueAdjustment;
 }
 
-// Team A's losing share (0-1), and whether the lineup half is in yet.
-function tradeBalanceA(
-  teamA: TradeHeaderTeam,
-  teamB: TradeHeaderTeam,
-): { shareA: number; complete: boolean } {
-  const sentA = Math.max(teamA.sendVor, 0);
-  const sentB = Math.max(teamB.sendVor, 0);
-  const vorShareA = sentA + sentB > 0 ? sentA / (sentA + sentB) : 0.5;
-  const gainA = ppgDiffOf(teamA);
-  const gainB = ppgDiffOf(teamB);
-  if (gainA === undefined || gainB === undefined) return { shareA: vorShareA, complete: false };
-  const lineupShareA = 1 / (1 + Math.exp((gainA - gainB) / LINEUP_PPG_SCALE));
-  return {
-    shareA: BALANCE_WEIGHTS.vor * vorShareA + BALANCE_WEIGHTS.lineup * lineupShareA,
-    complete: true,
-  };
+// Team A's share of the value sent (0-1).
+function sentShareA(teamA: TradeHeaderTeam, teamB: TradeHeaderTeam): number {
+  const sentA = adjustedValue(teamA);
+  const sentB = adjustedValue(teamB);
+  return sentA + sentB > 0 ? sentA / (sentA + sentB) : 0.5;
 }
 
 function isFair(pct: number): boolean {
@@ -168,15 +151,14 @@ function segmentTint(pct: number): string {
 // balance point - with the "Fair" zone as a fixed overlay on the bar's
 // middle: it stays put while the split moves, and highlights when the
 // split lands inside it. `pctA` null = not both sides have picked players
-// yet - held at a dimmed 50/50; `pending` = VOR-only while the lineup half
-// is still being computed, dimmed.
-function TradeBalanceBar({ pctA, pending }: { pctA: number | null; pending: boolean }) {
+// (or the values are still loading) - held at a dimmed 50/50.
+function TradeBalanceBar({ pctA }: { pctA: number | null }) {
   const a = pctA ?? 50;
   const b = 100 - a;
-  const fair = pctA !== null && !pending && isFair(a);
+  const fair = pctA !== null && isFair(a);
   return (
     <div
-      className={`${classes.winRow} ${classes.tradeBalanceRow} ${pctA === null || pending ? classes.headerPending : ""}`}
+      className={`${classes.winRow} ${classes.tradeBalanceRow} ${pctA === null ? classes.headerPending : ""}`}
       aria-hidden
     >
       <span>{pctA === null ? "–" : `${a}%`}</span>
@@ -201,10 +183,50 @@ function TradeBalanceBar({ pctA, pending }: { pctA: number | null; pending: bool
   );
 }
 
-// `name` = the side with the smaller (winning) share.
-function balanceText(name: string, pctA: number): string {
-  if (isFair(pctA)) return `fair trade, ${pctA}% to ${100 - pctA}%`;
-  return `${name} wins the trade, ${Math.min(pctA, 100 - pctA)}% to ${Math.max(pctA, 100 - pctA)}%`;
+// The verdict over the bar, FantasyCalc's "Favors ... by 2,079": who wins
+// and by how much value, or that it's fair - plus the consolidation
+// credit, when one applies, so the totals above still add up.
+function TradeVerdict({ teamA, teamB }: { teamA: TradeHeaderTeam; teamB: TradeHeaderTeam }) {
+  const pctA = Math.round(sentShareA(teamA, teamB) * 100);
+  const margin = Math.abs(adjustedValue(teamA) - adjustedValue(teamB));
+  const winner = adjustedValue(teamA) < adjustedValue(teamB) ? teamA : teamB;
+  const adjusted = teamA.valueAdjustment > 0 ? teamA : teamB.valueAdjustment > 0 ? teamB : null;
+  return (
+    <div className={classes.tradeVerdict}>
+      <div className={classes.tradeVerdictMain}>
+        {isFair(pctA) ? (
+          <>Fair trade</>
+        ) : (
+          <>
+            {winner.name} wins by <strong>{formatTradeValue(margin)}</strong>
+          </>
+        )}
+      </div>
+      {adjusted && (
+        <div className={classes.tradeVerdictNote}>
+          Includes +{formatTradeValue(adjusted.valueAdjustment)} consolidation credit for{" "}
+          {adjusted.name}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function verdictText(teamA: TradeHeaderTeam, teamB: TradeHeaderTeam): string {
+  const pctA = Math.round(sentShareA(teamA, teamB) * 100);
+  const margin = Math.abs(adjustedValue(teamA) - adjustedValue(teamB));
+  const winner = adjustedValue(teamA) < adjustedValue(teamB) ? teamA : teamB;
+  const adjusted = teamA.valueAdjustment > 0 ? teamA : teamB.valueAdjustment > 0 ? teamB : null;
+  return [
+    isFair(pctA)
+      ? `fair trade, ${pctA}% to ${100 - pctA}% of the value`
+      : `${winner.name} wins by ${formatTradeValue(margin)} value`,
+    adjusted
+      ? `including ${formatTradeValue(adjusted.valueAdjustment)} consolidation credit for ${adjusted.name}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 export interface TradePartnerOption {
@@ -259,10 +281,11 @@ function PartnerPicker({
 }
 
 // Trade tab's header in the Matchup header's glass and two-column layout:
-// each side's team name, the rest-of-season value it sends (the big number -
-// VOR or PPG, following the page's switch), how many players that is, and -
+// each side's team name, the total it sends (the big number - trade value,
+// VOR, or PPG, following the page's switch), how many players that is, and -
 // once both sides have picked players - where the trade leaves the team in
-// the power rankings. The right side's name is the trade-partner picker;
+// the power rankings, a FantasyCalc-style verdict ("X wins by 2,079"), and
+// the value bar. The right side's name is the trade-partner picker;
 // `teamB` null = no partner picked yet (the rest of that side dimmed, like
 // the Matchup header's missing opponent).
 export function GlassTradeHeader({
@@ -282,26 +305,27 @@ export function GlassTradeHeader({
     [
       team.name,
       team.sendCount > 0
-        ? `sends ${team.sendCount} players, ${team.sendValue.toFixed(1)} ${team.valueLabel}`
+        ? `sends ${team.sendCount} players, ${team.sendDisplay} ${team.valueLabel}`
         : "no players selected",
       impactText(team),
     ]
       .filter(Boolean)
       .join(", ");
   const bothLoaded = teamA !== "loading" && teamB !== "loading" && teamB !== null;
-  const balance =
-    bothLoaded && teamA.sendCount > 0 && teamB.sendCount > 0 ? tradeBalanceA(teamA, teamB) : null;
-  const pctA = balance !== null ? Math.round(balance.shareA * 100) : null;
-  const balancePending = balance !== null && !balance.complete;
+  const comparable =
+    bothLoaded &&
+    teamA.sendCount > 0 &&
+    teamB.sendCount > 0 &&
+    teamA.tradeValue !== undefined &&
+    teamB.tradeValue !== undefined;
+  const pctA = comparable ? Math.round(sentShareA(teamA, teamB) * 100) : null;
   const ariaLabel =
     teamA === "loading"
       ? "Loading trade"
       : teamB === "loading" || teamB === null
         ? teamText(teamA)
         : `${teamText(teamA)}; ${teamText(teamB)}` +
-          (pctA !== null && !balancePending
-            ? `; ${balanceText(pctA <= 50 ? teamA.name : teamB.name, pctA)}`
-            : "");
+          (comparable ? `; ${verdictText(teamA, teamB)}` : "");
   const picker = (
     <PartnerPicker options={partnerOptions} value={partnerId} onChange={onPartnerChange} />
   );
@@ -335,7 +359,12 @@ export function GlassTradeHeader({
           </div>
         )}
       </div>
-      {teamB !== null && <TradeBalanceBar pctA={pctA} pending={balancePending} />}
+      {comparable && (
+        <div aria-hidden>
+          <TradeVerdict teamA={teamA} teamB={teamB} />
+        </div>
+      )}
+      {teamB !== null && <TradeBalanceBar pctA={pctA} />}
     </div>
   );
 }
