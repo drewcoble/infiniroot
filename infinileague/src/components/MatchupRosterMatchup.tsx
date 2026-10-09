@@ -3,7 +3,13 @@ import type { TeamRosterRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
 import { slotLabel } from "../lib/matchupCardData";
 import { Fragment } from "react";
-import { ROSTER_SECTION_LABEL, rosterSection, type GlassMatchupCardData } from "./cards/cardShared";
+import {
+  FINAL_CARD_OPACITY,
+  MUTED_CARD_OPACITY,
+  ROSTER_SECTION_LABEL,
+  rosterSection,
+  type GlassMatchupCardData,
+} from "./cards/cardShared";
 import {
   EmptyGlassCard,
   GlassMatchupCard,
@@ -28,21 +34,18 @@ interface MatchupRosterMatchupProps {
   liveOnly?: boolean;
 }
 
-// How far Live only fades the non-live player in a row with a live one -
-// the same level bye/IR cards sit at (.muted).
-const LIVE_ONLY_DIM = 0.45;
-
 // Same wrapper both TradeRosterMatchup and this component render every row
 // cell into - flex: 1/minWidth: 0 for an even width split, grid so the card
 // stretches to match whichever side of the row is taller.
 function Cell({
   row,
   props,
-  dimmed = false,
+  dim,
 }: {
   row: TeamRosterRow | undefined;
   props: MatchupRosterMatchupProps;
-  dimmed?: boolean;
+  // Live only's extra fade for this cell, if any (see dimFor).
+  dim?: number | undefined;
 }) {
   return (
     <Box
@@ -50,7 +53,7 @@ function Cell({
         flex: 1,
         minWidth: 0,
         display: "grid",
-        ...(dimmed ? { opacity: LIVE_ONLY_DIM } : {}),
+        ...(dim !== undefined ? { opacity: dim } : {}),
       }}
     >
       {row?.fpid !== undefined ? (
@@ -100,10 +103,15 @@ export function MatchupRosterSkeleton() {
 export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
   const stateOf = (row: TeamRosterRow | undefined) =>
     row?.fpid !== undefined ? props.toCardData(row).gameState : undefined;
-  // Live-only dims a non-live player - unless its card is already faded to
-  // the same level (bye/IR), so the two never stack.
-  const shouldDim = (row: TeamRosterRow | undefined) =>
-    props.liveOnly === true && stateOf(row) !== "live" && stateOf(row) !== "bye";
+  // Live only fades a non-live player to the bye/IR level (45%) overall,
+  // accounting for the fade its card already has: none more for bye/IR,
+  // just the difference for a finished card (already at 70%).
+  const dimFor = (row: TeamRosterRow | undefined): number | undefined => {
+    if (!props.liveOnly) return undefined;
+    const state = stateOf(row);
+    if (state === "live" || state === "bye") return undefined;
+    return state === "final" ? MUTED_CARD_OPACITY / FINAL_CARD_OPACITY : MUTED_CARD_OPACITY;
+  };
   const rows = alignRosterRows(props.teamARows, props.teamBRows).filter(
     (row) => !props.liveOnly || stateOf(row.a) === "live" || stateOf(row.b) === "live",
   );
@@ -127,16 +135,12 @@ export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
           <Fragment key={`${aRow?.fpid ?? aRow?.slot}-${bRow?.fpid ?? bRow?.slot}-${index}`}>
             {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
             <Group wrap="nowrap" gap="xs" align="stretch">
-              <Cell row={aRow} props={props} dimmed={shouldDim(aRow)} />
+              <Cell row={aRow} props={props} dim={dimFor(aRow)} />
               <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
               {props.teamBRows === undefined && props.teamBLoading ? (
                 <SkeletonCell />
               ) : (
-                <Cell
-                  row={props.teamBRows ? bRow : undefined}
-                  props={props}
-                  dimmed={shouldDim(bRow)}
-                />
+                <Cell row={props.teamBRows ? bRow : undefined} props={props} dim={dimFor(bRow)} />
               )}
             </Group>
           </Fragment>
