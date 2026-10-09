@@ -941,6 +941,14 @@
   font-weight: var(--font-numeric-weight);
 }
 
+/* Roster card's second-row numbers: small projection, then the actual
+   score - baselines lined up. */
+.wideNumbers {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .wideMeter {
   grid-area: meter;
   min-width: 0;

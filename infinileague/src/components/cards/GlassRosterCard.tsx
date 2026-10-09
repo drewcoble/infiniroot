@@ -2,6 +2,7 @@ import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault } from "@shared/positionColors";
 import {
   ariaSummary,
+  formatPoints,
   formatProj,
   pillStyle,
   positionBadge,
@@ -11,7 +12,7 @@ import { ExpandedMatchupCard } from "./ExpandedMatchupCard";
 import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassSlotChip } from "./GlassMatchupCard";
-import { PointsHeadline, PointsMeter } from "./PointsMeter";
+import { PointsMeter } from "./PointsMeter";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -19,10 +20,9 @@ import classes from "./GlassMatchupCard.module.css";
 // GlassMatchupCard, laid out for a full row on mobile: the roster slot chip
 // sits outside the card on the left (like the Matchup tab's slot chips
 // between columns), and inside it the full name with position/injury/game
-// beneath, the status icon and headline points on the name's row with the
-// projection on the game line's row, and the meter running the width
-// underneath. Full names fit here, so no
-// shortening.
+// beneath, status (live clock / icon) on the name's row with the projection
+// and actual score on the game line's row, and the meter running the width
+// underneath. Full names fit here, so no shortening.
 export function GlassRosterCard({
   data,
   slot,
@@ -66,13 +66,6 @@ export function GlassRosterCard({
               Matchup cards' top row. */}
           {isLive && data.status && <span className={classes.topClock}>{data.status}</span>}
           <GameStatusGlyph state={data.gameState} />
-          {/* Nothing scored yet before kickoff - the number slot stays
-              empty and the projection sits on the row below as usual. */}
-          {data.gameState !== "pre" && (
-            <div className={classes.statsRow}>
-              <PointsHeadline data={data} />
-            </div>
-          )}
         </div>
 
         <div className={classes.wideDetail} aria-hidden>
@@ -94,12 +87,18 @@ export function GlassRosterCard({
             <GameLineText data={data} hideLiveClock />
           </span>
         </div>
-        {/* Start/sit is what this screen is for, so the projection is
-            spelled out as a number here, not just the meter's tick - always
-            small and on this row, upcoming games included. */}
+        {/* The numbers share the second row: the projection spelled out
+            small (start/sit is what this screen is for, so not just the
+            meter's tick), then the actual score once the game has started.
+            Status (clock / dot) stays on the row above. */}
         {data.gameState !== "bye" && (
-          <div className={classes.wideProj} aria-hidden>
-            Proj {formatProj(data.projectedPoints)}
+          <div className={`${classes.wideProj} ${classes.wideNumbers}`} aria-hidden>
+            <span>Proj {formatProj(data.projectedPoints)}</span>
+            {data.gameState !== "pre" && (
+              <span className={`${classes.points} ${classes.playerPoints}`}>
+                {formatPoints(data.actualPoints)}
+              </span>
+            )}
           </div>
         )}
 
