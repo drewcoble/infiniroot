@@ -157,6 +157,30 @@
     0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
+
+/* Name + injury badge (Matchup card): the name truncates first, the badge
+   never shrinks. */
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nameRow .name {
+  min-width: 0;
+}
+
+.nameRow .pill {
+  flex-shrink: 0;
+}
+
+/* Top row (Matchup card): the position badge keeps its size; anything
+   that has to give is the gap, never an overlap. */
+.topRow .pills {
+  flex-shrink: 0;
+}
+
 .name {
   font-size: 15px;
   font-weight: 650;

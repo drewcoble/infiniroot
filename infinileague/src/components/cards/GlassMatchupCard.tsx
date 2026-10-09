@@ -61,15 +61,6 @@ export function GlassMatchupCard({
             <span className={classes.pill} style={pillStyle(positionColor)}>
               {positionBadge(data)}
             </span>
-            {data.injury && (
-              <span
-                className={classes.pill}
-                style={pillStyle(injuryColor(data.injury.status))}
-                title={data.injury.status}
-              >
-                {data.injury.statusShort}
-              </span>
-            )}
           </div>
           {/* While live, the clock rides in the top row beside the dot
               (the game line below then shows just the opponent). */}
@@ -80,7 +71,21 @@ export function GlassMatchupCard({
         </div>
 
         <div aria-hidden>
-          <div className={classes.name}>{displayName}</div>
+          {/* Injury badge rides after the name rather than in the top row,
+              which only has room for position, live clock, and status dot
+              on a half-width card. */}
+          <div className={classes.nameRow}>
+            <span className={classes.name}>{displayName}</span>
+            {data.injury && (
+              <span
+                className={classes.pill}
+                style={pillStyle(injuryColor(data.injury.status))}
+                title={data.injury.status}
+              >
+                {data.injury.statusShort}
+              </span>
+            )}
+          </div>
           <div className={classes.gameLine}>
             <GameLineText data={data} hideLiveClock />
           </div>
