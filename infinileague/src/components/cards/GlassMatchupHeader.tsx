@@ -36,7 +36,10 @@ function ScoreWithDecimals({ value }: { value: number }) {
   return (
     <>
       {whole}
-      <span className={classes.scoreDecimals}>.{fraction}</span>
+      <span className={classes.scoreDecimals}>
+        <span className={classes.scorePoint}>.</span>
+        {fraction}
+      </span>
     </>
   );
 }
