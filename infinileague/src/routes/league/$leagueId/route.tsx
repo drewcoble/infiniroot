@@ -6,9 +6,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
   CircleUserRound,
-  GalleryVerticalEnd,
-  HeartPulse,
-  LayoutGrid,
   Ticket,
   Trophy,
   UserSearch,
@@ -30,10 +27,7 @@ type TabValue =
   | "matchup"
   | "freeAgents"
   | "players"
-  | "depthCharts"
-  | "injuries"
-  | "trade"
-  | "cards";
+  | "trade";
 
 interface TabItem {
   value: TabValue;
@@ -43,6 +37,10 @@ interface TabItem {
   params: Record<string, string>;
 }
 
+// League-independent NFL reference pages (Depth Charts, Injuries) and the
+// admin-only Cards sandbox live in AppHeader's overflow menu instead of
+// here, keeping these tabs to this league's own content.
+//
 // Standings, Free Agents, and Players are always reachable; "Team" (your
 // own team) and "Matchup" only once the self team is known (both need a
 // concrete teamId param, unlike infinidraft's flat per-league tabs) so
@@ -120,32 +118,10 @@ function LeagueLayout() {
       params: { leagueId },
     },
     {
-      value: "depthCharts",
-      label: "Depth Charts",
-      icon: LayoutGrid,
-      to: "/league/$leagueId/depthCharts",
-      params: { leagueId },
-    },
-    {
-      value: "injuries",
-      label: "Injuries",
-      icon: HeartPulse,
-      to: "/league/$leagueId/injuries",
-      params: { leagueId },
-    },
-    {
       value: "trade",
       label: "Trade",
       icon: ArrowLeftRight,
       to: "/league/$leagueId/trade",
-      params: { leagueId },
-    },
-    // Design sandbox for the player-card redesign - see cards.tsx.
-    {
-      value: "cards",
-      label: "Cards",
-      icon: GalleryVerticalEnd,
-      to: "/league/$leagueId/cards",
       params: { leagueId },
     },
   ];
@@ -169,15 +145,9 @@ function LeagueLayout() {
             ? "freeAgents"
             : location.pathname === `/league/${leagueId}/players`
               ? "players"
-              : location.pathname === `/league/${leagueId}/depthCharts`
-                ? "depthCharts"
-                : location.pathname === `/league/${leagueId}/injuries`
-                  ? "injuries"
-                  : location.pathname === `/league/${leagueId}/trade`
-                    ? "trade"
-                    : location.pathname === `/league/${leagueId}/cards`
-                      ? "cards"
-                      : undefined;
+              : location.pathname === `/league/${leagueId}/trade`
+                ? "trade"
+                : undefined;
 
   return (
     <PageContainer pb={{ base: 100, sm: "xl" }}>

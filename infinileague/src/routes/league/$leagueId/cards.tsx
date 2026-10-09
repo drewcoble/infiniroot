@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Box, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Center, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { useQuery } from "convex/react";
+import { api } from "@infinidata/api";
 import {
   EmptyGlassCard,
   GlassMatchupCard,
@@ -328,7 +330,27 @@ const SAMPLE_WIN_PROB_A =
   1 /
   (1 + Math.exp(-(SAMPLE_HEADER.teamA.projectedPoints - SAMPLE_HEADER.teamB.projectedPoints) / 15));
 
+// Super-admin only - reachable from AppHeader's overflow menu, which hides
+// the link for everyone else; this guards a direct URL visit too.
 function CardsPage() {
+  const currentUser = useQuery(api.users.getCurrentUser);
+
+  if (currentUser === undefined) {
+    return (
+      <Center>
+        <Loader />
+      </Center>
+    );
+  }
+
+  if (currentUser?.role !== "super-admin") {
+    return (
+      <Text c="dimmed" ta="center" py="xl">
+        You don&apos;t have access to this page.
+      </Text>
+    );
+  }
+
   return (
     <Stack gap="md">
       <Stack gap={2}>
@@ -337,10 +359,6 @@ function CardsPage() {
           Design sandbox. Sample data only.
         </Text>
       </Stack>
-
-
-
-
 
       <Text fw={600}>Matchup: header card</Text>
 

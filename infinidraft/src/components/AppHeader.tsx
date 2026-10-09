@@ -1,7 +1,15 @@
 import { Badge, Button, Menu, Text } from "@mantine/core";
 import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
-import { Check, CreditCard, Database, Plus, ShieldCheck, Trophy } from "lucide-react";
+import {
+  Check,
+  CreditCard,
+  Database,
+  HeartPulse,
+  Plus,
+  ShieldCheck,
+  Trophy,
+} from "lucide-react";
 import { useMemo } from "react";
 import { api } from "@infinidata/api";
 import { AppHeader as SharedAppHeader } from "@shared/AppHeader";
@@ -166,6 +174,21 @@ export function AppHeader({ hideLeagueControls = false }: AppHeaderProps = {}) {
       leagueButtonWidth={{ base: 130, sm: 220 }}
       extraOverflowItems={
         <>
+          {/* NFL-wide reference page, not league content - kept out of the
+              league tabs (see league/$leagueId/route.tsx). Still routed
+              under a league since it filters and ranks by the league's
+              roster slots and scoring. */}
+          {leagueId && leagueId !== NEW_LEAGUE_VALUE && (
+            <Link
+              to="/league/$leagueId/injuries"
+              params={{ leagueId }}
+              style={{ textDecoration: "none" }}
+            >
+              <Menu.Item component="span" leftSection={<HeartPulse size={16} />}>
+                Injuries
+              </Menu.Item>
+            </Link>
+          )}
           {BILLING_LINK_ENABLED && (
             <Link to="/billing" style={{ textDecoration: "none" }}>
               <Menu.Item
