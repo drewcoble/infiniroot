@@ -1644,7 +1644,6 @@
 .suggestionCard {
   flex: 0 0 230px;
   scroll-snap-align: start;
-  min-height: 132px;
   cursor: pointer;
 }
 
@@ -1703,11 +1702,6 @@
   text-overflow: ellipsis;
 }
 
-.suggestionRank {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
 
 /* Detail popover's player list. */
 .suggestionDetailRow {

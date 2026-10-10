@@ -1,5 +1,5 @@
 import { useId, type CSSProperties } from "react";
-import { ArrowDown, ArrowUp, X } from "lucide-react";
+import { X } from "lucide-react";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { gradeColor } from "../../lib/gradeColor";
 import { formatTradeValue } from "../../lib/tradeValue";
@@ -56,21 +56,6 @@ function rankMoveText(before: number, after: number): string {
   return before === after ? `#${after}` : `#${before} → #${after}`;
 }
 
-function RankMove({ before, after }: { before: number; after: number }) {
-  if (before === after) return <span>#{after}</span>;
-  const Icon = after < before ? ArrowUp : ArrowDown;
-  return (
-    <span className={classes.suggestionRank}>
-      #{before} → #{after}
-      <Icon
-        size={12}
-        strokeWidth={3}
-        className={after < before ? classes.impactUp : classes.impactDown}
-      />
-    </span>
-  );
-}
-
 function PlayerLine({
   label,
   players,
@@ -101,8 +86,7 @@ function PlayerLine({
 }
 
 // One suggested trade in the Trade tab's horizontal strip: the partner,
-// who you'd send and get, and what it does for you (rest-of-season points
-// per week and power-rank move). A tap loads it into the analyzer below;
+// its grade, and who you'd send and get. A tap loads it into the analyzer below;
 // long-press opens the full read - both sides' gains and rank moves, every
 // player's NFL team and rest-of-season PPG - with its own "Load trade"
 // button.
@@ -178,29 +162,6 @@ export function GlassTradeSuggestionCard({
         <div aria-hidden>
           <PlayerLine label="Send" players={suggestion.send} shortName={shortName} />
           <PlayerLine label="Get" players={suggestion.receive} shortName={shortName} />
-        </div>
-        <div
-          className={`${classes.statsRow} ${classes.statsRowSplit} ${classes.tradeStats}`}
-          aria-hidden
-        >
-          <span className={classes.projSmall}>
-            <span className={classes.impactUp}>{signed(suggestion.gainPpg)} PPG</span>
-            {" · "}
-            <span
-              className={
-                suggestion.valueNet > 0
-                  ? classes.impactUp
-                  : suggestion.valueNet < 0
-                    ? classes.impactDown
-                    : undefined
-              }
-            >
-              {signedValue(suggestion.valueNet)} value
-            </span>
-          </span>
-          <span className={classes.projSmall}>
-            <RankMove before={suggestion.rankBefore} after={suggestion.rankAfter} />
-          </span>
         </div>
       </div>
 
@@ -287,7 +248,6 @@ export function GlassTradeSuggestionSkeleton() {
       <span className={classes.skeletonBar} style={{ width: "60%", height: 12 }} />
       <span className={classes.skeletonBar} style={{ width: "85%", height: 17 }} />
       <span className={classes.skeletonBar} style={{ width: "75%", height: 17 }} />
-      <span className={classes.skeletonBar} style={{ width: "100%", height: 14 }} />
     </div>
   );
 }
