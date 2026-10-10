@@ -1983,3 +1983,21 @@
   color: rgba(248, 250, 252, 0.5);
 }
 
+
+/* --- Buys / Sells strips (GlassSignalCard) ------------------------------ */
+
+/* Slim - about an analyzer card's width - in the same snapping strip as
+   the trade suggestions. */
+.signalCard {
+  flex: 0 0 160px;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+/* The infinivalue - market value gap, top right. */
+.signalGap {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}

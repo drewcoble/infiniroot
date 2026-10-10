@@ -18,6 +18,11 @@ import {
   type TradeSuggestion,
 } from "../../../components/cards/GlassTradeSuggestionCard";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
+import {
+  GlassSignalCard,
+  GlassSignalSkeleton,
+  type GlassSignalCardData,
+} from "../../../components/cards/GlassSignalCard";
 import { tradeTotals } from "../../../lib/tradeValue";
 import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
@@ -32,6 +37,9 @@ import type {
   TeamRosterRow,
   TradeValueRow,
 } from "../../../types/season";
+
+// How many players each of the Buys / Sells strips shows.
+const SIGNAL_LIMIT = 10;
 
 export const Route = createFileRoute("/league/$leagueId/trade")({
   component: TradePage,
@@ -301,6 +309,111 @@ function TradePage() {
     </div>
   );
 
+  // Buys: the biggest buy signals on other teams' rosters, league-wide
+  // (free agents left out - there's no one to trade with). Sells: your own
+  // roster's biggest sell signals. Both ordered by the gap between
+  // infinivalue and market value, biggest first (see convex/infinileague/
+  // season/tradeValues.ts's buy/sell rule).
+  const myFpids = new Set((teamARoster.rows ?? []).flatMap((row) => (row.fpid ? [row.fpid] : [])));
+  const teamIdByName = new Map((standings ?? []).map((row) => [row.name, row.teamId]));
+  const signalCard = (row: RosVorRow, signal: "buy" | "sell", owner: string | null) => {
+    const value = valueByFpid?.get(row.fpid);
+    if (!value || value.signal !== signal || value.marketValue === null) return [];
+    return [
+      {
+        fpid: row.fpid,
+        name: row.name,
+        position: row.position,
+        positionRank: row.positionRank,
+        seasonPositionRank: seasonPositionRankByFpid.get(row.fpid),
+        team: row.team,
+        owner,
+        injury: row.injury,
+        signal,
+        infinivalue: value.projectionValue,
+        marketValue: value.marketValue,
+        avgValue: value.value,
+        seasonPpg: row.actualPpg,
+        rosPpg: row.rosPpg,
+      },
+    ];
+  };
+  const byGap = (a: GlassSignalCardData, b: GlassSignalCardData) =>
+    Math.abs(b.infinivalue - b.marketValue) - Math.abs(a.infinivalue - a.marketValue);
+  const buys = (vorRows ?? [])
+    .flatMap((row) =>
+      row.rosteredByTeamName && !myFpids.has(row.fpid)
+        ? signalCard(row, "buy", row.rosteredByTeamName)
+        : [],
+    )
+    .sort(byGap)
+    .slice(0, SIGNAL_LIMIT);
+  const sells = (vorRows ?? [])
+    .flatMap((row) => (myFpids.has(row.fpid) ? signalCard(row, "sell", null) : []))
+    .sort(byGap)
+    .slice(0, SIGNAL_LIMIT);
+
+  // A tap loads the player into the analyzer: a buy makes his team the
+  // trade partner (keeping their side's other picks if it already is) and
+  // selects him on their side; a sell toggles him on yours.
+  const applyBuy = (card: GlassSignalCardData) => {
+    const ownerId = card.owner ? teamIdByName.get(card.owner) : undefined;
+    if (!ownerId) return;
+    if (ownerId !== teamBId) {
+      setTeamBId(ownerId);
+      setSelectedB(new Set([card.fpid]));
+    } else {
+      toggleB(card.fpid);
+    }
+  };
+
+  const signalStrip = (cards: GlassSignalCardData[], signal: "buy" | "sell") => (
+    <div
+      className={classes.suggestionStrip}
+      role="list"
+      aria-label={signal === "buy" ? "Players to buy" : "Players to sell"}
+    >
+      {valueByFpid === undefined || teamARoster.rows === undefined ? (
+        Array.from({ length: 4 }, (_, index) => <GlassSignalSkeleton key={index} />)
+      ) : cards.length === 0 ? (
+        <span className={classes.suggestionEmpty}>
+          {signal === "buy"
+            ? "No players stand out as buys right now."
+            : "No one on your roster stands out as a sell right now."}
+        </span>
+      ) : (
+        cards.map((card) => (
+          <div key={card.fpid} role="listitem" style={{ display: "contents" }}>
+            <GlassSignalCard
+              data={card}
+              displayName={shortName(card.name)}
+              active={
+                signal === "buy"
+                  ? teamBId !== null &&
+                    teamIdByName.get(card.owner ?? "") === teamBId &&
+                    selectedB.has(card.fpid)
+                  : selectedA.has(card.fpid)
+              }
+              onTap={() => (signal === "buy" ? applyBuy(card) : toggleA(card.fpid))}
+            />
+          </div>
+        ))
+      )}
+    </div>
+  );
+  const signalSections = (
+    <>
+      <Stack gap="xs">
+        <Title order={5}>Buys</Title>
+        {signalStrip(buys, "buy")}
+      </Stack>
+      <Stack gap="xs">
+        <Title order={5}>Sells</Title>
+        {signalStrip(sells, "sell")}
+      </Stack>
+    </>
+  );
+
   const metricSwitch = (
     <GlassSegmented
       label="Card stats"
@@ -320,6 +433,7 @@ function TradePage() {
     return (
       <Stack gap="md">
         <Title order={3}>Trade</Title>
+        {signalSections}
         <Stack gap="xs">
           <Title order={5}>Suggestions</Title>
           {suggestionStrip}
@@ -440,6 +554,7 @@ function TradePage() {
   return (
     <Stack gap="md">
       <Title order={3}>Trade</Title>
+      {signalSections}
       <Stack gap="xs">
         <Title order={5}>Suggestions</Title>
         {suggestionStrip}
