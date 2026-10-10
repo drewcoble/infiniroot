@@ -1932,18 +1932,28 @@
   gap: 7px;
 }
 
-.tradeHeaderPlayerTop {
-  display: flex;
+/* Badge column | name over numbers: the badge spans both rows, centered,
+   and the numbers line up under the name. */
+.tradeHeaderEntry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 6px;
   align-items: center;
-  gap: 5px;
-  min-width: 0;
 }
 
-/* The position badge, smaller than the cards' - and no rank. */
+/* The position badge, smaller than the cards' - and no rank. A fixed
+   width so every name (and the 2-for-1 row) starts at the same x. */
+.tradeHeaderBadge,
+.tradeHeaderBadgeSpace {
+  grid-row: 1 / span 2;
+  width: 30px;
+}
+
 .tradeHeaderBadge {
-  flex-shrink: 0;
+  justify-content: center;
   height: 15px;
-  padding: 0 5px;
+  padding: 0;
   font-size: 9px;
 }
 

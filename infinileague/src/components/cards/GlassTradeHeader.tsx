@@ -83,16 +83,14 @@ function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetr
   return (
     <div className={classes.tradeHeaderPlayers}>
       {team.players.map((player) => (
-        <div key={player.fpid}>
-          <div className={classes.tradeHeaderPlayerTop}>
-            <span
-              className={`${classes.pill} ${classes.tradeHeaderBadge}`}
-              style={pillStyle(positionColorOrDefault(player.position))}
-            >
-              {player.position}
-            </span>
-            <span className={classes.tradeHeaderPlayerName}>{player.name}</span>
-          </div>
+        <div key={player.fpid} className={classes.tradeHeaderEntry}>
+          <span
+            className={`${classes.pill} ${classes.tradeHeaderBadge}`}
+            style={pillStyle(positionColorOrDefault(player.position))}
+          >
+            {player.position}
+          </span>
+          <span className={classes.tradeHeaderPlayerName}>{player.name}</span>
           <div className={classes.tradeHeaderNumbers}>{numbers(player)}</div>
         </div>
       ))}
