@@ -150,22 +150,21 @@ export async function gatherPlayerForms(
   const actualsByFpid = new Map<number, { points: number; snapShare: number | undefined; touches: number | undefined }[]>();
   for (const week of recentWeeks) {
     for (const pos of args.activePositions) {
-      // Scoped to args.season - playerPoints keeps every past season's rows
+      // Scoped to args.season - playerWeekPoints keeps every past season's rows
       // around for history (see that table's own schema comment), so an
       // unscoped (position, week) read would pull a prior year's same-
       // numbered week's game right alongside the real current one.
       const rows = await ctx.db
-        .query("playerPoints")
+        .query("playerWeekPoints")
         .withIndex("by_position_week_season", (q) => q.eq("position", pos).eq("week", week).eq("season", args.season))
         .collect();
       for (const row of rows) {
-        if (row.scoring !== args.scoringConfig.scoring) continue;
         // A row with gp explicitly 0 is a tracked-but-didn't-play week
         // (bye, inactive) - same convention playerSeasonStats already uses
         // for "0-point week = didn't play" - excluded from the window
         // rather than counted as a real (bad) game.
         if (row.stats?.gp === 0) continue;
-        const points = row.points + bonusPoints({ position: pos, stats: row.stats ?? {} }, args.scoringConfig);
+        const points = pointsForScoring(row, args.scoringConfig.scoring) + bonusPoints({ position: pos, stats: row.stats }, args.scoringConfig);
         const list = actualsByFpid.get(row.fpid) ?? [];
         list.push({ points, snapShare: snapShareForRow(row.stats), touches: touchesForPosition(pos, row.stats) });
         actualsByFpid.set(row.fpid, list);

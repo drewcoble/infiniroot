@@ -23,7 +23,7 @@ export async function loadWeekPoints(
 
   // Live in-game points (convex/sleeper/livePoints.ts) win when the
   // 2-minute poll has written a document for this week - fresher than
-  // playerPoints (daily sync) and one read instead of ~1,800. Falls back
+  // playerPoints (daily sync) and one read instead of ~600. Falls back
   // to playerPoints otherwise (no game live yet this week, or a past week
   // whose live copy the daily sync has already pruned). Same
   // nflState.season rosVor.ts's computeRosVorInputs playerPoints reads use.
@@ -44,14 +44,12 @@ export async function loadWeekPoints(
   }
 
   const rows = await ctx.db
-    .query("playerPoints")
+    .query("playerWeekPoints")
     .withIndex("by_season_week_fpid", (q) => q.eq("season", nflState.season).eq("week", week))
     .collect();
-  return rows
-    .filter((row) => row.scoring === scoringConfig.scoring)
-    .map((row) => ({
-      fpid: row.fpid,
-      position: row.position,
-      points: row.points + bonusPoints({ position: row.position, stats: row.stats ?? {} }, scoringConfig),
-    }));
+  return rows.map((row) => ({
+    fpid: row.fpid,
+    position: row.position,
+    points: pointsForScoring(row, scoringConfig.scoring) + bonusPoints({ position: row.position, stats: row.stats }, scoringConfig),
+  }));
 }

@@ -131,13 +131,13 @@ export const getInjuryState = internalQuery({
           .collect()
       ).sort((a, b) => a.fetchedAt - b.fetchedAt);
       const points = await ctx.db
-        .query("playerPoints")
-        .withIndex("by_fpid_season_scoring", (q) =>
-          q.eq("fpid", injury.fpid).eq("season", season).eq("scoring", "PPR"),
+        .query("playerWeekPoints")
+        .withIndex("by_fpid_season", (q) =>
+          q.eq("fpid", injury.fpid).eq("season", season),
         )
         .collect();
       const played = new Set(
-        points.filter((row) => row.points !== 0).map((row) => Number(row.week)),
+        points.filter((row) => row.pointsPpr !== 0).map((row) => Number(row.week)),
       );
 
       // Latest snapshot per week; weeks before the first snapshot are skipped

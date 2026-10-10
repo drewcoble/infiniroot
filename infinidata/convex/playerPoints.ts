@@ -1,19 +1,21 @@
 import { v } from "convex/values";
 import {
   internalMutation,
-  mutation,
   query,
   MutationCtx,
 } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { positionValidator, POSITIONS } from "./positions";
 import { statsEqual } from "./lib/statsEqual";
 import {
   bonusPoints,
+  pointsForScoring,
   scoringConfigValidator,
   scoringValidator,
   Scoring,
   ScoringConfig,
+  SCORINGS,
   TeScoring,
 } from "./scoring";
 
@@ -39,8 +41,9 @@ const BONUS_VARIANTS: Array<Pick<ScoringConfig, "teScoring" | "sixPointPassTds">
 // Can't be folded into the incremental sum-of-squares trick below, because
 // whether a given game counts as "below" depends on the season's final mean,
 // which shifts with every new game. Takes the season's already-fetched
-// playerPoints rows (shared across every BONUS_VARIANTS combo by
-// applySeasonStatsDelta below) rather than re-querying per variant.
+// playerWeekPoints rows (shared across every scoring and BONUS_VARIANTS
+// combo - see applySeasonStatsDelta below) rather than re-querying per
+// variant.
 function computeDownsideDeviation(
   rows: Array<{ points: number; stats?: Record<string, number> }>,
   args: { position: Position; config: ScoringConfig; mean: number; gamesPlayed: number },
@@ -63,7 +66,9 @@ function computeDownsideDeviation(
 // exactly when that game doesn't count. Fans out to one playerSeasonStats
 // row per BONUS_VARIANTS combo, since bonusPoints (TE-premium reception
 // bonus, 6pt-passing-TD bump) depends on the raw stats blob, not just the
-// single scoring-resolved `points` value this used to take.
+// single scoring-resolved `points` value this used to take. `seasonRows` is
+// this player's full season of playerWeekPoints (including the row just
+// written), read once by the caller and shared across all three scorings.
 async function applySeasonStatsDelta(
   ctx: MutationCtx,
   args: {
@@ -73,6 +78,7 @@ async function applySeasonStatsDelta(
     scoring: Scoring;
     old: { points: number; stats: Record<string, number> | undefined } | null;
     new: { points: number; stats: Record<string, number> | undefined } | null;
+    seasonRows: Doc<"playerWeekPoints">[];
   },
 ) {
   const unchanged =
@@ -88,12 +94,10 @@ async function applySeasonStatsDelta(
   // Shared across every bonus variant below - the set of games itself
   // doesn't depend on teScoring/sixPointPassTds, only how each game's points
   // are computed from it.
-  const seasonRows = await ctx.db
-    .query("playerPoints")
-    .withIndex("by_fpid_season_scoring", (q) =>
-      q.eq("fpid", args.fpid).eq("season", args.season).eq("scoring", args.scoring),
-    )
-    .collect();
+  const seasonRows = args.seasonRows.map((row) => ({
+    points: pointsForScoring(row, args.scoring),
+    stats: row.stats,
+  }));
 
   for (const { teScoring, sixPointPassTds } of BONUS_VARIANTS) {
     const config: ScoringConfig = { scoring: args.scoring, teScoring, sixPointPassTds };
@@ -168,18 +172,6 @@ async function applySeasonStatsDelta(
   }
 }
 
-export const getPlayerPoints = query({
-  args: { position: positionValidator, week: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("playerPoints")
-      .withIndex("by_position_week", (q) =>
-        q.eq("position", args.position).eq("week", args.week),
-      )
-      .collect();
-  },
-});
-
 // One player's full week-by-week game log for a season - powers the player
 // detail modal's per-season accordion panel (see
 // src/components/PlayerSeasonGameLog.tsx), fetched lazily only once that
@@ -190,15 +182,18 @@ export const getPlayerGameLog = query({
   args: { fpid: v.number(), season: v.string(), scoring: scoringValidator },
   handler: async (ctx, args) => {
     const rows = await ctx.db
-      .query("playerPoints")
-      .withIndex("by_fpid_season_scoring", (q) =>
-        q
-          .eq("fpid", args.fpid)
-          .eq("season", args.season)
-          .eq("scoring", args.scoring),
+      .query("playerWeekPoints")
+      .withIndex("by_fpid_season", (q) =>
+        q.eq("fpid", args.fpid).eq("season", args.season),
       )
       .collect();
     return rows
+      .map((row) => ({
+        _id: row._id,
+        week: row.week,
+        points: pointsForScoring(row, args.scoring),
+        stats: row.stats,
+      }))
       .filter((row) => row.points > 0)
       .sort((a, b) => Number(a.week) - Number(b.week));
   },
@@ -269,16 +264,20 @@ export const getAllSeasonStats = query({
   },
 });
 
-export const upsertPlayerPoints = mutation({
+// One row per player-week, all three scorings at once (see
+// playerWeekPoints' schema comment). Internal - only the Sleeper sync
+// (convex/sleeper/playerPoints.ts) writes actual points.
+export const upsertPlayerPoints = internalMutation({
   args: {
     season: v.string(),
-    scoring: scoringValidator,
     rows: v.array(
       v.object({
         fpid: v.number(),
         position: positionValidator,
         week: v.string(),
-        points: v.number(),
+        pointsStd: v.number(),
+        pointsHalf: v.number(),
+        pointsPpr: v.number(),
         stats: v.record(v.string(), v.number()),
       }),
     ),
@@ -290,61 +289,89 @@ export const upsertPlayerPoints = mutation({
 
     for (const row of args.rows) {
       const existing = await ctx.db
-        .query("playerPoints")
+        .query("playerWeekPoints")
         .withIndex("by_season_week_fpid", (q) =>
-          q
-            .eq("season", args.season)
-            .eq("week", row.week)
-            .eq("fpid", row.fpid),
+          q.eq("season", args.season).eq("week", row.week).eq("fpid", row.fpid),
         )
-        .filter((q) => q.eq(q.field("scoring"), args.scoring))
-        .first();
+        .unique();
 
       // The daily fetch re-sends every recent week's full payload, nearly
       // all of it unchanged since the last run - skip the write entirely
       // (not just applySeasonStatsDelta's own no-op) so an unchanged row
-      // costs one read, and doesn't wake every query reading playerPoints.
+      // costs one read, and doesn't wake every query reading this table.
       if (
         existing &&
-        existing.points === row.points &&
+        existing.pointsStd === row.pointsStd &&
+        existing.pointsHalf === row.pointsHalf &&
+        existing.pointsPpr === row.pointsPpr &&
         statsEqual(existing.stats, row.stats)
       ) {
         continue;
       }
 
-      const oldPoints = existing?.points ?? 0;
-      const oldCounted = existing !== null && oldPoints > 0;
-      const newCounted = row.points > 0;
-
+      // What playerSeasonStats already has folded in for this player-week -
+      // the new row if there is one, otherwise the legacy per-scoring
+      // playerPoints rows (a week synced before the switch to this table
+      // and not yet backfilled). Without the legacy fallback, that week
+      // would count as a brand-new game and be added to the season totals
+      // a second time. Remove along with the legacy table.
+      const oldByScoring = new Map<Scoring, { points: number; stats: Record<string, number> | undefined }>();
       if (existing) {
-        await ctx.db.patch(existing._id, {
-          points: row.points,
-          stats: row.stats,
-          fetchedAt: now,
-        });
+        for (const scoring of SCORINGS) {
+          oldByScoring.set(scoring, { points: pointsForScoring(existing, scoring), stats: existing.stats });
+        }
+      } else {
+        const legacyRows = await ctx.db
+          .query("playerPoints")
+          .withIndex("by_season_week_fpid", (q) =>
+            q.eq("season", args.season).eq("week", row.week).eq("fpid", row.fpid),
+          )
+          .collect();
+        for (const legacy of legacyRows) {
+          oldByScoring.set(legacy.scoring, { points: legacy.points, stats: legacy.stats });
+        }
+      }
+
+      const fields = {
+        pointsStd: row.pointsStd,
+        pointsHalf: row.pointsHalf,
+        pointsPpr: row.pointsPpr,
+        stats: row.stats,
+        fetchedAt: now,
+      };
+      if (existing) {
+        await ctx.db.patch(existing._id, fields);
         updated += 1;
       } else {
-        await ctx.db.insert("playerPoints", {
+        await ctx.db.insert("playerWeekPoints", {
           fpid: row.fpid,
           season: args.season,
           week: row.week,
           position: row.position,
-          scoring: args.scoring,
-          points: row.points,
-          stats: row.stats,
-          fetchedAt: now,
+          ...fields,
         });
         inserted += 1;
       }
 
-      await applySeasonStatsDelta(ctx, {
-        fpid: row.fpid,
-        position: row.position,
-        season: args.season,
-        scoring: args.scoring,
-        old: oldCounted ? { points: oldPoints, stats: existing!.stats } : null,
-        new: newCounted ? { points: row.points, stats: row.stats } : null,
-      });
+      // Read after the write above, so the downside-deviation pass sees
+      // this week's new numbers.
+      const seasonRows = await ctx.db
+        .query("playerWeekPoints")
+        .withIndex("by_fpid_season", (q) => q.eq("fpid", row.fpid).eq("season", args.season))
+        .collect();
+      for (const scoring of SCORINGS) {
+        const old = oldByScoring.get(scoring);
+        const newPoints = pointsForScoring(row, scoring);
+        await applySeasonStatsDelta(ctx, {
+          fpid: row.fpid,
+          position: row.position,
+          season: args.season,
+          scoring,
+          old: old && old.points > 0 ? old : null,
+          new: newPoints > 0 ? { points: newPoints, stats: row.stats } : null,
+          seasonRows,
+        });
+      }
     }
 
     return { inserted, updated };
@@ -352,7 +379,7 @@ export const upsertPlayerPoints = mutation({
 });
 
 // One-time backfill: playerSeasonStats only gets populated going forward by
-// upsertPlayerPoints's incremental deltas above, so any playerPoints rows
+// upsertPlayerPoints's incremental deltas above, so any playerWeekPoints rows
 // written before this table (or before one of its fields) existed need to be
 // folded in separately. Guards against a double-run on the very first batch
 // (cursor undefined) - since this accumulates deltas rather than recomputing
@@ -373,20 +400,30 @@ export const backfillSeasonStats = internalMutation({
       }
     }
 
+    // Smaller pages than the legacy per-scoring table used - each row now
+    // fans out to all three scorings' digest rows.
     const result = await ctx.db
-      .query("playerPoints")
-      .paginate({ cursor: args.cursor ?? null, numItems: 500 });
+      .query("playerWeekPoints")
+      .paginate({ cursor: args.cursor ?? null, numItems: 150 });
 
     for (const row of result.page) {
-      if (row.points <= 0) continue;
-      await applySeasonStatsDelta(ctx, {
-        fpid: row.fpid,
-        position: row.position,
-        season: row.season,
-        scoring: row.scoring,
-        old: null,
-        new: { points: row.points, stats: row.stats },
-      });
+      const seasonRows = await ctx.db
+        .query("playerWeekPoints")
+        .withIndex("by_fpid_season", (q) => q.eq("fpid", row.fpid).eq("season", row.season))
+        .collect();
+      for (const scoring of SCORINGS) {
+        const points = pointsForScoring(row, scoring);
+        if (points <= 0) continue;
+        await applySeasonStatsDelta(ctx, {
+          fpid: row.fpid,
+          position: row.position,
+          season: row.season,
+          scoring,
+          old: null,
+          new: { points, stats: row.stats },
+          seasonRows,
+        });
+      }
     }
 
     if (!result.isDone) {
@@ -395,6 +432,87 @@ export const backfillSeasonStats = internalMutation({
         internal.playerPoints.backfillSeasonStats,
         { cursor: result.continueCursor },
       );
+    }
+  },
+});
+
+// One-time migration from the legacy per-scoring playerPoints table into
+// playerWeekPoints - run once per deployment right after this ships
+// (`npx convex run playerPoints:backfillPlayerWeekPoints`), then
+// clearLegacyPlayerPoints below. Copies points only: playerSeasonStats was
+// already built from these same numbers, so it's left alone. A player-week
+// the sync has already written to playerWeekPoints keeps those (fresher)
+// numbers and its legacy rows are skipped. Safe to re-run. Smaller pages
+// than clearLegacyPlayerPoints - each new row reads its legacy siblings too.
+export const backfillPlayerWeekPoints = internalMutation({
+  args: { cursor: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const result = await ctx.db
+      .query("playerPoints")
+      .paginate({ cursor: args.cursor ?? null, numItems: 300 });
+
+    // Legacy rows come back in creation order, not grouped by player-week,
+    // so each player-week is built from all of its (up to 3) legacy rows the
+    // first time any of them is seen; its siblings then find the new row
+    // and skip, same as a player-week the sync already wrote.
+    for (const legacy of result.page) {
+      const existing = await ctx.db
+        .query("playerWeekPoints")
+        .withIndex("by_season_week_fpid", (q) =>
+          q.eq("season", legacy.season).eq("week", legacy.week).eq("fpid", legacy.fpid),
+        )
+        .unique();
+      if (existing) continue;
+
+      const siblings = await ctx.db
+        .query("playerPoints")
+        .withIndex("by_season_week_fpid", (q) =>
+          q.eq("season", legacy.season).eq("week", legacy.week).eq("fpid", legacy.fpid),
+        )
+        .collect();
+      const byScoring = new Map(siblings.map((row) => [row.scoring, row]));
+      const latest = siblings.reduce((a, b) => (b.fetchedAt > a.fetchedAt ? b : a));
+      // A scoring missing its own legacy row (shouldn't happen - Sleeper
+      // sends all three together) falls back to this row's value rather
+      // than a misleading 0.
+      const pointsFor = (scoring: Scoring) => byScoring.get(scoring)?.points ?? legacy.points;
+      await ctx.db.insert("playerWeekPoints", {
+        fpid: legacy.fpid,
+        season: legacy.season,
+        week: legacy.week,
+        position: legacy.position,
+        pointsStd: pointsFor("STD"),
+        pointsHalf: pointsFor("HALF"),
+        pointsPpr: pointsFor("PPR"),
+        stats: latest.stats ?? {},
+        fetchedAt: latest.fetchedAt,
+      });
+    }
+
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(0, internal.playerPoints.backfillPlayerWeekPoints, {
+        cursor: result.continueCursor,
+      });
+    }
+  },
+});
+
+// Empties the legacy playerPoints table once backfillPlayerWeekPoints above
+// has finished on this deployment - after that, the table's schema entry
+// (and upsertPlayerPoints' legacy fallback) can be deleted.
+export const clearLegacyPlayerPoints = internalMutation({
+  args: { cursor: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const result = await ctx.db
+      .query("playerPoints")
+      .paginate({ cursor: args.cursor ?? null, numItems: 500 });
+    for (const row of result.page) {
+      await ctx.db.delete(row._id);
+    }
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(0, internal.playerPoints.clearLegacyPlayerPoints, {
+        cursor: result.continueCursor,
+      });
     }
   },
 });

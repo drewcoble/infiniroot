@@ -336,9 +336,12 @@ export default defineSchema({
     .index("by_position_week", ["position", "week"])
     .index("by_position_week_fpid", ["position", "week", "fpid"]),
 
-  // From /nfl/{year}/player-points. Actual (not projected) fantasy points,
-  // exploded from the API's nested `weeks` map into one row per week so this
-  // table is index-compatible with projections/rankings for comparison views.
+  // LEGACY - superseded by playerWeekPoints below (one row per player-week
+  // instead of one per player-week-scoring, which tripled every read and
+  // repeated the same `stats` blob three times). Nothing reads or writes
+  // this anymore; once playerPoints.backfillPlayerWeekPoints has copied it
+  // over and playerPoints.clearLegacyPlayerPoints has emptied it on every
+  // deployment, this definition can be deleted.
   playerPoints: defineTable({
     fpid: v.number(),
     season: v.string(),
@@ -346,34 +349,44 @@ export default defineSchema({
     position: positionValidator,
     scoring: scoringValidator,
     points: v.number(),
-    // Per-category box score for that week (pass_yd, rush_td, rec, etc.) -
-    // same shape as projections.stats. Optional because rows written before
-    // this field existed predate it and aren't backfilled automatically;
-    // every row written going forward always includes it (see
-    // convex/sleeper/playerPoints.ts). Reused across STD/PPR/HALF rows for
-    // the same fpid/week since the box score itself doesn't vary by scoring
-    // format, only the derived `points` total does.
     stats: v.optional(v.record(v.string(), v.number())),
     fetchedAt: v.number(),
   })
-    .index("by_position_week", ["position", "week"])
+    // Still read by upsertPlayerPoints (convex/playerPoints.ts) for a
+    // player-week playerWeekPoints doesn't have yet, so a sync landing
+    // before the backfill finishes doesn't double-count playerSeasonStats.
+    .index("by_season_week_fpid", ["season", "week", "fpid"]),
+
+  // From Sleeper's weekly stats endpoint (see convex/sleeper/playerPoints.ts).
+  // Actual (not projected) fantasy points, one row per player per week with
+  // all three base scorings side by side - same wide shape `projections`
+  // uses (pointsStd/Half/Ppr), read through scoring.ts's pointsForScoring.
+  // The TE-premium / 6pt-passing-TD bonuses are derived at read time from
+  // `stats`, never stored. Never pruned - old seasons are kept for history.
+  playerWeekPoints: defineTable({
+    fpid: v.number(),
+    season: v.string(),
+    week: v.string(),
+    position: positionValidator,
+    pointsStd: v.number(),
+    pointsHalf: v.number(),
+    pointsPpr: v.number(),
+    // Per-category box score for that week (pass_yd, rush_td, rec, etc.) -
+    // same shape as projections.stats.
+    stats: v.record(v.string(), v.number()),
+    fetchedAt: v.number(),
+  })
+    // The sync's upsert key, and convex/lib/weekPoints.ts's one-week read.
     .index("by_season_week_fpid", ["season", "week", "fpid"])
-    // Powers "this player's whole game log for one season" (see
-    // getPlayerGameLog in convex/playerPoints.ts) - same 3-field key as
-    // playerSeasonStats's write-path index below, since playerPoints itself
-    // is still only ever stored per base scoring (3 rows/week), never per
-    // teScoring/sixPointPassTds (those bonuses are derived at read time from
-    // this row's `stats` blob, not stored as separate rows here).
-    .index("by_fpid_season_scoring", ["fpid", "season", "scoring"])
-    // convex/lib/playerValue.ts's gatherPlayerForms uses this to read one
-    // position/week's "recent form" rows scoped to the CURRENT season only -
-    // by_position_week above has no season field, which let a prior year's
-    // same-numbered week (this table is never pruned - see playerPoints'
-    // own header comment on why old seasons are kept for history) leak into
-    // that recency window right alongside the real current-season game.
+    // One player's whole season - the game log (getPlayerGameLog in
+    // convex/playerPoints.ts), playerSeasonStats' downside-deviation pass,
+    // and infinileague's injury assessment.
+    .index("by_fpid_season", ["fpid", "season"])
+    // convex/lib/playerValue.ts's gatherPlayerForms reads one position/
+    // week's "recent form" rows scoped to the current season.
     .index("by_position_week_season", ["position", "week", "season"]),
 
-  // Season-long digest of playerPoints, maintained incrementally by
+  // Season-long digest of playerWeekPoints, maintained incrementally by
   // upsertPlayerPoints (see convex/playerPoints.ts) rather than recomputed at
   // read time. Exists solely so convex/valueGaps.ts can read one row per
   // (fpid, season, scoring) instead of scanning all 18 weeks - that

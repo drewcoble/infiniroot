@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { action, internalAction, ActionCtx } from "../_generated/server";
-import { api, internal } from "../_generated/api";
+import { internal } from "../_generated/api";
 import { POSITIONS } from "../positions";
 import {
   currentSeason,
@@ -137,50 +137,36 @@ async function fetchAllPlayerPointsHandler(
       knownFpids.has(row.fpid),
     );
 
-    const scoringVariants: Array<{
-      scoring: "STD" | "PPR" | "HALF";
-      pick: (row: (typeof rows)[number]) => number;
-    }> = [
-      { scoring: "STD", pick: (row) => row.ptsStd },
-      { scoring: "PPR", pick: (row) => row.ptsPpr },
-      { scoring: "HALF", pick: (row) => row.ptsHalf },
-    ];
-
     // Chunked rather than one runMutation call for the whole week - each row
-    // now costs upsertPlayerPoints's own read+write plus (since real games
-    // started landing points > 0 instead of the all-zero preseason payload)
-    // applySeasonStatsDelta's cascade in convex/playerPoints.ts: a season-to-
-    // date collect() plus 6 BONUS_VARIANTS reads+writes. That's ~25 reads per
-    // row by late season, and a full week's roster (several hundred rows) in
-    // one transaction is well past Convex's 4096-reads-per-transaction limit
-    // (see the matching comment in ../sleeper/playerLinks.ts).
-    const CHUNK_SIZE = 100;
+    // costs upsertPlayerPoints's own read+write plus (once real games land
+    // points > 0) applySeasonStatsDelta's cascade in convex/playerPoints.ts:
+    // a season-to-date collect() plus 3 scorings x 6 BONUS_VARIANTS
+    // reads+writes. That's ~40 reads per row by late season, so a full
+    // week's roster (several hundred rows) in one transaction would be well
+    // past Convex's 4096-reads-per-transaction limit (see the matching
+    // comment in ../sleeper/playerLinks.ts).
+    const CHUNK_SIZE = 50;
 
-    for (const { scoring, pick } of scoringVariants) {
-      const scoringRows = rows.map((row) => ({
+    let inserted = 0;
+    let updated = 0;
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+      const chunk = rows.slice(i, i + CHUNK_SIZE).map((row) => ({
         fpid: row.fpid,
         position: row.position,
         week,
-        points: pick(row),
+        pointsStd: row.ptsStd,
+        pointsHalf: row.ptsHalf,
+        pointsPpr: row.ptsPpr,
         stats: row.stats,
       }));
-
-      let inserted = 0;
-      let updated = 0;
-      for (let i = 0; i < scoringRows.length; i += CHUNK_SIZE) {
-        const chunk = scoringRows.slice(i, i + CHUNK_SIZE);
-        const result = await ctx.runMutation(api.playerPoints.upsertPlayerPoints, {
-          season: year,
-          scoring,
-          rows: chunk,
-        });
-        inserted += result.inserted;
-        updated += result.updated;
-      }
-
-      const key = `week${week}-${scoring}`;
-      totals[key] = { inserted, updated };
+      const result = await ctx.runMutation(internal.playerPoints.upsertPlayerPoints, {
+        season: year,
+        rows: chunk,
+      });
+      inserted += result.inserted;
+      updated += result.updated;
     }
+    totals[`week${week}`] = { inserted, updated };
   }
 
   return totals;
