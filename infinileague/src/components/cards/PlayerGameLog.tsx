@@ -72,12 +72,20 @@ function SeasonTable({
   if (log === undefined) return <div className={classes.message}>Loading…</div>;
   if (log === null || log.weeks.length === 0) return <div className={classes.message}>No games recorded for {year}.</div>;
 
-  // Consecutive columns sharing a group get one spanning header.
+  // Consecutive columns sharing a group get one spanning header. Each
+  // group's columns get a divider on their left edge, and every other
+  // group a faint tint, so a stat reads as Rushing vs. Receiving at a
+  // glance even when its group header has scrolled out of view.
   const groups: Array<{ group: string; span: number }> = [];
+  const groupClass: string[] = [];
   for (const column of log.columns) {
     const last = groups[groups.length - 1];
-    if (last && last.group === column.group) last.span += 1;
-    else groups.push({ group: column.group, span: 1 });
+    const isStart = !last || last.group !== column.group;
+    if (isStart) groups.push({ group: column.group, span: 1 });
+    else last.span += 1;
+    groupClass.push(
+      [isStart && classes.groupStart, groups.length % 2 === 0 && classes.groupTint].filter(Boolean).join(" "),
+    );
   }
   const statColumnCount = 3 + log.columns.length;
 
@@ -93,14 +101,22 @@ function SeasonTable({
             <th rowSpan={2}>Pts</th>
             <th rowSpan={2}>Rank</th>
             {groups.map((group, index) => (
-              <th key={`${group.group}-${index}`} colSpan={group.span} className={classes.group}>
-                {group.group}
+              <th
+                key={`${group.group}-${index}`}
+                colSpan={group.span}
+                className={[classes.group, classes.groupStart, index % 2 === 1 && classes.groupTint]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <span className={classes.groupLabel}>{group.group}</span>
               </th>
             ))}
           </tr>
           <tr>
-            {log.columns.map((column) => (
-              <th key={column.key}>{column.label}</th>
+            {log.columns.map((column, index) => (
+              <th key={column.key} className={groupClass[index]}>
+                {column.label}
+              </th>
             ))}
           </tr>
         </thead>
@@ -110,7 +126,7 @@ function SeasonTable({
               <td className={classes.sticky}>{week.week}</td>
               {week.kind === "bye" ? (
                 <td colSpan={statColumnCount} className={classes.bye}>
-                  BYE WEEK
+                  <span className={classes.groupLabel}>BYE WEEK</span>
                 </td>
               ) : (
                 <>
@@ -128,7 +144,12 @@ function SeasonTable({
                   {log.columns.map((column, index) => {
                     const value = week.values[index];
                     return (
-                      <td key={column.key} className={value === null || value === undefined ? classes.dim : undefined}>
+                      <td
+                        key={column.key}
+                        className={[groupClass[index], (value === null || value === undefined) && classes.dim]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
                         {value === null || value === undefined ? "—" : value.toFixed(column.decimals)}
                       </td>
                     );

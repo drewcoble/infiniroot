@@ -83,8 +83,28 @@
 }
 
 .group {
-  text-align: center !important;
+  text-align: left !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(248, 250, 252, 0.85) !important;
+}
+
+/* A wide group's name (or a bye row's label) stays pinned just right of
+   the week column while scrolling, instead of scrolling away. */
+.groupLabel {
+  position: sticky;
+  left: 44px;
+}
+
+/* First column of each stat group (Passing, Rushing, ...) - a divider
+   down the whole table, header to last week. */
+.groupStart {
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+/* Every other group - a faint band so adjacent groups read as separate
+   blocks even mid-scroll. */
+.groupTint {
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .table tbody tr + tr td {
