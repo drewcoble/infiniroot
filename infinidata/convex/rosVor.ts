@@ -104,7 +104,7 @@ export interface RosVorRow {
 const WEEKLY_REFRESH_UTC_DAY = 4; // Thursday
 export async function refreshAllRosVor(
   ctx: ActionCtx,
-  args: { seasons: Doc<"seasons">[]; scheduled?: boolean },
+  args: { seasons: Doc<"seasons">[]; scheduled?: boolean | undefined },
 ): Promise<void> {
   // Same "not currently in an NFL regular season week" guard as
   // convex/lib/faab.ts's computeFaabSuggestions - rosVor is an in-season

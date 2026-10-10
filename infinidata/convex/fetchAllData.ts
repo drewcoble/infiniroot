@@ -49,7 +49,7 @@ function weeksToFetch(week: string): string[] {
 // data already exists in the database.
 async function refreshCachedComputations(
   ctx: ActionCtx,
-  args: { week: string; season: string; scheduled?: boolean },
+  args: { week: string; season: string; scheduled?: boolean | undefined },
 ): Promise<void> {
   const lastSeason = String(Number(args.season) - 1);
   for (const scoringConfig of ALL_SCORING_CONFIGS) {
@@ -109,7 +109,7 @@ async function refreshCachedComputations(
 // would break it - see fetchAllInternal.
 async function fetchAllHandler(
   ctx: ActionCtx,
-  args: { week?: string; season?: string; scheduled?: boolean },
+  args: { week?: string; season?: string; scheduled?: boolean | undefined },
 ): Promise<void> {
   const week = args.week ?? (await fetchCurrentNflWeek());
   const season = args.season ?? currentSeason();
