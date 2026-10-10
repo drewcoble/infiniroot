@@ -21,6 +21,7 @@ import {
   useNow,
   type WeekGame,
 } from "../../../../lib/liveGames";
+import { seasonPositionRanks } from "../../../../lib/seasonPositionRanks";
 import { toMatchupCardData } from "../../../../lib/matchupCardData";
 import { LineupSuggestionsCard } from "../../../../components/LineupSuggestionsCard";
 import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../../types/season";
@@ -132,6 +133,7 @@ function TeamPage() {
     () => new Map((vorRows ?? []).map((row) => [row.fpid, row])),
     [vorRows],
   );
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(vorRows), [vorRows]);
   const weekRanks = useQuery(
     api.infinileague.season.matchup.getWeekPositionRanks,
     isAuthenticated && week ? { seasonId, week } : "skip",
@@ -148,6 +150,7 @@ function TeamPage() {
       now,
       row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
+      row.fpid !== undefined ? seasonPositionRankByFpid.get(row.fpid) : undefined,
     );
 
   // The week's starters in header form: score, projection, and how many

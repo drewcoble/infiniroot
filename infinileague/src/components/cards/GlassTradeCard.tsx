@@ -5,6 +5,7 @@ import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
 import { formatProj, pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
+import { StatGroups } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
@@ -28,6 +29,9 @@ export interface GlassTradeCardData {
   // Value over replacement, season to date and rest of season.
   seasonVor: number | undefined;
   rosVor: number | undefined;
+  // Season-to-date position rank (lib/seasonPositionRanks.ts) - the
+  // detail table's Season counterpart of positionRank.
+  seasonPositionRank: number | undefined;
   // Overall (all-position) VOR ranks, season to date and rest of season.
   seasonRank: number | undefined;
   rosRank: number | undefined;
@@ -46,6 +50,8 @@ export interface GlassTradeCardData {
 export type TradeMetric = "value" | "vor" | "ppg" | "rank";
 
 const formatRank = (rank: number | undefined) => (rank ? `#${rank}` : "—");
+const formatPositionRank = (position: string, rank: number | undefined) =>
+  rank ? `${position}${rank}` : "—";
 const formatValue = (value: number | null | undefined) =>
   value === undefined || value === null ? "—" : formatTradeValue(value);
 
@@ -230,33 +236,46 @@ export function GlassTradeCard({
             {selected && <span className={classes.statusLabel}>In trade</span>}
           </div>
 
-          <div className={classes.statGrid}>
-            {[
-              { label: "Trade value", value: formatValue(data.tradeValue) },
+          <StatGroups
+            groups={[
               {
-                label: "Market",
-                value: data.marketValue === null ? "n/a" : formatValue(data.marketValue),
+                label: "Trade value",
+                items: [
+                  { label: "Value", value: formatValue(data.tradeValue) },
+                  {
+                    label: "Market",
+                    value: data.marketValue === null ? "n/a" : formatValue(data.marketValue),
+                  },
+                  { label: "Projection", value: formatValue(data.projectionValue) },
+                ],
               },
-              { label: "Proj value", value: formatValue(data.projectionValue) },
-              { label: "Season VOR", value: formatProj(data.seasonVor) },
-              { label: "Season PPG", value: formatProj(data.seasonPpg) },
-              { label: "Season rank", value: formatRank(data.seasonRank) },
-              { label: "ROS VOR", value: formatProj(data.rosVor) },
-              { label: "ROS PPG", value: formatProj(data.rosPpg) },
-              { label: "ROS rank", value: formatRank(data.rosRank) },
               {
-                label: "ROS pos rank",
-                value: data.positionRank > 0 ? `${data.position}${data.positionRank}` : "—",
+                columns: ["Season", "ROS"],
+                rows: [
+                  { label: "PPG", values: [formatProj(data.seasonPpg), formatProj(data.rosPpg)] },
+                  { label: "VOR", values: [formatProj(data.seasonVor), formatProj(data.rosVor)] },
+                  {
+                    label: "Pos rank",
+                    values: [
+                      formatPositionRank(data.position, data.seasonPositionRank),
+                      formatPositionRank(data.position, data.positionRank),
+                    ],
+                  },
+                  {
+                    label: "Overall",
+                    values: [formatRank(data.seasonRank), formatRank(data.rosRank)],
+                  },
+                ],
               },
-              { label: "Slot", value: slot || "—" },
-              { label: "Bye", value: data.byeWeek ? `Wk ${data.byeWeek}` : "—" },
-            ].map((stat) => (
-              <div key={stat.label} className={classes.stat}>
-                <div className={classes.statValue}>{stat.value}</div>
-                <div className={classes.statLabel}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
+              {
+                label: "Roster",
+                items: [
+                  { label: "Slot", value: slot || "—" },
+                  { label: "Bye", value: data.byeWeek ? `Wk ${data.byeWeek}` : "—" },
+                ],
+              },
+            ]}
+          />
 
           {data.fpid !== undefined && <PlayerGameLog fpid={data.fpid} position={data.position} />}
         </GlassPopover>

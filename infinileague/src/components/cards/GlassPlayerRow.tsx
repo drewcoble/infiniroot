@@ -4,6 +4,7 @@ import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
+import { StatGroups, type StatGroup } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
@@ -29,7 +30,8 @@ export interface GlassPlayerRowData {
   actualIsScore: boolean;
   projection: string;
   // Labeled tiles for the long-press detail popover.
-  stats: Array<{ label: string; value: string }>;
+  // Grouped numbers for the detail popover (see StatGroups).
+  stats: StatGroup[];
 }
 
 // Rank chip outside the row - glass gray, saddlebrown for your own players
@@ -199,14 +201,7 @@ export function GlassPlayerRow({
             </span>
           </div>
 
-          <div className={classes.statGrid}>
-            {data.stats.map((stat) => (
-              <div key={stat.label} className={classes.stat}>
-                <div className={classes.statValue}>{stat.value}</div>
-                <div className={classes.statLabel}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
+          <StatGroups groups={data.stats} />
 
           <PlayerGameLog fpid={data.fpid} position={data.position} />
         </GlassPopover>

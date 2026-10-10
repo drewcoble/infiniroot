@@ -63,8 +63,13 @@ export function EliminationWatchList({
               primary: row.weekPoints.toFixed(1),
               secondaryRight: "Week pts",
               stats: [
-                { label: "Week pts", value: row.weekPoints.toFixed(1) },
-                { label: "Status", value: status.label },
+                {
+                  label: "This week",
+                  items: [
+                    { label: "Points", value: row.weekPoints.toFixed(1) },
+                    { label: "Status", value: status.label },
+                  ],
+                },
               ],
             }}
             positionRanks={positionRanksByTeam?.get(row.teamId)}

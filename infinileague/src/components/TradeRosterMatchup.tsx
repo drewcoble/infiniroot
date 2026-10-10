@@ -19,6 +19,8 @@ interface TradeRosterMatchupProps {
   teamBRows: TeamRosterRow[] | undefined;
   teamBLoading: boolean;
   vorByFpid: Map<number, RosVorRow>;
+  // Season-to-date position ranks (lib/seasonPositionRanks.ts).
+  seasonPositionRankByFpid: Map<number, number>;
   // Trade values - undefined while they load.
   valueByFpid: Map<number, TradeValueRow> | undefined;
   // What the cards show (the Trade tab's top switch).
@@ -34,6 +36,7 @@ function toTradeCardData(
   row: TeamRosterRow,
   vor: RosVorRow | undefined,
   values: Map<number, TradeValueRow> | undefined,
+  seasonPositionRank: number | undefined,
 ): GlassTradeCardData {
   const value = row.fpid !== undefined ? values?.get(row.fpid) : undefined;
   // Loaded, but this player isn't on the board - worth nothing in a trade.
@@ -53,6 +56,7 @@ function toTradeCardData(
     rosVor: vor?.rosVor,
     seasonRank: vor?.actualRank,
     rosRank: vor?.rosRank,
+    seasonPositionRank,
     tradeValue: missing ? 0 : value?.value,
     marketValue: missing ? null : value?.marketValue,
     projectionValue: missing ? 0 : value?.projectionValue,
@@ -78,7 +82,12 @@ function Cell({
     <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
       {row !== undefined && fpid !== undefined ? (
         <GlassTradeCard
-          data={toTradeCardData(row, props.vorByFpid.get(fpid), props.valueByFpid)}
+          data={toTradeCardData(
+            row,
+            props.vorByFpid.get(fpid),
+            props.valueByFpid,
+            props.seasonPositionRankByFpid.get(fpid),
+          )}
           displayName={props.shortName(row.name ?? "")}
           slot={slotLabel(row.slot)}
           metric={props.metric}

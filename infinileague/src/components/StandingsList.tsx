@@ -47,17 +47,27 @@ export function StandingsList({ leagueId, rows, positionRanksByTeam }: Standings
                 .filter(Boolean)
                 .join(", "),
               stats: [
-                { label: "Record", value: `${row.wins}-${row.losses}-${row.ties}` },
-                { label: "PPG", value: ppg !== null ? ppg.toFixed(1) : "—" },
                 {
-                  label: row.faabRemaining !== undefined ? "FAAB" : "Waiver",
-                  value:
-                    row.faabRemaining !== undefined
-                      ? `$${row.faabRemaining}`
-                      : `#${row.waiverPosition ?? "—"}`,
+                  label: "Season",
+                  items: [
+                    { label: "Record", value: `${row.wins}-${row.losses}-${row.ties}` },
+                    { label: "PPG", value: ppg !== null ? ppg.toFixed(1) : "—" },
+                    {
+                      label: row.faabRemaining !== undefined ? "FAAB" : "Waiver",
+                      value:
+                        row.faabRemaining !== undefined
+                          ? `$${row.faabRemaining}`
+                          : `#${row.waiverPosition ?? "—"}`,
+                    },
+                  ],
                 },
-                { label: "Points for", value: row.pointsFor.toFixed(1) },
-                { label: "Points against", value: row.pointsAgainst.toFixed(1) },
+                {
+                  label: "Points",
+                  items: [
+                    { label: "For", value: row.pointsFor.toFixed(1) },
+                    { label: "Against", value: row.pointsAgainst.toFixed(1) },
+                  ],
+                },
               ],
             }}
             positionRanks={positionRanksByTeam?.get(row.teamId)}

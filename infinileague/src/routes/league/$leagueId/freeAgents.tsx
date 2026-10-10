@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { Group, Stack, Text, Title } from "@mantine/core";
 import type { Position } from "@shared/positionColors";
+import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { api } from "@infinidata/api";
 import { GlassFreeAgentRow } from "../../../components/cards/GlassFreeAgentRow";
 import { GlassPositionFilter } from "../../../components/cards/GlassPositionFilter";
@@ -79,6 +80,7 @@ function FreeAgentsPage() {
     isAuthenticated && result?.week ? { seasonId, week: result.week } : "skip",
   );
   const rosVorByFpid = new Map((rosVorRows ?? []).map((row) => [row.fpid, row]));
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(rosVorRows), [rosVorRows]);
 
   // Same position filter and sort control as the Players page.
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
@@ -203,19 +205,42 @@ function FreeAgentsPage() {
                 boostReason: row.boostReason,
                 stats: [
                   {
-                    label: "Your bid",
-                    value: row.suggestedBid !== null ? `$${row.suggestedBid}` : "—",
+                    label: "Bidding",
+                    items: [
+                      {
+                        label: "Your bid",
+                        value: row.suggestedBid !== null ? `$${row.suggestedBid}` : "—",
+                      },
+                      { label: "Market", value: `$${row.marketValue}` },
+                      {
+                        label: "Your value",
+                        value: row.myValue !== null ? `$${row.myValue}` : "—",
+                      },
+                      { label: "Teams in need", value: String(row.demandCount) },
+                    ],
                   },
-                  { label: "Market", value: `$${row.marketValue}` },
-                  { label: "Your value", value: row.myValue !== null ? `$${row.myValue}` : "—" },
-                  { label: "Teams in need", value: String(row.demandCount) },
                   {
-                    label: "Season PPG",
-                    value: rosVorRow ? rosVorRow.actualPpg.toFixed(1) : "—",
-                  },
-                  {
-                    label: "ROS PPG",
-                    value: rosVorRow ? rosVorRow.rosPpg.toFixed(1) : "—",
+                    columns: ["Season", "ROS"],
+                    rows: [
+                      {
+                        label: "PPG",
+                        values: [
+                          rosVorRow ? rosVorRow.actualPpg.toFixed(1) : "—",
+                          rosVorRow ? rosVorRow.rosPpg.toFixed(1) : "—",
+                        ],
+                      },
+                      {
+                        label: "Pos rank",
+                        values: [
+                          seasonPositionRankByFpid.has(row.fpid)
+                            ? `${row.position}${seasonPositionRankByFpid.get(row.fpid)}`
+                            : "—",
+                          rosVorRow && rosVorRow.positionRank > 0
+                            ? `${row.position}${rosVorRow.positionRank}`
+                            : "—",
+                        ],
+                      },
+                    ],
                   },
                 ],
               }}

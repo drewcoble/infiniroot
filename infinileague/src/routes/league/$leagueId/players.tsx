@@ -12,6 +12,7 @@ import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCa
 import { GlassSegmented } from "../../../components/cards/GlassSegmented";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
 import type { RosVorRow } from "../../../types/season";
+import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 
 export const Route = createFileRoute("/league/$leagueId/players")({
   component: PlayersPage,
@@ -118,6 +119,7 @@ function PlayersPage() {
         }
       : "skip",
   );
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(boardRows), [boardRows]);
 
   // This week's actual points, live during games (see convex/rosVor.ts's
   // getWeekPoints) - its own query rather than a board field so live
@@ -321,17 +323,45 @@ function PlayersPage() {
                   // Long-press popover tiles - both views' numbers at once,
                   // whichever view the list is in.
                   stats: [
-                    { label: "Season PPG", value: row.actualPpg.toFixed(1) },
-                    { label: "ROS PPG", value: row.rosPpg.toFixed(1) },
-                    { label: "ROS rank", value: positionRankLabel(row.position, row.positionRank) },
-                    { label: `Wk ${nflState.week} proj`, value: row.weekPpg.toFixed(1) },
                     {
-                      label: `Wk ${nflState.week} pts`,
-                      value: row.weekPoints !== undefined ? row.weekPoints.toFixed(2) : "—",
+                      label: `Week ${nflState.week}`,
+                      items: [
+                        {
+                          label: "Points",
+                          value: row.weekPoints !== undefined ? row.weekPoints.toFixed(2) : "—",
+                        },
+                        { label: "Proj", value: row.weekPpg.toFixed(1) },
+                        {
+                          label: "Proj rank",
+                          value: positionRankLabel(row.position, row.weekPositionRank),
+                        },
+                      ],
                     },
                     {
-                      label: "Wk proj rank",
-                      value: positionRankLabel(row.position, row.weekPositionRank),
+                      columns: ["Season", "ROS"],
+                      rows: [
+                        {
+                          label: "PPG",
+                          values: [row.actualPpg.toFixed(1), row.rosPpg.toFixed(1)],
+                        },
+                        {
+                          label: "Pos rank",
+                          values: [
+                            positionRankLabel(
+                              row.position,
+                              seasonPositionRankByFpid.get(row.fpid) ?? 0,
+                            ),
+                            positionRankLabel(row.position, row.positionRank),
+                          ],
+                        },
+                        {
+                          label: "Overall",
+                          values: [
+                            row.actualRank > 0 ? `#${row.actualRank}` : "—",
+                            row.rosRank > 0 ? `#${row.rosRank}` : "—",
+                          ],
+                        },
+                      ],
                     },
                   ],
                 }}

@@ -4,6 +4,7 @@ import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
+import { StatGroups, type StatGroup } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
@@ -28,7 +29,8 @@ export interface GlassFreeAgentRowData {
   rationale: string | null;
   boostReason: string | null;
   // Labeled tiles for the long-press detail popover.
-  stats: Array<{ label: string; value: string }>;
+  // Grouped numbers for the detail popover (see StatGroups).
+  stats: StatGroup[];
 }
 
 const RANK_CHIP_STYLE = {
@@ -158,14 +160,7 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
             </div>
           )}
 
-          <div className={classes.statGrid}>
-            {data.stats.map((stat) => (
-              <div key={stat.label} className={classes.stat}>
-                <div className={classes.statValue}>{stat.value}</div>
-                <div className={classes.statLabel}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
+          <StatGroups groups={data.stats} />
 
           {(data.rationale || data.boostReason) && (
             <div className={classes.freeAgentPopoverNotes}>

@@ -14,6 +14,7 @@ import {
 import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassPopover } from "./GlassPopover";
+import { StatGroups } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
 import { PointsMeter } from "./PointsMeter";
 import classes from "./GlassMatchupCard.module.css";
@@ -43,15 +44,6 @@ function weekRankStat(data: GlassMatchupCardData): { label: string; value: strin
     return { label: "Live rank", value: format(data.weekActualPositionRank) };
   if (data.gameState === "pre") return { label: "Proj rank", value: format(data.weekPositionRank) };
   return { label: "Week rank", value: format(data.weekActualPositionRank) };
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={classes.stat}>
-      <div className={classes.statValue}>{value}</div>
-      <div className={classes.statLabel}>{label}</div>
-    </div>
-  );
 }
 
 // Long-press detail card for one player (Matchup and My Team cards) - the
@@ -187,17 +179,31 @@ export function ExpandedMatchupCard({
         </div>
       )}
 
-      <div className={classes.statGrid}>
-        <Stat label="Season PPG" value={formatProj(data.seasonPpg)} />
-        <Stat label="ROS PPG" value={formatProj(data.rosPpg)} />
-        <Stat {...weekRankStat(data)} />
-        <Stat
-          label="ROS rank"
-          value={data.positionRank > 0 ? `${data.position}${data.positionRank}` : "—"}
-        />
-        <Stat label="Slot" value={slot} />
-        <Stat label="Bye" value={data.byeWeek ? `Wk ${data.byeWeek}` : "—"} />
-      </div>
+      <StatGroups
+        groups={[
+          {
+            label: "This week",
+            items: [
+              weekRankStat(data),
+              { label: "Slot", value: slot || "—" },
+              { label: "Bye", value: data.byeWeek ? `Wk ${data.byeWeek}` : "—" },
+            ],
+          },
+          {
+            columns: ["Season", "ROS"],
+            rows: [
+              { label: "PPG", values: [formatProj(data.seasonPpg), formatProj(data.rosPpg)] },
+              {
+                label: "Pos rank",
+                values: [
+                  data.seasonPositionRank ? `${data.position}${data.seasonPositionRank}` : "—",
+                  data.positionRank > 0 ? `${data.position}${data.positionRank}` : "—",
+                ],
+              },
+            ],
+          },
+        ]}
+      />
 
       {data.fpid !== undefined && <PlayerGameLog fpid={data.fpid} position={data.position} />}
     </GlassPopover>

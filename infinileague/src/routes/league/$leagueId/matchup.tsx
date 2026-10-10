@@ -12,6 +12,7 @@ import {
   MatchupRosterMatchup,
   MatchupRosterSkeleton,
 } from "../../../components/MatchupRosterMatchup";
+import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { toMatchupCardData } from "../../../lib/matchupCardData";
 import {
   GlassMatchupHeader,
@@ -218,6 +219,7 @@ function MatchupPage() {
     () => new Map((vorRows ?? []).map((row) => [row.fpid, row])),
     [vorRows],
   );
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(vorRows), [vorRows]);
 
   // This week's actual position rank per player (the badge's "RB3" once a
   // game starts) - re-ranked on every live poll server-side.
@@ -270,6 +272,7 @@ function MatchupPage() {
       now,
       row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
+      row.fpid !== undefined ? seasonPositionRankByFpid.get(row.fpid) : undefined,
     );
   const filledRows = [...(teamARoster.rows ?? []), ...(teamBRoster.rows ?? [])].filter(
     (row) => row.fpid !== undefined,

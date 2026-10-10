@@ -5,6 +5,7 @@ import { gradeColor } from "../../lib/gradeColor";
 import { formatTradeValue } from "../../lib/tradeValue";
 import { pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
+import { StatGroups } from "./StatGroups";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -49,6 +50,10 @@ function gradePillStyle(grade: number): CSSProperties {
 // "+1,250" / "−800" - trade value, signed.
 function signedValue(value: number): string {
   return `${value >= 0 ? "+" : "−"}${formatTradeValue(Math.abs(value))}`;
+}
+
+function rankMoveText(before: number, after: number): string {
+  return before === after ? `#${after}` : `#${before} → #${after}`;
 }
 
 function RankMove({ before, after }: { before: number; after: number }) {
@@ -231,33 +236,33 @@ export function GlassTradeSuggestionCard({
             {playerRows(suggestion.receive)}
           </div>
 
-          <div className={classes.statGrid}>
-            {[
-              { label: "Grade", value: String(suggestion.grade) },
-              { label: "Your PPG", value: signed(suggestion.gainPpg) },
+          <StatGroups
+            groups={[
               {
-                label: "Your rank",
-                value:
-                  suggestion.rankBefore === suggestion.rankAfter
-                    ? `#${suggestion.rankAfter}`
-                    : `#${suggestion.rankBefore}→#${suggestion.rankAfter}`,
+                label: "Trade",
+                items: [
+                  { label: "Grade", value: String(suggestion.grade) },
+                  { label: "Value net", value: signedValue(suggestion.valueNet) },
+                ],
               },
-              { label: "Value net", value: signedValue(suggestion.valueNet) },
-              { label: "Their PPG", value: signed(suggestion.partnerGainPpg) },
               {
-                label: "Their rank",
-                value:
-                  suggestion.partnerRankBefore === suggestion.partnerRankAfter
-                    ? `#${suggestion.partnerRankAfter}`
-                    : `#${suggestion.partnerRankBefore}→#${suggestion.partnerRankAfter}`,
+                columns: ["You", "Them"],
+                rows: [
+                  {
+                    label: "ROS PPG",
+                    values: [signed(suggestion.gainPpg), signed(suggestion.partnerGainPpg)],
+                  },
+                  {
+                    label: "Power rank",
+                    values: [
+                      rankMoveText(suggestion.rankBefore, suggestion.rankAfter),
+                      rankMoveText(suggestion.partnerRankBefore, suggestion.partnerRankAfter),
+                    ],
+                  },
+                ],
               },
-            ].map((stat) => (
-              <div key={stat.label} className={classes.stat}>
-                <div className={classes.statValue}>{stat.value}</div>
-                <div className={classes.statLabel}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
+            ]}
+          />
 
           <button
             type="button"

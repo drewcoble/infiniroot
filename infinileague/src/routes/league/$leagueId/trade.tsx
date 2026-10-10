@@ -19,6 +19,7 @@ import {
 } from "../../../components/cards/GlassTradeSuggestionCard";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
 import { formatTradeValue, tradeTotals } from "../../../lib/tradeValue";
+import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
 import {
   TradePowerRankingsSheet,
@@ -87,6 +88,7 @@ function TradePage() {
     () => new Map((vorRows ?? []).map((row) => [row.fpid, row])),
     [vorRows],
   );
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(vorRows), [vorRows]);
 
   const [teamAId, setTeamAId] = useState<string | null>(null);
   useEffect(() => {
@@ -482,6 +484,7 @@ function TradePage() {
             teamBLoading={teamBId !== null}
             vorByFpid={vorByFpid}
             valueByFpid={valueByFpid}
+            seasonPositionRankByFpid={seasonPositionRankByFpid}
             metric={metric}
             shortName={shortName}
             selectedA={selectedA}

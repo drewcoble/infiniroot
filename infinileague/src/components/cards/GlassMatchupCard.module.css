@@ -656,22 +656,6 @@
   color: rgba(248, 250, 252, 0.7);
 }
 
-/* Secondary stats as small glass tiles - same glass-on-glass treatment as
-   the pills, untinted. */
-.statGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.stat {
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
-}
-
 .statValue {
   font-size: 15px;
   line-height: 1.2;
@@ -1877,4 +1861,97 @@
   font-family: var(--font-numeric);
   font-weight: var(--font-numeric-weight);
   letter-spacing: -0.01em;
+}
+
+/* --- Grouped detail stats (StatGroups) ---------------------------------- */
+
+.statGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.statGroupLabel {
+  margin-bottom: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+/* One glass panel per group - the old stat tiles' treatment, holding the
+   whole group instead of one number. */
+.statPanel {
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* A row group: numbers side by side, hairlines between them. */
+.statRow {
+  display: grid;
+  overflow: hidden;
+}
+
+.statRowItem {
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+/* Hairlines between neighbours, and above a wrapped second line. */
+.statRowItemLeft {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.statRowItemTop {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* A table group: measures down the side, time frames across the top. */
+.statTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+.statTable th,
+.statTable td {
+  padding: 7px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.statTable thead th {
+  padding-bottom: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.statTable tbody th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.statTable tbody td {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.statTable tbody tr th,
+.statTable tbody tr td {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.statEmpty {
+  color: rgba(248, 250, 252, 0.35);
 }

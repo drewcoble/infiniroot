@@ -4,6 +4,7 @@ import { ChevronRight, X } from "lucide-react";
 import type { TeamPositionRanks } from "../../types/season";
 import { TeamPositionRanksPanel } from "../TeamPositionRanksPanel";
 import { GlassPopover } from "./GlassPopover";
+import { StatGroups, type StatGroup } from "./StatGroups";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -26,7 +27,8 @@ export interface GlassTeamCardData {
   // are hidden from them in favor of one label).
   summary?: string | undefined;
   // Labeled tiles for the detail popover.
-  stats: Array<{ label: string; value: string }>;
+  // Grouped numbers for the detail popover (see StatGroups).
+  stats: StatGroup[];
 }
 
 // Rank chip outside the card, like the roster cards' slot chip - glass gray,
@@ -136,14 +138,7 @@ export function GlassTeamCard({
           </div>
 
           {data.stats.length > 0 && (
-            <div className={classes.statGrid}>
-              {data.stats.map((stat) => (
-                <div key={stat.label} className={classes.stat}>
-                  <div className={classes.statValue}>{stat.value}</div>
-                  <div className={classes.statLabel}>{stat.label}</div>
-                </div>
-              ))}
-            </div>
+            <StatGroups groups={data.stats} />
           )}
 
           {positionRanks !== null && (

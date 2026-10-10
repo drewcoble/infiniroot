@@ -37,6 +37,9 @@ export interface GlassMatchupCardData {
   // (actualPpg, rosPpg, weekPositionRank).
   seasonPpg?: number;
   rosPpg?: number;
+  // Season-to-date position rank (lib/seasonPositionRanks.ts) - the
+  // detail card's Season counterpart of positionRank.
+  seasonPositionRank?: number;
   weekPositionRank?: number;
   // Position rank by points actually scored this week, among everyone at
   // the position - recomputed from each live scoring poll, so it moves

@@ -83,9 +83,14 @@ export function PowerRankingsList({ leagueId, rows, positionRanksByTeam }: Power
             summary:
               row.rosPpg !== undefined ? `${row.rosPpg.toFixed(1)} rest-of-season PPG` : undefined,
             stats: [
-              { label: "ROS PPG", value: row.rosPpg !== undefined ? row.rosPpg.toFixed(1) : "—" },
-              { label: "ROS proj pts", value: row.totalProjectedPoints.toFixed(0) },
-              { label: "Since last wk", value: rankChangeText(row.rankChange) },
+              {
+                label: "Rest of season",
+                items: [
+                  { label: "PPG", value: row.rosPpg !== undefined ? row.rosPpg.toFixed(1) : "—" },
+                  { label: "Proj pts", value: row.totalProjectedPoints.toFixed(0) },
+                  { label: "Since last wk", value: rankChangeText(row.rankChange) },
+                ],
+              },
             ],
           }}
           positionRanks={positionRanksByTeam?.get(row.teamId)}

@@ -21,6 +21,7 @@ export function toMatchupCardData(
   now: number,
   vor: RosVorRow | undefined,
   weekRank: number | undefined,
+  seasonPositionRank?: number,
 ): GlassMatchupCardData {
   const base = {
     fpid: row.fpid,
@@ -36,6 +37,7 @@ export function toMatchupCardData(
     ...(vor ? { seasonPpg: vor.actualPpg, rosPpg: vor.rosPpg } : {}),
     ...(vor && vor.weekPositionRank > 0 ? { weekPositionRank: vor.weekPositionRank } : {}),
     ...(weekRank !== undefined ? { weekActualPositionRank: weekRank } : {}),
+    ...(seasonPositionRank !== undefined ? { seasonPositionRank } : {}),
   };
 
   if (!gamesByTeam || gamesByTeam.size === 0 || !row.team) {

@@ -97,11 +97,19 @@ export function TradePowerRankingsList({
                 .filter(Boolean)
                 .join(", "),
               stats: [
-                { label: "ROS PPG", value: row.rosPpg !== undefined ? row.rosPpg.toFixed(1) : "—" },
-                { label: "ROS proj pts", value: row.totalProjectedPoints.toFixed(0) },
                 {
-                  label: "Before trade",
-                  value: beforeRank !== undefined ? `#${beforeRank}` : "—",
+                  label: "After this trade",
+                  items: [
+                    {
+                      label: "ROS PPG",
+                      value: row.rosPpg !== undefined ? row.rosPpg.toFixed(1) : "—",
+                    },
+                    { label: "Proj pts", value: row.totalProjectedPoints.toFixed(0) },
+                    {
+                      label: "Rank before",
+                      value: beforeRank !== undefined ? `#${beforeRank}` : "—",
+                    },
+                  ],
                 },
               ],
             }}
