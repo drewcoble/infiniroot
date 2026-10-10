@@ -106,7 +106,7 @@ function TradePage() {
   const teamARoster = useTeamRoster(teamAId, week);
   const teamBRoster = useTeamRoster(teamBId, week);
 
-  // What the cards show - trade value, PPG, or overall rank. VOR isn't
+  // What the cards show - trade value, PPG, or position rank. VOR isn't
   // offered on its own: the values are built from it (infinivalue).
   const [metric, setMetric] = useState<TradeMetric>("value");
 

@@ -29,9 +29,6 @@ export interface GlassTradeCardData {
   // Season-to-date position rank (lib/seasonPositionRanks.ts) - the
   // detail table's Season counterpart of positionRank.
   seasonPositionRank: number | undefined;
-  // Overall (all-position) VOR ranks, season to date and rest of season.
-  seasonRank: number | undefined;
-  rosRank: number | undefined;
   // Trade value (convex/infinileague/season/tradeValues.ts): the average
   // ("avg value"), FantasyCalc's market value (null = not priced there -
   // K/DST), and our infinivalue. undefined while the values load.
@@ -48,7 +45,6 @@ export interface GlassTradeCardData {
 // left and rest of season on the right.
 export type TradeMetric = "value" | "ppg" | "rank";
 
-const formatRank = (rank: number | undefined) => (rank ? `#${rank}` : "—");
 const formatPositionRank = (position: string, rank: number | undefined) =>
   rank ? `${position}${rank}` : "—";
 const formatValue = (value: number | null | undefined) =>
@@ -100,7 +96,11 @@ function metricValues(data: GlassTradeCardData, metric: TradeMetric): MetricValu
   }
   const [season, ros, spoken] =
     metric === "rank"
-      ? [formatRank(data.seasonRank), formatRank(data.rosRank), "overall rank"]
+      ? [
+          formatPositionRank(data.position, data.seasonPositionRank),
+          formatPositionRank(data.position, data.positionRank),
+          "position rank",
+        ]
       : [formatProj(data.seasonPpg), formatProj(data.rosPpg), "PPG"];
   return {
     leftLabel: "Actual",
@@ -278,10 +278,6 @@ export function GlassTradeCard({
                       formatPositionRank(data.position, data.seasonPositionRank),
                       formatPositionRank(data.position, data.positionRank),
                     ],
-                  },
-                  {
-                    label: "Overall",
-                    values: [formatRank(data.seasonRank), formatRank(data.rosRank)],
                   },
                 ],
               },
