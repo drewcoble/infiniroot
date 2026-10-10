@@ -38,6 +38,15 @@ interface EspnRosterEntry {
       fullName?: string;
       defaultPositionId?: number;
       proTeamId?: number;
+      // statSourceId 0 = actual, 1 = projected; appliedTotal is already in
+      // this league's own scoring. One block per (season, period) - see
+      // fetchEspnTeamWeekEntries.
+      stats?: Array<{
+        seasonId: number;
+        scoringPeriodId: number;
+        statSourceId: number;
+        appliedTotal?: number;
+      }>;
     };
   };
 }
@@ -92,8 +101,15 @@ async function fetchEspnLeague(
   espnLeagueId: string,
   season: string,
   views: string[],
+  // e.g. scoringPeriodId - scopes mRoster to that week's lineup.
+  extraParams: Record<string, string> = {},
 ): Promise<EspnLeague> {
-  const query = views.map((view) => `view=${view}`).join("&");
+  const query = [
+    ...views.map((view) => `view=${view}`),
+    ...Object.entries(extraParams).map(
+      ([key, value]) => `${key}=${encodeURIComponent(value)}`,
+    ),
+  ].join("&");
   const response = await fetch(
     `${LEAGUE_API_BASE_URL}/seasons/${season}/segments/0/leagues/${encodeURIComponent(espnLeagueId)}?${query}`,
   );
@@ -441,4 +457,55 @@ export async function fetchEspnOpponentTeamId(
     if (away === selfId) return home !== undefined ? String(home) : null;
   }
   return null;
+}
+
+export interface EspnWeekEntry {
+  espnId: number;
+  name: string;
+  position?: string;
+  proTeamId?: number;
+  lineupSlotId: number;
+  actualPoints?: number;
+}
+
+// One team's lineup for a given week, for infinileague's team page.
+// Passing scoringPeriodId makes mRoster return the roster/lineup as it stood
+// that week (confirmed live - a past week shows that week's starters, not
+// today's), and each player's stats then include that week's actual block
+// (statSourceId 0, absent until they've played) with appliedTotal already in
+// the league's own scoring - the ESPN counterpart to Sleeper's
+// players_points.
+export async function fetchEspnTeamWeekEntries(
+  espnLeagueId: string,
+  season: string,
+  week: string,
+  espnTeamId: string,
+): Promise<EspnWeekEntry[]> {
+  const league = await fetchEspnLeague(espnLeagueId, season, ["mRoster"], {
+    scoringPeriodId: week,
+  });
+  const team = (league.teams ?? []).find((t) => String(t.id) === espnTeamId);
+  if (!team) return [];
+  const rosterPlayers = new Map(
+    extractRosterPlayers(team).map((player) => [player.espnId, player]),
+  );
+  return (team.roster?.entries ?? []).map((entry) => {
+    const actual = entry.playerPoolEntry?.player?.stats?.find(
+      (block) =>
+        block.statSourceId === 0 &&
+        String(block.seasonId) === season &&
+        String(block.scoringPeriodId) === week,
+    );
+    const player = rosterPlayers.get(entry.playerId);
+    return {
+      espnId: entry.playerId,
+      name: player?.name ?? "",
+      ...(player?.position ? { position: player.position } : {}),
+      ...(player?.proTeamId !== undefined ? { proTeamId: player.proTeamId } : {}),
+      lineupSlotId: entry.lineupSlotId,
+      ...(actual?.appliedTotal !== undefined
+        ? { actualPoints: actual.appliedTotal }
+        : {}),
+    };
+  });
 }

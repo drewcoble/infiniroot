@@ -10,6 +10,8 @@ import {
 import { SLOT_CODE_MAP, mapRosterPositions } from "../../sleeper/leagueSettingsMapping";
 import type { POSITIONS } from "../../positions";
 import { withYahooToken } from "../../infinidraft/yahoo/oauth";
+import { fetchEspnTeamWeekEntries } from "../../espn/league";
+import { ESPN_IR_SLOT_ID, ESPN_SLOT_MAP } from "../../espn/leagueSettingsMapping";
 import { fetchYahooApi, findNodesByKey, mergeYahooFields } from "../../infinidraft/yahoo/client";
 
 type Position = (typeof POSITIONS)[number];
@@ -142,6 +144,7 @@ export const getTeamRosterForWeek = action({
 
     const isSleeperLinked = Boolean(team.sleeperRosterId && season.sleeperLeagueId);
     const isYahooLinked = Boolean(team.yahooTeamKey && season.yahooLeagueKey);
+    const isEspnLinked = Boolean(team.espnTeamId && season.espnLeagueId);
 
     // One entry per physical roster slot the league is configured for -
     // starters 1:1 via startingSlotSequence, then however many bench/IR/taxi
@@ -153,12 +156,12 @@ export const getTeamRosterForWeek = action({
     // so they only ever show slots for players actually rostered.
     let assignments: { slot: SlotLabel; playerId: string | null }[] = [];
     let fpids: number[] = [];
-    // Yahoo counterpart to `assignments` above - keyed by fpid instead of
-    // Sleeper's native player id, and only ever has entries for players
+    // Yahoo/ESPN counterpart to `assignments` above - keyed by fpid instead
+    // of Sleeper's native player id, and only ever has entries for players
     // actually rostered (no empty-slot placeholders, see above).
-    let yahooSlotByFpid: Map<number, SlotLabel> | undefined;
+    let slotByFpid: Map<number, SlotLabel> | undefined;
     // Yahoo counterpart to actualPointsBySleeperId below - keyed by fpid
-    // (resolved from Yahoo's player_key the same way yahooSlotByFpid is)
+    // (resolved from Yahoo's player_key the same way slotByFpid is)
     // rather than Sleeper's native player id.
     let actualPointsByFpid: Map<number, number> | undefined;
     const actualPointsBySleeperId = new Map<string, number>();
@@ -323,22 +326,59 @@ export const getTeamRosterForWeek = action({
       );
       const fpidByPlayerKey = new Map(resolved.map((r) => [r.playerKey, r.fpid]));
 
-      yahooSlotByFpid = new Map();
+      slotByFpid = new Map();
       actualPointsByFpid = new Map();
       for (const entry of rosterEntries) {
         const fpid = fpidByPlayerKey.get(entry.playerKey);
         if (fpid === undefined) continue;
         fpids.push(fpid);
-        if (entry.slot !== undefined) yahooSlotByFpid.set(fpid, entry.slot);
+        if (entry.slot !== undefined) slotByFpid.set(fpid, entry.slot);
+        if (entry.actualPoints !== undefined) actualPointsByFpid.set(fpid, entry.actualPoints);
+      }
+    } else if (isEspnLinked && team.espnTeamId && season.espnLeagueId) {
+      // ESPN's lineup for this specific week (see fetchEspnTeamWeekEntries) -
+      // lineupSlotId maps through the same ESPN_SLOT_MAP the import uses
+      // (narrow flexes -> FLEX, OP -> SUPERFLEX), plus IR as its own row.
+      // Only players actually rostered, same as the Yahoo path.
+      const entries = await fetchEspnTeamWeekEntries(
+        season.espnLeagueId,
+        season.year,
+        args.week,
+        team.espnTeamId,
+      );
+      const resolved: Array<{ espnId: number; fpid: number }> = await ctx.runQuery(
+        internal.espn.league.resolveEspnPlayersToFpids,
+        {
+          players: entries.map(({ espnId, name, position, proTeamId }) => ({
+            espnId,
+            name,
+            ...(position ? { position } : {}),
+            ...(proTeamId !== undefined ? { proTeamId } : {}),
+          })),
+        },
+      );
+      const fpidByEspnId = new Map(resolved.map((r) => [r.espnId, r.fpid]));
+
+      slotByFpid = new Map();
+      actualPointsByFpid = new Map();
+      for (const entry of entries) {
+        const fpid = fpidByEspnId.get(entry.espnId);
+        if (fpid === undefined) continue;
+        fpids.push(fpid);
+        const slot: SlotLabel | undefined =
+          entry.lineupSlotId === ESPN_IR_SLOT_ID
+            ? "IR"
+            : ESPN_SLOT_MAP[entry.lineupSlotId];
+        if (slot !== undefined) slotByFpid.set(fpid, slot);
         if (entry.actualPoints !== undefined) actualPointsByFpid.set(fpid, entry.actualPoints);
       }
     } else {
-      // Not Sleeper- or Yahoo-linked - no per-week matchup source at all,
-      // fall back to whatever the last roster sync stored. This is the path
-      // every ESPN-linked team takes (no per-week ESPN lineup wired up yet -
-      // convex/espn/league.ts's syncEspnLeagueRoster keeps rosterPlayers
-      // fresh). No slot structure here, so no empty-slot rows either - just
-      // whatever's actually rostered.
+      // Not linked to any provider - no per-week matchup source at all,
+      // fall back to whatever the last roster sync stored. Shouldn't
+      // normally happen for a season infinileague can see (those are always
+      // provider-linked - see convex/leagues.ts's listLinkedSeasons), but
+      // handled rather than left to throw. No slot structure here, so no
+      // empty-slot rows either - just whatever's actually rostered.
       fpids = await ctx.runQuery(
         internal.infinileague.season.rosterPlayers.listRosterFpidsForTeam,
         { teamId: args.teamId },
@@ -413,7 +453,7 @@ export const getTeamRosterForWeek = action({
         })
       : fpids
           .map((fpid) =>
-            buildFilledRow(fpid, yahooSlotByFpid?.get(fpid), actualPointsByFpid?.get(fpid)),
+            buildFilledRow(fpid, slotByFpid?.get(fpid), actualPointsByFpid?.get(fpid)),
           )
           .filter((row): row is TeamRosterRow => row !== null);
 
