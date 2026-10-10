@@ -156,16 +156,14 @@ export const listSeasons = query({
 });
 
 // infinileague-facing counterpart to listSeasons - identical shape, but
-// filtered to seasons actually linked to a real external league (Sleeper or
-// Yahoo). infinileague's whole feature set (waiver/FAAB/trade recommendations
+// filtered to seasons actually linked to a real external league (Sleeper,
+// Yahoo, or ESPN). infinileague's whole feature set (waiver/FAAB/trade recommendations
 // off real roster data) is meaningless for a season the user built from
 // scratch here in infinidraft - there's no external roster to sync, and
 // infinileague must never show one of those "custom" leagues at all (see
-// infinidraft/INFINILEAGUE.md). Gated on "linked to any provider" rather than
-// "linked to Sleeper" specifically - Yahoo is just not connectable yet
-// (pending API access), not excluded on purpose, so a Yahoo-linked season
-// should start appearing here automatically once that lands, with no change
-// needed to this query.
+// infinidraft/INFINILEAGUE.md). Gated on "linked to any provider" - a new
+// provider's link field has to be added to this check (and
+// listMyAuctionSeasons') for its leagues to show up at all.
 export const listLinkedSeasons = query({
   args: {},
   handler: async (ctx): Promise<SeasonWithLeagueName[]> => {
@@ -186,7 +184,8 @@ export const listLinkedSeasons = query({
       for (const season of seasons) {
         if (
           season.sleeperLeagueId === undefined &&
-          season.yahooLeagueKey === undefined
+          season.yahooLeagueKey === undefined &&
+          season.espnLeagueId === undefined
         ) {
           continue;
         }
@@ -304,7 +303,8 @@ export const listMyAuctionSeasons = query({
       for (const season of seasons) {
         if (
           season.sleeperLeagueId === undefined &&
-          season.yahooLeagueKey === undefined
+          season.yahooLeagueKey === undefined &&
+          season.espnLeagueId === undefined
         ) {
           continue;
         }
@@ -418,6 +418,8 @@ export const createLeague = mutation({
     // Yahoo equivalent, set by the "Import from Yahoo" wizard (see
     // convex/infinidraft/yahoo/league.ts's previewYahooImport).
     yahooLeagueKey: v.optional(v.string()),
+    // ESPN equivalent (see convex/espn/league.ts's previewEspnImport).
+    espnLeagueId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -447,6 +449,7 @@ export const createLeague = mutation({
       name,
       sleeperLeagueId,
       yahooLeagueKey,
+      espnLeagueId,
       useKeepers,
       ...seasonFields
     } = args;
@@ -468,6 +471,7 @@ export const createLeague = mutation({
       useKeepers: useKeepers ?? false,
       ...(sleeperLeagueId ? { sleeperLeagueId } : {}),
       ...(yahooLeagueKey ? { yahooLeagueKey } : {}),
+      ...(espnLeagueId ? { espnLeagueId } : {}),
       createdAt: now,
     });
 
@@ -481,11 +485,11 @@ export const createLeague = mutation({
 
     // Seed default "Team 1".."Team N" rows immediately so every tab has
     // content right after creation instead of gating on a separate "Save
-    // Teams" step. Skipped for the Sleeper/Yahoo import wizards (they pass
-    // sleeperLeagueId/yahooLeagueKey and call initializeSeasonTeams
-    // themselves afterward with the real imported team names/links -
-    // calling it twice would throw "Teams have already been set up").
-    if (!sleeperLeagueId && !yahooLeagueKey) {
+    // Teams" step. Skipped for the Sleeper/Yahoo/ESPN import wizards (they
+    // pass a provider league id and call initializeSeasonTeams themselves
+    // afterward with the real imported team names/links - calling it twice
+    // would throw "Teams have already been set up").
+    if (!sleeperLeagueId && !yahooLeagueKey && !espnLeagueId) {
       await insertSeasonTeams(ctx, {
         seasonId,
         draftId,
@@ -866,6 +870,21 @@ export const setYahooLeagueKey = mutation({
     await requireSeasonOwner(ctx, args.id);
     await ctx.db.patch(args.id, {
       yahooLeagueKey: args.yahooLeagueKey ?? undefined,
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
+// ESPN equivalent of setSleeperLeagueId above.
+export const setEspnLeagueId = mutation({
+  args: {
+    id: v.id("seasons"),
+    espnLeagueId: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    await requireSeasonOwner(ctx, args.id);
+    await ctx.db.patch(args.id, {
+      espnLeagueId: args.espnLeagueId ?? undefined,
     });
     return await ctx.db.get(args.id);
   },

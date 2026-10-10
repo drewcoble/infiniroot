@@ -678,6 +678,11 @@ export default defineSchema({
     // season-scoped rather than durable across every season of a league.
     sleeperLeagueId: v.optional(v.string()),
     yahooLeagueKey: v.optional(v.string()),
+    // ESPN, unlike Sleeper/Yahoo, keeps the same league id across seasons -
+    // the ESPN season is this row's own `year`, not part of the id (see
+    // convex/espn/league.ts). Public leagues only for now (no espn_s2/SWID
+    // cookie support), so this alone is enough to read the league.
+    espnLeagueId: v.optional(v.string()),
     faabBudget: v.optional(v.number()),
     // Which waiver system this league actually uses - determines whether
     // infinileague's standings page shows remaining FAAB $ or waiver order
@@ -868,6 +873,9 @@ export default defineSchema({
     // Yahoo equivalent of sleeperRosterId - see convex/infinidraft/yahoo/league.ts's
     // syncYahooLeagueRoster.
     yahooTeamKey: v.optional(v.string()),
+    // ESPN equivalent - the team's numeric id within its ESPN league,
+    // stringified (see convex/espn/league.ts's syncEspnLeagueRoster).
+    espnTeamId: v.optional(v.string()),
     // In-season FAAB spent so far, synced from the linked provider roster -
     // defaults to 0 until the first sync.
     faabSpent: v.optional(v.number()),
@@ -890,8 +898,9 @@ export default defineSchema({
   }).index("by_season", ["seasonId"]),
 
   // One team's currently-rostered players, synced from whichever provider
-  // this season is linked to (convex/sleeper/league.ts's syncLeagueRoster or
-  // convex/infinidraft/yahoo/league.ts's syncYahooLeagueRoster) - provider-agnostic by
+  // this season is linked to (convex/sleeper/league.ts's syncLeagueRoster,
+  // convex/infinidraft/yahoo/league.ts's syncYahooLeagueRoster, or
+  // convex/espn/league.ts's syncEspnLeagueRoster) - provider-agnostic by
   // design, since the only consumer (convex/lib/faab.ts) only ever
   // needs "which fpids does this team currently have," never which provider
   // synced them. Replace-all-on-sync per team: every existing row for a

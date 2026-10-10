@@ -14,6 +14,8 @@ import type * as crons from "../crons.js";
 import type * as draftType from "../draftType.js";
 import type * as draftValues from "../draftValues.js";
 import type * as espn_client from "../espn/client.js";
+import type * as espn_league from "../espn/league.js";
+import type * as espn_leagueSettingsMapping from "../espn/leagueSettingsMapping.js";
 import type * as espn_rankings from "../espn/rankings.js";
 import type * as espn_scoreboard from "../espn/scoreboard.js";
 import type * as fetchAllData from "../fetchAllData.js";
@@ -150,6 +152,8 @@ declare const fullApi: ApiFromModules<{
   draftType: typeof draftType;
   draftValues: typeof draftValues;
   "espn/client": typeof espn_client;
+  "espn/league": typeof espn_league;
+  "espn/leagueSettingsMapping": typeof espn_leagueSettingsMapping;
   "espn/rankings": typeof espn_rankings;
   "espn/scoreboard": typeof espn_scoreboard;
   fetchAllData: typeof fetchAllData;

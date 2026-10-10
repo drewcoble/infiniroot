@@ -148,8 +148,8 @@ export async function gatherPowerRankingsInputs(
   const { season } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
     seasonId,
   });
-  if (!season.sleeperLeagueId && !season.yahooLeagueKey) {
-    throw new Error("This league isn't linked to Sleeper or Yahoo yet.");
+  if (!season.sleeperLeagueId && !season.yahooLeagueKey && !season.espnLeagueId) {
+    throw new Error("This league isn't linked to Sleeper, Yahoo, or ESPN yet.");
   }
 
   const nflState = await ctx.runQuery(api.nflState.getNflState, {});
@@ -188,10 +188,11 @@ export async function gatherPowerRankingsInputs(
       for (const fpid of fpids) allFpids.add(fpid);
     }
   } else {
-    // Yahoo has no live per-slot roster endpoint wired up here yet (see
-    // YAHOO.md), so this reads the already-synced rosterPlayers table
+    // Yahoo/ESPN have no live per-slot roster endpoint wired up here yet
+    // (see YAHOO.md), so this reads the already-synced rosterPlayers table
     // instead (kept fresh by infinidraft/yahoo/league.ts's
-    // syncYahooLeagueRoster) - same fallback source
+    // syncYahooLeagueRoster / espn/league.ts's syncEspnLeagueRoster) -
+    // same fallback source
     // convex/infinileague/season/teamRoster.ts uses for non-Sleeper teams.
     // Unlike the Sleeper branch above, this can't exclude taxi/IR players:
     // rosterPlayers has no slot/status field, and syncYahooLeagueRoster

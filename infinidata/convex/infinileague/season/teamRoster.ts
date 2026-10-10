@@ -334,11 +334,11 @@ export const getTeamRosterForWeek = action({
       }
     } else {
       // Not Sleeper- or Yahoo-linked - no per-week matchup source at all,
-      // fall back to whatever the last roster sync stored. Shouldn't
-      // normally happen for a season infinileague can see (those are always
-      // provider-linked - see convex/leagues.ts's listLinkedSeasons), but
-      // handled rather than left to throw. No slot structure here, so no
-      // empty-slot rows either - just whatever's actually rostered.
+      // fall back to whatever the last roster sync stored. This is the path
+      // every ESPN-linked team takes (no per-week ESPN lineup wired up yet -
+      // convex/espn/league.ts's syncEspnLeagueRoster keeps rosterPlayers
+      // fresh). No slot structure here, so no empty-slot rows either - just
+      // whatever's actually rostered.
       fpids = await ctx.runQuery(
         internal.infinileague.season.rosterPlayers.listRosterFpidsForTeam,
         { teamId: args.teamId },
