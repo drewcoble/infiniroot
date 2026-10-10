@@ -1579,8 +1579,13 @@
   }
 }
 
+/* Full height, as on the Matchup header. The Matchup bar's flex: 1 is
+   for growing sideways between its percentages; here the bar sits in a
+   vertical stack, where that same flex would squash its height. */
 .tradeBalanceBar {
   position: relative;
+  flex: none;
+  height: 10px;
 }
 
 /* The fixed "Fair" zone over the bar's middle (GlassTradeHeader's
