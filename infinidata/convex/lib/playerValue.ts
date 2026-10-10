@@ -194,10 +194,14 @@ export async function gatherPlayerForms(
 // fully trust the surprise" - both this and the [MIN,MAX] band are starting
 // guesses, not calibrated against real outcomes yet. Narrowed from 0.7/1.4
 // (too severe) to 0.9/1.1 (still a little much) to 0.95/1.05 after live
-// review of each step.
+// review of each step, then to 0.98/1.02 - the multiplier scales a
+// player's whole rest-of-season projection, and VOR (projection minus
+// replacement) magnifies that several-fold for anyone near replacement
+// level, which was moving trade values (infinivalue ranks by rosVor) more
+// than a three-game sample should.
 const VOLUME_CONFIDENCE_SNAP_SHARE = 0.5;
-const MOMENTUM_MIN = 0.95;
-const MOMENTUM_MAX = 1.05;
+const MOMENTUM_MIN = 0.98;
+const MOMENTUM_MAX = 1.02;
 
 export function momentumMultiplier(form: PlayerForm): number {
   if (form.gamesInWindow === 0 || form.currentWeekProjection <= 0) return 1;
