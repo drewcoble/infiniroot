@@ -1,37 +1,117 @@
 import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { formatTradeValue } from "../../lib/tradeValue";
+import type { TradeMetric } from "./GlassTradeCard";
 import classes from "./GlassMatchupCard.module.css";
+
+// One player a side sends, with every view's numbers - the header shows
+// whichever the switch picks.
+export interface TradeHeaderPlayer {
+  fpid: number;
+  // Short name (lib/shortPlayerName.ts), as on the cards.
+  name: string;
+  // Avg value - undefined while the values load.
+  value: number | undefined;
+  actualPpg: string;
+  rosPpg: string;
+  // Position ranks ("WR12"), season to date and rest of season.
+  actualRank: string;
+  rosRank: string;
+}
 
 export interface TradeHeaderTeam {
   name: string;
   // Players this team gives up.
-  sendCount: number;
+  players: TradeHeaderPlayer[];
   // Their combined avg value (lib/tradeValue.ts), consolidation credit
   // included so the two sides' numbers and the verdict's margin agree -
   // undefined while the values load.
   value: number | undefined;
-  // The consolidation credit inside `value`, if any - named on this side's
-  // small line so the number still reads as more than its players' sum.
+  // The consolidation credit inside `value`, if any - shown as the Value
+  // view's adjustment so the total still reads as more than its players'
+  // sum.
   credit: number;
+  // Summed per-game rates of the players sent, for the PPG view.
+  rosPpgTotal: number;
+  actualPpgTotal: number;
 }
 
-function sideLine(team: TradeHeaderTeam): string {
-  if (team.sendCount === 0) return "Tap players to send";
-  const players = `${team.sendCount} player${team.sendCount === 1 ? "" : "s"}`;
-  return team.credit > 0 ? `${players} · +${formatTradeValue(team.credit)} 2-for-1` : players;
+// The big number and the line under it, per view - Ranks has neither
+// (ranks don't add up).
+function sideTotals(
+  team: TradeHeaderTeam,
+  metric: TradeMetric,
+): { big: string; line: string } | null {
+  if (metric === "rank") return null;
+  if (team.players.length === 0) return { big: "—", line: "" };
+  if (metric === "ppg") {
+    return {
+      big: team.rosPpgTotal.toFixed(1),
+      line: `ROS PPG · ${team.actualPpgTotal.toFixed(1)} actual`,
+    };
+  }
+  return {
+    big: team.value !== undefined ? formatTradeValue(team.value) : "…",
+    line: team.credit > 0 ? `Avg value · +${formatTradeValue(team.credit)} 2-for-1` : "Avg value",
+  };
+}
+
+// Each player sent, with the view's numbers: value; or actual | ROS PPG /
+// position rank, under small column labels.
+function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetric }) {
+  if (team.players.length === 0) {
+    return <div className={classes.tradeHeaderSends}>Tap players to send</div>;
+  }
+  const twoColumns = metric !== "value";
+  const numbers = (player: TradeHeaderPlayer): string[] =>
+    metric === "value"
+      ? [player.value !== undefined ? formatTradeValue(player.value) : "…"]
+      : metric === "ppg"
+        ? [player.actualPpg, player.rosPpg]
+        : [player.actualRank, player.rosRank];
+  return (
+    <div
+      className={`${classes.tradeHeaderPlayers} ${twoColumns ? classes.tradeHeaderPlayersTwo : ""}`}
+    >
+      {twoColumns && (
+        <>
+          <span />
+          <span className={classes.tradeHeaderColumn}>Act</span>
+          <span className={classes.tradeHeaderColumn}>ROS</span>
+        </>
+      )}
+      {team.players.map((player) => (
+        <div key={player.fpid} className={classes.tradeHeaderPlayer}>
+          <span className={classes.tradeHeaderPlayerName}>{player.name}</span>
+          {numbers(player).map((number, index, all) => (
+            <span
+              key={index}
+              className={`${classes.tradeHeaderNumber} ${
+                all.length > 1 && index === 0 ? classes.tradeHeaderDim : ""
+              }`}
+            >
+              {number}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function TeamSide({
   team,
+  metric,
   align,
   name,
 }: {
   team: TradeHeaderTeam;
+  metric: TradeMetric;
   align: "left" | "right";
   // Replaces the plain name - the partner picker, on the right.
   name?: ReactNode;
 }) {
+  const summary = sideTotals(team, metric);
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
       {name ?? (
@@ -39,11 +119,23 @@ function TeamSide({
           {team.name}
         </div>
       )}
-      <div className={`${classes.headerTotal} ${classes.tradeHeaderTotal}`} aria-hidden>
-        {team.sendCount === 0 ? "—" : team.value !== undefined ? formatTradeValue(team.value) : "…"}
-      </div>
-      <div className={classes.tradeHeaderSends} aria-hidden>
-        {sideLine(team)}
+      {summary ? (
+        <>
+          <div className={`${classes.headerTotal} ${classes.tradeHeaderTotal}`} aria-hidden>
+            {summary.big}
+          </div>
+          <div className={classes.tradeHeaderSends} aria-hidden>
+            {summary.line}
+          </div>
+        </>
+      ) : (
+        <>
+          <span />
+          <span />
+        </>
+      )}
+      <div className={classes.tradeHeaderListCell} aria-hidden>
+        <PlayerList team={team} metric={metric} />
       </div>
     </div>
   );
@@ -55,6 +147,7 @@ function TeamSideSkeleton({ align, name }: { align: "left" | "right"; name?: Rea
       {name ?? <span className={classes.skeletonBar} style={{ width: "70%", height: 14 }} />}
       <span className={classes.skeletonBar} style={{ width: "40%", height: 28, marginTop: 4 }} />
       <span className={classes.skeletonBar} style={{ width: "52%", height: 11, marginTop: 4 }} />
+      <span />
     </div>
   );
 }
@@ -163,20 +256,25 @@ function PartnerPicker({
   );
 }
 
-// Trade tab's summary, kept to what decides a trade: each side's team name,
-// the avg value it sends (one number, consolidation credit included), how
-// many players that is, then a one-line verdict ("X wins by 238" / "Fair
-// trade") over the value bar. Always in avg value, whatever the cards'
-// switch shows. The right side's name is the trade-partner picker; `teamB`
-// null = no partner picked yet. The power-rankings impact lives in the
-// post-trade rankings below (or the peek card on mobile), not here.
+// Trade tab's summary, following the cards' switch: each side's team name,
+// then per view - Value: the avg value total (consolidation credit
+// included, named as the adjustment) and each player's value; PPG: the
+// ROS PPG total (actual under it) and each player's actual | ROS PPG;
+// Ranks: no total, each player's actual | ROS position rank. Every view
+// ends with the same one-line verdict ("X wins by 238" / "Fair trade") over
+// the value bar - fairness is always judged on value. The right side's
+// name is the trade-partner picker; `teamB` null = no partner picked yet.
+// The power-rankings impact lives in the post-trade rankings below (or the
+// peek card on mobile), not here.
 export function GlassTradeHeader({
+  metric,
   teamA,
   teamB,
   partnerOptions,
   partnerId,
   onPartnerChange,
 }: {
+  metric: TradeMetric;
   teamA: TradeHeaderTeam | "loading";
   teamB: TradeHeaderTeam | "loading" | null;
   partnerOptions: TradePartnerOption[];
@@ -187,8 +285,8 @@ export function GlassTradeHeader({
     teamA !== "loading" &&
     teamB !== "loading" &&
     teamB !== null &&
-    teamA.sendCount > 0 &&
-    teamB.sendCount > 0 &&
+    teamA.players.length > 0 &&
+    teamB.players.length > 0 &&
     teamA.value !== undefined &&
     teamB.value !== undefined
       ? { a: teamA, b: teamB, valueA: teamA.value, valueB: teamB.value }
@@ -198,8 +296,9 @@ export function GlassTradeHeader({
     : null;
   const verdictText = sides && pctA !== null ? verdict(sides.a, sides.b, pctA) : null;
   const teamText = (team: TradeHeaderTeam) =>
-    team.sendCount > 0 && team.value !== undefined
-      ? `${team.name} sends ${sideLine(team)}, ${formatTradeValue(team.value)} value`
+    team.players.length > 0
+      ? `${team.name} sends ${team.players.map((player) => player.name).join(", ")}` +
+        (team.value !== undefined ? `, ${formatTradeValue(team.value)} value` : "")
       : `${team.name}, no players selected`;
   const ariaLabel =
     teamA === "loading"
@@ -217,16 +316,16 @@ export function GlassTradeHeader({
       aria-label={ariaLabel}
       aria-busy={teamA === "loading" || teamB === "loading"}
     >
-      <div className={classes.headerTeams}>
+      <div className={`${classes.headerTeams} ${classes.tradeHeaderGrid}`}>
         {teamA === "loading" ? (
           <TeamSideSkeleton align="left" />
         ) : (
-          <TeamSide team={teamA} align="left" />
+          <TeamSide team={teamA} metric={metric} align="left" />
         )}
         {teamB === "loading" ? (
           <TeamSideSkeleton align="right" name={picker} />
         ) : teamB ? (
-          <TeamSide team={teamB} align="right" name={picker} />
+          <TeamSide team={teamB} metric={metric} align="right" name={picker} />
         ) : (
           <div className={`${classes.headerTeam} ${classes.headerTeamRight}`}>
             {picker}
@@ -239,6 +338,7 @@ export function GlassTradeHeader({
             <div className={`${classes.tradeHeaderSends} ${classes.headerPending}`} aria-hidden>
               Trade partner
             </div>
+            <span />
           </div>
         )}
       </div>

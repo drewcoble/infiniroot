@@ -1905,3 +1905,73 @@
   font-weight: 650;
   color: rgba(248, 250, 252, 0.92);
 }
+
+/* Trade header: four shared rows (name, total, total's line, player list)
+   instead of the Matchup header's three, so both sides' lists start level
+   even when one side's total line is empty. */
+.tradeHeaderGrid {
+  grid-template-rows: auto auto auto auto;
+}
+
+.tradeHeaderGrid .headerTeam {
+  grid-row: 1 / span 4;
+}
+
+/* The player list fills its half and reads left to right on both sides. */
+.tradeHeaderListCell {
+  justify-self: stretch;
+  min-width: 0;
+  margin-top: 6px;
+  text-align: left;
+}
+
+/* Name | number (Value), or name | actual | ROS (PPG, Ranks) - the rows
+   share the list's columns via subgrid so the numbers line up. */
+.tradeHeaderPlayers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  row-gap: 3px;
+}
+
+.tradeHeaderPlayersTwo {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.tradeHeaderPlayer {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: baseline;
+}
+
+.tradeHeaderPlayerName {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tradeHeaderNumber {
+  justify-self: end;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+/* The actual (season-to-date) column, quieter than ROS. */
+.tradeHeaderDim {
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.tradeHeaderColumn {
+  justify-self: end;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.5);
+}

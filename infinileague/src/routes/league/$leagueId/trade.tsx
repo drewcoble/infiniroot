@@ -329,6 +329,7 @@ function TradePage() {
           {metricSwitch}
         </Stack>
         <GlassTradeHeader
+          metric={metric}
           teamA="loading"
           teamB="loading"
           partnerOptions={[]}
@@ -402,12 +403,36 @@ function TradePage() {
   ): TradeHeaderTeam => {
     const credit = totals ? (side === "A" ? totals.adjustmentA : totals.adjustmentB) : 0;
     const raw = totals ? (side === "A" ? totals.rawA : totals.rawB) : undefined;
+    const sending = (rows ?? []).flatMap((row) =>
+      row.fpid !== undefined && selected.has(row.fpid) ? [{ row, fpid: row.fpid }] : [],
+    );
+    const positionRank = (position: string | undefined, rank: number | undefined) =>
+      position && rank ? `${position}${rank}` : "—";
+    const players = sending.map(({ row, fpid }) => {
+      const vor = vorByFpid.get(fpid);
+      return {
+        fpid,
+        name: shortName(row.name ?? ""),
+        value: valueByFpid ? (valueByFpid.get(fpid)?.value ?? 0) : undefined,
+        actualPpg: vor ? vor.actualPpg.toFixed(1) : "—",
+        rosPpg: vor ? vor.rosPpg.toFixed(1) : "—",
+        actualRank: positionRank(row.position, seasonPositionRankByFpid.get(fpid)),
+        rosRank: positionRank(row.position, vor?.positionRank),
+      };
+    });
     return {
       name,
-      sendCount: (rows ?? []).filter((row) => row.fpid !== undefined && selected.has(row.fpid))
-        .length,
+      players,
       value: raw !== undefined ? raw + credit : undefined,
       credit,
+      rosPpgTotal: sending.reduce(
+        (total, { fpid }) => total + (vorByFpid.get(fpid)?.rosPpg ?? 0),
+        0,
+      ),
+      actualPpgTotal: sending.reduce(
+        (total, { fpid }) => total + (vorByFpid.get(fpid)?.actualPpg ?? 0),
+        0,
+      ),
     };
   };
 
@@ -433,6 +458,7 @@ function TradePage() {
       )}
 
       <GlassTradeHeader
+        metric={metric}
         teamA={
           teamAId === null || teamARoster.rows === undefined
             ? "loading"
