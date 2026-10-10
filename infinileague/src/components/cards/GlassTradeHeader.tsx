@@ -27,9 +27,8 @@ export interface TradeHeaderTeam {
   // included so the two sides' numbers and the verdict's margin agree -
   // undefined while the values load.
   value: number | undefined;
-  // The consolidation credit inside `value`, if any - shown as the Value
-  // view's adjustment so the total still reads as more than its players'
-  // sum.
+  // The consolidation credit inside `value`, if any - its own row under
+  // the Value view's players, so the list still adds up to the total.
   credit: number;
   // Summed per-game rates of the players sent, for the PPG view.
   rosPpgTotal: number;
@@ -50,10 +49,9 @@ function sideTotals(
       line: `ROS PPG · ${team.actualPpgTotal.toFixed(1)} actual`,
     };
   }
-  return {
-    big: team.value !== undefined ? formatTradeValue(team.value) : "…",
-    line: team.credit > 0 ? `Avg value · +${formatTradeValue(team.credit)} 2-for-1` : "Avg value",
-  };
+  // No line in the Value view - the 2-for-1 adjustment is its own row in
+  // the player list instead.
+  return { big: team.value !== undefined ? formatTradeValue(team.value) : "…", line: "" };
 }
 
 // Each player sent, with the view's numbers: value; or actual | ROS PPG /
@@ -95,6 +93,12 @@ function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetr
           ))}
         </div>
       ))}
+      {metric === "value" && team.credit > 0 && (
+        <div className={`${classes.tradeHeaderPlayer} ${classes.tradeHeaderDim}`}>
+          <span className={classes.tradeHeaderPlayerName}>2-for-1 adj.</span>
+          <span className={classes.tradeHeaderNumber}>+{formatTradeValue(team.credit)}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -257,8 +261,8 @@ function PartnerPicker({
 }
 
 // Trade tab's summary, following the cards' switch: each side's team name,
-// then per view - Value: the avg value total (consolidation credit
-// included, named as the adjustment) and each player's value; PPG: the
+// then per view - Value: the avg value total and each player's value,
+// with the consolidation credit as its own row so the list adds up; PPG: the
 // ROS PPG total (actual under it) and each player's actual | ROS PPG;
 // Ranks: no total, each player's actual | ROS position rank. Every view
 // ends with the same one-line verdict ("X wins by 238" / "Fair trade") over
