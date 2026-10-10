@@ -95,8 +95,9 @@ function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetr
         </div>
       ))}
       {metric === "value" && team.credit > 0 && (
-        <div className={classes.tradeHeaderDim}>
-          <div className={classes.tradeHeaderPlayerName}>2-for-1 adj.</div>
+        <div className={`${classes.tradeHeaderEntry} ${classes.tradeHeaderDim}`}>
+          <span className={classes.tradeHeaderBadgeSpace} />
+          <span className={classes.tradeHeaderPlayerName}>2-for-1 adj.</span>
           <div className={classes.tradeHeaderNumbers}>
             <span>+{formatTradeValue(team.credit)}</span>
           </div>
