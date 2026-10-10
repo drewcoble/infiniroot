@@ -1,4 +1,4 @@
 {
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ':/infinidraft' ':/shared' ':/infinidata/convex'",
+  "ignoreCommand": "git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- ':/infinidraft' ':/shared' ':/shared-core' ':/infinidata/convex'",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
