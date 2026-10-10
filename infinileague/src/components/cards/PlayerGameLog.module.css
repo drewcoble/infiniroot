@@ -101,12 +101,6 @@
   border-left: 1px solid rgba(255, 255, 255, 0.22);
 }
 
-/* Every other group - a faint band so adjacent groups read as separate
-   blocks even mid-scroll. */
-.groupTint {
-  background: rgba(255, 255, 255, 0.045);
-}
-
 .table tbody tr + tr td {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }

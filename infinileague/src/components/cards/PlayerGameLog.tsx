@@ -73,9 +73,8 @@ function SeasonTable({
   if (log === null || log.weeks.length === 0) return <div className={classes.message}>No games recorded for {year}.</div>;
 
   // Consecutive columns sharing a group get one spanning header. Each
-  // group's columns get a divider on their left edge, and every other
-  // group a faint tint, so a stat reads as Rushing vs. Receiving at a
-  // glance even when its group header has scrolled out of view.
+  // group's first column gets a divider on its left edge, so a stat reads
+  // as Rushing vs. Receiving at a glance.
   const groups: Array<{ group: string; span: number }> = [];
   const groupClass: string[] = [];
   for (const column of log.columns) {
@@ -83,9 +82,7 @@ function SeasonTable({
     const isStart = !last || last.group !== column.group;
     if (isStart) groups.push({ group: column.group, span: 1 });
     else last.span += 1;
-    groupClass.push(
-      [isStart && classes.groupStart, groups.length % 2 === 0 && classes.groupTint].filter(Boolean).join(" "),
-    );
+    groupClass.push(isStart ? classes.groupStart! : "");
   }
   const statColumnCount = 3 + log.columns.length;
 
@@ -104,9 +101,7 @@ function SeasonTable({
               <th
                 key={`${group.group}-${index}`}
                 colSpan={group.span}
-                className={[classes.group, classes.groupStart, index % 2 === 1 && classes.groupTint]
-                  .filter(Boolean)
-                  .join(" ")}
+                className={`${classes.group} ${classes.groupStart}`}
               >
                 <span className={classes.groupLabel}>{group.group}</span>
               </th>
