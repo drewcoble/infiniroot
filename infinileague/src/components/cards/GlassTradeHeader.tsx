@@ -70,7 +70,7 @@ function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetr
       <span>{player.value !== undefined ? formatTradeValue(player.value) : "…"}</span>
     ) : (
       <>
-        <span className={classes.tradeHeaderDim}>
+        <span>
           <span className={classes.tradeHeaderLabel}>Act</span>
           {metric === "ppg" ? player.actualPpg : player.actualRank}
         </span>
