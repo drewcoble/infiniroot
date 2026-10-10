@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { Group, Stack, Text, Title } from "@mantine/core";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { defaultRangeExtractor, useWindowVirtualizer, type Range } from "@tanstack/react-virtual";
 import { api } from "@infinidata/api";
 import type { Position } from "@shared/positionColors";
 import { GlassPlayerRow } from "../../../components/cards/GlassPlayerRow";
@@ -163,11 +163,25 @@ function PlayersPage() {
     });
 
   const listRef = useRef<HTMLDivElement>(null);
+  // The row whose long-press detail card is open stays mounted even once
+  // it scrolls out of the virtualizer's window - unmounting it would close
+  // the card mid-scroll.
+  const [openFpid, setOpenFpid] = useState<number | null>(null);
+  const openIndex = openFpid === null ? -1 : filteredRows.findIndex((row) => row.fpid === openFpid);
+  const rangeExtractor = useCallback(
+    (range: Range) => {
+      const indexes = defaultRangeExtractor(range);
+      if (openIndex < 0 || indexes.includes(openIndex)) return indexes;
+      return [...indexes, openIndex].sort((a, b) => a - b);
+    },
+    [openIndex],
+  );
   const virtualizer = useWindowVirtualizer({
     count: filteredRows.length,
     estimateSize: () => PLAYER_ROW_ESTIMATE,
     overscan: 10,
     scrollMargin: listRef.current?.offsetTop ?? 0,
+    rangeExtractor,
   });
 
   if (nflState === undefined || rows === undefined) {
@@ -279,6 +293,9 @@ function PlayersPage() {
                   small = the projection - same split as the other glass
                   cards. Nothing big for a week they haven't played yet. */}
               <GlassPlayerRow
+                onExpandedChange={(expanded) =>
+                  setOpenFpid((current) => (expanded ? row.fpid : current === row.fpid ? null : current))
+                }
                 data={{
                   fpid: row.fpid,
                   rank,

@@ -17,7 +17,7 @@ const BOTTOM_RESERVE = BOTTOM_NAV_HEIGHT + BOTTOM_NAV_BOTTOM_OFFSET + EDGE_MARGI
 // card growing in place without pushing anything else around. Grows toward
 // the middle of the screen: left-column cards anchor their left edge,
 // right-column cards their right edge. Closes on a tap outside, Escape, or
-// a resize; takes focus while open.
+// a width change; takes focus while open.
 export function GlassPopover({
   anchor,
   onClose,
@@ -81,12 +81,21 @@ export function GlassPopover({
       if (event.key === "Escape") onClose();
     };
     // Its position was computed for the old viewport - closing is simpler
-    // and less surprising than re-anchoring mid-rotation.
+    // and less surprising than re-anchoring mid-rotation. Width only: a
+    // mobile browser's address bar showing/hiding while you scroll also
+    // fires resize (height-only), and that shouldn't close the card.
+    let width = document.documentElement.clientWidth;
+    const onResize = () => {
+      const next = document.documentElement.clientWidth;
+      if (next === width) return;
+      width = next;
+      onClose();
+    };
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", onClose);
+    window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", onClose);
+      window.removeEventListener("resize", onResize);
     };
   }, [onClose]);
 

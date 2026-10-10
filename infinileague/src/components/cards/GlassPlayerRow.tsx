@@ -1,4 +1,4 @@
-import { useId, type CSSProperties } from "react";
+import { useEffect, useId, type CSSProperties } from "react";
 import { X } from "lucide-react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
@@ -47,7 +47,16 @@ function rankChipStyle(isOnMyTeam: boolean): CSSProperties {
 // position + NFL team + who rosters them | projection. Long-press (or
 // Enter/Space) opens the player's detail popover - badges spelled out, the
 // owner, and season / rest-of-season / this-week stat tiles.
-export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
+export function GlassPlayerRow({
+  data,
+  onExpandedChange,
+}: {
+  data: GlassPlayerRowData;
+  // Lets a virtualized list keep this row mounted while its detail card is
+  // open - scrolling it out of view would otherwise unmount the row and
+  // take the card with it (see the Players page's rangeExtractor).
+  onExpandedChange?: (expanded: boolean) => void;
+}) {
   const owner = data.rosteredByTeamName;
   const label = [
     `Rank ${data.rank}`,
@@ -65,6 +74,9 @@ export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
 
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label);
   const titleId = useId();
+  useEffect(() => {
+    onExpandedChange?.(expanded);
+  }, [expanded, onExpandedChange]);
 
   return (
     <div className={classes.rosterRow}>
