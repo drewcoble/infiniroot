@@ -18,7 +18,7 @@ import {
   type TradeSuggestion,
 } from "../../../components/cards/GlassTradeSuggestionCard";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
-import { formatTradeValue, tradeTotals } from "../../../lib/tradeValue";
+import { tradeTotals } from "../../../lib/tradeValue";
 import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
 import {
@@ -390,53 +390,18 @@ function TradePage() {
 
   const headerTeam = (
     side: "A" | "B",
-    teamId: string,
     name: string,
     rows: TeamRosterRow[] | undefined,
     selected: Set<number>,
   ): TradeHeaderTeam => {
-    const sending = (rows ?? []).filter((row) => row.fpid !== undefined && selected.has(row.fpid));
-    let impact: TradeHeaderTeam["impact"];
-    if (tradeReady && !impactError) {
-      if (!impactIsCurrent || latestImpact === undefined) {
-        impact = "loading";
-      } else {
-        const afterIndex = latestImpact.after.findIndex((row) => row.teamId === teamId);
-        const beforePoints = beforePointsByTeam.get(teamId);
-        const after = latestImpact.after[afterIndex];
-        impact =
-          after === undefined
-            ? undefined
-            : {
-                beforeRank: beforeRankByTeam.get(teamId),
-                afterRank: afterIndex + 1,
-                pointsDiff:
-                  beforePoints !== undefined
-                    ? after.totalProjectedPoints - beforePoints
-                    : undefined,
-              };
-      }
-    }
-    const tradeValue = totals ? (side === "A" ? totals.rawA : totals.rawB) : undefined;
-    // The big number follows the switch: ROS PPG in the PPG view, avg value
-    // otherwise (ranks don't add up).
-    const rosPpgTotal = sending.reduce(
-      (total, row) => total + (vorByFpid.get(row.fpid ?? -1)?.rosPpg ?? 0),
-      0,
-    );
+    const credit = totals ? (side === "A" ? totals.adjustmentA : totals.adjustmentB) : 0;
+    const raw = totals ? (side === "A" ? totals.rawA : totals.rawB) : undefined;
     return {
       name,
-      sendCount: sending.length,
-      sendDisplay:
-        metric === "ppg"
-          ? rosPpgTotal.toFixed(1)
-          : tradeValue !== undefined
-            ? formatTradeValue(tradeValue)
-            : "…",
-      valueLabel: metric === "ppg" ? "ROS PPG" : "Avg value",
-      tradeValue,
-      valueAdjustment: totals ? (side === "A" ? totals.adjustmentA : totals.adjustmentB) : 0,
-      impact,
+      sendCount: (rows ?? []).filter((row) => row.fpid !== undefined && selected.has(row.fpid))
+        .length,
+      value: raw !== undefined ? raw + credit : undefined,
+      credit,
     };
   };
 
@@ -459,14 +424,14 @@ function TradePage() {
         teamA={
           teamAId === null || teamARoster.rows === undefined
             ? "loading"
-            : headerTeam("A", teamAId, selfTeamName, teamARoster.rows, selectedA)
+            : headerTeam("A", selfTeamName, teamARoster.rows, selectedA)
         }
         teamB={
           teamBId === null
             ? null
             : teamBRoster.rows === undefined
               ? "loading"
-              : headerTeam("B", teamBId, teamBName, teamBRoster.rows, selectedB)
+              : headerTeam("B", teamBName, teamBRoster.rows, selectedB)
         }
         partnerOptions={teamBOptions}
         partnerId={teamBId}

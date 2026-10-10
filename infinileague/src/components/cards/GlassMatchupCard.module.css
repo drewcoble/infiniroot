@@ -1528,34 +1528,12 @@
   font-weight: var(--font-numeric-weight);
 }
 
-/* Post-trade rank move beside the points change on the header's last row. */
-.tradeHeaderImpact {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-}
-
-.headerTeamRight .tradeHeaderImpact {
-  justify-content: flex-end;
-}
-
 .impactUp {
   color: #4ade80;
 }
 
 .impactDown {
   color: #f87171;
-}
-
-/* Four shared rows instead of the Matchup header's three - the
-   power-ranking impact gets its own. */
-.tradeHeaderTeams {
-  grid-template-rows: auto auto auto auto;
-}
-
-.tradeHeaderTeams .headerTeam {
-  grid-row: 1 / span 4;
 }
 
 /* Trade header's partner picker - the right side's team name with a
@@ -1601,12 +1579,6 @@
   }
 }
 
-/* Trade header's balance bar: room under the bar for the Fair zone's
-   label. */
-.tradeBalanceRow {
-  padding-bottom: 14px;
-}
-
 .tradeBalanceBar {
   position: relative;
 }
@@ -1638,26 +1610,8 @@
     0 0 10px rgba(255, 255, 255, 0.25);
 }
 
-.fairLabel {
-  position: absolute;
-  top: calc(100% + 3px);
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.45);
-  transition: color 200ms ease;
-}
-
-.fairZoneActive .fairLabel {
-  color: rgba(248, 250, 252, 0.95);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .fairZone,
-  .fairLabel {
+  .fairZone {
     transition: none;
   }
 }
@@ -1830,30 +1784,6 @@
   min-width: 0;
 }
 
-/* Trade header's verdict over the value bar - "X wins by 2,079" / "Fair
-   trade", with any consolidation credit in a quieter line under it. */
-.tradeVerdict {
-  text-align: center;
-}
-
-.tradeVerdictMain {
-  font-size: 14px;
-  font-weight: 650;
-  color: rgba(248, 250, 252, 0.92);
-}
-
-.tradeVerdictMain strong {
-  font-variant-numeric: tabular-nums;
-  font-family: var(--font-numeric);
-  font-weight: var(--font-numeric-weight);
-}
-
-.tradeVerdictNote {
-  margin-top: 2px;
-  font-size: 11px;
-  color: rgba(248, 250, 252, 0.6);
-}
-
 /* Trade header's sent totals: the app's numeric font, not the Matchup
    header's dot-matrix scoreboard font - that's reserved for live scores. */
 .tradeHeaderTotal {
@@ -1954,4 +1884,19 @@
 
 .statEmpty {
   color: rgba(248, 250, 252, 0.35);
+}
+
+/* Trade header's verdict line ("X wins by 238" / "Fair trade") over the
+   value bar. */
+.tradeVerdictBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tradeVerdictMain {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 650;
+  color: rgba(248, 250, 252, 0.92);
 }
