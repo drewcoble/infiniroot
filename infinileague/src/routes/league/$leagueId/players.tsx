@@ -280,6 +280,7 @@ function PlayersPage() {
                   cards. Nothing big for a week they haven't played yet. */}
               <GlassPlayerRow
                 data={{
+                  fpid: row.fpid,
                   rank,
                   name: row.name,
                   position: row.position,

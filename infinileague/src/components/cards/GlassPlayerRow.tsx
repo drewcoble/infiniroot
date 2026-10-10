@@ -4,10 +4,12 @@ import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
+import { PlayerGameLog } from "./PlayerGameLog";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassPlayerRowData {
+  fpid: number;
   rank: number;
   name: string;
   position: Position;
@@ -193,6 +195,8 @@ export function GlassPlayerRow({ data }: { data: GlassPlayerRowData }) {
               </div>
             ))}
           </div>
+
+          <PlayerGameLog fpid={data.fpid} position={data.position} />
         </GlassPopover>
       )}
     </div>

@@ -37,29 +37,43 @@ export function GlassPopover({
 
   // Positioned directly on the DOM node (not via state) since it depends
   // on the card's own rendered height - one measure-then-place pass before
-  // paint, no visible jump.
+  // paint, no visible jump. Re-run whenever the card's height changes after
+  // that (e.g. a game-log year expanding), so growing content shifts the
+  // card up rather than running off the bottom of the screen.
   useLayoutEffect(() => {
     const card = cardRef.current;
     if (!card) return;
-    const rect = anchor.getBoundingClientRect();
-    const viewportWidth = document.documentElement.clientWidth;
-    const width = Math.min(viewportWidth - EDGE_MARGIN * 2, MAX_WIDTH);
-    const alignRight = rect.left + rect.width / 2 > viewportWidth / 2;
-    const left = Math.min(
-      Math.max(alignRight ? rect.right - width : rect.left, EDGE_MARGIN),
-      viewportWidth - EDGE_MARGIN - width,
-    );
-    card.style.width = `${width}px`;
-    const bottomLimit = window.innerHeight - BOTTOM_RESERVE;
-    const top = Math.max(
-      EDGE_MARGIN,
-      rect.top + card.offsetHeight > bottomLimit ? bottomLimit - card.offsetHeight : rect.top,
-    );
-    card.style.left = `${left + window.scrollX}px`;
-    card.style.top = `${top + window.scrollY}px`;
-    card.style.transformOrigin = `${rect.left + (alignRight ? rect.width : 0) - left}px ${rect.top - top}px`;
+    const place = () => {
+      const rect = anchor.getBoundingClientRect();
+      const viewportWidth = document.documentElement.clientWidth;
+      const width = Math.min(viewportWidth - EDGE_MARGIN * 2, MAX_WIDTH);
+      const alignRight = rect.left + rect.width / 2 > viewportWidth / 2;
+      const left = Math.min(
+        Math.max(alignRight ? rect.right - width : rect.left, EDGE_MARGIN),
+        viewportWidth - EDGE_MARGIN - width,
+      );
+      card.style.width = `${width}px`;
+      const bottomLimit = window.innerHeight - BOTTOM_RESERVE;
+      const top = Math.max(
+        EDGE_MARGIN,
+        rect.top + card.offsetHeight > bottomLimit ? bottomLimit - card.offsetHeight : rect.top,
+      );
+      card.style.left = `${left + window.scrollX}px`;
+      card.style.top = `${top + window.scrollY}px`;
+      card.style.transformOrigin = `${rect.left + (alignRight ? rect.width : 0) - left}px ${rect.top - top}px`;
+    };
+    place();
     card.dataset.placed = "true";
     card.focus();
+
+    let lastHeight = card.offsetHeight;
+    const observer = new ResizeObserver(() => {
+      if (card.offsetHeight === lastHeight) return;
+      lastHeight = card.offsetHeight;
+      place();
+    });
+    observer.observe(card);
+    return () => observer.disconnect();
   }, [anchor]);
 
   useEffect(() => {

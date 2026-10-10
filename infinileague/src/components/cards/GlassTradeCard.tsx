@@ -5,10 +5,13 @@ import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
 import { formatProj, pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
+import { PlayerGameLog } from "./PlayerGameLog";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassTradeCardData {
+  // Absent for an empty roster slot - no game log then.
+  fpid?: number | undefined;
   name: string;
   position: Position;
   // Rest-of-season position rank (the rosVOR board's positionRank) - 0 =
@@ -254,6 +257,8 @@ export function GlassTradeCard({
               </div>
             ))}
           </div>
+
+          {data.fpid !== undefined && <PlayerGameLog fpid={data.fpid} position={data.position} />}
         </GlassPopover>
       )}
     </>

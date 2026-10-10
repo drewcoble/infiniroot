@@ -39,6 +39,7 @@ function toTradeCardData(
   // Loaded, but this player isn't on the board - worth nothing in a trade.
   const missing = values !== undefined && value === undefined;
   return {
+    fpid: row.fpid,
     name: row.name ?? "",
     position: row.position ?? "QB",
     positionRank: vor?.positionRank ?? 0,

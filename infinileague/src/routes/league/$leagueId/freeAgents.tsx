@@ -189,6 +189,7 @@ function FreeAgentsPage() {
             <GlassFreeAgentRow
               key={row.fpid}
               data={{
+                fpid: row.fpid,
                 rank: index + 1,
                 name: row.name,
                 position: row.position,

@@ -1,0 +1,133 @@
+.gameLog {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+/* One collapsed year - tap to show that season's weeks underneath. */
+.seasonHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.seasonYear {
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+  font-size: 15px;
+}
+
+.seasonSummary {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.65);
+  font-variant-numeric: tabular-nums;
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform 160ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Horizontal scroll for the stat columns; the week column stays put. */
+.scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: 5px 8px;
+  text-align: right;
+}
+
+.table thead th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+.group {
+  text-align: center !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.table tbody tr + tr td {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* The week column - opaque so scrolled stat columns slide under it. */
+.sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left !important;
+  background: rgb(22, 28, 32);
+}
+
+.points {
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.dim {
+  color: rgba(248, 250, 252, 0.45);
+}
+
+.bye {
+  text-align: left !important;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(248, 250, 252, 0.45);
+}
+
+.injury {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--pill-tint) 30%, transparent);
+}
+
+.message {
+  padding: 6px 2px;
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.65);
+}

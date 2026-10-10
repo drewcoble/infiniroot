@@ -10,6 +10,8 @@ import type { Position } from "@shared/positionColors";
 export type GameState = "pre" | "live" | "final" | "bye";
 
 export interface GlassMatchupCardData {
+  // Absent for an empty roster slot - no game log then.
+  fpid?: number | undefined;
   name: string;
   position: Position;
   // Projected rest-of-season position rank (the Players tab's rosVOR

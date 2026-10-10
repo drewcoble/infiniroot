@@ -4,10 +4,12 @@ import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
+import { PlayerGameLog } from "./PlayerGameLog";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassFreeAgentRowData {
+  fpid: number;
   // Place in the list (sorted by suggested bid).
   rank: number;
   name: string;
@@ -171,6 +173,8 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
               {data.rationale && <p>{data.rationale}</p>}
             </div>
           )}
+
+          <PlayerGameLog fpid={data.fpid} position={data.position} />
         </GlassPopover>
       )}
     </div>

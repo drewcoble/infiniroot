@@ -23,6 +23,7 @@ export function toMatchupCardData(
   weekRank: number | undefined,
 ): GlassMatchupCardData {
   const base = {
+    fpid: row.fpid,
     name: row.name ?? "",
     position: row.position ?? "QB",
     positionRank: vor?.positionRank ?? 0,

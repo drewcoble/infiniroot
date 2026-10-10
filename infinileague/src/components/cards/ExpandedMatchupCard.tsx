@@ -14,6 +14,7 @@ import {
 import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassPopover } from "./GlassPopover";
+import { PlayerGameLog } from "./PlayerGameLog";
 import { PointsMeter } from "./PointsMeter";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -197,6 +198,8 @@ export function ExpandedMatchupCard({
         <Stat label="Slot" value={slot} />
         <Stat label="Bye" value={data.byeWeek ? `Wk ${data.byeWeek}` : "—"} />
       </div>
+
+      {data.fpid !== undefined && <PlayerGameLog fpid={data.fpid} position={data.position} />}
     </GlassPopover>
   );
 }
