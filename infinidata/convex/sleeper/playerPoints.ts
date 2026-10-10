@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { action, internalAction, ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { POSITIONS } from "../positions";
+import { refreshWeekPositionRanks } from "../weekPositionRanks";
 import {
   currentSeason,
   DEF_TEAM_FPIDS,
@@ -48,6 +49,17 @@ export interface ParsedStatsRow {
 // filter to known fpids - callers that write per-player rows do that
 // themselves (see fetchAllPlayerPointsHandler).
 export function parseSleeperStatsRecords(records: SleeperStatsRecord[]): ParsedStatsRow[] {
+  // Sleeper's team-defense records carry no snap counts at all, but every
+  // player record carries his team's - copied onto the DST row below so a
+  // defense's game log can show snaps on/off the field.
+  const teamSnaps = new Map<string, { tm_def_snp: number; tm_off_snp: number }>();
+  for (const record of records) {
+    const snaps = record.stats;
+    if (record.team && snaps?.tm_def_snp && snaps.tm_off_snp && !teamSnaps.has(record.team)) {
+      teamSnaps.set(record.team, { tm_def_snp: snaps.tm_def_snp, tm_off_snp: snaps.tm_off_snp });
+    }
+  }
+
   const rows: ParsedStatsRow[] = [];
   for (const record of records) {
     const sleeperPosition = record.player?.position;
@@ -87,6 +99,9 @@ export function parseSleeperStatsRecords(records: SleeperStatsRecord[]): ParsedS
       }
     }
 
+    const snaps = position === "DST" && record.team ? teamSnaps.get(record.team) : undefined;
+    if (snaps) Object.assign(numericStats, snaps);
+
     rows.push({
       fpid,
       position,
@@ -114,6 +129,7 @@ async function fetchAllPlayerPointsHandler(
   const year = args.year ?? currentSeason();
   const weeks = args.weeks ?? WEEKS;
   const totals: Record<string, { inserted: number; updated: number }> = {};
+  const syncedWeeks: string[] = [];
 
   // Sleeper's weekly stats payload includes plenty of players we've never
   // stored a `players` row for (e.g. filtered out of projections as
@@ -140,6 +156,7 @@ async function fetchAllPlayerPointsHandler(
     const rows = parseSleeperStatsRecords(records).filter((row) =>
       knownFpids.has(row.fpid),
     );
+    syncedWeeks.push(week);
 
     // Chunked rather than one runMutation call for the whole week - each row
     // costs upsertPlayerPoints's own read+write plus (once real games land
@@ -172,6 +189,10 @@ async function fetchAllPlayerPointsHandler(
     }
     totals[`week${week}`] = { inserted, updated };
   }
+
+  // Game logs' weekly position ranks (see weekPositionRankSets' schema
+  // comment) - rebuilt for exactly the weeks just synced.
+  await refreshWeekPositionRanks(ctx, { season: year, weeks: syncedWeeks });
 
   return totals;
 }

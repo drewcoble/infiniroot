@@ -72,6 +72,7 @@ import type * as infinileague_auction_waiverSync from "../infinileague/auction/w
 import type * as infinileague_injuryAssessment from "../infinileague/injuryAssessment.js";
 import type * as infinileague_season_eliminationWatch from "../infinileague/season/eliminationWatch.js";
 import type * as infinileague_season_faabValues from "../infinileague/season/faabValues.js";
+import type * as infinileague_season_gameLog from "../infinileague/season/gameLog.js";
 import type * as infinileague_season_matchup from "../infinileague/season/matchup.js";
 import type * as infinileague_season_powerRankings from "../infinileague/season/powerRankings.js";
 import type * as infinileague_season_rosterPlayers from "../infinileague/season/rosterPlayers.js";
@@ -134,6 +135,7 @@ import type * as tank01_schedule from "../tank01/schedule.js";
 import type * as tank01_scheduleData from "../tank01/scheduleData.js";
 import type * as users from "../users.js";
 import type * as valueGaps from "../valueGaps.js";
+import type * as weekPositionRanks from "../weekPositionRanks.js";
 
 import type {
   ApiFromModules,
@@ -206,6 +208,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/injuryAssessment": typeof infinileague_injuryAssessment;
   "infinileague/season/eliminationWatch": typeof infinileague_season_eliminationWatch;
   "infinileague/season/faabValues": typeof infinileague_season_faabValues;
+  "infinileague/season/gameLog": typeof infinileague_season_gameLog;
   "infinileague/season/matchup": typeof infinileague_season_matchup;
   "infinileague/season/powerRankings": typeof infinileague_season_powerRankings;
   "infinileague/season/rosterPlayers": typeof infinileague_season_rosterPlayers;
@@ -268,6 +271,7 @@ declare const fullApi: ApiFromModules<{
   "tank01/scheduleData": typeof tank01_scheduleData;
   users: typeof users;
   valueGaps: typeof valueGaps;
+  weekPositionRanks: typeof weekPositionRanks;
 }>;
 
 /**

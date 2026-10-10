@@ -386,6 +386,26 @@ export default defineSchema({
     // week's "recent form" rows scoped to the current season.
     .index("by_position_week_season", ["position", "week", "season"]),
 
+  // Each player's weekly position rank by actual points, one doc per
+  // (season, week, position, scoring setup) - the same ranking the Matchup
+  // tab's getWeekPositionRanks computes live (same points formula, same
+  // tie rule, ranked over every row that week), precomputed so a game log
+  // reads one small doc per week instead of every player at the position.
+  // Rebuilt by convex/weekPositionRanks.ts after each playerWeekPoints sync,
+  // only for scoring setups some league actually uses, and only rewritten
+  // when a rank actually changed. `ranks` only lists players who played
+  // (stats.gp > 0) - nobody shows a rank for a week they sat out.
+  weekPositionRankSets: defineTable({
+    season: v.string(),
+    week: v.string(),
+    position: positionValidator,
+    scoring: scoringValidator,
+    teScoring: teScoringValidator,
+    sixPointPassTds: v.boolean(),
+    ranks: v.array(v.object({ fpid: v.number(), rank: v.number() })),
+    updatedAt: v.number(),
+  }).index("by_key", ["season", "position", "scoring", "teScoring", "sixPointPassTds", "week"]),
+
   // Season-long digest of playerWeekPoints, maintained incrementally by
   // upsertPlayerPoints (see convex/playerPoints.ts) rather than recomputed at
   // read time. Exists solely so convex/valueGaps.ts can read one row per
