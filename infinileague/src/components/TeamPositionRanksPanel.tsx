@@ -1,39 +1,51 @@
-import { Badge, Group, Loader, Text } from "@mantine/core";
-import { PositionRadarChart } from "./PositionRadarChart";
 import { gradeColor } from "../lib/gradeColor";
 import type { TeamPositionRanks } from "../types/season";
+import { pillStyle } from "./cards/cardShared";
+import { PositionRadarChart } from "./PositionRadarChart";
+import classes from "./cards/GlassMatchupCard.module.css";
 
 interface TeamPositionRanksPanelProps {
-  // undefined while getTeamPositionRanks is still loading - the badge/chart
-  // both wait on this rather than the card's own expand state, since the
-  // fetch is shared across every team's card (see index.tsx).
+  // undefined while getTeamPositionRanks is still loading - the shared fetch
+  // backs every team's card (see the league index page).
   positionRanks: TeamPositionRanks | undefined;
   totalTeams: number;
 }
 
-// Expanded-card content shared by StandingsList/PowerRankingsList - a
-// numeric 0-100 score (not a letter grade, per the dashboard's own
-// convention) colored the same way infinidraft's report card colors its
-// letter grades, plus the position radar chart itself.
+// Position-strength section of the league-home team popover (GlassTeamCard)
+// - a numeric 0-100 score (not a letter grade, per the dashboard's own
+// convention) as a glass badge colored the way infinidraft's report card
+// colors its grades, plus the position radar chart.
 export function TeamPositionRanksPanel({ positionRanks, totalTeams }: TeamPositionRanksPanelProps) {
-  if (positionRanks === undefined) {
-    return <Loader size="xs" />;
-  }
   return (
-    <>
-      <Group justify="space-between" mb={4}>
-        <Text size="xs" c="dimmed">
-          Position strength
-        </Text>
-        <Badge color={gradeColor(positionRanks.gradeScore)} size="sm">
-          {positionRanks.gradeScore}
-        </Badge>
-      </Group>
-      <PositionRadarChart
-        positionalRanks={positionRanks.positionalRanks}
-        totalTeams={totalTeams}
-        gradeScore={positionRanks.gradeScore}
-      />
-    </>
+    <div>
+      <div className={classes.strengthHeader}>
+        <span className={classes.strengthLabel}>Position strength</span>
+        {positionRanks ? (
+          <span
+            className={classes.pill}
+            style={{
+              ...pillStyle(gradeColor(positionRanks.gradeScore)),
+              fontFamily: "var(--font-numeric)",
+            }}
+          >
+            {positionRanks.gradeScore}
+          </span>
+        ) : (
+          <span className={classes.skeletonBar} style={{ width: 32, height: 20 }} />
+        )}
+      </div>
+      {positionRanks ? (
+        <PositionRadarChart
+          positionalRanks={positionRanks.positionalRanks}
+          totalTeams={totalTeams}
+          gradeScore={positionRanks.gradeScore}
+        />
+      ) : (
+        <span
+          className={classes.skeletonBar}
+          style={{ height: 200, marginTop: 8, borderRadius: 16 }}
+        />
+      )}
+    </div>
   );
 }

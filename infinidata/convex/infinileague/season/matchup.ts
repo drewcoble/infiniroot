@@ -1,11 +1,13 @@
 import { v } from "convex/values";
-import { action, ActionCtx } from "../../_generated/server";
+import { action, ActionCtx, query } from "../../_generated/server";
 import { internal } from "../../_generated/api";
 import { Id } from "../../_generated/dataModel";
 import { fetchSleeperJson } from "../../sleeper/league";
 import { fetchYahooOpponentTeamKey } from "../../infinidraft/yahoo/league";
 import { withYahooToken } from "../../infinidraft/yahoo/oauth";
 import type { SleeperMatchupEntry } from "./teamRoster";
+import { requireSeasonOwner } from "../../lib/access";
+import { loadWeekPoints } from "../../lib/weekPoints";
 
 // Who a team is playing this week - Sleeper-linked teams resolve it from
 // matchup_id (Sleeper groups exactly two roster_ids under the same
@@ -62,5 +64,37 @@ export const getOpponentForWeek = action({
     }
 
     return { opponentTeamId: null };
+  },
+});
+
+// Each player's position rank by points actually scored this week (this
+// season's scoring), among everyone at the position who has played - the
+// Matchup tab's position badges ("RB3") once a game kicks off. Reads the
+// same live/daily points getWeekPoints does, so it re-ranks on every
+// 2-minute live poll. Ties share a rank (12.4, 12.4, 11.0 -> 5, 5, 7).
+// Players with no entry yet haven't played and get no rank.
+export const getWeekPositionRanks = query({
+  args: { seasonId: v.id("seasons"), week: v.string() },
+  handler: async (ctx, args): Promise<Array<{ fpid: number; rank: number }>> => {
+    await requireSeasonOwner(ctx, args.seasonId);
+    const entries = await loadWeekPoints(ctx, args.seasonId, args.week);
+
+    const byPosition = new Map<string, typeof entries>();
+    for (const entry of entries) {
+      const list = byPosition.get(entry.position) ?? [];
+      list.push(entry);
+      byPosition.set(entry.position, list);
+    }
+
+    const ranks: Array<{ fpid: number; rank: number }> = [];
+    for (const list of byPosition.values()) {
+      list.sort((a, b) => b.points - a.points);
+      list.forEach((entry, index) => {
+        const tiedWithPrevious = index > 0 && entry.points === list[index - 1]!.points;
+        const rank = tiedWithPrevious ? ranks[ranks.length - 1]!.rank : index + 1;
+        ranks.push({ fpid: entry.fpid, rank });
+      });
+    }
+    return ranks;
   },
 });

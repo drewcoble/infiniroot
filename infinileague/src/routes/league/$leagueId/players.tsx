@@ -1,15 +1,18 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Box, Group, Loader, SegmentedControl, Stack, Text, Title } from "@mantine/core";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { Group, Stack, Text, Title } from "@mantine/core";
+import { defaultRangeExtractor, useWindowVirtualizer, type Range } from "@tanstack/react-virtual";
 import { api } from "@infinidata/api";
-import { PositionFilterBar } from "@shared/PositionFilterBar";
-import { MOBILE_HEADER_HEIGHT, POSITION_FILTER_BAR_HEIGHT } from "@shared/constants";
 import type { Position } from "@shared/positionColors";
-import { PlayerCard } from "@shared/PlayerCard";
+import { GlassPlayerRow } from "../../../components/cards/GlassPlayerRow";
+import { GlassPositionFilter } from "../../../components/cards/GlassPositionFilter";
+import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
+import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import classes from "../../../components/cards/GlassMatchupCard.module.css";
 import type { RosVorRow } from "../../../types/season";
+import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 
 export const Route = createFileRoute("/league/$leagueId/players")({
   component: PlayersPage,
@@ -23,12 +26,10 @@ interface NflState {
 
 const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 
-// Card height (~62px for the 2-row layout, measured live) + the gap below
-// it (8px) - has to match PlayerCard's actual rendered height for the
-// virtualizer's offsets to line up; there's no ResizeObserver measuring it
-// live since every card is the same fixed shape (see PlayerCard's own
-// comment).
-const PLAYER_CARD_HEIGHT = 71;
+// Starting estimate for a glass player row (~64px) + the gap below it
+// (8px) - the virtualizer then measures each rendered row (measureElement),
+// so a long name or larger text size never knocks the offsets out of line.
+const PLAYER_ROW_ESTIMATE = 72;
 
 // "rank" is each view's own VOR ranking (weekRank/rosRank) - the default.
 // "actual"/"projected" map to a different raw stat per view (see
@@ -46,12 +47,12 @@ const SORT_LABELS: Record<"week" | "ros", Record<Exclude<SortKey, "rank">, strin
   ros: { actual: "PPG", projected: "ROS PPG" },
 };
 
-// Same formatting as My Team's weekly Proj/Actual (TeamRosterList.tsx).
-function formatPoints(points: number | undefined): string {
-  return points === undefined ? "—" : points.toFixed(2);
+// "RB12", or "—" when there's no rank (0).
+function positionRankLabel(position: string, rank: number): string {
+  return rank > 0 ? `${position}${rank}` : "—";
 }
 
-// Overall + positional ranks for a stat sort, so the left label and the
+// Overall + positional ranks for a stat sort, so the rank chip and the
 // position badge ("RB12") always describe the order the list is actually
 // in - the backend's rosRank/positionRank are rosVOR ranks and would read
 // out of order once the list is sorted by something else. Computed over
@@ -99,7 +100,7 @@ function PlayersPage() {
   );
   const rookieFpidSet = new Set(rookieFpids ?? []);
 
-  // Own-roster highlight - see PlayerCard's isOnMyTeam handling. Same
+  // Own-roster highlight (GlassPlayerRow's saddlebrown rank chip). Same
   // getStandings->isSelf pattern route.tsx/freeAgents.tsx/trade.tsx already
   // use to find "my team" in this league.
   const standings = useQuery(
@@ -118,6 +119,7 @@ function PlayersPage() {
         }
       : "skip",
   );
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(boardRows), [boardRows]);
 
   // This week's actual points, live during games (see convex/rosVor.ts's
   // getWeekPoints) - its own query rather than a board field so live
@@ -163,15 +165,39 @@ function PlayersPage() {
     });
 
   const listRef = useRef<HTMLDivElement>(null);
+  // The row whose long-press detail card is open stays mounted even once
+  // it scrolls out of the virtualizer's window - unmounting it would close
+  // the card mid-scroll.
+  const [openFpid, setOpenFpid] = useState<number | null>(null);
+  const openIndex = openFpid === null ? -1 : filteredRows.findIndex((row) => row.fpid === openFpid);
+  const rangeExtractor = useCallback(
+    (range: Range) => {
+      const indexes = defaultRangeExtractor(range);
+      if (openIndex < 0 || indexes.includes(openIndex)) return indexes;
+      return [...indexes, openIndex].sort((a, b) => a - b);
+    },
+    [openIndex],
+  );
   const virtualizer = useWindowVirtualizer({
     count: filteredRows.length,
-    estimateSize: () => PLAYER_CARD_HEIGHT,
+    estimateSize: () => PLAYER_ROW_ESTIMATE,
     overscan: 10,
     scrollMargin: listRef.current?.offsetTop ?? 0,
+    rangeExtractor,
   });
 
   if (nflState === undefined || rows === undefined) {
-    return <Loader />;
+    return (
+      <Stack gap="md">
+        <Title order={3}>Players</Title>
+        <span className={classes.skeletonBar} style={{ height: 42 }} />
+        <Stack gap={8}>
+          {Array.from({ length: 8 }, (_, index) => (
+            <GlassRosterSkeletonCard key={index} />
+          ))}
+        </Stack>
+      </Stack>
+    );
   }
 
   if (nflState === null || nflState.seasonType !== "regular") {
@@ -205,52 +231,47 @@ function PlayersPage() {
 
   return (
     <Stack gap="md">
-      {/* Reserves space for PositionFilterBar's fixed mobile bar below,
-          which is pulled out of document flow - see
-          POSITION_FILTER_BAR_HEIGHT's comment for why this is a real
-          spacer element rather than a `pt` prop on this Stack. */}
-      <Box hiddenFrom="sm" h={POSITION_FILTER_BAR_HEIGHT} />
       <Title order={3}>Players</Title>
-      <SegmentedControl
+      <GlassSegmented
+        label="Ranking view"
         value={metric}
-        onChange={(value) => setMetric(value as "week" | "ros")}
-        data={[
-          { label: `Week ${nflState.week}`, value: "week" },
-          { label: "Rest of Season", value: "ros" },
+        onChange={setMetric}
+        options={[
+          { label: `Week ${nflState.week}`, value: "week" as const },
+          { label: "Season", value: "ros" as const },
         ]}
       />
       <Group gap="sm" wrap="nowrap">
-        <Text size="sm" c="dimmed">
-          Sort by
-        </Text>
-        <SegmentedControl
-          size="xs"
-          style={{ flex: 1 }}
-          value={sortKey}
-          onChange={(value) => setSortKey(value as SortKey)}
-          data={[
-            { label: "Rank", value: "rank" },
-            { label: SORT_LABELS[metric].actual, value: "actual" },
-            { label: SORT_LABELS[metric].projected, value: "projected" },
-          ]}
-        />
+        <span className={classes.strengthLabel}>Sort</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <GlassSegmented
+            compact
+            label="Sort by"
+            value={sortKey}
+            onChange={setSortKey}
+            options={[
+              { label: "Rank", value: "rank" as const },
+              { label: SORT_LABELS[metric].actual, value: "actual" as const },
+              { label: SORT_LABELS[metric].projected, value: "projected" as const },
+            ]}
+          />
+        </div>
       </Group>
-      <PositionFilterBar
+      <GlassPositionFilter
         positions={ALL_POSITIONS}
         selected={selectedPositions}
         onChange={setSelectedPositions}
-        top={MOBILE_HEADER_HEIGHT}
       />
       <div ref={listRef} style={{ position: "relative", height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((item) => {
           const row = filteredRows[item.index];
           if (!row) return null;
           const sortRank = metricRanks?.get(row.fpid);
-          const leftLabel = sortRank
-            ? String(sortRank.overall)
+          const rank = sortRank
+            ? sortRank.overall
             : isWeekMode
-              ? String(row.weekRank)
-              : undefined;
+              ? row.weekRank
+              : row.rosRank;
           const positionRank = sortRank
             ? sortRank.position
             : isWeekMode
@@ -259,6 +280,8 @@ function PlayersPage() {
           return (
             <div
               key={row.fpid}
+              data-index={item.index}
+              ref={virtualizer.measureElement}
               style={{
                 position: "absolute",
                 top: 0,
@@ -268,27 +291,80 @@ function PlayersPage() {
                 transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)`,
               }}
             >
-              <PlayerCard
-                row={{ ...row, positionRank }}
-                isRookie={rookieFpidSet.has(row.fpid)}
-                {...(leftLabel ? { leftLabel } : {})}
-                {...(isWeekMode
-                  ? {
-                      // This week's own numbers rather than the default
-                      // season-long PPG/ROS PPG stack - same Proj-over-
-                      // Actual layout as My Team (TeamRosterList.tsx).
-                      rightStats: (
-                        <>
-                          <Text size="xs" c="dimmed">
-                            {formatPoints(row.weekPpg)} Proj
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            {formatPoints(row.weekPoints)} Actual
-                          </Text>
-                        </>
-                      ),
-                    }
-                  : {})}
+              {/* Big = what's happened (this week's points / season PPG),
+                  small = the projection - same split as the other glass
+                  cards. Nothing big for a week they haven't played yet. */}
+              <GlassPlayerRow
+                onExpandedChange={(expanded) =>
+                  setOpenFpid((current) => (expanded ? row.fpid : current === row.fpid ? null : current))
+                }
+                data={{
+                  fpid: row.fpid,
+                  rank,
+                  name: row.name,
+                  position: row.position,
+                  positionRank,
+                  team: row.team,
+                  rosteredByTeamName: row.rosteredByTeamName,
+                  isOnMyTeam: row.isOnMyTeam === true,
+                  isRookie: rookieFpidSet.has(row.fpid),
+                  injury: row.injury,
+                  actual: isWeekMode
+                    ? row.weekPoints !== undefined
+                      ? row.weekPoints.toFixed(2)
+                      : ""
+                    : `${row.actualPpg.toFixed(1)} PPG`,
+                  // Dot-matrix only for points actually scored this week -
+                  // season PPG is an average, so it stays plain and labeled.
+                  actualIsScore: isWeekMode,
+                  projection: isWeekMode
+                    ? `Proj ${row.weekPpg.toFixed(1)}`
+                    : `ROS ${row.rosPpg.toFixed(1)}`,
+                  // Long-press popover tiles - both views' numbers at once,
+                  // whichever view the list is in.
+                  stats: [
+                    {
+                      label: `Week ${nflState.week}`,
+                      items: [
+                        {
+                          label: "Points",
+                          value: row.weekPoints !== undefined ? row.weekPoints.toFixed(2) : "—",
+                        },
+                        { label: "Proj", value: row.weekPpg.toFixed(1) },
+                        {
+                          label: "Proj rank",
+                          value: positionRankLabel(row.position, row.weekPositionRank),
+                        },
+                      ],
+                    },
+                    {
+                      columns: ["Season", "ROS"],
+                      rows: [
+                        {
+                          label: "PPG",
+                          values: [row.actualPpg.toFixed(1), row.rosPpg.toFixed(1)],
+                        },
+                        {
+                          label: "Pos rank",
+                          values: [
+                            positionRankLabel(
+                              row.position,
+                              seasonPositionRankByFpid.get(row.fpid) ?? 0,
+                            ),
+                            positionRankLabel(row.position, row.positionRank),
+                          ],
+                        },
+                        {
+                          label: "Overall",
+                          values: [
+                            row.actualRank > 0 ? `#${row.actualRank}` : "—",
+                            row.rosRank > 0 ? `#${row.rosRank}` : "—",
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                }}
               />
             </div>
           );

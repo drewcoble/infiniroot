@@ -36,6 +36,7 @@ export const STAT_LABELS: Record<string, string> = {
   blk_kick: "Blocked Kicks",
   def_fum_td: "Defensive Fumble TDs",
   def_kr_td: "Kick Return TDs",
+  pts_allow: "Pts Allowed",
   pts_allow_0: "Pts Allowed (0)",
   pts_allow_1_6: "Pts Allowed (1-6)",
   pts_allow_7_13: "Pts Allowed (7-13)",

@@ -61,7 +61,7 @@ export function AppHeader() {
           </Menu.Item>
         </>
       }
-      extraOverflowItems={
+      adminMenuItems={
         currentUser?.role === "super-admin" && (
           <>
             <Link to="/admin" style={{ textDecoration: "none" }}>

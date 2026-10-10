@@ -15,7 +15,7 @@ import {
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "./errors";
 
-type ActionKey = "sync" | "caches" | "injuries" | "playerPoints";
+type ActionKey = "sync" | "caches" | "injuries" | "playerPoints" | "schedule";
 
 interface ActionState {
   isRunning: boolean;
@@ -65,6 +65,7 @@ export function DataPanel() {
   const fetchPlayerPoints = useAction(
     api.sleeper.playerPoints.fetchAllPlayerPoints,
   );
+  const fetchSchedule = useAction(api.tank01.schedule.fetchSchedule);
 
   // Defaults to whatever the last sync detected as the live NFL week (see
   // convex/nflState.ts, upserted by fetchAllData regardless of which week it
@@ -89,6 +90,7 @@ export function DataPanel() {
     caches: IDLE_STATE,
     injuries: IDLE_STATE,
     playerPoints: IDLE_STATE,
+    schedule: IDLE_STATE,
   });
 
   // Only rendered once the week selector has its starting value (see the
@@ -139,6 +141,19 @@ export function DataPanel() {
       successMessage: `Player points refreshed${
         playerPointsYear.trim() ? ` for ${playerPointsYear.trim()}` : ""
       }.`,
+    },
+    {
+      key: "schedule",
+      label: "Fetch NFL schedule",
+      description:
+        "Tank01 game slates for the current week and every remaining regular-season week (one Tank01 call per week). The 6-hour cron already keeps these current - this forces a refetch of all of them now.",
+      run: () => fetchSchedule({ allWeeks: true }),
+      successMessage: (result) => {
+        const { weeksFetched, skipped } = result as { weeksFetched: number; skipped: boolean };
+        return skipped
+          ? "Skipped - not in the regular season."
+          : `Fetched ${weeksFetched} week${weeksFetched === 1 ? "" : "s"} of games.`;
+      },
     },
   ];
 

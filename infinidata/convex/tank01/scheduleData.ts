@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, query } from "../_generated/server";
+import { internalMutation, internalQuery, query } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 
 // Split out from schedule.ts because that file is "use node" (the fetch
@@ -39,6 +39,25 @@ export const upsertWeekSchedule = internalMutation({
       });
     }
     return { upserted: args.games.length };
+  },
+});
+
+// When each week's stored slate was last synced (its rows' creation time -
+// upsertWeekSchedule replaces a week's rows wholesale, so every row in a
+// week shares one sync), null for a week never synced. Drives schedule.ts's
+// decision of which future weeks are due a refetch.
+export const getWeekSyncTimes = internalQuery({
+  args: { season: v.string(), weeks: v.array(v.string()) },
+  handler: async (ctx, args): Promise<Array<{ week: string; syncedAt: number | null }>> => {
+    return await Promise.all(
+      args.weeks.map(async (week) => {
+        const row = await ctx.db
+          .query("nflGames")
+          .withIndex("by_season_week", (q) => q.eq("season", args.season).eq("week", week))
+          .first();
+        return { week, syncedAt: row?._creationTime ?? null };
+      }),
+    );
   },
 });
 

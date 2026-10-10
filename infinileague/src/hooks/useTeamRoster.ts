@@ -15,35 +15,46 @@ import type { TeamRosterRow } from "../types/season";
 // that interval so actual points keep up with the game. A refresh keeps the
 // current rows on screen until the new ones land, and a failed refresh
 // keeps them too rather than replacing the roster with an error.
+// Results are tagged with the teamId/week they were fetched for and only
+// returned while those still match - switching team or week reads as
+// loading (rows undefined) straight away instead of briefly showing the
+// previous team's roster, and a slow response for an old team/week can
+// never land over the current one.
 export function useTeamRoster(
   teamId: string | null,
   week: string | null,
   refreshMs: number | null = null,
 ) {
-  const getTeamRosterForWeek = useAction(
-    api.infinileague.season.teamRoster.getTeamRosterForWeek,
-  );
-  const [rows, setRows] = useState<TeamRosterRow[] | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
+  const getTeamRosterForWeek = useAction(api.infinileague.season.teamRoster.getTeamRosterForWeek);
+  const key = teamId !== null && week !== null ? `${teamId}:${week}` : null;
+  const [result, setResult] = useState<{
+    key: string;
+    rows?: TeamRosterRow[];
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
-    if (teamId === null || week === null) return;
-    setRows(undefined);
-    setError(null);
+    if (teamId === null || week === null || key === null) return;
+    let cancelled = false;
     getTeamRosterForWeek({ teamId: teamId as Id<"seasonTeams">, week })
-      .then(setRows)
-      .catch((err) => setError(getErrorMessage(err, "Failed to load roster.")));
-  }, [teamId, week, getTeamRosterForWeek]);
+      .then((rows) => {
+        if (!cancelled) setResult({ key, rows });
+      })
+      .catch((err) => {
+        if (!cancelled) setResult({ key, error: getErrorMessage(err, "Failed to load roster.") });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId, week, key, getTeamRosterForWeek]);
 
   useEffect(() => {
-    if (teamId === null || week === null || refreshMs === null) return;
-    // Guards against a refresh that resolves after the team/week changed
-    // writing the old team's roster over the new one.
+    if (teamId === null || week === null || key === null || refreshMs === null) return;
     let cancelled = false;
     const id = setInterval(() => {
       getTeamRosterForWeek({ teamId: teamId as Id<"seasonTeams">, week })
-        .then((next) => {
-          if (!cancelled) setRows(next);
+        .then((rows) => {
+          if (!cancelled) setResult({ key, rows });
         })
         .catch(() => {});
     }, refreshMs);
@@ -51,7 +62,8 @@ export function useTeamRoster(
       cancelled = true;
       clearInterval(id);
     };
-  }, [teamId, week, refreshMs, getTeamRosterForWeek]);
+  }, [teamId, week, key, refreshMs, getTeamRosterForWeek]);
 
-  return { rows, error };
+  const current = result !== null && result.key === key ? result : null;
+  return { rows: current?.rows, error: current?.error ?? null };
 }

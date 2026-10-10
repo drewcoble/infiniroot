@@ -1,7 +1,7 @@
-import { Paper, Text } from "@mantine/core";
 import { RadarChart } from "@mantine/charts";
 import { gradeColor } from "../lib/gradeColor";
 import type { StarterCategory } from "../types/season";
+import classes from "./cards/GlassMatchupCard.module.css";
 
 function ordinal(n: number): string {
   const rem100 = n % 100;
@@ -47,13 +47,24 @@ export function PositionRadarChart({
 
   const data = positionalRanks.map(({ category, rank }) => ({ category, rank }));
 
+  // Styled for the glass team popover: faint white grid, light axis
+  // labels in the app font, and a glass tooltip.
   return (
     <RadarChart
       h={200}
       data={data}
       dataKey="category"
-      series={[{ name: "rank", color: gradeColor(gradeScore) }]}
+      series={[{ name: "rank", color: `${gradeColor(gradeScore)}.5`, opacity: 0.35 }]}
       withPolarRadiusAxis
+      polarGridProps={{ stroke: "rgba(255, 255, 255, 0.16)" }}
+      polarAngleAxisProps={{
+        tick: {
+          fill: "rgba(248, 250, 252, 0.8)",
+          fontSize: 12,
+          fontWeight: 600,
+          fontFamily: "var(--app-font-body)",
+        },
+      }}
       polarRadiusAxisProps={{
         domain: [1, totalTeams],
         reversed: true,
@@ -68,14 +79,12 @@ export function PositionRadarChart({
           if (!entry) return null;
           const point = entry.payload as { category: string; rank: number };
           return (
-            <Paper shadow="sm" p="xs">
-              <Text size="sm" fw={700}>
-                {point.category}
-              </Text>
-              <Text size="xs" c="dimmed">
+            <div className={classes.radarTooltip}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{point.category}</div>
+              <div style={{ fontSize: 12, color: "rgba(248, 250, 252, 0.7)" }}>
                 {rankDescriptor(point.rank, totalTeams)} in the league
-              </Text>
-            </Paper>
+              </div>
+            </div>
           );
         },
       }}

@@ -63,6 +63,11 @@ export const replaceRosterForTeam = internalMutation({
     pointsFor: v.number(),
     pointsAgainst: v.number(),
     waiverPosition: v.optional(v.number()),
+    // The team's current name on the provider, so a manager renaming their
+    // team after the initial import shows up here on the next sync. Absent
+    // when the provider response didn't include one - leaves the stored
+    // name alone rather than clobbering it with a placeholder.
+    name: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -91,6 +96,7 @@ export const replaceRosterForTeam = internalMutation({
       ...(args.waiverPosition !== undefined
         ? { waiverPosition: args.waiverPosition }
         : {}),
+      ...(args.name ? { name: args.name } : {}),
     });
   },
 });

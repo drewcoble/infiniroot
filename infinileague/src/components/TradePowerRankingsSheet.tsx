@@ -4,7 +4,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { Box, Drawer, Group, Stack, Text, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { ChevronUp } from "lucide-react";
-import { RankChangeIndicator } from "./PowerRankingsList";
+import { RankChangeBadge } from "./PowerRankingsList";
 import { TradePowerRankingsList } from "./TradePowerRankingsList";
 import { BOTTOM_NAV_BOTTOM_OFFSET, BOTTOM_NAV_HEIGHT } from "@shared/constants";
 import type { PowerRankingRow } from "../types/season";
@@ -173,7 +173,7 @@ export function TradePowerRankingsSheet({
                 return (
                   <Group key={teamId} gap={6} wrap="nowrap" justify="space-between">
                     <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-                      <RankChangeIndicator rankChange={rankChange} />
+                      <RankChangeBadge rankChange={rankChange} since="after this trade" />
                       <Text size="sm" fw={500} truncate>
                         {name}
                       </Text>

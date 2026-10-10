@@ -11,7 +11,6 @@ import {
   DollarSign,
   ExternalLink,
   GraduationCap,
-  HeartPulse,
   LayoutGrid,
   ListChecks,
   Settings2,
@@ -41,12 +40,11 @@ type TabValue =
   | "budget"
   | "players"
   | "myTeam"
-  | "injuries"
   | "league"
   | "draft";
 
 // Shared metadata, keyed by value - the two phases below reorder and
-// regroup these same eight tabs rather than defining separate copies.
+// regroup these same seven tabs rather than defining separate copies.
 const TAB_META: Record<
   TabValue,
   { label: string; icon: typeof Settings2; to: string }
@@ -76,11 +74,6 @@ const TAB_META: Record<
     icon: CircleUserRound,
     to: "/league/$leagueId/myTeam",
   },
-  injuries: {
-    label: "Injuries",
-    icon: HeartPulse,
-    to: "/league/$leagueId/injuries",
-  },
   // The live per-team roster breakdown (see league.tsx) is a
   // draft-in-progress reference tool.
   league: {
@@ -95,6 +88,9 @@ const TAB_META: Record<
   },
 };
 
+// Injuries is NFL-wide reference content rather than this league's own, so
+// it lives in AppHeader's overflow menu instead of these tabs.
+//
 // Two entirely separate orderings/groupings, not just a reshuffle of one
 // list - pre-draft is about setting the league up (Settings first), once
 // the draft's live the auction tools (Budget/Players) and in-draft
@@ -105,7 +101,6 @@ const PRE_DRAFT_ORDER: TabValue[] = [
   "budget",
   "players",
   "myTeam",
-  "injuries",
   "league",
   "draft",
 ];
@@ -121,7 +116,6 @@ const STARTED_ORDER: TabValue[] = [
   "league",
   "draft",
   "myTeam",
-  "injuries",
   "settings",
   "keepers",
 ];

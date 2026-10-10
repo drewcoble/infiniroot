@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ExternalLink, MoreHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BOTTOM_NAV_BOTTOM_OFFSET, BOTTOM_NAV_HEIGHT } from "./constants";
+import { glassClasses, glassMenuProps } from "./glassClasses";
 
 export type BottomNavItem = {
   value: string;
@@ -32,6 +33,10 @@ interface BottomNavProps {
   // apps (which never set this) render one flat evenly-spaced row instead
   // of splitting around an empty gap.
   hasFab?: boolean;
+  // Glass chrome (see glass.module.css) - the bar in the same glass as
+  // infinileague's cards, the active tab as a raised glass pill, and a
+  // glass More menu. infinileague opts in; other apps keep the frosted bar.
+  glass?: boolean;
 }
 
 // `to`/`params` are plain strings/a Record on BottomNavItem (items come from
@@ -66,7 +71,17 @@ export function BottomNav({
   activeValue,
   more,
   hasFab = false,
+  glass = false,
 }: BottomNavProps) {
+  // Per-tab props: glass tabs take their inset/padding (and the active
+  // tab's raised pill) from glass.module.css; plain tabs keep py=12.
+  const itemProps = (active: boolean) =>
+    glass
+      ? {
+          className: `${glassClasses.navItem} ${active ? glassClasses.navItemActive : ""}`,
+        }
+      : { py: 12 };
+  const menuProps = glass ? glassMenuProps : { withArrow: true };
   const moreActive = more?.items.some((item) => item.value === activeValue);
 
   function renderItem(item: BottomNavItem) {
@@ -81,8 +96,8 @@ export function BottomNav({
         <Stack
           gap={2}
           align="center"
-          py={12}
           c={active ? "burlywood" : "dimmed"}
+          {...itemProps(active)}
         >
           <Icon size={20} strokeWidth={active ? 2.5 : 2} />
           <Text fz={10} fw={active ? 600 : 400} lh={1}>
@@ -94,14 +109,14 @@ export function BottomNav({
   }
 
   const moreButton = more && (
-    <Menu key="more" position="top-end" withArrow offset={8} width={180}>
+    <Menu key="more" position="top-end" offset={8} width={180} {...menuProps}>
       <Menu.Target>
         <UnstyledButton style={{ flex: 1 }}>
           <Stack
             gap={2}
             align="center"
-            py={12}
             c={moreActive ? "burlywood" : "dimmed"}
+            {...itemProps(moreActive === true)}
           >
             <MoreHorizontal size={20} strokeWidth={moreActive ? 2.5 : 2} />
             <Text fz={10} fw={moreActive ? 600 : 400} lh={1}>
@@ -149,6 +164,7 @@ export function BottomNav({
       pos="fixed"
       left={12}
       right={12}
+      {...(glass ? { className: glassClasses.bar } : {})}
       style={{
         bottom: `calc(${BOTTOM_NAV_BOTTOM_OFFSET}px + env(safe-area-inset-bottom))`,
         height: BOTTOM_NAV_HEIGHT,
@@ -157,22 +173,27 @@ export function BottomNav({
         alignItems: "center",
         maxWidth: 480,
         margin: "0 auto",
-        borderRadius: "var(--mantine-radius-xl)",
-        border: "1px solid var(--mantine-color-default-border)",
-        // Dark mode: dark-5, one shade lighter than the dark-green
-        // "surface" color Card/Popover use (--mantine-color-dark-6, see
-        // theme.ts's dark: [...] array) and the even-darker body color, so
-        // the floating bar visibly pops off the page instead of blending
-        // into it - then translucent (same as before) so backdropFilter's
-        // blur of whatever's scrolling underneath still reads as frosted
-        // glass, not a flat cutout. Light mode is unchanged, still keyed
-        // off body.
-        background:
-          "light-dark(color-mix(in srgb, var(--mantine-color-body) 65%, transparent), color-mix(in srgb, var(--mantine-color-dark-5) 50%, transparent))",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        boxShadow: "var(--mantine-shadow-lg)",
         overflow: "hidden",
+        // Glass mode takes its surface from glass.module.css's .bar.
+        ...(glass
+          ? { borderRadius: 999, padding: "0 4px" }
+          : {
+              borderRadius: "var(--mantine-radius-xl)",
+              border: "1px solid var(--mantine-color-default-border)",
+              // Dark mode: dark-5, one shade lighter than the dark-green
+              // "surface" color Card/Popover use (--mantine-color-dark-6, see
+              // theme.ts's dark: [...] array) and the even-darker body color,
+              // so the floating bar visibly pops off the page instead of
+              // blending into it - then translucent (same as before) so
+              // backdropFilter's blur of whatever's scrolling underneath
+              // still reads as frosted glass, not a flat cutout. Light mode
+              // is unchanged, still keyed off body.
+              background:
+                "light-dark(color-mix(in srgb, var(--mantine-color-body) 65%, transparent), color-mix(in srgb, var(--mantine-color-dark-5) 50%, transparent))",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              boxShadow: "var(--mantine-shadow-lg)",
+            }),
       }}
     >
       {leftButtons}

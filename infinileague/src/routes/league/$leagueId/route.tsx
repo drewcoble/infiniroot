@@ -6,8 +6,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
   CircleUserRound,
-  HeartPulse,
-  LayoutGrid,
   Ticket,
   Trophy,
   UserSearch,
@@ -29,8 +27,6 @@ type TabValue =
   | "matchup"
   | "freeAgents"
   | "players"
-  | "depthCharts"
-  | "injuries"
   | "trade";
 
 interface TabItem {
@@ -41,10 +37,14 @@ interface TabItem {
   params: Record<string, string>;
 }
 
-// Standings, Free Agents, and Players are always reachable; "My Team" and
-// "Matchup" only once the self team is known (both need a concrete teamId
-// param, unlike infinidraft's flat per-league tabs) so they're appended
-// conditionally below rather than listed here.
+// League-independent NFL reference pages (Depth Charts, Injuries) and the
+// admin-only Cards sandbox live in AppHeader's overflow menu instead of
+// here, keeping these tabs to this league's own content.
+//
+// Standings, Free Agents, and Players are always reachable; "Team" (your
+// own team) and "Matchup" only once the self team is known (both need a
+// concrete teamId param, unlike infinidraft's flat per-league tabs) so
+// they're appended conditionally below rather than listed here.
 const STANDINGS_VALUE: TabValue = "standings";
 
 // Mobile BottomNav's direct-row cutoff, same "positional rather than a
@@ -89,7 +89,7 @@ function LeagueLayout() {
       ? [
           {
             value: "myTeam" as const,
-            label: "My Team",
+            label: "Team",
             icon: CircleUserRound,
             to: "/league/$leagueId/teams/$teamId",
             params: { leagueId, teamId: selfTeam.teamId },
@@ -118,20 +118,6 @@ function LeagueLayout() {
       params: { leagueId },
     },
     {
-      value: "depthCharts",
-      label: "Depth Charts",
-      icon: LayoutGrid,
-      to: "/league/$leagueId/depthCharts",
-      params: { leagueId },
-    },
-    {
-      value: "injuries",
-      label: "Injuries",
-      icon: HeartPulse,
-      to: "/league/$leagueId/injuries",
-      params: { leagueId },
-    },
-    {
       value: "trade",
       label: "Trade",
       icon: ArrowLeftRight,
@@ -143,10 +129,10 @@ function LeagueLayout() {
   // Path-based rather than TAB_META's exact route string, since the
   // standings tab's own route has no trailing segment to match against (the
   // way infinidraft's `pathname.split("/").pop()` compares against each
-  // tab's flat leaf segment). "My Team" only lights up on the self team's
-  // own team page specifically - viewing another team (e.g. clicked from
-  // the standings table) is still the /teams/$teamId route, but it isn't
-  // "My Team", so it shouldn't claim that tab as active.
+  // tab's flat leaf segment). The Team tab only lights up on the self
+  // team's own page specifically - viewing another team (e.g. clicked from
+  // the standings list) is still the /teams/$teamId route, but it isn't
+  // yours, so it shouldn't claim that tab as active.
   const activeValue: TabValue | undefined =
     location.pathname === `/league/${leagueId}` ||
     location.pathname === `/league/${leagueId}/`
@@ -159,13 +145,9 @@ function LeagueLayout() {
             ? "freeAgents"
             : location.pathname === `/league/${leagueId}/players`
               ? "players"
-              : location.pathname === `/league/${leagueId}/depthCharts`
-                ? "depthCharts"
-                : location.pathname === `/league/${leagueId}/injuries`
-                  ? "injuries"
-                  : location.pathname === `/league/${leagueId}/trade`
-                    ? "trade"
-                    : undefined;
+              : location.pathname === `/league/${leagueId}/trade`
+                ? "trade"
+                : undefined;
 
   return (
     <PageContainer pb={{ base: 100, sm: "xl" }}>
@@ -194,6 +176,7 @@ function LeagueLayout() {
         <Outlet />
       </Stack>
       <BottomNav
+        glass
         items={tabs.slice(0, BOTTOM_NAV_DIRECT_COUNT)}
         more={{ label: "More", items: tabs.slice(BOTTOM_NAV_DIRECT_COUNT) }}
         activeValue={activeValue}

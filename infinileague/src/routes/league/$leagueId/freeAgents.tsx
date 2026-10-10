@@ -1,26 +1,49 @@
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { Group, Stack, Text, Title } from "@mantine/core";
+import type { Position } from "@shared/positionColors";
+import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { api } from "@infinidata/api";
-import { PlayerCard } from "@shared/PlayerCard";
+import { GlassFreeAgentRow } from "../../../components/cards/GlassFreeAgentRow";
+import { GlassPositionFilter } from "../../../components/cards/GlassPositionFilter";
+import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
+import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import classes from "../../../components/cards/GlassMatchupCard.module.css";
 import { compareSortValues } from "../../../lib/tableSort";
-import type { FaabSuggestionRow, FaabSuggestionsResult, RosVorRow, StandingsRow } from "../../../types/season";
+import type {
+  FaabSuggestionRow,
+  FaabSuggestionsResult,
+  RosVorRow,
+  StandingsRow,
+} from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/freeAgents")({
   component: FreeAgentsPage,
 });
 
-function sortValueFor(row: FaabSuggestionRow): number | undefined {
-  return row.suggestedBid ?? row.marketValue;
-}
+const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
+
+// Same Week / Season views and sorts as the Players page, plus Bid:
+// "rank" = the view's rosVOR rank (weekRank / rosRank); "bid" = suggested
+// bid (market value without one) - the default; "actual" / "projected" =
+// this week's points / projection in Week view, season PPG / ROS PPG in
+// Season view. Players with no rosVOR board row (or no points yet) sort
+// last; ties fall back to the bid, then name.
+type View = "week" | "ros";
+type SortKey = "rank" | "bid" | "actual" | "projected";
+
+const SORT_LABELS: Record<View, { actual: string; projected: string }> = {
+  week: { actual: "Actual", projected: "Proj" },
+  ros: { actual: "PPG", projected: "ROS PPG" },
+};
 
 // Migrated from infinidraft's src/pages/Season/FreeAgentsTab.tsx (now
 // removed there) - same advisory FAAB bid calculator, backed by the same
-// shared convex/lib/faab.ts computation. Re-shelled from a sortable table
-// into the same PlayerCard the Players/Depth Charts tabs use (with an added
-// bid/rationale footer row) rather than its own bespoke row layout, so a
-// player reads identically everywhere in the app.
+// shared convex/lib/faab.ts computation. Rendered as glass free-agent rows
+// (GlassFreeAgentRow) with the Players page's sort control and position
+// filter, so the two boards read and work alike.
 function FreeAgentsPage() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
@@ -34,10 +57,7 @@ function FreeAgentsPage() {
   );
   const selfTeamId = standings?.find((row) => row.isSelf)?.teamId;
 
-  const rookieFpids = useQuery(
-    api.players.getRookieFpids,
-    isAuthenticated ? {} : "skip",
-  );
+  const rookieFpids = useQuery(api.players.getRookieFpids, isAuthenticated ? {} : "skip");
   const rookieFpidSet = new Set(rookieFpids ?? []);
 
   const result: FaabSuggestionsResult | undefined = useQuery(
@@ -60,9 +80,32 @@ function FreeAgentsPage() {
     isAuthenticated && result?.week ? { seasonId, week: result.week } : "skip",
   );
   const rosVorByFpid = new Map((rosVorRows ?? []).map((row) => [row.fpid, row]));
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(rosVorRows), [rosVorRows]);
+
+  // Same position filter and sort control as the Players page.
+  const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
+  const [view, setView] = useState<View>("ros");
+  const [sortKey, setSortKey] = useState<SortKey>("bid");
+
+  // This week's actual points (live during games) for the Week view's
+  // Actual sort - same query the Players page uses.
+  const weekPoints = useQuery(
+    api.rosVor.getWeekPoints,
+    isAuthenticated && result?.week ? { seasonId, week: result.week } : "skip",
+  );
+  const weekPointsByFpid = new Map((weekPoints ?? []).map((entry) => [entry.fpid, entry.points]));
 
   if (result === undefined) {
-    return <Loader />;
+    return (
+      <Stack gap="md">
+        <Title order={3}>Free Agents</Title>
+        <Stack gap={8}>
+          {Array.from({ length: 8 }, (_, index) => (
+            <GlassRosterSkeletonCard key={index} />
+          ))}
+        </Stack>
+      </Stack>
+    );
   }
 
   if (result.week === null) {
@@ -76,94 +119,131 @@ function FreeAgentsPage() {
     );
   }
 
-  // Highest suggested bid first - the single number most directly answers
-  // "who should I actually bid on" - tiebroken by valueOverReplacement, the
-  // same VOR the pre-draft value process ranks by (convex/draftValues.ts),
-  // then name for full determinism.
-  const rows = [...result.suggestions].sort((a, b) => {
-    const primary = compareSortValues(sortValueFor(a), sortValueFor(b), "desc");
-    if (primary !== 0) return primary;
-    const secondary = compareSortValues(a.valueOverReplacement, b.valueOverReplacement, "desc");
-    if (secondary !== 0) return secondary;
-    return compareSortValues(a.name, b.name, "asc");
-  });
+  // Higher-is-better value for a sort key (rank is negated so "desc"
+  // still puts #1 first).
+  const sortValue = (row: FaabSuggestionRow, key: SortKey): number | undefined => {
+    const board = rosVorByFpid.get(row.fpid);
+    const isWeek = view === "week";
+    if (key === "bid") return row.suggestedBid ?? row.marketValue;
+    if (key === "rank") {
+      const rank = board ? (isWeek ? board.weekRank : board.rosRank) : undefined;
+      return rank ? -rank : undefined;
+    }
+    if (key === "actual") return isWeek ? weekPointsByFpid.get(row.fpid) : board?.actualPpg;
+    return isWeek ? board?.weekPpg : board?.rosPpg;
+  };
+  const rows = result.suggestions
+    .filter((row) => selectedPositions.includes(row.position))
+    .sort((a, b) => {
+      const primary = compareSortValues(sortValue(a, sortKey), sortValue(b, sortKey), "desc");
+      if (primary !== 0) return primary;
+      const secondary = compareSortValues(sortValue(a, "bid"), sortValue(b, "bid"), "desc");
+      if (secondary !== 0) return secondary;
+      return compareSortValues(a.name, b.name, "asc");
+    });
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" wrap="wrap">
-        <Title order={3}>Free Agents — Week {result.week}</Title>
-        <Text c="dimmed" size="sm">
-          {result.remainingWeeks} weeks remaining this season
-        </Text>
+      <Title order={3}>Free Agents</Title>
+      <GlassSegmented
+        label="Ranking view"
+        value={view}
+        onChange={setView}
+        options={[
+          { label: `Week ${result.week}`, value: "week" as const },
+          { label: "Season", value: "ros" as const },
+        ]}
+      />
+      <Group gap="sm" wrap="nowrap">
+        <span className={classes.strengthLabel}>Sort</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <GlassSegmented
+            compact
+            label="Sort by"
+            value={sortKey}
+            onChange={setSortKey}
+            options={[
+              { label: "Rank", value: "rank" as const },
+              { label: "Bid", value: "bid" as const },
+              { label: SORT_LABELS[view].actual, value: "actual" as const },
+              { label: SORT_LABELS[view].projected, value: "projected" as const },
+            ]}
+          />
+        </div>
       </Group>
+      <GlassPositionFilter
+        positions={ALL_POSITIONS}
+        selected={selectedPositions}
+        onChange={setSelectedPositions}
+      />
       <Stack gap={8}>
-        {rows.map((row) => {
-          // Injury note gets its own untruncated line - it's the longest
-          // text here and the one that explains a surprising number. A
-          // $0/$0 bid line is just noise, so it's dropped - and with no
-          // injury note either, the footer (and PlayerCard's divider above
-          // it) goes entirely.
-          const showBidLine = (row.suggestedBid ?? row.marketValue) > 0 || row.marketValue > 0;
-          const bidFooter =
-            showBidLine || row.boostReason ? (
-              <Stack gap={2}>
-                {showBidLine && (
-                  <Group gap={8} wrap="nowrap">
-                    <Text size="sm" fw={700}>
-                      {`$${row.suggestedBid ?? row.marketValue}`}
-                    </Text>
-                    <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
-                      {`Market $${row.marketValue}`}
-                      {row.rationale ? ` · ${row.rationale}` : ""}
-                    </Text>
-                  </Group>
-                )}
-                {row.boostReason && (
-                  <Text size="xs" c="dimmed">
-                    {row.boostReason}
-                  </Text>
-                )}
-              </Stack>
-            ) : undefined;
-
+        {rows.length === 0 && (
+          <Text c="dimmed" size="sm" ta="center" py="md">
+            No free agents at the selected positions.
+          </Text>
+        )}
+        {rows.map((row, index) => {
           const rosVorRow = rosVorByFpid.get(row.fpid);
-          if (rosVorRow) {
-            return (
-              <PlayerCard
-                key={row.fpid}
-                row={rosVorRow}
-                isRookie={rookieFpidSet.has(row.fpid)}
-                footer={bidFooter}
-              />
-            );
-          }
-
-          // No rosVOR row for this fpid - a minimal stand-in PlayerCardRow
-          // (PPG/rank fields zeroed) rather than a second bespoke card
-          // layout, so the bid footer still renders through the same
-          // component. positionRank is deliberately 0 (PlayerCard's "don't
-          // show a rank" sentinel), NOT row.positionRank -
-          // FaabSuggestionRow's own positionRank is this player's rank
-          // among free agents only (see faab.ts's freeAgentsByPosition),
-          // not the all-players rank the badge shows everywhere else in the
-          // app - showing it here would silently mean something different
-          // depending on which branch rendered the card.
+          const bidAmount = row.suggestedBid ?? row.marketValue;
+          // No bid line for a player nobody's bidding on ($0/$0).
+          const hasBid = bidAmount > 0 || row.marketValue > 0;
           return (
-            <PlayerCard
+            <GlassFreeAgentRow
               key={row.fpid}
-              row={{
+              data={{
+                fpid: row.fpid,
+                rank: index + 1,
                 name: row.name,
-                team: row.team,
                 position: row.position,
-                rosRank: 0,
-                positionRank: 0,
-                rosPpg: 0,
-                actualPpg: 0,
-                rosteredByTeamName: null,
+                positionRank: rosVorRow?.positionRank ?? row.positionRank,
+                team: row.team,
+                isRookie: rookieFpidSet.has(row.fpid),
+                injury: rosVorRow?.injury,
+                bid: hasBid ? `$${bidAmount}` : "",
+                market: hasBid ? `Mkt $${row.marketValue}` : "",
+                rationale: row.rationale,
+                boostReason: row.boostReason,
+                stats: [
+                  {
+                    label: "Bidding",
+                    items: [
+                      {
+                        label: "Your bid",
+                        value: row.suggestedBid !== null ? `$${row.suggestedBid}` : "—",
+                      },
+                      { label: "Market", value: `$${row.marketValue}` },
+                      {
+                        label: "Your value",
+                        value: row.myValue !== null ? `$${row.myValue}` : "—",
+                      },
+                      { label: "Teams in need", value: String(row.demandCount) },
+                    ],
+                  },
+                  {
+                    columns: ["Season", "ROS"],
+                    rows: [
+                      {
+                        label: "PPG",
+                        values: [
+                          rosVorRow ? rosVorRow.actualPpg.toFixed(1) : "—",
+                          rosVorRow ? rosVorRow.rosPpg.toFixed(1) : "—",
+                        ],
+                      },
+                      {
+                        label: "Pos rank",
+                        values: [
+                          seasonPositionRankByFpid.has(row.fpid)
+                            ? `${row.position}${seasonPositionRankByFpid.get(row.fpid)}`
+                            : "—",
+                          rosVorRow && rosVorRow.positionRank > 0
+                            ? `${row.position}${rosVorRow.positionRank}`
+                            : "—",
+                        ],
+                      },
+                    ],
+                  },
+                ],
               }}
-              isRookie={rookieFpidSet.has(row.fpid)}
-              leftLabel="—"
-              footer={bidFooter}
             />
           );
         })}

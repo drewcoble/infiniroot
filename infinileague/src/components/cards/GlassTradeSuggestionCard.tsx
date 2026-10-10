@@ -1,0 +1,253 @@
+import { useId, type CSSProperties } from "react";
+import { X } from "lucide-react";
+import { positionColorOrDefault, type Position } from "@shared/positionColors";
+import { gradeColor } from "../../lib/gradeColor";
+import { formatTradeValue } from "../../lib/tradeValue";
+import { pillStyle } from "./cardShared";
+import { GlassPopover } from "./GlassPopover";
+import { StatGroups } from "./StatGroups";
+import { useExpandableCard } from "./useExpandableCard";
+import classes from "./GlassMatchupCard.module.css";
+
+export interface TradeSuggestionPlayer {
+  fpid: number;
+  name: string;
+  position: Position;
+  team: string | null;
+}
+
+// Mirrors convex/infinileague/season/tradeSuggestions.ts's TradeSuggestion.
+export interface TradeSuggestion {
+  partnerTeamId: string;
+  partnerName: string;
+  send: TradeSuggestionPlayer[];
+  receive: TradeSuggestionPlayer[];
+  gain: number;
+  partnerGain: number;
+  gainPpg: number;
+  partnerGainPpg: number;
+  // Trade value you get minus what you send (consolidation credit
+  // included) - the Trade tab's FantasyCalc-style numbers.
+  valueNet: number;
+  // 0-100, lineup gain and valueNet blended (see tradeSuggestions.ts).
+  grade: number;
+  rankBefore: number;
+  rankAfter: number;
+  partnerRankBefore: number;
+  partnerRankAfter: number;
+}
+
+function signed(value: number): string {
+  return `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(1)}`;
+}
+
+// The grade as a glass badge, colored the way the league home's team grade
+// is (lib/gradeColor.ts).
+function gradePillStyle(grade: number): CSSProperties {
+  return { ...pillStyle(gradeColor(grade)), fontFamily: "var(--font-numeric)" };
+}
+
+// "+1,250" / "−800" - trade value, signed.
+function signedValue(value: number): string {
+  return `${value >= 0 ? "+" : "−"}${formatTradeValue(Math.abs(value))}`;
+}
+
+function rankMoveText(before: number, after: number): string {
+  return before === after ? `#${after}` : `#${before} → #${after}`;
+}
+
+function PlayerLine({
+  label,
+  players,
+  shortName,
+}: {
+  label: string;
+  players: TradeSuggestionPlayer[];
+  shortName: (fullName: string) => string;
+}) {
+  return (
+    <div className={classes.suggestionLine}>
+      <span className={classes.suggestionLineLabel}>{label}</span>
+      <div className={classes.suggestionPlayers}>
+        {players.map((player) => (
+          <span key={player.fpid} className={classes.suggestionPlayer}>
+            <span
+              className={`${classes.pill} ${classes.nameBadge}`}
+              style={pillStyle(positionColorOrDefault(player.position))}
+            >
+              {player.position}
+            </span>
+            <span className={classes.suggestionPlayerName}>{shortName(player.name)}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// One suggested trade in the Trade tab's horizontal strip: the partner,
+// its grade, and who you'd send and get. A tap loads it into the analyzer below;
+// long-press opens the full read - both sides' gains and rank moves, every
+// player's NFL team and rest-of-season PPG - with its own "Load trade"
+// button.
+export function GlassTradeSuggestionCard({
+  suggestion,
+  shortName,
+  rosPpgFor,
+  active,
+  onApply,
+}: {
+  suggestion: TradeSuggestion;
+  shortName: (fullName: string) => string;
+  // Rest-of-season PPG off the rosVOR board, for the detail popover.
+  rosPpgFor: (fpid: number) => number | undefined;
+  // This trade is the one currently loaded below.
+  active: boolean;
+  onApply: () => void;
+}) {
+  const names = (players: TradeSuggestionPlayer[]) =>
+    players.map((player) => player.name).join(" and ");
+  const label =
+    `Trade with ${suggestion.partnerName}: send ${names(suggestion.send)}, get ` +
+    `${names(suggestion.receive)}. Grade ${suggestion.grade}. ` +
+    `${signed(suggestion.gainPpg)} points per week for you, ` +
+    `${signedValue(suggestion.valueNet)} trade value, ` +
+    `power rank ${suggestion.rankBefore} to ${suggestion.rankAfter}`;
+  const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label, {
+    onTap: onApply,
+  });
+  const titleId = useId();
+
+  const playerRows = (players: TradeSuggestionPlayer[]) =>
+    players.map((player) => {
+      const rosPpg = rosPpgFor(player.fpid);
+      return (
+        <div key={player.fpid} className={classes.suggestionDetailRow}>
+          <span className={classes.pill} style={pillStyle(positionColorOrDefault(player.position))}>
+            {player.position}
+          </span>
+          <span className={classes.suggestionDetailName}>{player.name}</span>
+          <span className={classes.suggestionDetailMeta}>
+            {[player.team, rosPpg !== undefined ? `${rosPpg.toFixed(1)} ROS` : null]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </div>
+      );
+    });
+
+  return (
+    <>
+      <div
+        {...cardProps}
+        role="button"
+        aria-pressed={active}
+        className={[
+          classes.card,
+          classes.pressable,
+          classes.suggestionCard,
+          active && classes.tradeSelected,
+          pressing && classes.pressing,
+          expanded && classes.hidden,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <div className={classes.suggestionTop} aria-hidden>
+          <span className={classes.suggestionPartner}>{suggestion.partnerName}</span>
+          <span className={classes.pill} style={gradePillStyle(suggestion.grade)}>
+            {suggestion.grade}
+          </span>
+        </div>
+        <div aria-hidden>
+          <PlayerLine label="Send" players={suggestion.send} shortName={shortName} />
+          <PlayerLine label="Get" players={suggestion.receive} shortName={shortName} />
+        </div>
+      </div>
+
+      {anchor && (
+        <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
+          <div className={classes.expandedHeader}>
+            <div style={{ minWidth: 0 }}>
+              <div id={titleId} className={classes.expandedName}>
+                Trade with {suggestion.partnerName}
+              </div>
+              <div className={classes.gameLine}>
+                <span className={classes.gameLineText}>
+                  Graded on your lineup gain and trade value won
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className={classes.closeButton}
+              onClick={close}
+              aria-label="Close"
+            >
+              <X size={16} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          <div>
+            <div className={classes.strengthLabel}>You send</div>
+            {playerRows(suggestion.send)}
+          </div>
+          <div>
+            <div className={classes.strengthLabel}>You get</div>
+            {playerRows(suggestion.receive)}
+          </div>
+
+          <StatGroups
+            groups={[
+              {
+                label: "Trade",
+                items: [
+                  { label: "Grade", value: String(suggestion.grade) },
+                  { label: "Value net", value: signedValue(suggestion.valueNet) },
+                ],
+              },
+              {
+                columns: ["You", "Them"],
+                rows: [
+                  {
+                    label: "ROS PPG",
+                    values: [signed(suggestion.gainPpg), signed(suggestion.partnerGainPpg)],
+                  },
+                  {
+                    label: "Power rank",
+                    values: [
+                      rankMoveText(suggestion.rankBefore, suggestion.rankAfter),
+                      rankMoveText(suggestion.partnerRankBefore, suggestion.partnerRankAfter),
+                    ],
+                  },
+                ],
+              },
+            ]}
+          />
+
+          <button
+            type="button"
+            className={classes.suggestionLoadButton}
+            onClick={() => {
+              onApply();
+              close();
+            }}
+          >
+            Load trade
+          </button>
+        </GlassPopover>
+      )}
+    </>
+  );
+}
+
+// Loading placeholder in the suggestion card's shape.
+export function GlassTradeSuggestionSkeleton() {
+  return (
+    <div className={`${classes.card} ${classes.suggestionCard}`} aria-hidden>
+      <span className={classes.skeletonBar} style={{ width: "60%", height: 12 }} />
+      <span className={classes.skeletonBar} style={{ width: "85%", height: 17 }} />
+      <span className={classes.skeletonBar} style={{ width: "75%", height: 17 }} />
+    </div>
+  );
+}

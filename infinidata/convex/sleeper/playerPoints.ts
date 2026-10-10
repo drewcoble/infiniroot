@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { action, internalAction, ActionCtx } from "../_generated/server";
-import { api, internal } from "../_generated/api";
+import { internal } from "../_generated/api";
 import { POSITIONS } from "../positions";
+import { refreshWeekPositionRanks } from "../weekPositionRanks";
 import {
   currentSeason,
   DEF_TEAM_FPIDS,
@@ -36,7 +37,8 @@ export interface ParsedStatsRow {
   ptsStd: number;
   ptsPpr: number;
   ptsHalf: number;
-  // Raw box-score categories (pts_*/adp_* stripped) - see playerPoints'
+  // Raw box-score categories (Sleeper's pts_std/ppr/half_ppr totals and
+  // adp_* stripped, pts_allow* kept) - see playerWeekPoints'
   // schema comment on `stats`.
   stats: Record<string, number>;
 }
@@ -47,6 +49,17 @@ export interface ParsedStatsRow {
 // filter to known fpids - callers that write per-player rows do that
 // themselves (see fetchAllPlayerPointsHandler).
 export function parseSleeperStatsRecords(records: SleeperStatsRecord[]): ParsedStatsRow[] {
+  // Sleeper's team-defense records carry no snap counts at all, but every
+  // player record carries his team's - copied onto the DST row below so a
+  // defense's game log can show snaps on/off the field.
+  const teamSnaps = new Map<string, { tm_def_snp: number; tm_off_snp: number }>();
+  for (const record of records) {
+    const snaps = record.stats;
+    if (record.team && snaps?.tm_def_snp && snaps.tm_off_snp && !teamSnaps.has(record.team)) {
+      teamSnaps.set(record.team, { tm_def_snp: snaps.tm_def_snp, tm_off_snp: snaps.tm_off_snp });
+    }
+  }
+
   const rows: ParsedStatsRow[] = [];
   for (const record of records) {
     const sleeperPosition = record.player?.position;
@@ -74,14 +87,20 @@ export function parseSleeperStatsRecords(records: SleeperStatsRecord[]): ParsedS
     const stats = record.stats ?? {};
     const numericStats: Record<string, number> = {};
     for (const [key, value] of Object.entries(stats)) {
+      // pts_std/pts_ppr/pts_half_ppr are Sleeper's own fantasy totals
+      // (already captured as ptsStd/ptsPpr/ptsHalf below), but pts_allow*
+      // is a real DST box-score stat (points allowed) - keep it.
       if (
         typeof value === "number" &&
-        !key.startsWith("pts_") &&
+        !(key.startsWith("pts_") && !key.startsWith("pts_allow")) &&
         !key.startsWith("adp_")
       ) {
         numericStats[key] = value;
       }
     }
+
+    const snaps = position === "DST" && record.team ? teamSnaps.get(record.team) : undefined;
+    if (snaps) Object.assign(numericStats, snaps);
 
     rows.push({
       fpid,
@@ -110,6 +129,7 @@ async function fetchAllPlayerPointsHandler(
   const year = args.year ?? currentSeason();
   const weeks = args.weeks ?? WEEKS;
   const totals: Record<string, { inserted: number; updated: number }> = {};
+  const syncedWeeks: string[] = [];
 
   // Sleeper's weekly stats payload includes plenty of players we've never
   // stored a `players` row for (e.g. filtered out of projections as
@@ -136,52 +156,43 @@ async function fetchAllPlayerPointsHandler(
     const rows = parseSleeperStatsRecords(records).filter((row) =>
       knownFpids.has(row.fpid),
     );
-
-    const scoringVariants: Array<{
-      scoring: "STD" | "PPR" | "HALF";
-      pick: (row: (typeof rows)[number]) => number;
-    }> = [
-      { scoring: "STD", pick: (row) => row.ptsStd },
-      { scoring: "PPR", pick: (row) => row.ptsPpr },
-      { scoring: "HALF", pick: (row) => row.ptsHalf },
-    ];
+    syncedWeeks.push(week);
 
     // Chunked rather than one runMutation call for the whole week - each row
-    // now costs upsertPlayerPoints's own read+write plus (since real games
-    // started landing points > 0 instead of the all-zero preseason payload)
-    // applySeasonStatsDelta's cascade in convex/playerPoints.ts: a season-to-
-    // date collect() plus 6 BONUS_VARIANTS reads+writes. That's ~25 reads per
-    // row by late season, and a full week's roster (several hundred rows) in
-    // one transaction is well past Convex's 4096-reads-per-transaction limit
-    // (see the matching comment in ../sleeper/playerLinks.ts).
-    const CHUNK_SIZE = 100;
+    // costs upsertPlayerPoints's own read+write plus (once real games land
+    // points > 0) applySeasonStatsDelta's cascade in convex/playerPoints.ts:
+    // a season-to-date collect() plus 3 scorings x 6 BONUS_VARIANTS
+    // reads+writes. That's ~40 reads per row by late season, so a full
+    // week's roster (several hundred rows) in one transaction would be well
+    // past Convex's 4096-reads-per-transaction limit (see the matching
+    // comment in ../sleeper/playerLinks.ts).
+    const CHUNK_SIZE = 50;
 
-    for (const { scoring, pick } of scoringVariants) {
-      const scoringRows = rows.map((row) => ({
+    let inserted = 0;
+    let updated = 0;
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+      const chunk = rows.slice(i, i + CHUNK_SIZE).map((row) => ({
         fpid: row.fpid,
         position: row.position,
         week,
-        points: pick(row),
+        pointsStd: row.ptsStd,
+        pointsHalf: row.ptsHalf,
+        pointsPpr: row.ptsPpr,
         stats: row.stats,
       }));
-
-      let inserted = 0;
-      let updated = 0;
-      for (let i = 0; i < scoringRows.length; i += CHUNK_SIZE) {
-        const chunk = scoringRows.slice(i, i + CHUNK_SIZE);
-        const result = await ctx.runMutation(api.playerPoints.upsertPlayerPoints, {
-          season: year,
-          scoring,
-          rows: chunk,
-        });
-        inserted += result.inserted;
-        updated += result.updated;
-      }
-
-      const key = `week${week}-${scoring}`;
-      totals[key] = { inserted, updated };
+      const result = await ctx.runMutation(internal.playerPoints.upsertPlayerPoints, {
+        season: year,
+        rows: chunk,
+      });
+      inserted += result.inserted;
+      updated += result.updated;
     }
+    totals[`week${week}`] = { inserted, updated };
   }
+
+  // Game logs' weekly position ranks (see weekPositionRankSets' schema
+  // comment) - rebuilt for exactly the weeks just synced.
+  await refreshWeekPositionRanks(ctx, { season: year, weeks: syncedWeeks });
 
   return totals;
 }

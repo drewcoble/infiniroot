@@ -1,6 +1,6 @@
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexQueryClient } from "@convex-dev/react-query";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider, mergeThemeOverrides } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/charts/styles.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,6 +9,15 @@ import { Analytics } from "@vercel/analytics/react";
 import { ConvexReactClient } from "convex/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
+// Barlow for all of infinileague's text and numbers (see index.css's
+// --app-font-* / --font-numeric) - Latin subset, bundled rather than loaded
+// from Google Fonts.
+import "@fontsource/barlow/latin-400.css";
+import "@fontsource/barlow/latin-500.css";
+import "@fontsource/barlow/latin-600.css";
+import "@fontsource/barlow/latin-700.css";
+// Red Hat Mono (semibold) for badge text - see index.css's --font-badge.
+import "@fontsource/red-hat-mono/latin-600.css";
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import { cssVariablesResolver, theme } from "@shared/theme";
@@ -18,6 +27,17 @@ import { installStaleChunkReload } from "@shared/errors";
 // see shared/errors.ts's own comment. Installed before the router even
 // renders so most cases reload before React ever shows an error.
 installStaleChunkReload();
+
+// infinileague's own text font (Barlow), overriding the shared theme's
+// Inter / Space Grotesk, which infinidraft/infinifaab keep. Read from
+// index.css's --app-font-* variables so the font is defined in one place.
+const leagueTheme = mergeThemeOverrides(theme, {
+  fontFamily: "var(--app-font-body)",
+  headings: {
+    fontFamily: "var(--app-font-heading)",
+    fontWeight: "var(--app-heading-weight)",
+  },
+});
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
 
@@ -74,7 +94,7 @@ ReactDOM.createRoot(rootElement).render(
     <ConvexAuthProvider client={convex} shouldHandleCode={false}>
       <QueryClientProvider client={queryClient}>
         <MantineProvider
-          theme={theme}
+          theme={leagueTheme}
           defaultColorScheme="dark"
           cssVariablesResolver={cssVariablesResolver}
         >

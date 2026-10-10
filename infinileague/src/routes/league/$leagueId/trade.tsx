@@ -1,28 +1,45 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import {
-  Alert,
-  Box,
-  Card,
-  Loader,
-  Select,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Alert, Box, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
 import { TradeRosterMatchup } from "../../../components/TradeRosterMatchup";
+import { MatchupRosterSkeleton } from "../../../components/MatchupRosterMatchup";
+import { GlassTradeHeader, type TradeHeaderTeam } from "../../../components/cards/GlassTradeHeader";
+import { buildShortNames } from "../../../lib/shortPlayerName";
+import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import type { TradeMetric } from "../../../components/cards/GlassTradeCard";
+import {
+  GlassTradeSuggestionCard,
+  GlassTradeSuggestionSkeleton,
+  type TradeSuggestion,
+} from "../../../components/cards/GlassTradeSuggestionCard";
+import classes from "../../../components/cards/GlassMatchupCard.module.css";
+import {
+  GlassSignalCard,
+  GlassSignalSkeleton,
+  type GlassSignalCardData,
+} from "../../../components/cards/GlassSignalCard";
+import { tradeTotals } from "../../../lib/tradeValue";
+import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
 import {
   TradePowerRankingsSheet,
   TRADE_PEEK_CARD_HEIGHT,
 } from "../../../components/TradePowerRankingsSheet";
-import type { PowerRankingRow, RosVorRow, StandingsRow } from "../../../types/season";
+import type {
+  PowerRankingRow,
+  RosVorRow,
+  StandingsRow,
+  TeamRosterRow,
+  TradeValueRow,
+} from "../../../types/season";
+
+// How many players each of the Buys / Sells strips shows.
+const SIGNAL_LIMIT = 10;
 
 export const Route = createFileRoute("/league/$leagueId/trade")({
   component: TradePage,
@@ -37,6 +54,13 @@ interface NflState {
 interface TradeImpact {
   before: PowerRankingRow[];
   after: PowerRankingRow[];
+}
+
+// Which trade a result or error was computed for - partner plus both
+// sides' selections, order-independent.
+function tradeKey(teamBId: string | null, selectedA: Set<number>, selectedB: Set<number>): string {
+  const ids = (set: Set<number>) => [...set].sort((x, y) => x - y).join(",");
+  return `${teamBId ?? ""}|${ids(selectedA)}|${ids(selectedB)}`;
 }
 
 // Trade analyzer: pick players off your own team and a second team, and see
@@ -68,7 +92,11 @@ function TradePage() {
     api.rosVor.getRosVorBoard,
     isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
   );
-  const vorByFpid = new Map((vorRows ?? []).map((row) => [row.fpid, row]));
+  const vorByFpid = useMemo(
+    () => new Map((vorRows ?? []).map((row) => [row.fpid, row])),
+    [vorRows],
+  );
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(vorRows), [vorRows]);
 
   const [teamAId, setTeamAId] = useState<string | null>(null);
   useEffect(() => {
@@ -86,11 +114,84 @@ function TradePage() {
   const teamARoster = useTeamRoster(teamAId, week);
   const teamBRoster = useTeamRoster(teamBId, week);
 
+  // What the cards show - trade value, PPG, or position rank. VOR isn't
+  // offered on its own: the values are built from it (infinivalue).
+  const [metric, setMetric] = useState<TradeMetric>("value");
+
+  // FantasyCalc-style trade value per player - FantasyCalc's market value
+  // blended with our rest-of-season VOR (see convex/infinileague/season/
+  // tradeValues.ts). What the header adds up and the bar compares.
+  const getTradeValues = useAction(api.infinileague.season.tradeValues.getTradeValues);
+  const [tradeValues, setTradeValues] = useState<TradeValueRow[] | undefined>(undefined);
+  const [tradeValuesError, setTradeValuesError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    getTradeValues({ seasonId })
+      .then((rows) => {
+        if (!cancelled) setTradeValues(rows);
+      })
+      .catch((err) => {
+        if (!cancelled) setTradeValuesError(getErrorMessage(err, "Couldn't load trade values."));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [seasonId, isAuthenticated, getTradeValues]);
+  const valueByFpid = useMemo(
+    () => (tradeValues ? new Map(tradeValues.map((row) => [row.fpid, row])) : undefined),
+    [tradeValues],
+  );
+
   const [selectedA, setSelectedA] = useState<Set<number>>(new Set());
   const [selectedB, setSelectedB] = useState<Set<number>>(new Set());
-  useEffect(() => {
+  // Picking a different partner clears their side's picks (they were the
+  // old partner's players); your own side's stay.
+  const changePartner = (teamId: string | null) => {
+    setTeamBId(teamId);
     setSelectedB(new Set());
-  }, [teamBId]);
+  };
+
+  // Suggested trades for the strip under the title - computed server-side
+  // across every team in the league (see convex/infinileague/season/
+  // tradeSuggestions.ts), once per visit.
+  const getTradeSuggestions = useAction(
+    api.infinileague.season.tradeSuggestions.getTradeSuggestions,
+  );
+  const [suggestions, setSuggestions] = useState<TradeSuggestion[] | undefined>(undefined);
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    setSuggestions(undefined);
+    setSuggestionsError(null);
+    getTradeSuggestions({ seasonId })
+      .then((result) => {
+        if (!cancelled) setSuggestions(result);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setSuggestionsError(getErrorMessage(err, "Couldn't load trade suggestions."));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [seasonId, isAuthenticated, getTradeSuggestions]);
+
+  // A tap on a suggestion loads it into the analyzer: its partner, and
+  // exactly its players selected on both sides.
+  const applySuggestion = (suggestion: TradeSuggestion) => {
+    setTeamBId(suggestion.partnerTeamId);
+    setSelectedA(new Set(suggestion.send.map((player) => player.fpid)));
+    setSelectedB(new Set(suggestion.receive.map((player) => player.fpid)));
+  };
+  const sameFpids = (set: Set<number>, players: { fpid: number }[]) =>
+    set.size === players.length && players.every((player) => set.has(player.fpid));
+  const isActiveSuggestion = (suggestion: TradeSuggestion) =>
+    teamBId === suggestion.partnerTeamId &&
+    sameFpids(selectedA, suggestion.send) &&
+    sameFpids(selectedB, suggestion.receive);
 
   const toggleA = (fpid: number) =>
     setSelectedA((prev) => {
@@ -116,8 +217,19 @@ function TradePage() {
   const getPowerRankingsWithTrade = useAction(
     api.infinileague.season.powerRankings.getPowerRankingsWithTrade,
   );
-  const [tradeImpact, setTradeImpact] = useState<TradeImpact | undefined>(undefined);
-  const [tradeImpactError, setTradeImpactError] = useState<string | null>(null);
+  // Tagged with the trade it was computed for, so the header knows when
+  // it's looking at a previous selection's result (shimmer until the new
+  // one lands) while the rankings list keeps showing it, dimmed, rather
+  // than blinking out on every tap.
+  const [tradeImpact, setTradeImpact] = useState<{ key: string; impact: TradeImpact } | undefined>(
+    undefined,
+  );
+  const [tradeImpactError, setTradeImpactError] = useState<{ key: string; message: string } | null>(
+    null,
+  );
+  const currentTradeKey = tradeKey(teamBId, selectedA, selectedB);
+  const tradeReady =
+    teamAId !== null && teamBId !== null && selectedA.size > 0 && selectedB.size > 0;
 
   useEffect(() => {
     if (teamAId === null || teamBId === null || selectedA.size === 0 || selectedB.size === 0) {
@@ -125,6 +237,7 @@ function TradePage() {
       setTradeImpactError(null);
       return;
     }
+    const key = tradeKey(teamBId, selectedA, selectedB);
     // Debounced rather than firing on every single checkbox click - this
     // call re-fetches live Sleeper rosters and every remaining week's
     // projections server-side (see getPowerRankingsWithTrade), genuinely
@@ -140,16 +253,208 @@ function TradePage() {
         outgoingFromA,
         outgoingFromB,
       })
-        .then(setTradeImpact)
+        .then((impact) => setTradeImpact({ key, impact }))
         .catch((err) =>
-          setTradeImpactError(getErrorMessage(err, "Failed to compute trade impact.")),
+          setTradeImpactError({
+            key,
+            message: getErrorMessage(err, "Failed to compute trade impact."),
+          }),
         );
     }, 400);
     return () => clearTimeout(timeout);
   }, [seasonId, teamAId, teamBId, selectedA, selectedB, getPowerRankingsWithTrade]);
 
+  // League-wide name pool the cards' short names are collision-checked
+  // against - same as the Matchup tab.
+  const shortName = useMemo(
+    () =>
+      buildShortNames([
+        ...(vorRows ?? []).map((row) => row.name),
+        ...(teamARoster.rows ?? []).flatMap((row) => (row.name ? [row.name] : [])),
+        ...(teamBRoster.rows ?? []).flatMap((row) => (row.name ? [row.name] : [])),
+        ...(suggestions ?? []).flatMap((suggestion) =>
+          [...suggestion.send, ...suggestion.receive].map((player) => player.name),
+        ),
+      ]),
+    [vorRows, teamARoster.rows, teamBRoster.rows, suggestions],
+  );
+
+  const suggestionStrip = (
+    <div className={classes.suggestionStrip} role="list" aria-label="Suggested trades">
+      {suggestionsError ? (
+        <span className={classes.suggestionEmpty}>Trade suggestions aren&apos;t available.</span>
+      ) : suggestions === undefined ? (
+        Array.from({ length: 3 }, (_, index) => <GlassTradeSuggestionSkeleton key={index} />)
+      ) : suggestions.length === 0 ? (
+        <span className={classes.suggestionEmpty}>
+          No trades found that help both teams right now.
+        </span>
+      ) : (
+        suggestions.map((suggestion) => (
+          <div
+            key={`${suggestion.partnerTeamId}-${suggestion.send.map((p) => p.fpid).join(",")}-${suggestion.receive.map((p) => p.fpid).join(",")}`}
+            role="listitem"
+            style={{ display: "contents" }}
+          >
+            <GlassTradeSuggestionCard
+              suggestion={suggestion}
+              shortName={shortName}
+              rosPpgFor={(fpid) => vorByFpid.get(fpid)?.rosPpg}
+              active={isActiveSuggestion(suggestion)}
+              onApply={() => applySuggestion(suggestion)}
+            />
+          </div>
+        ))
+      )}
+    </div>
+  );
+
+  // Buys: the biggest buy signals on other teams' rosters, league-wide
+  // (free agents left out - there's no one to trade with). Sells: your own
+  // roster's biggest sell signals. Both ordered by the gap between
+  // infinivalue and market value, biggest first (see convex/infinileague/
+  // season/tradeValues.ts's buy/sell rule).
+  const myFpids = new Set((teamARoster.rows ?? []).flatMap((row) => (row.fpid ? [row.fpid] : [])));
+  const teamIdByName = new Map((standings ?? []).map((row) => [row.name, row.teamId]));
+  const signalCard = (row: RosVorRow, signal: "buy" | "sell", owner: string | null) => {
+    const value = valueByFpid?.get(row.fpid);
+    if (!value || value.signal !== signal || value.marketValue === null) return [];
+    return [
+      {
+        fpid: row.fpid,
+        name: row.name,
+        position: row.position,
+        positionRank: row.positionRank,
+        seasonPositionRank: seasonPositionRankByFpid.get(row.fpid),
+        team: row.team,
+        owner,
+        injury: row.injury,
+        signal,
+        infinivalue: value.projectionValue,
+        marketValue: value.marketValue,
+        avgValue: value.value,
+        seasonPpg: row.actualPpg,
+        rosPpg: row.rosPpg,
+      },
+    ];
+  };
+  const byGap = (a: GlassSignalCardData, b: GlassSignalCardData) =>
+    Math.abs(b.infinivalue - b.marketValue) - Math.abs(a.infinivalue - a.marketValue);
+  const buys = (vorRows ?? [])
+    .flatMap((row) =>
+      row.rosteredByTeamName && !myFpids.has(row.fpid)
+        ? signalCard(row, "buy", row.rosteredByTeamName)
+        : [],
+    )
+    .sort(byGap)
+    .slice(0, SIGNAL_LIMIT);
+  const sells = (vorRows ?? [])
+    .flatMap((row) => (myFpids.has(row.fpid) ? signalCard(row, "sell", null) : []))
+    .sort(byGap)
+    .slice(0, SIGNAL_LIMIT);
+
+  // A tap loads the player into the analyzer: a buy makes his team the
+  // trade partner (keeping their side's other picks if it already is) and
+  // selects him on their side; a sell toggles him on yours.
+  const applyBuy = (card: GlassSignalCardData) => {
+    const ownerId = card.owner ? teamIdByName.get(card.owner) : undefined;
+    if (!ownerId) return;
+    if (ownerId !== teamBId) {
+      setTeamBId(ownerId);
+      setSelectedB(new Set([card.fpid]));
+    } else {
+      toggleB(card.fpid);
+    }
+  };
+
+  const signalStrip = (cards: GlassSignalCardData[], signal: "buy" | "sell") => (
+    <div
+      className={classes.suggestionStrip}
+      role="list"
+      aria-label={signal === "buy" ? "Players to buy" : "Players to sell"}
+    >
+      {valueByFpid === undefined || teamARoster.rows === undefined ? (
+        Array.from({ length: 4 }, (_, index) => <GlassSignalSkeleton key={index} />)
+      ) : cards.length === 0 ? (
+        <span className={classes.suggestionEmpty}>
+          {signal === "buy"
+            ? "No players stand out as buys right now."
+            : "No one on your roster stands out as a sell right now."}
+        </span>
+      ) : (
+        cards.map((card) => (
+          <div key={card.fpid} role="listitem" style={{ display: "contents" }}>
+            <GlassSignalCard
+              data={card}
+              displayName={shortName(card.name)}
+              active={
+                signal === "buy"
+                  ? teamBId !== null &&
+                    teamIdByName.get(card.owner ?? "") === teamBId &&
+                    selectedB.has(card.fpid)
+                  : selectedA.has(card.fpid)
+              }
+              onTap={() => (signal === "buy" ? applyBuy(card) : toggleA(card.fpid))}
+            />
+          </div>
+        ))
+      )}
+    </div>
+  );
+  const signalSections = (
+    <>
+      <Stack gap="xs">
+        <Title order={5}>Buys</Title>
+        {signalStrip(buys, "buy")}
+      </Stack>
+      <Stack gap="xs">
+        <Title order={5}>Sells</Title>
+        {signalStrip(sells, "sell")}
+      </Stack>
+    </>
+  );
+
+  const metricSwitch = (
+    <GlassSegmented
+      label="Card stats"
+      value={metric}
+      onChange={setMetric}
+      options={[
+        { label: "Value", value: "value" as const },
+        { label: "PPG", value: "ppg" as const },
+        { label: "Ranks", value: "rank" as const },
+      ]}
+    />
+  );
+
+  // Header and rows hold their shape with glass skeletons while loading,
+  // like the Matchup tab, rather than a bare spinner.
   if (nflState === undefined || standings === undefined || vorRows === undefined) {
-    return <Loader />;
+    return (
+      <Stack gap="md">
+        <Title order={3}>Trade</Title>
+        {signalSections}
+        <Stack gap="xs">
+          <Title order={5}>Suggestions</Title>
+          {suggestionStrip}
+        </Stack>
+        <Stack gap="xs">
+          <Title order={5}>Analyzer</Title>
+          {metricSwitch}
+        </Stack>
+        <GlassTradeHeader
+          metric={metric}
+          teamA="loading"
+          teamB="loading"
+          partnerOptions={[]}
+          partnerId={teamBId}
+          onPartnerChange={changePartner}
+        />
+        <Stack gap={10}>
+          <MatchupRosterSkeleton />
+        </Stack>
+      </Stack>
+    );
   }
 
   if (nflState === null || nflState.seasonType !== "regular") {
@@ -174,101 +479,168 @@ function TradePage() {
     );
   }
 
-  const selfTeamName = standings.find((row) => row.teamId === teamAId)?.name;
-
-  if (teamAId === null || teamARoster.rows === undefined) {
-    return <Loader />;
-  }
-
+  const selfTeamName = standings.find((row) => row.teamId === teamAId)?.name ?? "Your team";
   const teamBOptions = standings
     .filter((row) => row.teamId !== teamAId)
     .map((row) => ({ value: row.teamId, label: row.name }));
   const teamBName = standings.find((row) => row.teamId === teamBId)?.name ?? "Team";
 
+  // The latest result for the list (possibly a previous selection's,
+  // dimmed), and only the current selection's for the header.
+  const latestImpact = tradeReady ? tradeImpact?.impact : undefined;
+  const impactIsCurrent = tradeImpact?.key === currentTradeKey;
+  const impactError = tradeImpactError?.key === currentTradeKey ? tradeImpactError.message : null;
+
   const beforeRankByTeam = new Map(
-    (tradeImpact?.before ?? []).map((row, index) => [row.teamId, index + 1]),
+    (latestImpact?.before ?? []).map((row, index) => [row.teamId, index + 1]),
   );
   const beforePointsByTeam = new Map(
-    (tradeImpact?.before ?? []).map((row) => [row.teamId, row.totalProjectedPoints]),
+    (latestImpact?.before ?? []).map((row) => [row.teamId, row.totalProjectedPoints]),
   );
+
+  // Each side's sent players' trade values, and the totals with any
+  // consolidation credit (lib/tradeValue.ts) - undefined while the values
+  // load. A player missing from the values is worth 0.
+  const sentValues = (rows: TeamRosterRow[] | undefined, selected: Set<number>) =>
+    (rows ?? [])
+      .filter((row) => row.fpid !== undefined && selected.has(row.fpid))
+      .map((row) => valueByFpid?.get(row.fpid ?? -1)?.value ?? 0);
+  const totals = valueByFpid
+    ? tradeTotals(sentValues(teamARoster.rows, selectedA), sentValues(teamBRoster.rows, selectedB))
+    : undefined;
+
+  const headerTeam = (
+    side: "A" | "B",
+    name: string,
+    rows: TeamRosterRow[] | undefined,
+    selected: Set<number>,
+  ): TradeHeaderTeam => {
+    const credit = totals ? (side === "A" ? totals.adjustmentA : totals.adjustmentB) : 0;
+    const raw = totals ? (side === "A" ? totals.rawA : totals.rawB) : undefined;
+    const sending = (rows ?? []).flatMap((row) =>
+      row.fpid !== undefined && selected.has(row.fpid) ? [{ row, fpid: row.fpid }] : [],
+    );
+    const positionRank = (position: string | undefined, rank: number | undefined) =>
+      position && rank ? `${position}${rank}` : "—";
+    const players = sending.map(({ row, fpid }) => {
+      const vor = vorByFpid.get(fpid);
+      return {
+        fpid,
+        name: shortName(row.name ?? ""),
+        position: row.position ?? "QB",
+        value: valueByFpid ? (valueByFpid.get(fpid)?.value ?? 0) : undefined,
+        actualPpg: vor ? vor.actualPpg.toFixed(1) : "—",
+        rosPpg: vor ? vor.rosPpg.toFixed(1) : "—",
+        actualRank: positionRank(row.position, seasonPositionRankByFpid.get(fpid)),
+        rosRank: positionRank(row.position, vor?.positionRank),
+      };
+    });
+    return {
+      name,
+      players,
+      value: raw !== undefined ? raw + credit : undefined,
+      credit,
+      rosPpgTotal: sending.reduce(
+        (total, { fpid }) => total + (vorByFpid.get(fpid)?.rosPpg ?? 0),
+        0,
+      ),
+      actualPpgTotal: sending.reduce(
+        (total, { fpid }) => total + (vorByFpid.get(fpid)?.actualPpg ?? 0),
+        0,
+      ),
+    };
+  };
 
   return (
     <Stack gap="md">
-      <Title order={3}>Trade Analyzer</Title>
-
-      {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
-      {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
-
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-        <Title order={5}>{selfTeamName ?? "Your team"}</Title>
-        <Select
-          label="Trading with"
-          placeholder="Select a team"
-          data={teamBOptions}
-          value={teamBId}
-          onChange={setTeamBId}
-          clearable
-          w={{ base: "100%", sm: 220 }}
-        />
-      </SimpleGrid>
-
-      <Stack gap={8}>
-        <TradeRosterMatchup
-          teamARows={teamARoster.rows}
-          teamBRows={teamBRoster.rows}
-          vorByFpid={vorByFpid}
-          selectedA={selectedA}
-          selectedB={selectedB}
-          onToggleA={toggleA}
-          onToggleB={toggleB}
-        />
+      <Title order={3}>Trade</Title>
+      {signalSections}
+      <Stack gap="xs">
+        <Title order={5}>Suggestions</Title>
+        {suggestionStrip}
+      </Stack>
+      <Stack gap="xs">
+        <Title order={5}>Analyzer</Title>
+        {metricSwitch}
       </Stack>
 
-      {teamBId !== null && tradeImpact === undefined && (
-        <Card padding="md">
-          <Title order={5} mb="xs">
-            Post-trade power rankings
-          </Title>
-          {selectedA.size === 0 || selectedB.size === 0 ? (
-            <Text c="dimmed" size="sm">
-              Select players from both teams to preview this trade&apos;s power-ranking impact.
-            </Text>
-          ) : tradeImpactError ? (
-            <Alert color="red" withCloseButton onClose={() => setTradeImpactError(null)}>
-              {tradeImpactError}
-            </Alert>
-          ) : (
-            <Loader size="sm" />
-          )}
-        </Card>
+      {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
+      {tradeValuesError && <Alert color="red">{tradeValuesError}</Alert>}
+      {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
+      {impactError && (
+        <Alert color="red" withCloseButton onClose={() => setTradeImpactError(null)}>
+          {impactError}
+        </Alert>
       )}
 
-      {/* Desktop keeps the plain scrollable card - mobile gets a peek card
+      <GlassTradeHeader
+        metric={metric}
+        teamA={
+          teamAId === null || teamARoster.rows === undefined
+            ? "loading"
+            : headerTeam("A", selfTeamName, teamARoster.rows, selectedA)
+        }
+        teamB={
+          teamBId === null
+            ? null
+            : teamBRoster.rows === undefined
+              ? "loading"
+              : headerTeam("B", teamBName, teamBRoster.rows, selectedB)
+        }
+        partnerOptions={teamBOptions}
+        partnerId={teamBId}
+        onPartnerChange={changePartner}
+      />
+
+      <Stack gap={10}>
+        {teamARoster.rows === undefined ? (
+          <MatchupRosterSkeleton />
+        ) : (
+          <TradeRosterMatchup
+            teamARows={teamARoster.rows}
+            teamBRows={teamBRoster.rows}
+            teamBLoading={teamBId !== null}
+            vorByFpid={vorByFpid}
+            valueByFpid={valueByFpid}
+            seasonPositionRankByFpid={seasonPositionRankByFpid}
+            metric={metric}
+            shortName={shortName}
+            selectedA={selectedA}
+            selectedB={selectedB}
+            onToggleA={toggleA}
+            onToggleB={toggleB}
+          />
+        )}
+      </Stack>
+
+      {/* Desktop shows the full list inline - mobile gets a peek card
           pinned above BottomNav instead (see TradePowerRankingsSheet's own
           comment on why), so the two only ever render one at a time via
           visibleFrom/hiddenFrom, never both. */}
-      {teamBId !== null && tradeImpact !== undefined && (
+      {teamAId !== null && teamBId !== null && latestImpact !== undefined && (
         <>
-          <Card padding="md" visibleFrom="sm">
-            <Title order={5} mb="xs">
-              Post-trade power rankings
-            </Title>
+          <Stack
+            gap="xs"
+            visibleFrom="sm"
+            style={{ opacity: impactIsCurrent ? 1 : 0.5, transition: "opacity 200ms ease" }}
+          >
+            <Title order={5}>Post-trade power rankings</Title>
             <TradePowerRankingsList
               leagueId={leagueId}
-              rows={tradeImpact.after}
+              rows={latestImpact.after}
               beforeRankByTeam={beforeRankByTeam}
               beforePointsByTeam={beforePointsByTeam}
               highlightedTeamIds={new Set([teamAId, teamBId])}
             />
-          </Card>
+          </Stack>
           <TradePowerRankingsSheet
             leagueId={leagueId}
-            rows={tradeImpact.after}
+            rows={latestImpact.after}
             beforeRankByTeam={beforeRankByTeam}
             beforePointsByTeam={beforePointsByTeam}
             teamAId={teamAId}
             teamBId={teamBId}
-            teamAName={selfTeamName ?? "Your team"}
+            teamAName={selfTeamName}
             teamBName={teamBName}
           />
           {/* Reserves room below the page's own content so the fixed/

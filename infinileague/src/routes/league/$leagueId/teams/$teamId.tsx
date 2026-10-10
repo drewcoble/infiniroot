@@ -1,24 +1,40 @@
-import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import {
-  Alert,
-  Card,
-  Group,
-  Loader,
-  Select,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Alert, Group, Stack, Title } from "@mantine/core";
+import { ChevronLeft } from "lucide-react";
 import { api } from "@infinidata/api";
-import { TeamRosterList } from "../../../../components/TeamRosterList";
+import { TeamRosterList, TeamRosterListSkeleton } from "../../../../components/TeamRosterList";
+import { WeekPicker } from "../../../../components/WeekPicker";
+import classes from "../../../../components/cards/GlassMatchupCard.module.css";
+import {
+  GlassTeamHeader,
+  type TeamWeekSummary,
+} from "../../../../components/cards/GlassTeamHeader";
+import { meterScaleMax } from "../../../../components/cards/meterScale";
+import { useTeamRoster } from "../../../../hooks/useTeamRoster";
+import {
+  isAnyGameLive,
+  liveProjection,
+  remainingFraction,
+  useNow,
+  type WeekGame,
+} from "../../../../lib/liveGames";
+import { seasonPositionRanks } from "../../../../lib/seasonPositionRanks";
+import { toMatchupCardData } from "../../../../lib/matchupCardData";
 import { LineupSuggestionsCard } from "../../../../components/LineupSuggestionsCard";
-import { getErrorMessage } from "@shared/errors";
-import type { SlotLabel, StandingsRow, TeamRosterRow } from "../../../../types/season";
+import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../../types/season";
 
+const REGULAR_SEASON_WEEKS = 18;
+
+// ?week=N views another week (same convention as the Matchup tab); absent =
+// the current NFL week. Out-of-range values are dropped rather than erroring.
 export const Route = createFileRoute("/league/$leagueId/teams/$teamId")({
+  validateSearch: (search: Record<string, unknown>): { week?: number } => {
+    const week = Number(search.week);
+    return Number.isInteger(week) && week >= 1 && week <= REGULAR_SEASON_WEEKS ? { week } : {};
+  },
   component: TeamPage,
 });
 
@@ -28,7 +44,9 @@ interface NflState {
   seasonType: "pre" | "regular" | "post";
 }
 
-const WEEK_OPTIONS = Array.from({ length: 18 }, (_, i) => String(i + 1));
+// While a game is on, how often the roster's points are re-fetched - same
+// cadence as the Matchup tab (the live poll's own, see convex/crons.ts).
+const LIVE_REFRESH_MS = 2 * 60 * 1000;
 
 // Starting lineup slots only - excludes BENCH/IR/TAXI, whose points don't
 // count toward the team's total for the week (mirrors Sleeper's own
@@ -46,11 +64,11 @@ const STARTER_SLOTS = new Set<SlotLabel>([
 
 function sumStarterPoints(
   rows: TeamRosterRow[],
-  field: "projectedPoints" | "actualPoints",
+  pointsFor: (row: TeamRosterRow) => number,
 ): number {
   return rows.reduce((total, row) => {
     if (!row.slot || !STARTER_SLOTS.has(row.slot)) return total;
-    return total + (row[field] ?? 0);
+    return total + pointsFor(row);
   }, 0);
 }
 
@@ -60,7 +78,6 @@ function TeamPage() {
   // convexApi.ts's FunctionReference types expect the branded Id<>
   // convex/values declares.
   const seasonId = leagueId as Id<"seasons">;
-  const teamIdTyped = teamId as Id<"seasonTeams">;
   const { isAuthenticated } = useConvexAuth();
 
   // Reuses the same standings query the league page's table already calls -
@@ -77,103 +94,146 @@ function TeamPage() {
     isAuthenticated ? {} : "skip",
   );
 
-  // Defaults to the current NFL week once known - purely a starting value
-  // for the dropdown, not used for any data-source branching (see
-  // convex/season/teamRoster.ts's own comment on why there's only one data
-  // path for every week). "0" (pre-season) clamps to "1" since that's not
-  // a real week to request a matchup for.
-  const [week, setWeek] = useState<string | null>(null);
-  useEffect(() => {
-    if (week !== null || nflState === undefined) return;
-    const currentWeek = nflState ? Number(nflState.week) : 0;
-    setWeek(currentWeek > 0 ? String(currentWeek) : "1");
-  }, [nflState, week]);
+  // The week being viewed - ?week= when set, otherwise the current NFL
+  // week ("0" outside the season clamps to week 1).
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const currentWeek =
+    nflState === undefined ? null : nflState && Number(nflState.week) > 0 ? nflState.week : "1";
+  const week = search.week !== undefined ? String(search.week) : currentWeek;
+  const goToWeek = (next: number) =>
+    void navigate({ search: String(next) === currentWeek ? {} : { week: next } });
 
-  const getTeamRosterForWeek = useAction(api.infinileague.season.teamRoster.getTeamRosterForWeek);
-  const [roster, setRoster] = useState<TeamRosterRow[] | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // The week's slate (opponent/kickoff/live status per NFL team) - drives
+  // each card's game line, status icon, and live projection.
+  const weekGames: WeekGame[] | undefined = useQuery(
+    api.sleeper.livePoints.getWeekGames,
+    isAuthenticated && nflState && week ? { season: nflState.season, week } : "skip",
+  );
+  const gamesByTeam = useMemo(
+    () => new Map((weekGames ?? []).map((game) => [game.team, game])),
+    [weekGames],
+  );
+  const now = useNow(60 * 1000);
+  const isCurrentWeek = nflState != null && week === nflState.week;
+  const refreshMs = isCurrentWeek && isAnyGameLive(weekGames, now) ? LIVE_REFRESH_MS : null;
 
-  useEffect(() => {
-    if (week === null) return;
-    setLoading(true);
-    setLoadError(null);
-    getTeamRosterForWeek({ teamId: teamIdTyped, week })
-      .then(setRoster)
-      .catch((err) => setLoadError(getErrorMessage(err, "Failed to load roster.")))
-      .finally(() => setLoading(false));
-  }, [week, teamIdTyped, getTeamRosterForWeek]);
+  // Keyed by team/week (see useTeamRoster), so a week change shows the
+  // loading skeleton rather than the previous week's roster.
+  const teamRoster = useTeamRoster(teamId, week, refreshMs);
+  const roster = teamRoster.rows;
 
-  if (team === undefined) {
-    return <Loader />;
-  }
+  // Season/ROS context for the detail cards (current week's board, as on
+  // the Matchup tab) and this week's actual position ranks for the badges.
+  const vorRows: RosVorRow[] | undefined = useQuery(
+    api.rosVor.getRosVorBoard,
+    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
+  );
+  const vorByFpid = useMemo(
+    () => new Map((vorRows ?? []).map((row) => [row.fpid, row])),
+    [vorRows],
+  );
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(vorRows), [vorRows]);
+  const weekRanks = useQuery(
+    api.infinileague.season.matchup.getWeekPositionRanks,
+    isAuthenticated && week ? { seasonId, week } : "skip",
+  );
+  const weekRankByFpid = useMemo(
+    () => new Map((weekRanks ?? []).map((entry) => [entry.fpid, entry.rank])),
+    [weekRanks],
+  );
+
+  const toCardData = (row: TeamRosterRow) =>
+    toMatchupCardData(
+      row,
+      weekGames ? gamesByTeam : undefined,
+      now,
+      row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
+      row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
+      row.fpid !== undefined ? seasonPositionRankByFpid.get(row.fpid) : undefined,
+    );
+
+  // The week's starters in header form: score, projection, and how many
+  // are live / still to play. Same projection rule as the Matchup header -
+  // live while games remain, the original pregame projection once every
+  // starter's game is final (the live one just equals the score by then).
+  const summary = ((): TeamWeekSummary | undefined => {
+    if (!roster) return undefined;
+    const states = roster
+      .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
+      .map((row) => toCardData(row).gameState);
+    const liveCount = states.filter((state) => state === "live").length;
+    const toPlayCount = states.filter((state) => state === "pre").length;
+    const allFinal = liveCount === 0 && toPlayCount === 0;
+    return {
+      actualPoints: sumStarterPoints(roster, (row) => row.actualPoints ?? 0),
+      projectedPoints: allFinal
+        ? sumStarterPoints(roster, (row) => row.projectedPoints ?? 0)
+        : sumStarterPoints(roster, (row) =>
+            liveProjection(
+              row.projectedPoints,
+              row.actualPoints,
+              remainingFraction(row.team ? gamesByTeam.get(row.team) : undefined, now),
+            ),
+          ),
+      liveCount,
+      toPlayCount,
+    };
+  })();
 
   return (
     <Stack gap="md">
-      <Card padding="lg">
-        <Group justify="space-between" wrap="wrap" gap="sm">
-          <Stack gap={4}>
-            <Title order={3}>{team.name}</Title>
-            <Text c="dimmed" size="sm">
-              Rank #{team.rank} · {team.wins}-{team.losses}-{team.ties} ·{" "}
-              {team.pointsFor.toFixed(1)} PF / {team.pointsAgainst.toFixed(1)} PA
-            </Text>
-          </Stack>
-          <Text fw={600}>
-            {team.faabRemaining !== undefined
-              ? `$${team.faabRemaining} FAAB`
-              : `Waiver #${team.waiverPosition ?? "—"}`}
-          </Text>
+      {/* Same title row as the Matchup tab. This route also shows other
+          teams (opened from the league home's list) - those get a back
+          chevron to the league page; your own is the Team tab itself. */}
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Group gap={10} wrap="nowrap">
+          {team !== undefined && !team.isSelf && (
+            // Round glass button, same as the league home's sync button.
+            <Link
+              to="/league/$leagueId"
+              params={{ leagueId }}
+              className={classes.glassIconButton}
+              aria-label="Back to league"
+            >
+              <ChevronLeft size={18} strokeWidth={2.5} />
+            </Link>
+          )}
+          <Title order={3}>Team</Title>
         </Group>
-      </Card>
+        {week !== null && (
+          <WeekPicker
+            week={Number(week)}
+            currentWeek={currentWeek !== null ? Number(currentWeek) : null}
+            lastWeek={REGULAR_SEASON_WEEKS}
+            onChange={goToWeek}
+          />
+        )}
+      </Group>
 
-      {roster !== undefined && <LineupSuggestionsCard rows={roster} />}
+      <GlassTeamHeader team={team} summary={summary} />
+
+      {/* Start/sit advice is only actionable for your own lineup, and only
+          for a week that hasn't already happened. */}
+      {roster !== undefined &&
+        team?.isSelf &&
+        week !== null &&
+        currentWeek !== null &&
+        Number(week) >= Number(currentWeek) && <LineupSuggestionsCard rows={roster} />}
 
       <Stack gap="sm">
-        <Group justify="space-between" wrap="wrap" gap="sm" align="flex-end">
-          <Select
-            label="Week"
-            data={WEEK_OPTIONS}
-            value={week}
-            onChange={(value) => value && setWeek(value)}
-            allowDeselect={false}
-            w={120}
-          />
+        {teamRoster.error && <Alert color="red">{teamRoster.error}</Alert>}
 
-          {roster !== undefined && (
-            <Card padding="xs">
-              <Group gap="lg">
-                <Stack gap={0} align="center">
-                  <Text size="xs" c="dimmed" tt="uppercase">
-                    Projected
-                  </Text>
-                  <Text fw={600}>
-                    {sumStarterPoints(roster, "projectedPoints").toFixed(1)}
-                  </Text>
-                </Stack>
-                <Stack gap={0} align="center">
-                  <Text size="xs" c="dimmed" tt="uppercase">
-                    Actual
-                  </Text>
-                  <Text fw={600}>
-                    {sumStarterPoints(roster, "actualPoints").toFixed(1)}
-                  </Text>
-                </Stack>
-              </Group>
-            </Card>
-          )}
-        </Group>
-
-        {loadError && (
-          <Alert color="red" withCloseButton onClose={() => setLoadError(null)}>
-            {loadError}
-          </Alert>
-        )}
-
-        {loading || roster === undefined ? (
-          <Loader />
+        {roster === undefined ? (
+          teamRoster.error ? null : (
+            <TeamRosterListSkeleton />
+          )
         ) : (
-          <TeamRosterList rows={roster} teamName={team.name} />
+          <TeamRosterList
+            rows={roster}
+            toCardData={toCardData}
+            scaleMax={meterScaleMax(roster.filter((row) => row.fpid !== undefined).map(toCardData))}
+          />
         )}
       </Stack>
     </Stack>

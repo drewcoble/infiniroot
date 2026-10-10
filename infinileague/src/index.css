@@ -8,3 +8,46 @@
     font-size: 16px !important;
   }
 }
+
+/* Numbers (points, scores, standings, FAAB) are set in Barlow semibold -
+   a clean, very legible grotesque that holds up at small sizes. Every
+   number style reads these two variables; tabular figures keep live
+   scores from shifting as digits change. `.num` is for plain elements; the
+   glass cards' stylesheet uses the variables directly. */
+:root {
+  /* App text font - main.tsx's theme points Mantine's body/heading fonts
+     here: Barlow throughout, semibold for headings. */
+  --app-font-body: "Barlow", sans-serif;
+  --app-font-heading: "Barlow", sans-serif;
+  --app-heading-weight: 600;
+  /* Badge text (glass .pill badges, position filter chips) - Red Hat Mono
+     semibold, a monospace with clearly drawn letters (Barlow's "Q" read
+     poorly at badge size). */
+  --font-badge: "Red Hat Mono", var(--app-font-body);
+  --font-badge-weight: 600;
+  /* Dot-matrix numbers in Lumen's round-dot version, bold (see the
+     @font-face rule below; its digits are all one width already): the
+     scoreboard totals (Matchup and Team headers) and individual players'
+     actual points on the player cards and Players rows. */
+  --font-scoreboard: "Lumen Round", var(--font-numeric);
+  --font-scoreboard-weight: 900;
+  --font-player-points: "Lumen Round", var(--font-numeric);
+  --font-player-points-weight: 900;
+  --font-numeric: "Barlow", var(--mantine-font-family);
+  --font-numeric-weight: 600;
+}
+
+.num {
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Lumen (OFL 1.1 - see assets/fonts/lumen/), round-dot bold, subset to
+   scoreboard characters only. */
+@font-face {
+  font-family: "Lumen Round";
+  font-weight: 900;
+  font-display: swap;
+  src: url("./assets/fonts/lumen/lumen-round-900.woff2") format("woff2");
+}

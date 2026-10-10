@@ -72,12 +72,16 @@ import type * as infinileague_auction_waiverSync from "../infinileague/auction/w
 import type * as infinileague_injuryAssessment from "../infinileague/injuryAssessment.js";
 import type * as infinileague_season_eliminationWatch from "../infinileague/season/eliminationWatch.js";
 import type * as infinileague_season_faabValues from "../infinileague/season/faabValues.js";
+import type * as infinileague_season_gameLog from "../infinileague/season/gameLog.js";
 import type * as infinileague_season_matchup from "../infinileague/season/matchup.js";
 import type * as infinileague_season_powerRankings from "../infinileague/season/powerRankings.js";
 import type * as infinileague_season_rosterPlayers from "../infinileague/season/rosterPlayers.js";
 import type * as infinileague_season_standings from "../infinileague/season/standings.js";
 import type * as infinileague_season_teamRoster from "../infinileague/season/teamRoster.js";
 import type * as infinileague_season_teams from "../infinileague/season/teams.js";
+import type * as infinileague_season_tradeSuggestions from "../infinileague/season/tradeSuggestions.js";
+import type * as infinileague_season_tradeValues from "../infinileague/season/tradeValues.js";
+import type * as infinileague_season_weekInjuries from "../infinileague/season/weekInjuries.js";
 import type * as injuries from "../injuries.js";
 import type * as injurySnapshots from "../injurySnapshots.js";
 import type * as jev_client from "../jev/client.js";
@@ -96,6 +100,7 @@ import type * as lib_sameJson from "../lib/sameJson.js";
 import type * as lib_seasonTeams from "../lib/seasonTeams.js";
 import type * as lib_statsEqual from "../lib/statsEqual.js";
 import type * as lib_timezone from "../lib/timezone.js";
+import type * as lib_weekPoints from "../lib/weekPoints.js";
 import type * as nflSchedule from "../nflSchedule.js";
 import type * as nflState from "../nflState.js";
 import type * as playerNameMatch from "../playerNameMatch.js";
@@ -130,6 +135,7 @@ import type * as tank01_schedule from "../tank01/schedule.js";
 import type * as tank01_scheduleData from "../tank01/scheduleData.js";
 import type * as users from "../users.js";
 import type * as valueGaps from "../valueGaps.js";
+import type * as weekPositionRanks from "../weekPositionRanks.js";
 
 import type {
   ApiFromModules,
@@ -202,12 +208,16 @@ declare const fullApi: ApiFromModules<{
   "infinileague/injuryAssessment": typeof infinileague_injuryAssessment;
   "infinileague/season/eliminationWatch": typeof infinileague_season_eliminationWatch;
   "infinileague/season/faabValues": typeof infinileague_season_faabValues;
+  "infinileague/season/gameLog": typeof infinileague_season_gameLog;
   "infinileague/season/matchup": typeof infinileague_season_matchup;
   "infinileague/season/powerRankings": typeof infinileague_season_powerRankings;
   "infinileague/season/rosterPlayers": typeof infinileague_season_rosterPlayers;
   "infinileague/season/standings": typeof infinileague_season_standings;
   "infinileague/season/teamRoster": typeof infinileague_season_teamRoster;
   "infinileague/season/teams": typeof infinileague_season_teams;
+  "infinileague/season/tradeSuggestions": typeof infinileague_season_tradeSuggestions;
+  "infinileague/season/tradeValues": typeof infinileague_season_tradeValues;
+  "infinileague/season/weekInjuries": typeof infinileague_season_weekInjuries;
   injuries: typeof injuries;
   injurySnapshots: typeof injurySnapshots;
   "jev/client": typeof jev_client;
@@ -226,6 +236,7 @@ declare const fullApi: ApiFromModules<{
   "lib/seasonTeams": typeof lib_seasonTeams;
   "lib/statsEqual": typeof lib_statsEqual;
   "lib/timezone": typeof lib_timezone;
+  "lib/weekPoints": typeof lib_weekPoints;
   nflSchedule: typeof nflSchedule;
   nflState: typeof nflState;
   playerNameMatch: typeof playerNameMatch;
@@ -260,6 +271,7 @@ declare const fullApi: ApiFromModules<{
   "tank01/scheduleData": typeof tank01_scheduleData;
   users: typeof users;
   valueGaps: typeof valueGaps;
+  weekPositionRanks: typeof weekPositionRanks;
 }>;
 
 /**

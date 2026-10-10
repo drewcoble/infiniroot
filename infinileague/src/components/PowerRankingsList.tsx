@@ -1,41 +1,16 @@
-import { Group, Loader, Stack, Text } from "@mantine/core";
-import { ArrowDown, ArrowUp, Minus } from "lucide-react";
-import { TeamCard } from "./TeamCard";
-import { TeamPositionRanksPanel } from "./TeamPositionRanksPanel";
+import { Stack } from "@mantine/core";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import { pillStyle } from "./cards/cardShared";
+import { GlassTeamCard } from "./cards/GlassTeamCard";
+import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
+import classes from "./cards/GlassMatchupCard.module.css";
 import type { PowerRankingRow, TeamPositionRanks } from "../types/season";
 
 interface PowerRankingsListProps {
   leagueId: string;
   rows: PowerRankingRow[] | undefined;
-  // See StandingsList's identical props for why this lives one level up
-  // rather than as local state here.
-  expandedTeamIds: Set<string>;
-  onToggleExpand: (teamId: string) => void;
+  // See StandingsList's identical prop.
   positionRanksByTeam: Map<string, TeamPositionRanks> | undefined;
-}
-
-// Same up/down convention as LineupSuggestionsCard's start/sit arrows -
-// green up, red down - plus a dash for "unchanged" and nothing at all when
-// there's no prior week to compare against (rankChange absent). Exported for
-// TradePowerRankingsList.tsx, which reuses it for trade-induced rank
-// movement instead of this list's week-over-week snapshot movement.
-export function RankChangeIndicator({ rankChange }: { rankChange: number | undefined }) {
-  if (rankChange === undefined) return null;
-  if (rankChange === 0) {
-    return <Minus size={14} color="var(--mantine-color-dimmed)" />;
-  }
-  return (
-    <Group gap={2} wrap="nowrap">
-      {rankChange > 0 ? (
-        <ArrowUp size={14} color="var(--mantine-color-green-6)" />
-      ) : (
-        <ArrowDown size={14} color="var(--mantine-color-red-6)" />
-      )}
-      <Text size="xs" c={rankChange > 0 ? "green" : "red"} span>
-        {Math.abs(rankChange)}
-      </Text>
-    </Group>
-  );
 }
 
 // Rest-of-season strength read: each team's optimal-lineup total from the
@@ -44,41 +19,82 @@ export function RankChangeIndicator({ rankChange }: { rankChange: number | undef
 // loss record. rankChange is this week's rank vs. the last snapshot the
 // backend saved (also powerRankings.ts) - absent, not zero, the very first
 // time it's computed for a season.
-export function PowerRankingsList({
-  leagueId,
-  rows,
-  expandedTeamIds,
-  onToggleExpand,
-  positionRanksByTeam,
-}: PowerRankingsListProps) {
+// Week-over-week move as a glass badge on the team card - green up, red
+// down. Only shown when the team actually moved: no badge for no change,
+// or without a prior week to compare against. Also the Trade tab's
+// post-trade move (`since` names what the move is measured against).
+export function RankChangeBadge({
+  rankChange,
+  since = "since last week",
+}: {
+  rankChange: number | undefined;
+  since?: string;
+}) {
+  if (rankChange === undefined || rankChange === 0) return null;
+  const Icon = rankChange > 0 ? ArrowUp : ArrowDown;
+  return (
+    <span
+      className={classes.pill}
+      style={{ ...pillStyle(rankChange > 0 ? "green" : "red"), fontFamily: "var(--font-numeric)" }}
+      aria-label={`${rankChange > 0 ? "Up" : "Down"} ${Math.abs(rankChange)} ${since}`}
+    >
+      <Icon size={12} strokeWidth={3} />
+      {Math.abs(rankChange)}
+    </span>
+  );
+}
+
+function rankChangeText(rankChange: number | undefined): string {
+  if (rankChange === undefined) return "—";
+  if (rankChange === 0) return "No change";
+  return `${rankChange > 0 ? "Up" : "Down"} ${Math.abs(rankChange)}`;
+}
+
+export function PowerRankingsList({ leagueId, rows, positionRanksByTeam }: PowerRankingsListProps) {
   if (rows === undefined) {
-    return <Loader size="sm" />;
+    return (
+      <Stack gap={8}>
+        {Array.from({ length: 8 }, (_, index) => (
+          <GlassRosterSkeletonCard key={index} />
+        ))}
+      </Stack>
+    );
   }
 
   return (
     <Stack gap={8}>
       {rows.map((row, index) => (
-        <TeamCard
+        <GlassTeamCard
           key={row.teamId}
-          leagueId={leagueId}
-          teamId={row.teamId}
-          name={row.name}
-          isSelf={row.isSelf}
-          leftLabel={index + 1}
-          nameSuffix={<RankChangeIndicator rankChange={row.rankChange} />}
-          stats={
-            <Text size="sm" fw={500}>
-              {row.totalProjectedPoints.toFixed(1)} pts
-            </Text>
-          }
-          expanded={expandedTeamIds.has(row.teamId)}
-          onToggleExpand={() => onToggleExpand(row.teamId)}
-          expandedContent={
-            <TeamPositionRanksPanel
-              positionRanks={positionRanksByTeam?.get(row.teamId)}
-              totalTeams={rows.length}
-            />
-          }
+          data={{
+            leagueId,
+            teamId: row.teamId,
+            name: row.name,
+            rank: index + 1,
+            isSelf: row.isSelf,
+            nameBadges: <RankChangeBadge rankChange={row.rankChange} />,
+            // Rest-of-season points per game under the name, same spot as
+            // Standings' PPG.
+            secondaryLeft: (
+              <span className="num">
+                {row.rosPpg !== undefined ? `${row.rosPpg.toFixed(1)} ROS PPG` : "—"}
+              </span>
+            ),
+            summary:
+              row.rosPpg !== undefined ? `${row.rosPpg.toFixed(1)} rest-of-season PPG` : undefined,
+            stats: [
+              {
+                label: "Rest of season",
+                items: [
+                  { label: "PPG", value: row.rosPpg !== undefined ? row.rosPpg.toFixed(1) : "—" },
+                  { label: "Proj pts", value: row.totalProjectedPoints.toFixed(0) },
+                  { label: "Since last wk", value: rankChangeText(row.rankChange) },
+                ],
+              },
+            ],
+          }}
+          positionRanks={positionRanksByTeam?.get(row.teamId)}
+          totalTeams={rows.length}
         />
       ))}
     </Stack>

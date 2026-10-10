@@ -101,6 +101,10 @@ export interface YahooTeamStandings {
   ties: number;
   pointsFor: number;
   pointsAgainst: number;
+  // The team's current name - Yahoo's standings collection returns full
+  // team resources, so this rides along for free and lets the sync pick up
+  // a manager's mid-season rename. Absent if the node had no name.
+  name?: string;
 }
 
 // One request covers every team in the league (unlike the per-team FAAB
@@ -134,6 +138,9 @@ async function fetchYahooStandingsForLeague(
       ties: Number(outcomeTotals.ties) || 0,
       pointsFor: Number(standingsFields.points_for) || 0,
       pointsAgainst: Number(standingsFields.points_against) || 0,
+      ...(typeof fields.name === "string" && fields.name
+        ? { name: fields.name }
+        : {}),
     });
   }
   if (standingsByTeamKey.size === 0) {
@@ -471,6 +478,7 @@ export const syncYahooLeagueRoster = action({
           ties: standings?.ties ?? 0,
           pointsFor: standings?.pointsFor ?? 0,
           pointsAgainst: standings?.pointsAgainst ?? 0,
+          ...(standings?.name ? { name: standings.name } : {}),
         });
         syncedTeams += 1;
       }

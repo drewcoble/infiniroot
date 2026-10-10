@@ -1,0 +1,2004 @@
+/* Frosted-glass card for the Cards tab's Matchup redesign. A CSS module
+   (rather than inline styles like the rest of the app) because the glass
+   needs a pseudo-element highlight, a keyframe pulse, and a
+   reduced-motion override - none of which inline styles can express. */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 16px;
+  color: #f8fafc;
+  background: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  outline: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+/* Specular sheen across the top third - what sells "glass" over "white
+   card". Pointer-events off so it never eats a tap. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 45%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.card > * {
+  position: relative;
+}
+
+/* Live game: the pane itself turns green-tinted glass - same border and
+   shadow as every other card, no outline or glow. */
+.live {
+  background: linear-gradient(
+    150deg,
+    rgba(74, 222, 128, 0.16) 0%,
+    rgba(74, 222, 128, 0.06) 100%
+  );
+}
+
+/* Card fades (cardShared.ts's FINAL_CARD_OPACITY / MUTED_CARD_OPACITY):
+   finished players a little, bye / IR players more - the latter the same
+   level the Matchup tab's "Live only" mode fades non-live players to. */
+.finalCard {
+  opacity: 0.7;
+}
+
+.muted {
+  opacity: 0.45;
+}
+
+/* Empty slots are a recess in the page rather than a card - a well a
+   glass card would drop into. Darker than the page, shaded from the top
+   (inset shadows), a faint light catch along the bottom lip, and no blur
+   or sheen since there's no glass. Shared by both card layouts. */
+.empty,
+.wideEmpty {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    inset 0 3px 8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.07);
+  color: rgba(248, 250, 252, 0.42);
+}
+
+.empty {
+  min-height: 92px;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty::before,
+.wideEmpty::before {
+  display: none;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 20px;
+}
+
+
+/* Top row's right side: the live clock (Matchup card) beside the status
+   icon. */
+.topRowStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.topClock {
+  font-family: var(--font-scoreboard);
+  font-weight: var(--font-scoreboard-weight);
+  font-size: 12px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Glass-on-glass: each pill is its own small pane over the card's glass -
+   a faint white sheen over a light tint of its color (--pill-tint, set per
+   pill in GlassMatchupCard.tsx), its own blur, a tinted hairline border,
+   and a top-edge highlight. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: var(--font-badge);
+  font-weight: var(--font-badge-weight);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, var(--pill-tint) 38%, transparent);
+  backdrop-filter: blur(8px) saturate(160%);
+  -webkit-backdrop-filter: blur(8px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--pill-tint) 50%, rgba(255, 255, 255, 0.15));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+
+/* Name + injury badge (Matchup card): the name truncates first, the badge
+   never shrinks. */
+
+/* Small badges beside a player's name (injury, rookie) - a few px shorter
+   than the other badges so they don't crowd the name line. */
+.nameBadge {
+  height: 17px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nameRow .name {
+  min-width: 0;
+}
+
+.nameRow .pill {
+  flex-shrink: 0;
+}
+
+/* Top row (Matchup card): the position badge keeps its size; anything
+   that has to give is the gap, never an overlap. */
+.topRow .pills {
+  flex-shrink: 0;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  /* Names are pre-shortened (lib/shortPlayerName.ts) so they rarely need
+     it, but a long one wraps to a second line rather than losing its last
+     name to an ellipsis. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* Flex row so the status icon and text center on each other; the text
+   span carries the ellipsis, since a flex container can't. */
+.gameLine {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.25;
+  color: rgba(248, 250, 252, 0.78);
+}
+
+.gameLineText {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A live game's clock in the game line ("Q3 2:58") - the dot-matrix
+   scoreboard font, at the line's own size, pushed to the row's right
+   edge (see GameLineText). */
+.liveClock {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 8px;
+  font-family: var(--font-scoreboard);
+  font-weight: var(--font-scoreboard-weight);
+  letter-spacing: 0;
+}
+
+/* GameStatusGlyph's box - the same 20px height as the badges it sits
+   beside, so the corner icon centers on them. */
+.statusSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.status_pre {
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  border-radius: 50%;
+  background: #4ade80;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* The live dot inside a chip (LiveOnlyToggle). */
+.filterChip .dot {
+  margin-right: 7px;
+  vertical-align: 0;
+}
+
+.statusSlot .dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin-right: 0;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(74, 222, 128, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+  .card {
+    transition: none;
+  }
+}
+
+.statsRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* Matchup card: projection at the left, actual points at the right edge
+   (under the live clock). */
+.statsRowSplit {
+  justify-content: space-between;
+}
+
+.points {
+  font-size: 15px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+/* Pregame projection in a card's headline slot - small, since nothing has
+   been scored yet. */
+.projSmall {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+
+/* Individual players' actual points - dot-matrix (index.css's
+   --font-player-points), with normal letter-spacing so the dots don't
+   crowd. After .points/.expandedPoints so it wins. */
+.playerPoints {
+  font-family: var(--font-player-points);
+  font-weight: var(--font-player-points-weight);
+  letter-spacing: 0;
+}
+
+.pointsPending {
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.pointsUnit {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+/* Bullet meter - see PointsMeter. The fill is the same light gray as the
+   win bar's toss-up tint (#9ca3af), the tick a shade lighter (#d1d5db) so
+   it stands out where the fill passes over it; track and ghost are faint
+   white (the card's color already belongs to the position pill and the
+   live tint). The tick is also taller than the bar, for the same reason. */
+.meter {
+  position: relative;
+  height: 5px;
+  margin: 4px 0 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* On the half-width Matchup card the meter is the card's last row - pinned
+   to the bottom so it lines up with the card beside it when the two stretch
+   to one height (an upcoming card's small "Proj" line is shorter than a
+   live card's big score). */
+.card > .meter {
+  margin-top: auto;
+}
+
+.meterFill,
+.meterGhost {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+}
+
+.meterFill {
+  left: 0;
+  background: #9ca3af;
+}
+
+.meterGhost {
+  background: rgba(248, 250, 252, 0.3);
+}
+
+/* Pace colors are a second cue, not the only one - the extension's end
+   landing past or short of the tick says the same thing by position. */
+.pace_ahead {
+  background: rgba(74, 222, 128, 0.6);
+}
+
+.pace_behind {
+  background: rgba(248, 113, 113, 0.65);
+}
+
+/* Final games: the fill takes the pace color, a step fainter than the live
+   extension above so settled results read as done. "even" dims the white
+   fill to the same strength so every final bar sits at one level. */
+.final_ahead {
+  background: rgba(74, 222, 128, 0.42);
+}
+
+.final_behind {
+  background: rgba(248, 113, 113, 0.45);
+}
+
+.final_even {
+  background: rgba(156, 163, 175, 0.6);
+}
+
+.meterTick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: #d1d5db;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+/* Layout only - the glass look comes from .pill, tinted by slot color. */
+.slotChip {
+  flex-shrink: 0;
+  align-self: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 32px;
+  letter-spacing: 0.04em;
+}
+
+/* --- Long-press -------------------------------------------------------- */
+
+/* Holding a card would otherwise select its text or raise iOS's callout -
+   the press is ours. touch-action keeps vertical scrolling working. */
+.pressable {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+/* "Keep holding" feedback: the card eases down while the press is held.
+   The 120ms delay keeps quick scroll touches from twitching every card
+   they pass over. */
+.pressing {
+  transform: scale(0.965);
+  transition: transform 330ms ease 120ms;
+}
+
+/* Base card while its detail card is open - still in the layout (nothing
+   shifts) and still focusable (focus returns here on close), just unseen. */
+.hidden {
+  opacity: 0;
+}
+
+/* --- Expanded detail card --------------------------------------------- */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(4, 8, 10, 0.5);
+  animation: fadeIn 160ms ease;
+}
+
+.expanded {
+  position: absolute;
+  z-index: 1001;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  /* Hidden until ExpandedMatchupCard's layout pass has placed it, then
+     grows out of the base card's corner (transform-origin set there). */
+  visibility: hidden;
+}
+
+.expanded[data-placed] {
+  visibility: visible;
+  animation: expandIn 200ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.expanded .pills {
+  flex-wrap: wrap;
+}
+
+@keyframes expandIn {
+  from {
+    opacity: 0.4;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pressing {
+    transform: none;
+  }
+  .scrim,
+  .expanded[data-placed] {
+    animation: none;
+  }
+}
+
+.expandedHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.expandedName {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.closeButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: -4px -4px 0 0;
+  border-radius: 50%;
+  color: #f8fafc;
+  cursor: pointer;
+  outline: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.025) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.17);
+}
+
+/* Detail card's status - the corner icon plus its name, pushed to the end
+   of the pill row. */
+.statusLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.expandedPoints {
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.meterLarge {
+  height: 8px;
+  margin: 10px 0 8px;
+}
+
+.meterLarge .meterTick {
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  margin-left: -1.5px;
+}
+
+/* Legend under the large meter - each swatch is a small copy of the mark
+   it names. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.82);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatchFill,
+.swatchGhost {
+  width: 14px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+/* Default swatch colors at zero specificity so the pace_/final_ classes
+   (declared earlier in this file) still win when applied alongside. */
+:where(.swatchFill) {
+  background: #9ca3af;
+}
+
+:where(.swatchGhost) {
+  background: rgba(248, 250, 252, 0.3);
+}
+
+.swatchTick {
+  width: 3px;
+  height: 12px;
+  border-radius: 1px;
+  background: #d1d5db;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.paceLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.paceIcon_ahead {
+  color: #4ade80;
+}
+
+.paceIcon_behind {
+  color: #f87171;
+}
+
+.paceIcon_even {
+  color: rgba(248, 250, 252, 0.7);
+}
+
+.statValue {
+  font-size: 15px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.statLabel {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+/* Focus rings only where there's a precise pointer (desktop). On touch,
+   opening a detail card moves focus into it and closing moves it back to
+   the base card - a ring there just reads as a stray blue outline. */
+@media (hover: hover) and (pointer: fine) {
+  .card:focus-visible {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.9),
+      0 0 0 5px rgba(96, 165, 250, 0.9),
+      0 6px 20px rgba(0, 0, 0, 0.22);
+  }
+
+  .expanded:focus-visible {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.9),
+      0 0 0 5px rgba(96, 165, 250, 0.9),
+      0 18px 50px rgba(0, 0, 0, 0.45);
+  }
+
+  .closeButton:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.95);
+    outline-offset: 2px;
+  }
+}
+
+/* --- Matchup header card ---------------------------------------------- */
+
+.header {
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+/* Both teams share three rows (name, score, projection) via subgrid, so a
+   long name wrapping to two lines on one side doesn't push that side's
+   score below the other's. Names sit at the bottom of their row - a short
+   name lines up with the second line of a long one, right above the score. */
+.headerTeams {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  column-gap: 16px;
+}
+
+.headerTeam {
+  grid-row: 1 / span 3;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: subgrid;
+  justify-items: start;
+  row-gap: 3px;
+}
+
+.headerTeamRight {
+  justify-items: end;
+  text-align: right;
+}
+
+.headerTeamName {
+  max-width: 100%;
+  align-self: end;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.headerTotal {
+  margin-top: 2px;
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-scoreboard);
+  font-weight: var(--font-scoreboard-weight);
+}
+
+/* The header score's decimals (".26") - smaller and softer, on the score's
+   baseline. */
+.scoreDecimals {
+  font-size: 0.75em;
+  opacity: 0.75;
+  /* Lumen is monospace, so its narrow "." and digits sit in wide cells -
+     pull them together. */
+  letter-spacing: -0.12em;
+}
+
+/* The "." between them - Lumen centers it in a full-width monospace cell,
+   leaving wide gaps on both sides; pull it in hard toward the whole
+   number and a little toward the decimals. */
+.scorePoint {
+  margin-left: -0.25em;
+  margin-right: -0.1em;
+}
+
+.headerProj {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.headerTeamRight .headerProj {
+  justify-content: flex-end;
+}
+
+.headerCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: rgba(248, 250, 252, 0.78);
+}
+
+.headerCount .statusSlot {
+  width: 16px;
+  height: 16px;
+}
+
+.headerCount .statusSlot svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Opponent not known yet / their roster still loading. */
+.headerPending {
+  opacity: 0.4;
+  transition: opacity 200ms ease;
+}
+
+/* A finished week's result, in the win bar's place. */
+.headerResult {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+/* Percentages flank the bar on one line. */
+.winRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+/* Two glass segments with a 2px gap between them - each tinted by who's
+   favored (--pill-tint, see GlassMatchupHeader's segmentTint), the same
+   way the pills are tinted. */
+.winBar {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+  height: 10px;
+}
+
+.winSegment {
+  min-width: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, var(--pill-tint) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pill-tint) 75%, rgba(255, 255, 255, 0.35));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: width 500ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .winSegment {
+    transition: none;
+  }
+}
+
+/* --- Full-width roster card (GlassRosterCard) -------------------------- */
+
+/* Slot chip outside the card, card taking the rest of the row. The chip
+   gets a fixed width (wide enough for "SFLEX"/"Taxi") so every card starts
+   at the same x down the list. */
+.rosterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rosterRow > .slotChip {
+  width: 54px;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.rosterRow > .card {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Three rows shared by both columns, so the right side lines up with the
+   left: name | status icon + points, detail | projection, then the meter
+   across the full width. Each row centers its two sides on each other. */
+.wide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name points"
+    "detail proj"
+    "meter meter";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+}
+
+/* Empty roster slot - just the "Empty" label, centered. */
+.wideInfo {
+  grid-area: name;
+  min-width: 0;
+}
+
+.wideName {
+  grid-area: name;
+  min-width: 0;
+}
+
+.widePoints {
+  grid-area: points;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.widePoints .statusSlot {
+  width: auto;
+  height: auto;
+}
+
+.widePoints .statsRow {
+  margin-top: 0;
+}
+
+.wideDetail {
+  grid-area: detail;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wideDetail .pill {
+  flex-shrink: 0;
+}
+
+.wideGameLine {
+  margin-left: 4px;
+}
+
+/* Roster card: the game line takes the rest of the detail row, so a live
+   clock can sit at its right edge (see GameLineText). */
+.wideGameLineFill {
+  flex: 1;
+}
+
+.wideProj {
+  grid-area: proj;
+  justify-self: end;
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+/* Roster card's second-row numbers: small projection, then the actual
+   score - baselines lined up. */
+.wideNumbers {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.wideMeter {
+  grid-area: meter;
+  min-width: 0;
+}
+
+.wideMeter .meter {
+  margin: 6px 0 2px;
+}
+
+.wideSkeleton {
+  min-height: 80px;
+}
+
+/* Same height as a filled roster card, so an empty slot reads as the
+   space one would fill. The recessed look is shared with .empty above. */
+.wideEmpty {
+  min-height: 80px;
+  align-content: center;
+}
+
+.wideEmptyText {
+  font-size: 13px;
+}
+
+/* --- Loading skeletons --------------------------------------------------- */
+
+.skeletonCard {
+  gap: 10px;
+  min-height: 110px;
+}
+
+/* A glass-tinted bar with a slow highlight sweeping across it. */
+.skeletonBar {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.07) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBar {
+    animation: none;
+  }
+}
+
+/* --- Roster section divider (GlassSectionDivider) ------------------------ */
+
+.sectionDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.sectionLine {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.sectionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+/* --- My Team header (GlassTeamHeader) ---------------------------------- */
+
+/* Two shared rows (name | score, season | projection), each side centered
+   on the other - the full-width player card's layout. */
+.teamHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name total"
+    "season proj";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+}
+
+.teamHeaderName {
+  grid-area: name;
+  margin: 0;
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.teamHeaderSeason {
+  grid-area: season;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.teamHeaderTotal {
+  grid-area: total;
+  justify-self: end;
+  font-size: 20px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-scoreboard);
+  font-weight: var(--font-scoreboard-weight);
+}
+
+.teamHeaderProj {
+  grid-area: proj;
+  justify-self: end;
+  justify-content: flex-end;
+}
+
+/* --- League-home team card (GlassTeamCard) ----------------------------- */
+
+.teamCardName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.teamCardName .pill {
+  flex-shrink: 0;
+}
+
+/* The whole card is the link to the team page - a third grid column holds
+   the chevron that says so, centered across both rows. */
+.teamCard {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "name points chevron"
+    "detail proj chevron";
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.teamCardChevron {
+  grid-area: chevron;
+  margin-right: -2px;
+  color: rgba(248, 250, 252, 0.5);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .teamCard:hover .teamCardChevron {
+    color: rgba(248, 250, 252, 0.85);
+  }
+}
+
+.teamCardSecondary {
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.teamCardPopoverTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Position-strength section in the team popover. */
+.strengthHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.strengthLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+.radarTooltip {
+  padding: 6px 10px;
+  border-radius: 10px;
+  color: #f8fafc;
+  background: rgba(20, 24, 28, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* --- Glass segmented control (GlassSegmented) ---------------------------- */
+
+/* The track is recessed like the empty-slot wells; the selected option is
+   raised glass on top of it. */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.segment {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(248, 250, 252, 0.62);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.segmentSelected {
+  color: #f8fafc;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .segment:not(.segmentSelected):hover {
+    color: rgba(248, 250, 252, 0.85);
+  }
+
+  .segment:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.95);
+    outline-offset: 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment {
+    transition: none;
+  }
+}
+
+/* --- Round glass icon button (league home's sync) ------------------------ */
+
+.glassIconButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  color: #f8fafc;
+  cursor: pointer;
+  outline: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.025) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.17);
+}
+
+.glassIconButton:disabled {
+  cursor: default;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glassIconButton:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.95);
+    outline-offset: 2px;
+  }
+}
+
+.spinning {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinning {
+    animation: none;
+  }
+}
+
+/* League home title block: name + sync status under it, sync button right. */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pageHeaderStatus {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+/* --- Players board row (GlassPlayerRow) --------------------------------- */
+
+/* No meter row - just the two shared rows. */
+.playerRow {
+  grid-template-areas:
+    "name points"
+    "detail proj";
+}
+
+/* --- Position filter (GlassPositionFilter) ------------------------------ */
+
+/* Sticks just under the floating header on mobile (top of the viewport on
+   desktop) while the board scrolls. */
+.filterRow {
+  position: sticky;
+  top: 8px;
+  z-index: 150;
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filterRow::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 47.99em) {
+  .filterRow {
+    top: calc(53px + 6px + env(safe-area-inset-top));
+  }
+}
+
+/* Each chip is its own glass (blur + translucent page-color base) so it
+   stays legible over rows scrolling underneath. */
+.filterChip {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  font-family: var(--font-badge);
+  font-weight: var(--font-badge-weight);
+  letter-spacing: 0.02em;
+  color: rgba(248, 250, 252, 0.7);
+  cursor: pointer;
+  outline: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%),
+    color-mix(in srgb, var(--mantine-color-body) 60%, transparent);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+/* Selected chips match the glass badges (.pill): a translucent tint of the
+   chip's color (--pill-tint) under a white top sheen, a tinted border, and
+   near-white text with a hint of the color (--chip-text) - over a
+   page-color base, since the chips float over scrolling rows rather than
+   sitting on a card. */
+.filterChipSelected {
+  color: var(--chip-text, #f8fafc);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
+    /* A flat gradient, not a bare color: only a background's last layer
+       may be a plain color, so a bare color here would void the whole
+       declaration (no fill at all). */
+    linear-gradient(
+      color-mix(in srgb, var(--pill-tint) 38%, transparent),
+      color-mix(in srgb, var(--pill-tint) 38%, transparent)
+    ),
+    color-mix(in srgb, var(--mantine-color-body) 60%, transparent);
+  border-color: color-mix(in srgb, var(--pill-tint) 50%, rgba(255, 255, 255, 0.15));
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .filterChip:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.95);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filterChip {
+    transition: none;
+  }
+}
+
+/* Compact variant of the glass segmented control (Players' sort). */
+.segmentedCompact .segment {
+  height: 28px;
+  font-size: 13px;
+}
+
+/* --- Free Agents row (GlassFreeAgentRow) ------------------------------- */
+
+/* With a rationale: a third, full-width row for it. */
+.freeAgentRowNoted {
+  grid-template-areas:
+    "name points"
+    "detail proj"
+    "note note";
+}
+
+.freeAgentNote {
+  grid-area: note;
+  display: flex;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.3;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.freeAgentPopoverNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(248, 250, 252, 0.78);
+}
+
+.freeAgentPopoverNotes p {
+  margin: 0;
+}
+
+/* --- Trade card (GlassTradeCard) ---------------------------------------- */
+
+.tradeCard {
+  cursor: pointer;
+}
+
+/* Selected into the trade: blue-tinted glass (the app's focus blue, so it
+   never reads as the green "live" tint) with a matching border. */
+.tradeSelected {
+  background: linear-gradient(
+    150deg,
+    rgba(96, 165, 250, 0.22) 0%,
+    rgba(96, 165, 250, 0.08) 100%
+  );
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
+/* Corner selection circle - an empty glass ring, filled blue with a check
+   once selected. Same 20px box as the badges beside it. */
+.tradeCheck {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(248, 250, 252, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.tradeSelected .tradeCheck {
+  color: #f8fafc;
+  background: rgba(96, 165, 250, 0.85);
+  border-color: rgba(147, 197, 253, 0.95);
+}
+
+/* Numbers pinned to the card's bottom edge, like the Matchup card's
+   meter, so cards of uneven height still line up across a row. */
+.tradeStats {
+  margin-top: auto;
+}
+
+.tradeRos {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 15px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.tradeRosLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tradeCheck {
+    transition: none;
+  }
+}
+
+/* Trade header: what each side sends, under its team name. */
+.tradeHeaderSends {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.impactUp {
+  color: #4ade80;
+}
+
+.impactDown {
+  color: #f87171;
+}
+
+/* Trade header's partner picker - the right side's team name with a
+   chevron, an invisible native select laid over both so tapping opens the
+   phone's own picker. Clamped to one line so the chevron stays visible. */
+.partnerPicker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.partnerPickerText {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.partnerPickerChevron {
+  flex-shrink: 0;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.partnerPickerSelect {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  opacity: 0;
+  cursor: pointer;
+  /* iOS zooms the page into a focused select under 16px. */
+  font-size: 16px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .partnerPicker:has(.partnerPickerSelect:focus-visible) {
+    outline: 2px solid rgba(96, 165, 250, 0.95);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}
+
+/* Full height, as on the Matchup header. The Matchup bar's flex: 1 is
+   for growing sideways between its percentages; here the bar sits in a
+   vertical stack, where that same flex would squash its height. */
+.tradeBalanceBar {
+  position: relative;
+  flex: none;
+  height: 10px;
+}
+
+/* The fixed "Fair" zone over the bar's middle (GlassTradeHeader's
+   FAIR_MARGIN band) - a faint glass frame a little taller than the bar,
+   so the split can be seen moving through it. Lights up when the split
+   lands inside it (no winner). */
+.fairZone {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.fairZoneActive {
+  border-color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 10px rgba(255, 255, 255, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fairZone {
+    transition: none;
+  }
+}
+
+/* --- Trade suggestions strip (GlassTradeSuggestionCard) ------------------ */
+
+/* Horizontal scroll, snapping card to card. Bleeds to the page edges on
+   mobile so cards scroll out from under the margin rather than clipping
+   at it; the vertical padding leaves room for the cards' shadows. */
+.suggestionStrip {
+  display: flex;
+  gap: 10px;
+  margin: 0 calc(-1 * var(--mantine-spacing-md));
+  padding: 4px var(--mantine-spacing-md) 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 var(--mantine-spacing-md);
+  scrollbar-width: none;
+}
+
+.suggestionStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.suggestionCard {
+  flex: 0 0 230px;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+.suggestionPartner {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestionLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.suggestionLineLabel {
+  flex-shrink: 0;
+  width: 30px;
+  padding-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.suggestionPlayers {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.suggestionPlayer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.suggestionPlayer .pill {
+  flex-shrink: 0;
+}
+
+.suggestionPlayerName {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* Detail popover's player list. */
+.suggestionDetailRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.suggestionDetailRow .pill {
+  flex-shrink: 0;
+}
+
+.suggestionDetailName {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestionDetailMeta {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+/* "Load trade" - a raised glass pane tinted the selection blue. */
+.suggestionLoadButton {
+  height: 40px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  color: #f8fafc;
+  cursor: pointer;
+  outline: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.03) 100%),
+    rgba(96, 165, 250, 0.4);
+  border: 1px solid rgba(147, 197, 253, 0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .suggestionLoadButton:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.95);
+    outline-offset: 2px;
+  }
+}
+
+.suggestionEmpty {
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+/* Suggestion card's first row: partner name, grade badge at the right. */
+.suggestionTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.suggestionTop .pill {
+  flex-shrink: 0;
+}
+
+.suggestionTop .suggestionPartner {
+  min-width: 0;
+}
+
+/* Trade header's sent totals: the app's numeric font, not the Matchup
+   header's dot-matrix scoreboard font - that's reserved for live scores. */
+.tradeHeaderTotal {
+  font-size: 28px;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+  letter-spacing: -0.01em;
+}
+
+/* --- Grouped detail stats (StatGroups) ---------------------------------- */
+
+.statGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.statGroupLabel {
+  margin-bottom: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+/* One glass panel per group - the old stat tiles' treatment, holding the
+   whole group instead of one number. */
+.statPanel {
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* A row group: numbers side by side, hairlines between them. */
+.statRow {
+  display: grid;
+  overflow: hidden;
+}
+
+.statRowItem {
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+/* Hairlines between neighbours, and above a wrapped second line. */
+.statRowItemLeft {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.statRowItemTop {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* A table group: measures down the side, time frames across the top. */
+.statTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+.statTable th,
+.statTable td {
+  padding: 7px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.statTable thead th {
+  padding-bottom: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.statTable tbody th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.statTable tbody td {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.statTable tbody tr th,
+.statTable tbody tr td {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.statEmpty {
+  color: rgba(248, 250, 252, 0.35);
+}
+
+/* Trade header's verdict line ("X wins by 238" / "Fair trade") over the
+   value bar. */
+.tradeVerdictBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tradeVerdictMain {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 650;
+  color: rgba(248, 250, 252, 0.92);
+}
+
+/* Trade header: four shared rows (name, total, total's line, player list)
+   instead of the Matchup header's three, so both sides' lists start level
+   even when one side's total line is empty. */
+.tradeHeaderGrid {
+  grid-template-rows: auto auto auto auto;
+}
+
+.tradeHeaderGrid .headerTeam {
+  grid-row: 1 / span 4;
+}
+
+/* The player list fills its half and reads left to right on both sides. */
+.tradeHeaderListCell {
+  justify-self: stretch;
+  min-width: 0;
+  margin-top: 6px;
+  text-align: left;
+}
+
+/* Each player two rows - badge + name, then the numbers. */
+.tradeHeaderPlayers {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* Badge column | name over numbers: the badge spans both rows, centered,
+   and the numbers line up under the name. */
+.tradeHeaderEntry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  align-items: center;
+}
+
+/* The position badge, smaller than the cards' - and no rank. A fixed
+   width so every name (and the 2-for-1 row) starts at the same x. */
+.tradeHeaderBadge,
+.tradeHeaderBadgeSpace {
+  grid-row: 1 / span 2;
+  width: 30px;
+}
+
+.tradeHeaderBadge {
+  justify-content: center;
+  height: 15px;
+  padding: 0;
+  font-size: 9px;
+}
+
+.tradeHeaderPlayerName {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.15;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The numbers row reads quieter than the name above it. */
+.tradeHeaderNumbers {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.15;
+  color: rgba(248, 250, 252, 0.6);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+/* "Act" / "ROS" before each number in the PPG and Ranks views. */
+.tradeHeaderLabel {
+  margin-right: 3px;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.5);
+}
+
+
+/* --- Buys / Sells strips (GlassSignalCard) ------------------------------ */
+
+/* Slim - about an analyzer card's width - in the same snapping strip as
+   the trade suggestions. */
+.signalCard {
+  flex: 0 0 160px;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+/* The infinivalue - market value gap, top right. */
+.signalGap {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}

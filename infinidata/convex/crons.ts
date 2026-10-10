@@ -43,7 +43,9 @@ crons.cron(
 // depth-charts cron above) since staleness here now has real bidding
 // consequences, not just a cosmetic "clears a bit late" - still well within
 // Tank01's 1,000/month free-tier cap (see TANK01.md) alongside that daily
-// depth-chart call.
+// depth-chart call. Each run also backfills/refreshes the remaining weeks'
+// slates (infinileague's Matchup tab browses future weeks), but only weeks
+// never synced or a week stale - see tank01/schedule.ts.
 crons.cron(
   'fetch tank01 nfl schedule',
   '0 */6 * * *',

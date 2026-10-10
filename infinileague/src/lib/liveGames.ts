@@ -58,22 +58,29 @@ function formatClock(seconds: number): string {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 }
 
-// "vs. LAR · Sun 1:00 PM" before kickoff, "@ HOU · Q3 8:12" during,
-// "@ HOU · Final" after. Kickoff time is in the viewer's own time zone.
-export function formatGameLine(game: WeekGame, now: number): string {
-  const matchup = game.isHome ? `vs. ${game.opponent}` : `@ ${game.opponent}`;
+// Whether this team's game is over - ESPN says final, or (no status yet)
+// its live window has long since closed.
+export function isGameFinal(game: WeekGame, now: number): boolean {
+  if (game.live) return game.live.state === "post";
+  return now > game.kickoffAt + GAME_WINDOW_MS;
+}
+
+// "vs. LAR" at home, "@ HOU" away.
+export function formatMatchup(game: WeekGame): string {
+  return game.isHome ? `vs. ${game.opponent}` : `@ ${game.opponent}`;
+}
+
+// "Sun 1:00 PM" before kickoff, "Q3 8:12" / "Half" / "OT 4:02" during,
+// "Final" after. Kickoff time is in the viewer's own time zone.
+export function formatGameStatus(game: WeekGame, now: number): string {
   const live = game.live;
-  let status: string;
   if (live?.state === "in") {
-    if (live.statusName === "STATUS_HALFTIME") status = "Half";
-    else if (live.period > 4) status = `OT ${formatClock(live.clockSeconds)}`;
-    else status = `Q${live.period} ${formatClock(live.clockSeconds)}`;
-  } else if (live?.state === "post" || (!live && now > game.kickoffAt + GAME_WINDOW_MS)) {
-    status = "Final";
-  } else {
-    status = KICKOFF_FORMAT.format(new Date(game.kickoffAt));
+    if (live.statusName === "STATUS_HALFTIME") return "Half";
+    if (live.period > 4) return `OT ${formatClock(live.clockSeconds)}`;
+    return `Q${live.period} ${formatClock(live.clockSeconds)}`;
   }
-  return `${matchup} · ${status}`;
+  if (isGameFinal(game, now)) return "Final";
+  return KICKOFF_FORMAT.format(new Date(game.kickoffAt));
 }
 
 // Current time, re-read every `intervalMs` - so kickoff-based states (a

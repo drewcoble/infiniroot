@@ -55,6 +55,9 @@ export interface PowerRankingRow {
   name: string;
   isSelf: boolean;
   totalProjectedPoints: number;
+  // totalProjectedPoints per remaining week - optional since a backend
+  // deployed before this field existed doesn't send it.
+  rosPpg?: number;
   // Rank this week minus rank last snapshotted week - positive means moved
   // up, negative means moved down. Absent when there's no prior snapshot
   // yet (first computation for this season).
@@ -220,4 +223,18 @@ export interface TeamRosterRow {
   slot?: SlotLabel;
   actualPoints?: number;
   projectedPoints?: number;
+}
+
+// Mirrors convex/infinileague/season/tradeValues.ts's TradeValueRow - a
+// FantasyCalc-style trade value per player (thousands scale, additive):
+// the blend of FantasyCalc's market value (null for K/DST, which it
+// doesn't price) and our rest-of-season VOR put on the same scale.
+export interface TradeValueRow {
+  fpid: number;
+  value: number;
+  marketValue: number | null;
+  // "Infinivalue".
+  projectionValue: number;
+  // Infinivalue well above ("buy") / below ("sell") market value.
+  signal: "buy" | "sell" | null;
 }

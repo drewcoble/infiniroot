@@ -1,23 +1,45 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Card, Group, Loader, Progress, Select, Stack, Text, Title } from "@mantine/core";
+import { Alert, Group, Select, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
-import { POSITION_COLORS } from "@shared/positionColors";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
-import { MatchupRosterMatchup } from "../../../components/MatchupRosterMatchup";
+import { WeekPicker } from "../../../components/WeekPicker";
+import { LiveOnlyToggle } from "../../../components/cards/LiveOnlyToggle";
+import {
+  MatchupRosterMatchup,
+  MatchupRosterSkeleton,
+} from "../../../components/MatchupRosterMatchup";
+import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
+import { toMatchupCardData } from "../../../lib/matchupCardData";
+import {
+  GlassMatchupHeader,
+  type MatchupHeaderTeam,
+} from "../../../components/cards/GlassMatchupHeader";
+import { meterScaleMax } from "../../../components/cards/meterScale";
+import { buildShortNames } from "../../../lib/shortPlayerName";
 import {
   isAnyGameLive,
+  isGameFinal,
   liveProjection,
   remainingFraction,
   useNow,
   type WeekGame,
 } from "../../../lib/liveGames";
-import type { SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
+import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
 
+// Regular-season weeks the week picker steps through.
+const REGULAR_SEASON_WEEKS = 18;
+
+// ?week=N views another week's matchup (past, or upcoming); absent = the
+// current NFL week. Anything out of range is dropped rather than erroring.
 export const Route = createFileRoute("/league/$leagueId/matchup")({
+  validateSearch: (search: Record<string, unknown>): { week?: number } => {
+    const week = Number(search.week);
+    return Number.isInteger(week) && week >= 1 && week <= REGULAR_SEASON_WEEKS ? { week } : {};
+  },
   component: MatchupPage,
 });
 
@@ -65,14 +87,6 @@ const LIVE_REFRESH_MS = 2 * 60 * 1000;
 // ~73%, a 30-point lead as ~88%.
 const WIN_PROB_SCALE = 15;
 
-// One shade darker than the bare "rb"/"dst" theme colors' own default
-// (shade 6) read against this app's light background - dot-shade notation
-// so both the bar and its percentage labels below use the exact same color,
-// rather than relying on whatever shade a plain color name happens to
-// default to.
-const WIN_PROB_COLOR_A = `${POSITION_COLORS.RB}.8`;
-const WIN_PROB_COLOR_B = `${POSITION_COLORS.DST}.8`;
-
 function winProbability(projA: number, projB: number): number {
   return 1 / (1 + Math.exp(-(projA - projB) / WIN_PROB_SCALE));
 }
@@ -108,45 +122,125 @@ function MatchupPage() {
     if (self) setTeamAId(self.teamId);
   }, [standings, teamAId]);
 
-  const week = nflState?.week ?? null;
+  // The week being viewed - ?week= when set, otherwise the current one.
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const currentWeek = nflState?.week ?? null;
+  const week = search.week !== undefined ? String(search.week) : currentWeek;
+  const isCurrentWeek = week === currentWeek;
+  const goToWeek = (next: number) =>
+    void navigate({ search: String(next) === currentWeek ? {} : { week: next } });
 
   const getOpponentForWeek = useAction(api.infinileague.season.matchup.getOpponentForWeek);
-  // undefined = not resolved yet, null = resolved but no auto-detected
-  // opponent (not Sleeper-linked, or a bye week), a teamId = found.
-  const [autoOpponentId, setAutoOpponentId] = useState<string | null | undefined>(undefined);
+  // Tagged with the team/week it was looked up for, same as useTeamRoster -
+  // a week change reads as "still looking" immediately rather than briefly
+  // keeping last week's opponent. opponentId: null = resolved, but no
+  // auto-detected opponent (not provider-linked, or a bye week).
+  const opponentKey = teamAId !== null && week !== null ? `${teamAId}:${week}` : null;
+  const [autoOpponent, setAutoOpponent] = useState<{
+    key: string;
+    opponentId: string | null;
+  } | null>(null);
   const [opponentError, setOpponentError] = useState<string | null>(null);
   useEffect(() => {
-    if (teamAId === null || week === null) return;
-    setAutoOpponentId(undefined);
+    if (teamAId === null || week === null || opponentKey === null) return;
+    let cancelled = false;
     getOpponentForWeek({ teamId: teamAId as Id<"seasonTeams">, week })
-      .then((result) => setAutoOpponentId(result.opponentTeamId))
+      .then((result) => {
+        if (!cancelled) setAutoOpponent({ key: opponentKey, opponentId: result.opponentTeamId });
+      })
       .catch((err) => {
+        if (cancelled) return;
         setOpponentError(getErrorMessage(err, "Failed to look up this week's opponent."));
-        setAutoOpponentId(null);
+        setAutoOpponent({ key: opponentKey, opponentId: null });
       });
-  }, [teamAId, week, getOpponentForWeek]);
+    return () => {
+      cancelled = true;
+    };
+  }, [teamAId, week, opponentKey, getOpponentForWeek]);
+  // undefined = still looking up the viewed week's opponent.
+  const autoOpponentId =
+    autoOpponent !== null && autoOpponent.key === opponentKey ? autoOpponent.opponentId : undefined;
 
   // Only ever read from once autoOpponentId resolves to null (see above) -
   // the manual Select stays hidden while auto-detection is still pending so
-  // it doesn't flash on screen for the common Sleeper-linked case.
-  const [manualOpponentId, setManualOpponentId] = useState<string | null>(null);
-  const teamBId = autoOpponentId ?? manualOpponentId;
+  // it doesn't flash on screen for the common Sleeper-linked case. Kept per
+  // week, so a manual pick for one bye week doesn't follow you to others.
+  const [manualOpponent, setManualOpponent] = useState<{ week: string; teamId: string } | null>(
+    null,
+  );
+  const manualOpponentId =
+    manualOpponent !== null && manualOpponent.week === week ? manualOpponent.teamId : null;
+  const setManualOpponentId = (teamId: string | null) =>
+    setManualOpponent(teamId !== null && week !== null ? { week, teamId } : null);
+  const teamBId = autoOpponentId === undefined ? null : (autoOpponentId ?? manualOpponentId);
+  const opponentPending = autoOpponentId === undefined;
 
-  // This week's slate - opponent/kickoff per NFL team, plus live game
-  // status from the 2-minute poll (see convex/sleeper/livePoints.ts).
+  // The viewed week's slate - opponent/kickoff per NFL team, plus live
+  // game status from the 2-minute poll (see convex/sleeper/livePoints.ts).
   const weekGames: WeekGame[] | undefined = useQuery(
     api.sleeper.livePoints.getWeekGames,
-    isAuthenticated && nflState ? { season: nflState.season, week: nflState.week } : "skip",
+    isAuthenticated && nflState && week ? { season: nflState.season, week } : "skip",
   );
   const gamesByTeam = useMemo(
     () => new Map((weekGames ?? []).map((game) => [game.team, game])),
     [weekGames],
   );
   const now = useNow(60 * 1000);
-  const refreshMs = isAnyGameLive(weekGames, now) ? LIVE_REFRESH_MS : null;
+  const anyGameLive = isCurrentWeek && isAnyGameLive(weekGames, now);
+  const refreshMs = anyGameLive ? LIVE_REFRESH_MS : null;
+  // "Live only" - only offered (and only applied) while a game in the
+  // viewed week is actually on, so it can't strand the page empty once the
+  // games end.
+  const [liveOnly, setLiveOnly] = useState(false);
+  const showLiveOnly = liveOnly && anyGameLive;
+  // Every game in the viewed week is over - the header shows the result
+  // instead of a win probability.
+  const weekComplete =
+    weekGames !== undefined &&
+    weekGames.length > 0 &&
+    weekGames.every((game) => isGameFinal(game, now));
 
   const teamARoster = useTeamRoster(teamAId, week, refreshMs);
   const teamBRoster = useTeamRoster(teamBId, week, refreshMs);
+
+  // Season/ROS context for each card's detail view (season and ROS PPG,
+  // ROS and projected week position ranks) - the same board the Trade tab
+  // reads. Also the league-wide name pool the cards' short names are
+  // collision-checked against ("Bijan Robinson" vs. "Brian Robinson Jr."
+  // never both shorten to "B. Robinson"). Always the current week's board,
+  // whichever week is being viewed - it's the latest season/ROS picture,
+  // and future weeks have no board yet.
+  const vorRows: RosVorRow[] | undefined = useQuery(
+    api.rosVor.getRosVorBoard,
+    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
+  );
+  const vorByFpid = useMemo(
+    () => new Map((vorRows ?? []).map((row) => [row.fpid, row])),
+    [vorRows],
+  );
+  const seasonPositionRankByFpid = useMemo(() => seasonPositionRanks(vorRows), [vorRows]);
+
+  // This week's actual position rank per player (the badge's "RB3" once a
+  // game starts) - re-ranked on every live poll server-side.
+  const weekRanks = useQuery(
+    api.infinileague.season.matchup.getWeekPositionRanks,
+    isAuthenticated && week ? { seasonId, week } : "skip",
+  );
+  const weekRankByFpid = useMemo(
+    () => new Map((weekRanks ?? []).map((entry) => [entry.fpid, entry.rank])),
+    [weekRanks],
+  );
+
+  const shortName = useMemo(
+    () =>
+      buildShortNames([
+        ...(vorRows ?? []).map((row) => row.name),
+        ...(teamARoster.rows ?? []).flatMap((row) => (row.name ? [row.name] : [])),
+        ...(teamBRoster.rows ?? []).flatMap((row) => (row.name ? [row.name] : [])),
+      ]),
+    [vorRows, teamARoster.rows, teamBRoster.rows],
+  );
 
   // Actual points so far plus each starter's projection scaled by how much
   // of their game is left - the plain pregame projection before kickoff,
@@ -171,8 +265,58 @@ function MatchupPage() {
   // true, rather than a wrong number that then jumps to the right one.
   const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
 
+  const toCardData = (row: TeamRosterRow) =>
+    toMatchupCardData(
+      row,
+      weekGames ? gamesByTeam : undefined,
+      now,
+      row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
+      row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
+      row.fpid !== undefined ? seasonPositionRankByFpid.get(row.fpid) : undefined,
+    );
+  const filledRows = [...(teamARoster.rows ?? []), ...(teamBRoster.rows ?? [])].filter(
+    (row) => row.fpid !== undefined,
+  );
+  const scaleMax = meterScaleMax(filledRows.map(toCardData));
+
+  // Starters whose games are underway / not yet started, for the header.
+  const headerTeam = (
+    name: string,
+    rows: TeamRosterRow[] | undefined,
+    actual: number,
+    proj: number,
+  ): MatchupHeaderTeam => {
+    const states = (rows ?? [])
+      .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
+      .map((row) => toCardData(row).gameState);
+    const liveCount = states.filter((state) => state === "live").length;
+    const toPlayCount = states.filter((state) => state === "pre").length;
+    // Once every starter's game is over the live projection just equals the
+    // final score - show the pregame projection instead, so "Proj" still
+    // says what the team was expected to put up. (The win probability keeps
+    // using the live projection either way.)
+    const allFinal = liveCount === 0 && toPlayCount === 0;
+    return {
+      name,
+      actualPoints: actual,
+      projectedPoints: allFinal ? sumStarterPoints(rows, (row) => row.projectedPoints ?? 0) : proj,
+      liveCount,
+      toPlayCount,
+    };
+  };
+
+  // Header and rows hold their shape with glass skeletons while loading,
+  // rather than a bare spinner or blank column.
   if (nflState === undefined || standings === undefined) {
-    return <Loader />;
+    return (
+      <Stack gap="md">
+        <Title order={3}>Matchup</Title>
+        <GlassMatchupHeader teamA="loading" teamB="loading" winProbA={null} />
+        <Stack gap={10}>
+          <MatchupRosterSkeleton />
+        </Stack>
+      </Stack>
+    );
   }
 
   if (nflState === null || nflState.seasonType !== "regular") {
@@ -186,10 +330,6 @@ function MatchupPage() {
     );
   }
 
-  if (teamAId === null || teamARoster.rows === undefined) {
-    return <Loader />;
-  }
-
   const selfTeamName = standings.find((row) => row.teamId === teamAId)?.name ?? "Your team";
   const opponentName = standings.find((row) => row.teamId === teamBId)?.name ?? "Opponent";
 
@@ -199,7 +339,17 @@ function MatchupPage() {
 
   return (
     <Stack gap="md">
-      <Title order={3}>Matchup</Title>
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Title order={3}>Matchup</Title>
+        {week !== null && (
+          <WeekPicker
+            week={Number(week)}
+            currentWeek={currentWeek !== null ? Number(currentWeek) : null}
+            lastWeek={REGULAR_SEASON_WEEKS}
+            onChange={goToWeek}
+          />
+        )}
+      </Group>
 
       {opponentError && (
         <Alert color="red" withCloseButton onClose={() => setOpponentError(null)}>
@@ -221,73 +371,49 @@ function MatchupPage() {
         />
       )}
 
-      <Card padding="lg">
-        <Stack gap="md">
-          <Group wrap="nowrap" align="center" gap="sm">
-            <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-              <Text fw={600} truncate="end">
-                {selfTeamName}
-              </Text>
-              <Text fw={700} size="xl">
-                {actualA.toFixed(1)}
-              </Text>
-              <Text size="xs" c="dimmed">
-                Proj {projA.toFixed(1)}
-              </Text>
-            </Stack>
-            <Text c="dimmed" fw={600} style={{ flexShrink: 0 }}>
-              VS
-            </Text>
-            <Stack gap={4} align="flex-end" style={{ flex: 1, minWidth: 0 }}>
-              <Text fw={600} truncate="end" ta="right" style={{ maxWidth: "100%" }}>
-                {teamBId !== null ? opponentName : "—"}
-              </Text>
-              <Text fw={700} size="xl">
-                {teamBId !== null ? actualB.toFixed(1) : "—"}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {teamBId !== null ? `Proj ${projB.toFixed(1)}` : ""}
-              </Text>
-            </Stack>
-          </Group>
+      <GlassMatchupHeader
+        teamA={
+          teamARoster.rows === undefined
+            ? "loading"
+            : headerTeam(selfTeamName, teamARoster.rows, actualA, projA)
+        }
+        teamB={
+          opponentPending || (teamBId !== null && teamBRoster.rows === undefined)
+            ? "loading"
+            : teamBId !== null
+              ? headerTeam(opponentName, teamBRoster.rows, actualB, projB)
+              : null
+        }
+        winProbA={matchupReady ? winProbA : null}
+        result={
+          weekComplete && matchupReady
+            ? actualA === actualB
+              ? "Final · Tied"
+              : `Final · ${actualA > actualB ? selfTeamName : opponentName} won by ${Math.abs(actualA - actualB).toFixed(2)}`
+            : undefined
+        }
+      />
 
-          {teamBId !== null && (
-            <Stack
-              gap={4}
-              style={{ opacity: matchupReady ? 1 : 0.4, transition: "opacity 200ms ease" }}
-            >
-              <Group justify="space-between" wrap="nowrap">
-                <Text size="xs" fw={600} c={WIN_PROB_COLOR_A}>
-                  {(matchupReady ? winProbA * 100 : 50).toFixed(0)}%
-                </Text>
-                <Text size="xs" fw={600} c={WIN_PROB_COLOR_B}>
-                  {(matchupReady ? 100 - winProbA * 100 : 50).toFixed(0)}%
-                </Text>
-              </Group>
-              <Progress.Root size="lg" transitionDuration={500}>
-                <Progress.Section
-                  value={matchupReady ? winProbA * 100 : 50}
-                  color={WIN_PROB_COLOR_A}
-                />
-                <Progress.Section
-                  value={matchupReady ? 100 - winProbA * 100 : 50}
-                  color={WIN_PROB_COLOR_B}
-                />
-              </Progress.Root>
-            </Stack>
-          )}
-        </Stack>
-      </Card>
+      {anyGameLive && teamARoster.rows !== undefined && (
+        <Group justify="flex-end">
+          <LiveOnlyToggle on={liveOnly} onChange={setLiveOnly} />
+        </Group>
+      )}
 
-      <Stack gap={8}>
-        <MatchupRosterMatchup
-          teamARows={teamARoster.rows}
-          teamBRows={teamBRoster.rows}
-          teamAName={selfTeamName}
-          teamBName={opponentName}
-          gamesByTeam={weekGames ? gamesByTeam : undefined}
-          now={now}
-        />
+      <Stack gap={10}>
+        {teamARoster.rows === undefined ? (
+          <MatchupRosterSkeleton />
+        ) : (
+          <MatchupRosterMatchup
+            liveOnly={showLiveOnly}
+            teamARows={teamARoster.rows}
+            teamBRows={teamBRoster.rows}
+            teamBLoading={opponentPending || teamBId !== null}
+            toCardData={toCardData}
+            shortName={shortName}
+            scaleMax={scaleMax}
+          />
+        )}
       </Stack>
     </Stack>
   );

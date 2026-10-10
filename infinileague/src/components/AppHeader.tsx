@@ -2,7 +2,16 @@ import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Menu } from "@mantine/core";
 import { useConvexAuth, useQuery } from "convex/react";
-import { Check, Database, Import, Plus, ShieldCheck } from "lucide-react";
+import {
+  Check,
+  Database,
+  GalleryVerticalEnd,
+  HeartPulse,
+  Import,
+  LayoutGrid,
+  Plus,
+  ShieldCheck,
+} from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader as SharedAppHeader } from "@shared/AppHeader";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
@@ -12,7 +21,7 @@ import type { LinkedSeason } from "../types/season";
 // Thin infinileague-specific wrapper around @shared/AppHeader: backed by
 // listLinkedSeasons, and its own "Connect League" footer item instead of
 // infinidraft's "New League" - no draft phase/status, no TV board/report
-// card/billing/admin overflow items, no mode-switch button (none of those
+// card/billing overflow items, no mode-switch button (none of those
 // concepts exist here).
 export function AppHeader() {
   const navigate = useNavigate();
@@ -40,6 +49,9 @@ export function AppHeader() {
   return (
     <SharedAppHeader
       wordmark="league"
+      glass
+      // ~10% wider than the shared default (150 / 220).
+      leagueButtonWidth={{ base: 165, sm: 242 }}
       selectedLeagueLabel={selectedLeague?.name}
       leagueMenuItems={
         <>
@@ -71,9 +83,41 @@ export function AppHeader() {
           </Menu.Item>
         </>
       }
-      extraOverflowItems={
+      // NFL-wide reference pages, not league content - kept out of the
+      // league tabs (see league/$leagueId/route.tsx) and reachable with no
+      // league selected.
+      nflMenuItems={
+        <>
+          <Link to="/depthCharts" style={{ textDecoration: "none" }}>
+            <Menu.Item component="span" leftSection={<LayoutGrid size={16} />}>
+              Depth Charts
+            </Menu.Item>
+          </Link>
+          <Link to="/injuries" style={{ textDecoration: "none" }}>
+            <Menu.Item component="span" leftSection={<HeartPulse size={16} />}>
+              Injuries
+            </Menu.Item>
+          </Link>
+        </>
+      }
+      adminMenuItems={
         currentUser?.role === "super-admin" && (
           <>
+            {leagueId && (
+              // Design sandbox for the player-card redesign - see cards.tsx.
+              <Link
+                to="/league/$leagueId/cards"
+                params={{ leagueId }}
+                style={{ textDecoration: "none" }}
+              >
+                <Menu.Item
+                  component="span"
+                  leftSection={<GalleryVerticalEnd size={16} />}
+                >
+                  Cards
+                </Menu.Item>
+              </Link>
+            )}
             <Link to="/admin" style={{ textDecoration: "none" }}>
               <Menu.Item component="span" leftSection={<ShieldCheck size={16} />}>
                 Admin
