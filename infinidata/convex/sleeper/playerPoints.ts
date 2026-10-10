@@ -36,7 +36,8 @@ export interface ParsedStatsRow {
   ptsStd: number;
   ptsPpr: number;
   ptsHalf: number;
-  // Raw box-score categories (pts_*/adp_* stripped) - see playerPoints'
+  // Raw box-score categories (Sleeper's pts_std/ppr/half_ppr totals and
+  // adp_* stripped, pts_allow* kept) - see playerWeekPoints'
   // schema comment on `stats`.
   stats: Record<string, number>;
 }
@@ -74,9 +75,12 @@ export function parseSleeperStatsRecords(records: SleeperStatsRecord[]): ParsedS
     const stats = record.stats ?? {};
     const numericStats: Record<string, number> = {};
     for (const [key, value] of Object.entries(stats)) {
+      // pts_std/pts_ppr/pts_half_ppr are Sleeper's own fantasy totals
+      // (already captured as ptsStd/ptsPpr/ptsHalf below), but pts_allow*
+      // is a real DST box-score stat (points allowed) - keep it.
       if (
         typeof value === "number" &&
-        !key.startsWith("pts_") &&
+        !(key.startsWith("pts_") && !key.startsWith("pts_allow")) &&
         !key.startsWith("adp_")
       ) {
         numericStats[key] = value;
