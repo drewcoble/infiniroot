@@ -413,6 +413,7 @@ function TradePage() {
       return {
         fpid,
         name: shortName(row.name ?? ""),
+        position: row.position ?? "QB",
         value: valueByFpid ? (valueByFpid.get(fpid)?.value ?? 0) : undefined,
         actualPpg: vor ? vor.actualPpg.toFixed(1) : "—",
         rosPpg: vor ? vor.rosPpg.toFixed(1) : "—",

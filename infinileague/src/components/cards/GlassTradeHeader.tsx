@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
+import { pillStyle } from "./cardShared";
 import type { TradeMetric } from "./GlassTradeCard";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -10,6 +12,7 @@ export interface TradeHeaderPlayer {
   fpid: number;
   // Short name (lib/shortPlayerName.ts), as on the cards.
   name: string;
+  position: Position;
   // Avg value - undefined while the values load.
   value: number | undefined;
   actualPpg: string;
@@ -54,49 +57,51 @@ function sideTotals(
   return { big: team.value !== undefined ? formatTradeValue(team.value) : "…", line: "" };
 }
 
-// Each player sent, with the view's numbers: value; or actual | ROS PPG /
-// position rank, under small column labels.
+// Each player sent, two rows: a small position badge and the name, then
+// the view's numbers under it - value; or actual and ROS PPG / position
+// rank, each with a short label. The Value view's 2-for-1 adjustment, when
+// there is one, is the last entry so the list adds up to the total.
 function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetric }) {
   if (team.players.length === 0) {
     return <div className={classes.tradeHeaderSends}>Tap players to send</div>;
   }
-  const twoColumns = metric !== "value";
-  const numbers = (player: TradeHeaderPlayer): string[] =>
-    metric === "value"
-      ? [player.value !== undefined ? formatTradeValue(player.value) : "…"]
-      : metric === "ppg"
-        ? [player.actualPpg, player.rosPpg]
-        : [player.actualRank, player.rosRank];
+  const numbers = (player: TradeHeaderPlayer) =>
+    metric === "value" ? (
+      <span>{player.value !== undefined ? formatTradeValue(player.value) : "…"}</span>
+    ) : (
+      <>
+        <span className={classes.tradeHeaderDim}>
+          <span className={classes.tradeHeaderLabel}>Act</span>
+          {metric === "ppg" ? player.actualPpg : player.actualRank}
+        </span>
+        <span>
+          <span className={classes.tradeHeaderLabel}>ROS</span>
+          {metric === "ppg" ? player.rosPpg : player.rosRank}
+        </span>
+      </>
+    );
   return (
-    <div
-      className={`${classes.tradeHeaderPlayers} ${twoColumns ? classes.tradeHeaderPlayersTwo : ""}`}
-    >
-      {twoColumns && (
-        <>
-          <span />
-          <span className={classes.tradeHeaderColumn}>Act</span>
-          <span className={classes.tradeHeaderColumn}>ROS</span>
-        </>
-      )}
+    <div className={classes.tradeHeaderPlayers}>
       {team.players.map((player) => (
-        <div key={player.fpid} className={classes.tradeHeaderPlayer}>
-          <span className={classes.tradeHeaderPlayerName}>{player.name}</span>
-          {numbers(player).map((number, index, all) => (
+        <div key={player.fpid}>
+          <div className={classes.tradeHeaderPlayerTop}>
             <span
-              key={index}
-              className={`${classes.tradeHeaderNumber} ${
-                all.length > 1 && index === 0 ? classes.tradeHeaderDim : ""
-              }`}
+              className={`${classes.pill} ${classes.tradeHeaderBadge}`}
+              style={pillStyle(positionColorOrDefault(player.position))}
             >
-              {number}
+              {player.position}
             </span>
-          ))}
+            <span className={classes.tradeHeaderPlayerName}>{player.name}</span>
+          </div>
+          <div className={classes.tradeHeaderNumbers}>{numbers(player)}</div>
         </div>
       ))}
       {metric === "value" && team.credit > 0 && (
-        <div className={`${classes.tradeHeaderPlayer} ${classes.tradeHeaderDim}`}>
-          <span className={classes.tradeHeaderPlayerName}>2-for-1 adj.</span>
-          <span className={classes.tradeHeaderNumber}>+{formatTradeValue(team.credit)}</span>
+        <div className={classes.tradeHeaderDim}>
+          <div className={classes.tradeHeaderPlayerName}>2-for-1 adj.</div>
+          <div className={classes.tradeHeaderNumbers}>
+            <span>+{formatTradeValue(team.credit)}</span>
+          </div>
         </div>
       )}
     </div>

@@ -1925,24 +1925,26 @@
   text-align: left;
 }
 
-/* Name | number (Value), or name | actual | ROS (PPG, Ranks) - the rows
-   share the list's columns via subgrid so the numbers line up. */
+/* Each player two rows - badge + name, then the numbers. */
 .tradeHeaderPlayers {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 8px;
-  row-gap: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
 }
 
-.tradeHeaderPlayersTwo {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+.tradeHeaderPlayerTop {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
 }
 
-.tradeHeaderPlayer {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  align-items: baseline;
+/* The position badge, smaller than the cards' - and no rank. */
+.tradeHeaderBadge {
+  flex-shrink: 0;
+  height: 15px;
+  padding: 0 5px;
+  font-size: 9px;
 }
 
 .tradeHeaderPlayerName {
@@ -1954,12 +1956,25 @@
   text-overflow: ellipsis;
 }
 
-.tradeHeaderNumber {
-  justify-self: end;
+.tradeHeaderNumbers {
+  display: flex;
+  gap: 10px;
+  margin-top: 1px;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
   font-weight: var(--font-numeric-weight);
+}
+
+/* "Act" / "ROS" before each number in the PPG and Ranks views. */
+.tradeHeaderLabel {
+  margin-right: 3px;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.5);
 }
 
 /* The actual (season-to-date) column, quieter than ROS. */
@@ -1967,11 +1982,3 @@
   color: rgba(248, 250, 252, 0.6);
 }
 
-.tradeHeaderColumn {
-  justify-self: end;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.5);
-}
