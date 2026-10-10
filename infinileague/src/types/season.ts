@@ -233,5 +233,8 @@ export interface TradeValueRow {
   fpid: number;
   value: number;
   marketValue: number | null;
+  // "Infinivalue".
   projectionValue: number;
+  // Infinivalue well above ("buy") / below ("sell") market value.
+  signal: "buy" | "sell" | null;
 }

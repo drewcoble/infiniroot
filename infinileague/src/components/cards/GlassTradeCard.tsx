@@ -35,16 +35,18 @@ export interface GlassTradeCardData {
   // Overall (all-position) VOR ranks, season to date and rest of season.
   seasonRank: number | undefined;
   rosRank: number | undefined;
-  // Trade value (convex/infinileague/season/tradeValues.ts): the blend,
-  // FantasyCalc's market value (null = not priced there - K/DST), and our
-  // projection value. undefined while the values load.
+  // Trade value (convex/infinileague/season/tradeValues.ts): the average
+  // ("avg value"), FantasyCalc's market value (null = not priced there -
+  // K/DST), and our infinivalue. undefined while the values load.
   tradeValue: number | undefined;
   marketValue: number | null | undefined;
   projectionValue: number | undefined;
+  // Infinivalue well above / below market value - see tradeValues.ts.
+  signal: "buy" | "sell" | null | undefined;
 }
 
 // Which numbers the cards show - the Trade tab's top switch. Value shows
-// the market (FantasyCalc) value small on the left and the trade value
+// the market (FantasyCalc) value small on the left and the avg value
 // that gets added up on the right; the rest show season to date on the
 // left and rest of season on the right.
 export type TradeMetric = "value" | "vor" | "ppg" | "rank";
@@ -54,6 +56,24 @@ const formatPositionRank = (position: string, rank: number | undefined) =>
   rank ? `${position}${rank}` : "—";
 const formatValue = (value: number | null | undefined) =>
   value === undefined || value === null ? "—" : formatTradeValue(value);
+
+// Buy / sell call (infinivalue vs. market value) as a glass badge - green
+// buy, red sell.
+function SignalBadge({ signal }: { signal: "buy" | "sell" }) {
+  return (
+    <span
+      className={`${classes.pill} ${classes.nameBadge}`}
+      style={pillStyle(signal === "buy" ? "green" : "red")}
+      title={
+        signal === "buy"
+          ? "Infinivalue well above market value"
+          : "Infinivalue well below market value"
+      }
+    >
+      {signal === "buy" ? "BUY" : "SELL"}
+    </span>
+  );
+}
 
 interface MetricValues {
   leftLabel: string;
@@ -67,18 +87,18 @@ interface MetricValues {
 
 function metricValues(data: GlassTradeCardData, metric: TradeMetric): MetricValues {
   if (metric === "value") {
-    // K/DST have no market value - show the projection value on the left
-    // instead, which is all their trade value is.
+    // K/DST have no market value - show the infinivalue on the left
+    // instead, which is all their avg value is.
     const market = data.marketValue !== null;
     const left = market ? formatValue(data.marketValue) : formatValue(data.projectionValue);
     const right = formatValue(data.tradeValue);
     return {
-      leftLabel: market ? "Mkt" : "Proj",
+      leftLabel: market ? "Mkt" : "Infini",
       left,
-      rightLabel: "VAL",
+      rightLabel: "AVG",
       right,
-      leftSpoken: `${market ? "market value" : "projection value"} ${left}`,
-      rightSpoken: `trade value ${right}`,
+      leftSpoken: `${market ? "market value" : "infinivalue"} ${left}`,
+      rightSpoken: `avg value ${right}`,
     };
   }
   const [season, ros, spoken] =
@@ -128,6 +148,8 @@ export function GlassTradeCard({
     data.injury?.status,
     values.leftSpoken,
     values.rightSpoken,
+    data.signal === "buy" ? "buy: infinivalue well above market" : null,
+    data.signal === "sell" ? "sell: infinivalue well below market" : null,
   ]
     .filter(Boolean)
     .join(", ");
@@ -158,6 +180,7 @@ export function GlassTradeCard({
             <span className={classes.pill} style={pillStyle(positionColor)}>
               {positionLabel}
             </span>
+            {data.signal && <SignalBadge signal={data.signal} />}
           </div>
           <span className={classes.tradeCheck}>
             {selected && <Check size={12} strokeWidth={3.5} />}
@@ -233,6 +256,7 @@ export function GlassTradeCard({
                 Rookie
               </span>
             )}
+            {data.signal && <SignalBadge signal={data.signal} />}
             {selected && <span className={classes.statusLabel}>In trade</span>}
           </div>
 
@@ -241,12 +265,12 @@ export function GlassTradeCard({
               {
                 label: "Trade value",
                 items: [
-                  { label: "Value", value: formatValue(data.tradeValue) },
+                  { label: "Infinivalue", value: formatValue(data.projectionValue) },
                   {
-                    label: "Market",
+                    label: "Market value",
                     value: data.marketValue === null ? "n/a" : formatValue(data.marketValue),
                   },
-                  { label: "Projection", value: formatValue(data.projectionValue) },
+                  { label: "Avg value", value: formatValue(data.tradeValue) },
                 ],
               },
               {

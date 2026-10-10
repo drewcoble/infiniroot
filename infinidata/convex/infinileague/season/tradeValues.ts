@@ -14,10 +14,32 @@ export interface TradeValueRow {
   // list is priced at 0 (it only lists players it considers worth
   // anything).
   marketValue: number | null;
-  // Our rest-of-season VOR, put on FantasyCalc's scale by rank: the
-  // player with our Nth-best rosVor gets FantasyCalc's Nth-highest value,
-  // so the two halves of `value` are directly comparable.
+  // "Infinivalue": our rest-of-season VOR, put on FantasyCalc's scale by
+  // rank - the player with our Nth-best rosVor gets FantasyCalc's
+  // Nth-highest value, so the two halves of `value` are directly
+  // comparable.
   projectionValue: number;
+  // Where our read and the market's disagree enough to act on (see
+  // SIGNAL_MIN_SHARE / SIGNAL_MIN_POINTS): "buy" = we value him well above
+  // the market (get him cheap), "sell" = well below it (move him while the
+  // market pays). null = close enough, or no market value (K/DST).
+  signal: "buy" | "sell" | null;
+}
+
+// A buy/sell call needs the gap between infinivalue and market value to be
+// at least SIGNAL_MIN_SHARE of the larger of the two AND at least
+// SIGNAL_MIN_POINTS - the share keeps a 300-point gap between two 9,000
+// stars from counting, the floor keeps a 40 vs. 80 gap between two
+// afterthoughts from counting. Tunable.
+const SIGNAL_MIN_SHARE = 0.2;
+const SIGNAL_MIN_POINTS = 400;
+
+function buySellSignal(infinivalue: number, market: number | null): "buy" | "sell" | null {
+  if (market === null) return null;
+  const gap = infinivalue - market;
+  if (Math.abs(gap) < SIGNAL_MIN_POINTS) return null;
+  if (Math.abs(gap) < SIGNAL_MIN_SHARE * Math.max(infinivalue, market)) return null;
+  return gap > 0 ? "buy" : "sell";
 }
 
 // How long a cached FantasyCalc pull is reused before refetching.
@@ -151,6 +173,7 @@ export async function loadTradeValues(
         marketValue === null ? projectionValue : Math.round((marketValue + projectionValue) / 2),
       marketValue,
       projectionValue,
+      signal: buySellSignal(projectionValue, marketValue),
     };
   });
 }

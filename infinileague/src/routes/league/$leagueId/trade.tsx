@@ -434,7 +434,7 @@ function TradePage() {
             ? formatTradeValue(tradeValue)
             : "…"
           : statTotal.toFixed(1),
-      valueLabel: metric === "value" ? "Value" : metric === "ppg" ? "ROS PPG" : "ROS VOR",
+      valueLabel: metric === "value" ? "Avg value" : metric === "ppg" ? "ROS PPG" : "ROS VOR",
       tradeValue,
       valueAdjustment: totals ? (side === "A" ? totals.adjustmentA : totals.adjustmentB) : 0,
       impact,

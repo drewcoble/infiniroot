@@ -60,6 +60,7 @@ function toTradeCardData(
     tradeValue: missing ? 0 : value?.value,
     marketValue: missing ? null : value?.marketValue,
     projectionValue: missing ? 0 : value?.projectionValue,
+    signal: missing ? null : value?.signal,
   };
 }
 
