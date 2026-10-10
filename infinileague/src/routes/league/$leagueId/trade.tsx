@@ -320,8 +320,14 @@ function TradePage() {
     return (
       <Stack gap="md">
         <Title order={3}>Trade</Title>
-        {suggestionStrip}
-        {metricSwitch}
+        <Stack gap="xs">
+          <Title order={5}>Suggestions</Title>
+          {suggestionStrip}
+        </Stack>
+        <Stack gap="xs">
+          <Title order={5}>Analyzer</Title>
+          {metricSwitch}
+        </Stack>
         <GlassTradeHeader
           teamA="loading"
           teamB="loading"
@@ -408,8 +414,14 @@ function TradePage() {
   return (
     <Stack gap="md">
       <Title order={3}>Trade</Title>
-      {suggestionStrip}
-      {metricSwitch}
+      <Stack gap="xs">
+        <Title order={5}>Suggestions</Title>
+        {suggestionStrip}
+      </Stack>
+      <Stack gap="xs">
+        <Title order={5}>Analyzer</Title>
+        {metricSwitch}
+      </Stack>
 
       {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
       {tradeValuesError && <Alert color="red">{tradeValuesError}</Alert>}
