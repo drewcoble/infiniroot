@@ -179,13 +179,25 @@ function makeTeamScorer(inputs: PowerRankingsInputs, weekPoints: Map<number, num
   };
 }
 
+// Positions never offered in a suggestion - nobody trades for a kicker or
+// a defense. They still count toward each roster's lineup total (scored
+// with the whole roster), they just never move.
+const UNTRADED_POSITIONS = new Set<Position>(["K", "DST"]);
+
 // Every package of one or two players from `fpids` - singles from the
 // whole roster, pairs from its PAIR_POOL_SIZE best by rest-of-season
-// points.
-function packages(fpids: number[], weekPoints: Map<number, number[]>): number[][] {
+// points - leaving out K/DST.
+function packages(
+  fpids: number[],
+  weekPoints: Map<number, number[]>,
+  positionByFpid: Map<number, Position>,
+): number[][] {
   const seasonPoints = (fpid: number) =>
     (weekPoints.get(fpid) ?? []).reduce((sum, points) => sum + points, 0);
-  const useful = fpids.filter((fpid) => seasonPoints(fpid) > 0);
+  const useful = fpids.filter((fpid) => {
+    const position = positionByFpid.get(fpid);
+    return position !== undefined && !UNTRADED_POSITIONS.has(position) && seasonPoints(fpid) > 0;
+  });
   const pairPool = [...useful]
     .sort((a, b) => seasonPoints(b) - seasonPoints(a))
     .slice(0, PAIR_POOL_SIZE);
@@ -217,7 +229,8 @@ interface Candidate {
 // suggestion the other manager has no reason to accept isn't one worth
 // making - and the list is ordered by grade (lineup gain and trade value
 // won, blended - see GRADE_WEIGHTS). Taxi and IR players are left
-// out on both sides, same as the power rankings' player pool.
+// out on both sides, same as the power rankings' player pool, and K/DST
+// are never part of a suggested trade (UNTRADED_POSITIONS).
 export const getTradeSuggestions = action({
   args: { seasonId: v.id("seasons") },
   handler: async (ctx: ActionCtx, args): Promise<TradeSuggestion[]> => {
@@ -251,7 +264,7 @@ export const getTradeSuggestions = action({
     const totalByTeam = new Map<Id<"seasonTeams">, number>();
     for (const [teamId, fpids] of eligibleFpidsByTeam) totalByTeam.set(teamId, score(fpids));
     const selfTotal = totalByTeam.get(self._id) ?? 0;
-    const selfPackages = packages(selfFpids, weekPoints);
+    const selfPackages = packages(selfFpids, weekPoints, inputs.positionByFpid);
 
     const candidates: Candidate[] = [];
     for (const partner of teams) {
@@ -259,7 +272,7 @@ export const getTradeSuggestions = action({
       const partnerFpids = eligibleFpidsByTeam.get(partner._id);
       if (!partnerFpids) continue;
       const partnerTotal = totalByTeam.get(partner._id) ?? 0;
-      const partnerPackages = packages(partnerFpids, weekPoints);
+      const partnerPackages = packages(partnerFpids, weekPoints, inputs.positionByFpid);
 
       for (const send of selfPackages) {
         for (const receive of partnerPackages) {
