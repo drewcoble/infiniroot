@@ -13,6 +13,7 @@ import {
   darkSurfaces,
   DEFAULT_RADIUS,
   dst,
+  espn,
   flex,
   gold,
   green,
@@ -98,6 +99,7 @@ export const theme = createTheme({
     bn,
     sleeper,
     yahoo,
+    espn,
     // See colors.ts's darkSurfaces comment for why this is a partial
     // (shades 6-9 only) override rather than a full palette.
     dark: darkSurfaces,

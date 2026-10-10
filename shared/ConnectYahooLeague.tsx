@@ -85,7 +85,7 @@ export function ConnectYahooLeague({
       // No seasonId to redirect back to - this league doesn't exist yet.
       // The OAuth round trip lands back on "/" (see convex/http.ts's
       // yahooRedirectTarget), so this wizard's in-progress state is lost;
-      // the user re-opens "Import from Yahoo" afterward - same limitation
+      // the user re-opens "Add League > Yahoo" afterward - same limitation
       // infinidraft's own wizard already accepts.
       const { authorizeUrl } = await startYahooAuth({ app });
       window.location.href = authorizeUrl;

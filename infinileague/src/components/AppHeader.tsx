@@ -7,7 +7,6 @@ import {
   Database,
   GalleryVerticalEnd,
   HeartPulse,
-  Import,
   LayoutGrid,
   Plus,
   ShieldCheck,
@@ -19,7 +18,7 @@ import { setStoredLeagueId } from "../lib/leagueStorage";
 import type { LinkedSeason } from "../types/season";
 
 // Thin infinileague-specific wrapper around @shared/AppHeader: backed by
-// listLinkedSeasons, and its own "Connect League" footer item instead of
+// listLinkedSeasons, and its own "Add League" footer item instead of
 // infinidraft's "New League" - no draft phase/status, no TV board/report
 // card/billing overflow items, no mode-switch button (none of those
 // concepts exist here).
@@ -71,15 +70,9 @@ export function AppHeader() {
           <Menu.Divider />
           <Menu.Item
             leftSection={<Plus size={16} />}
-            onClick={() => void navigate({ to: "/connect-sleeper" })}
+            onClick={() => void navigate({ to: "/add-league" })}
           >
-            Connect Sleeper League
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<Import size={16} />}
-            onClick={() => void navigate({ to: "/connect-yahoo" })}
-          >
-            Import from Yahoo
+            Add League
           </Menu.Item>
         </>
       }

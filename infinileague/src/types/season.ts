@@ -22,6 +22,7 @@ export interface LinkedSeason {
   // routes/league/$leagueId/index.tsx's runSync).
   sleeperLeagueId?: string;
   yahooLeagueKey?: string;
+  espnLeagueId?: string;
   // Absent means "redraft" (see convex/leagueType.ts's resolveLeagueType) -
   // "guillotine" swaps the dashboard's Standings tab for Elimination Watch
   // (see routes/league/$leagueId/index.tsx).

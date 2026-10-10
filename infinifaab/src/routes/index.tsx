@@ -12,7 +12,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { Import, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { AppHeader } from "../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
 import { getErrorMessage } from "@shared/errors";
@@ -50,18 +50,12 @@ function Dashboard() {
           <Stack gap="md" py="xl" align="center">
             <Text c="dimmed">No leagues yet.</Text>
             <Group>
-              <Link to="/connect-sleeper">
-                <Button component="span" leftSection={<Plus size={16} />}>
-                  Connect Sleeper League
-                </Button>
-              </Link>
-              <Link to="/connect-yahoo">
+              <Link to="/add-league">
                 <Button
                   component="span"
-                  variant="default"
-                  leftSection={<Import size={16} />}
+                  leftSection={<Plus size={16} />}
                 >
-                  Import from Yahoo
+                  Add League
                 </Button>
               </Link>
             </Group>
@@ -69,22 +63,13 @@ function Dashboard() {
         ) : (
           <>
             <Group justify="flex-end">
-              <Link to="/connect-sleeper">
+              <Link to="/add-league">
                 <Button
                   component="span"
                   variant="default"
                   leftSection={<Plus size={16} />}
                 >
-                  Connect Sleeper League
-                </Button>
-              </Link>
-              <Link to="/connect-yahoo">
-                <Button
-                  component="span"
-                  variant="default"
-                  leftSection={<Import size={16} />}
-                >
-                  Import from Yahoo
+                  Add League
                 </Button>
               </Link>
             </Group>

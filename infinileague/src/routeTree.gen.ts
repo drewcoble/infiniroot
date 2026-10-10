@@ -10,10 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AddLeagueRouteImport } from './routes/add-league'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminDataRouteImport } from './routes/admin-data'
-import { Route as ConnectSleeperRouteImport } from './routes/connect-sleeper'
-import { Route as ConnectYahooRouteImport } from './routes/connect-yahoo'
 import { Route as DepthChartsRouteImport } from './routes/depthCharts'
 import { Route as InjuriesRouteImport } from './routes/injuries'
 import { Route as LeagueLeagueIdRouteRouteImport } from './routes/league/$leagueId/route'
@@ -30,6 +29,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AddLeagueRoute = AddLeagueRouteImport.update({
+  id: '/add-league',
+  path: '/add-league',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -38,16 +42,6 @@ const AdminRoute = AdminRouteImport.update({
 const AdminDataRoute = AdminDataRouteImport.update({
   id: '/admin-data',
   path: '/admin-data',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConnectSleeperRoute = ConnectSleeperRouteImport.update({
-  id: '/connect-sleeper',
-  path: '/connect-sleeper',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConnectYahooRoute = ConnectYahooRouteImport.update({
-  id: '/connect-yahoo',
-  path: '/connect-yahoo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DepthChartsRoute = DepthChartsRouteImport.update({
@@ -105,10 +99,9 @@ const LeagueLeagueIdTeamsTeamIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/add-league': typeof AddLeagueRoute
   '/admin': typeof AdminRoute
   '/admin-data': typeof AdminDataRoute
-  '/connect-sleeper': typeof ConnectSleeperRoute
-  '/connect-yahoo': typeof ConnectYahooRoute
   '/depthCharts': typeof DepthChartsRoute
   '/injuries': typeof InjuriesRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
@@ -122,10 +115,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/add-league': typeof AddLeagueRoute
   '/admin': typeof AdminRoute
   '/admin-data': typeof AdminDataRoute
-  '/connect-sleeper': typeof ConnectSleeperRoute
-  '/connect-yahoo': typeof ConnectYahooRoute
   '/depthCharts': typeof DepthChartsRoute
   '/injuries': typeof InjuriesRoute
   '/league/$leagueId/cards': typeof LeagueLeagueIdCardsRoute
@@ -139,10 +131,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/add-league': typeof AddLeagueRoute
   '/admin': typeof AdminRoute
   '/admin-data': typeof AdminDataRoute
-  '/connect-sleeper': typeof ConnectSleeperRoute
-  '/connect-yahoo': typeof ConnectYahooRoute
   '/depthCharts': typeof DepthChartsRoute
   '/injuries': typeof InjuriesRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
@@ -158,10 +149,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/add-league'
     | '/admin'
     | '/admin-data'
-    | '/connect-sleeper'
-    | '/connect-yahoo'
     | '/depthCharts'
     | '/injuries'
     | '/league/$leagueId'
@@ -175,10 +165,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/add-league'
     | '/admin'
     | '/admin-data'
-    | '/connect-sleeper'
-    | '/connect-yahoo'
     | '/depthCharts'
     | '/injuries'
     | '/league/$leagueId/cards'
@@ -191,10 +180,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/add-league'
     | '/admin'
     | '/admin-data'
-    | '/connect-sleeper'
-    | '/connect-yahoo'
     | '/depthCharts'
     | '/injuries'
     | '/league/$leagueId'
@@ -209,10 +197,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AddLeagueRoute: typeof AddLeagueRoute
   AdminRoute: typeof AdminRoute
   AdminDataRoute: typeof AdminDataRoute
-  ConnectSleeperRoute: typeof ConnectSleeperRoute
-  ConnectYahooRoute: typeof ConnectYahooRoute
   DepthChartsRoute: typeof DepthChartsRoute
   InjuriesRoute: typeof InjuriesRoute
   LeagueLeagueIdRouteRoute: typeof LeagueLeagueIdRouteRouteWithChildren
@@ -227,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/add-league': {
+      id: '/add-league'
+      path: '/add-league'
+      fullPath: '/add-league'
+      preLoaderRoute: typeof AddLeagueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -239,20 +233,6 @@ declare module '@tanstack/react-router' {
       path: '/admin-data'
       fullPath: '/admin-data'
       preLoaderRoute: typeof AdminDataRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/connect-sleeper': {
-      id: '/connect-sleeper'
-      path: '/connect-sleeper'
-      fullPath: '/connect-sleeper'
-      preLoaderRoute: typeof ConnectSleeperRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/connect-yahoo': {
-      id: '/connect-yahoo'
-      path: '/connect-yahoo'
-      fullPath: '/connect-yahoo'
-      preLoaderRoute: typeof ConnectYahooRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/depthCharts': {
@@ -353,10 +333,9 @@ const LeagueLeagueIdRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AddLeagueRoute: AddLeagueRoute,
   AdminRoute: AdminRoute,
   AdminDataRoute: AdminDataRoute,
-  ConnectSleeperRoute: ConnectSleeperRoute,
-  ConnectYahooRoute: ConnectYahooRoute,
   DepthChartsRoute: DepthChartsRoute,
   InjuriesRoute: InjuriesRoute,
   LeagueLeagueIdRouteRoute: LeagueLeagueIdRouteRouteWithChildren,

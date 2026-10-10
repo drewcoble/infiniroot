@@ -78,6 +78,7 @@ function LeaguePage() {
   const syncYahooRoster = useAction(
     api.infinidraft.yahoo.league.syncYahooLeagueRoster,
   );
+  const syncEspnRoster = useAction(api.espn.league.syncEspnLeagueRoster);
 
   const getPowerRankings = useAction(
     api.infinileague.season.powerRankings.getPowerRankings,
@@ -183,6 +184,8 @@ function LeaguePage() {
     try {
       if (season.yahooLeagueKey) {
         await syncYahooRoster({ seasonId });
+      } else if (season.espnLeagueId) {
+        await syncEspnRoster({ seasonId });
       } else {
         await syncSleeperRoster({ seasonId });
       }

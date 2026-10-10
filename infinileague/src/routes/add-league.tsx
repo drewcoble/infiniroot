@@ -2,20 +2,24 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Stack } from "@mantine/core";
 import { AppHeader } from "../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
-import { ConnectSleeperLeague } from "@shared/ConnectSleeperLeague";
+import { AddLeague } from "@shared/AddLeague";
 
-export const Route = createFileRoute("/connect-sleeper")({
-  component: ConnectSleeperPage,
+export const Route = createFileRoute("/add-league")({
+  component: AddLeaguePage,
 });
 
-function ConnectSleeperPage() {
+// A league connected here is an ordinary createLeague/initializeSeasonTeams
+// season row, so the other apps pick it up automatically (same leagues/
+// seasons tables) - see @shared/AddLeague for the provider wizards.
+function AddLeaguePage() {
   const navigate = useNavigate();
 
   return (
     <PageContainer>
       <Stack gap="lg">
         <AppHeader />
-        <ConnectSleeperLeague
+        <AddLeague
+          app="infinileague"
           onConnected={(seasonId) =>
             void navigate({ to: "/league/$leagueId", params: { leagueId: seasonId } })
           }

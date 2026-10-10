@@ -9,6 +9,8 @@ export * from "./positionColors";
 export * from "./theme";
 export * from "./useHoldRepeat";
 export * from "./AppLogo";
+export * from "./AddLeague";
+export * from "./ConnectEspnLeague";
 export * from "./ConnectSleeperLeague";
 export * from "./ConnectYahooLeague";
 export * from "./NumberStepper";
