@@ -106,8 +106,8 @@ function TradePage() {
   const teamARoster = useTeamRoster(teamAId, week);
   const teamBRoster = useTeamRoster(teamBId, week);
 
-  // What the cards show - VOR, PPG, or overall rank, each season to date
-  // and rest of season.
+  // What the cards show - trade value, PPG, or overall rank. VOR isn't
+  // offered on its own: the values are built from it (infinivalue).
   const [metric, setMetric] = useState<TradeMetric>("value");
 
   // FantasyCalc-style trade value per player - FantasyCalc's market value
@@ -308,7 +308,6 @@ function TradePage() {
       onChange={setMetric}
       options={[
         { label: "Value", value: "value" as const },
-        { label: "VOR", value: "vor" as const },
         { label: "PPG", value: "ppg" as const },
         { label: "Ranks", value: "rank" as const },
       ]}
@@ -419,22 +418,22 @@ function TradePage() {
       }
     }
     const tradeValue = totals ? (side === "A" ? totals.rawA : totals.rawB) : undefined;
-    // The big number follows the switch. Ranks don't add up, so the Ranks
-    // view totals VOR - the value those ranks are ordered by.
-    const statTotal = sending.reduce((total, row) => {
-      const vor = vorByFpid.get(row.fpid ?? -1);
-      return total + ((metric === "ppg" ? vor?.rosPpg : vor?.rosVor) ?? 0);
-    }, 0);
+    // The big number follows the switch: ROS PPG in the PPG view, avg value
+    // otherwise (ranks don't add up).
+    const rosPpgTotal = sending.reduce(
+      (total, row) => total + (vorByFpid.get(row.fpid ?? -1)?.rosPpg ?? 0),
+      0,
+    );
     return {
       name,
       sendCount: sending.length,
       sendDisplay:
-        metric === "value"
-          ? tradeValue !== undefined
+        metric === "ppg"
+          ? rosPpgTotal.toFixed(1)
+          : tradeValue !== undefined
             ? formatTradeValue(tradeValue)
-            : "…"
-          : statTotal.toFixed(1),
-      valueLabel: metric === "value" ? "Avg value" : metric === "ppg" ? "ROS PPG" : "ROS VOR",
+            : "…",
+      valueLabel: metric === "ppg" ? "ROS PPG" : "Avg value",
       tradeValue,
       valueAdjustment: totals ? (side === "A" ? totals.adjustmentA : totals.adjustmentB) : 0,
       impact,

@@ -52,8 +52,6 @@ function toTradeCardData(
     byeWeek: row.byeWeek,
     seasonPpg: vor?.actualPpg,
     rosPpg: vor?.rosPpg,
-    seasonVor: vor?.actualVor,
-    rosVor: vor?.rosVor,
     seasonRank: vor?.actualRank,
     rosRank: vor?.rosRank,
     seasonPositionRank,

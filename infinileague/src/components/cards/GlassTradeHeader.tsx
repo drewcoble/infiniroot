@@ -16,7 +16,7 @@ export interface TradeHeaderTeam {
   name: string;
   // Players this team gives up, and their combined total in the switch's
   // metric - already formatted (`sendDisplay`), labeled by `valueLabel`
-  // ("Value" / "ROS VOR" / "ROS PPG").
+  // ("Avg value" / "ROS PPG").
   sendCount: number;
   sendDisplay: string;
   valueLabel: string;
@@ -282,7 +282,7 @@ function PartnerPicker({
 
 // Trade tab's header in the Matchup header's glass and two-column layout:
 // each side's team name, the total it sends (the big number - trade value,
-// VOR, or PPG, following the page's switch), how many players that is, and -
+// or PPG, following the page's switch), how many players that is, and -
 // once both sides have picked players - where the trade leaves the team in
 // the power rankings, a FantasyCalc-style verdict ("X wins by 2,079"), and
 // the value bar. The right side's name is the trade-partner picker;

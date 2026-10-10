@@ -26,9 +26,6 @@ export interface GlassTradeCardData {
   // it (shown as a dash rather than a made-up 0.0).
   seasonPpg: number | undefined;
   rosPpg: number | undefined;
-  // Value over replacement, season to date and rest of season.
-  seasonVor: number | undefined;
-  rosVor: number | undefined;
   // Season-to-date position rank (lib/seasonPositionRanks.ts) - the
   // detail table's Season counterpart of positionRank.
   seasonPositionRank: number | undefined;
@@ -49,7 +46,7 @@ export interface GlassTradeCardData {
 // the market (FantasyCalc) value small on the left and the avg value
 // that gets added up on the right; the rest show season to date on the
 // left and rest of season on the right.
-export type TradeMetric = "value" | "vor" | "ppg" | "rank";
+export type TradeMetric = "value" | "ppg" | "rank";
 
 const formatRank = (rank: number | undefined) => (rank ? `#${rank}` : "—");
 const formatPositionRank = (position: string, rank: number | undefined) =>
@@ -102,11 +99,9 @@ function metricValues(data: GlassTradeCardData, metric: TradeMetric): MetricValu
     };
   }
   const [season, ros, spoken] =
-    metric === "vor"
-      ? [formatProj(data.seasonVor), formatProj(data.rosVor), "VOR"]
-      : metric === "rank"
-        ? [formatRank(data.seasonRank), formatRank(data.rosRank), "overall rank"]
-        : [formatProj(data.seasonPpg), formatProj(data.rosPpg), "PPG"];
+    metric === "rank"
+      ? [formatRank(data.seasonRank), formatRank(data.rosRank), "overall rank"]
+      : [formatProj(data.seasonPpg), formatProj(data.rosPpg), "PPG"];
   return {
     leftLabel: "Actual",
     left: season,
@@ -277,7 +272,6 @@ export function GlassTradeCard({
                 columns: ["Season", "ROS"],
                 rows: [
                   { label: "PPG", values: [formatProj(data.seasonPpg), formatProj(data.rosPpg)] },
-                  { label: "VOR", values: [formatProj(data.seasonVor), formatProj(data.rosVor)] },
                   {
                     label: "Pos rank",
                     values: [
