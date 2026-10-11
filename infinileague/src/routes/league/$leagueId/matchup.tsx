@@ -15,6 +15,13 @@ import {
 import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { toMatchupCardData } from "../../../lib/matchupCardData";
 import {
+  LIVE_REFRESH_MS,
+  matchupHeaderTeam,
+  matchupResult,
+  sumStarterPoints,
+  winProbability,
+} from "../../../lib/matchupSummary";
+import {
   GlassMatchupHeader,
   type MatchupHeaderTeam,
 } from "../../../components/cards/GlassMatchupHeader";
@@ -28,7 +35,7 @@ import {
   useNow,
   type WeekGame,
 } from "../../../lib/liveGames";
-import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../types/season";
+import type { RosVorRow, StandingsRow, TeamRosterRow } from "../../../types/season";
 
 // Regular-season weeks the week picker steps through.
 const REGULAR_SEASON_WEEKS = 18;
@@ -47,48 +54,6 @@ interface NflState {
   season: string;
   week: string;
   seasonType: "pre" | "regular" | "post";
-}
-
-// Starting lineup slots only - excludes BENCH/IR/TAXI, whose points don't
-// count toward the team's total for the week. Same list teams/$teamId.tsx's
-// own sumStarterPoints uses for the "My Team" header card.
-const STARTER_SLOTS = new Set<SlotLabel>([
-  "QB",
-  "SUPERFLEX",
-  "RB",
-  "WR",
-  "FLEX",
-  "TE",
-  "DST",
-  "K",
-]);
-
-function sumStarterPoints(
-  rows: TeamRosterRow[] | undefined,
-  pointsFor: (row: TeamRosterRow) => number,
-): number {
-  if (!rows) return 0;
-  return rows.reduce((total, row) => {
-    if (!row.slot || !STARTER_SLOTS.has(row.slot)) return total;
-    return total + pointsFor(row);
-  }, 0);
-}
-
-// How often the rosters' actual points are re-fetched from Sleeper/Yahoo
-// while a game is being played - matches the live poll's own cadence
-// (convex/crons.ts), which is what moves the game clocks.
-const LIVE_REFRESH_MS = 2 * 60 * 1000;
-
-// Rough win read off the two teams' live-projected totals - a logistic
-// curve on the point differential, not a real variance model (no per-player
-// score distributions are computed anywhere in this codebase), just enough
-// to turn "who's projected ahead" into a percentage instead of a bare point
-// gap. WIN_PROB_SCALE tunes how fast it saturates: a 15-point lead reads as
-// ~73%, a 30-point lead as ~88%.
-const WIN_PROB_SCALE = 15;
-
-function winProbability(projA: number, projB: number): number {
-  return 1 / (1 + Math.exp(-(projA - projB) / WIN_PROB_SCALE));
 }
 
 // Head-to-head view of this week's matchup: your own roster on the left,
@@ -285,25 +250,8 @@ function MatchupPage() {
     rows: TeamRosterRow[] | undefined,
     actual: number,
     proj: number,
-  ): MatchupHeaderTeam => {
-    const states = (rows ?? [])
-      .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
-      .map((row) => toCardData(row).gameState);
-    const liveCount = states.filter((state) => state === "live").length;
-    const toPlayCount = states.filter((state) => state === "pre").length;
-    // Once every starter's game is over the live projection just equals the
-    // final score - show the pregame projection instead, so "Proj" still
-    // says what the team was expected to put up. (The win probability keeps
-    // using the live projection either way.)
-    const allFinal = liveCount === 0 && toPlayCount === 0;
-    return {
-      name,
-      actualPoints: actual,
-      projectedPoints: allFinal ? sumStarterPoints(rows, (row) => row.projectedPoints ?? 0) : proj,
-      liveCount,
-      toPlayCount,
-    };
-  };
+  ): MatchupHeaderTeam =>
+    matchupHeaderTeam(name, rows, actual, proj, (row) => toCardData(row).gameState);
 
   // Header and rows hold their shape with glass skeletons while loading,
   // rather than a bare spinner or blank column.
@@ -387,9 +335,7 @@ function MatchupPage() {
         winProbA={matchupReady ? winProbA : null}
         result={
           weekComplete && matchupReady
-            ? actualA === actualB
-              ? "Final · Tied"
-              : `Final · ${actualA > actualB ? selfTeamName : opponentName} won by ${Math.abs(actualA - actualB).toFixed(2)}`
+            ? matchupResult(selfTeamName, actualA, opponentName, actualB)
             : undefined
         }
       />

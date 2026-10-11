@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminDataRouteImport } from './routes/admin-data'
 import { Route as DepthChartsRouteImport } from './routes/depthCharts'
 import { Route as InjuriesRouteImport } from './routes/injuries'
+import { Route as MatchupsRouteImport } from './routes/matchups'
 import { Route as LeagueLeagueIdRouteRouteImport } from './routes/league/$leagueId/route'
 import { Route as LeagueLeagueIdIndexRouteImport } from './routes/league/$leagueId/index'
 import { Route as LeagueLeagueIdCardsRouteImport } from './routes/league/$leagueId/cards'
@@ -52,6 +53,11 @@ const DepthChartsRoute = DepthChartsRouteImport.update({
 const InjuriesRoute = InjuriesRouteImport.update({
   id: '/injuries',
   path: '/injuries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MatchupsRoute = MatchupsRouteImport.update({
+  id: '/matchups',
+  path: '/matchups',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeagueLeagueIdRouteRoute = LeagueLeagueIdRouteRouteImport.update({
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/admin-data': typeof AdminDataRoute
   '/depthCharts': typeof DepthChartsRoute
   '/injuries': typeof InjuriesRoute
+  '/matchups': typeof MatchupsRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/league/$leagueId/cards': typeof LeagueLeagueIdCardsRoute
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/admin-data': typeof AdminDataRoute
   '/depthCharts': typeof DepthChartsRoute
   '/injuries': typeof InjuriesRoute
+  '/matchups': typeof MatchupsRoute
   '/league/$leagueId/cards': typeof LeagueLeagueIdCardsRoute
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
   '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/admin-data': typeof AdminDataRoute
   '/depthCharts': typeof DepthChartsRoute
   '/injuries': typeof InjuriesRoute
+  '/matchups': typeof MatchupsRoute
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/league/$leagueId/cards': typeof LeagueLeagueIdCardsRoute
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/admin-data'
     | '/depthCharts'
     | '/injuries'
+    | '/matchups'
     | '/league/$leagueId'
     | '/league/$leagueId/cards'
     | '/league/$leagueId/freeAgents'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/admin-data'
     | '/depthCharts'
     | '/injuries'
+    | '/matchups'
     | '/league/$leagueId/cards'
     | '/league/$leagueId/freeAgents'
     | '/league/$leagueId/matchup'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/admin-data'
     | '/depthCharts'
     | '/injuries'
+    | '/matchups'
     | '/league/$leagueId'
     | '/league/$leagueId/cards'
     | '/league/$leagueId/freeAgents'
@@ -202,6 +214,7 @@ export interface RootRouteChildren {
   AdminDataRoute: typeof AdminDataRoute
   DepthChartsRoute: typeof DepthChartsRoute
   InjuriesRoute: typeof InjuriesRoute
+  MatchupsRoute: typeof MatchupsRoute
   LeagueLeagueIdRouteRoute: typeof LeagueLeagueIdRouteRouteWithChildren
 }
 
@@ -247,6 +260,13 @@ declare module '@tanstack/react-router' {
       path: '/injuries'
       fullPath: '/injuries'
       preLoaderRoute: typeof InjuriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/matchups': {
+      id: '/matchups'
+      path: '/matchups'
+      fullPath: '/matchups'
+      preLoaderRoute: typeof MatchupsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/league/$leagueId': {
@@ -338,6 +358,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDataRoute: AdminDataRoute,
   DepthChartsRoute: DepthChartsRoute,
   InjuriesRoute: InjuriesRoute,
+  MatchupsRoute: MatchupsRoute,
   LeagueLeagueIdRouteRoute: LeagueLeagueIdRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport

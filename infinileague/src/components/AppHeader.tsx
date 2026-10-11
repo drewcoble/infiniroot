@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { Menu } from "@mantine/core";
 import { useConvexAuth, useQuery } from "convex/react";
 import {
@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   Plus,
   ShieldCheck,
+  Ticket,
 } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader as SharedAppHeader } from "@shared/AppHeader";
@@ -25,6 +26,7 @@ import type { LinkedSeason } from "../types/season";
 export function AppHeader() {
   const navigate = useNavigate();
   const { leagueId } = useParams({ strict: false });
+  const onMatchups = useLocation().pathname === "/matchups";
   const { isAuthenticated } = useConvexAuth();
   const currentUser = useQuery(api.users.getCurrentUser);
   const seasonsList: LinkedSeason[] | undefined = useQuery(
@@ -51,7 +53,7 @@ export function AppHeader() {
       glass
       // ~10% wider than the shared default (150 / 220).
       leagueButtonWidth={{ base: 165, sm: 242 }}
-      selectedLeagueLabel={selectedLeague?.name}
+      selectedLeagueLabel={onMatchups ? "Matchups" : selectedLeague?.name}
       leagueMenuItems={
         <>
           {leagueGroups.map(({ latest, seasons }) => (
@@ -68,6 +70,14 @@ export function AppHeader() {
             </Menu.Item>
           ))}
           <Menu.Divider />
+          {/* Every league's matchup this week on one page - see
+              routes/matchups.tsx. */}
+          <Menu.Item
+            leftSection={onMatchups ? <Check size={16} /> : <Ticket size={16} />}
+            onClick={() => void navigate({ to: "/matchups" })}
+          >
+            Matchups
+          </Menu.Item>
           <Menu.Item
             leftSection={<Plus size={16} />}
             onClick={() => void navigate({ to: "/add-league" })}
