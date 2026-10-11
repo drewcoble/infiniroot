@@ -5,6 +5,8 @@ import { slotLabel } from "../lib/matchupCardData";
 import { isStarter } from "../lib/matchupSummary";
 import { Fragment } from "react";
 import {
+  FINAL_CARD_OPACITY,
+  MUTED_CARD_OPACITY,
   ROSTER_SECTION_LABEL,
   rosterSection,
   type GlassMatchupCardData,
@@ -27,9 +29,10 @@ interface MatchupRosterMatchupProps {
   shortName: (fullName: string) => string;
   // Shared meter scale for every card on the page (see meterScale.ts).
   scaleMax: number;
-  // "Live only": just the starters whose games are underway - every other
-  // row is dropped, and a row with a live starter on only one side leaves
-  // the other side a blank well. See the Matchup page's toggle.
+  // "Live only": just the rows with a starter whose game is underway - every
+  // other row is dropped, and a row with a live starter on only one side
+  // still shows the other side's player, dimmed so the live side leads.
+  // See the Matchup page's toggle.
   liveOnly?: boolean;
 }
 
@@ -39,18 +42,23 @@ interface MatchupRosterMatchupProps {
 function Cell({
   row,
   props,
-  hidden,
+  dim,
 }: {
   row: TeamRosterRow | undefined;
   props: MatchupRosterMatchupProps;
-  // Live only's non-live side of a row - shown as a blank well.
-  hidden?: boolean;
+  // Live only's extra fade for this cell, if any (see dimFor).
+  dim?: number | undefined;
 }) {
   return (
-    <Box style={{ flex: 1, minWidth: 0, display: "grid" }}>
-      {hidden ? (
-        <EmptyGlassCard label="" />
-      ) : row?.fpid !== undefined ? (
+    <Box
+      style={{
+        flex: 1,
+        minWidth: 0,
+        display: "grid",
+        ...(dim !== undefined ? { opacity: dim } : {}),
+      }}
+    >
+      {row?.fpid !== undefined ? (
         <GlassMatchupCard
           data={props.toCardData(row)}
           displayName={props.shortName(row.name ?? "")}
@@ -95,12 +103,19 @@ export function MatchupRosterSkeleton() {
 // chip between the two columns - the glass Matchup cards (see
 // components/cards/), long-press for each player's detail card.
 export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
+  const stateOf = (row: TeamRosterRow | undefined) =>
+    row?.fpid !== undefined ? props.toCardData(row).gameState : undefined;
   const isLiveStarter = (row: TeamRosterRow | undefined) =>
-    row?.fpid !== undefined &&
-    isStarter(row) &&
-    props.toCardData(row).gameState === "live";
-  const hiddenFor = (row: TeamRosterRow | undefined) =>
-    props.liveOnly === true && !isLiveStarter(row);
+    row !== undefined && isStarter(row) && stateOf(row) === "live";
+  // Live only fades a non-live player to the bye/IR level (45%) overall,
+  // accounting for the fade its card already has: none more for bye/IR,
+  // just the difference for a finished card (already at 70%).
+  const dimFor = (row: TeamRosterRow | undefined): number | undefined => {
+    if (!props.liveOnly) return undefined;
+    const state = stateOf(row);
+    if (state === "live" || state === "bye") return undefined;
+    return state === "final" ? MUTED_CARD_OPACITY / FINAL_CARD_OPACITY : MUTED_CARD_OPACITY;
+  };
   const rows = alignRosterRows(props.teamARows, props.teamBRows).filter(
     (row) => !props.liveOnly || isLiveStarter(row.a) || isLiveStarter(row.b),
   );
@@ -124,16 +139,12 @@ export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
           <Fragment key={`${aRow?.fpid ?? aRow?.slot}-${bRow?.fpid ?? bRow?.slot}-${index}`}>
             {startsSection && <GlassSectionDivider label={ROSTER_SECTION_LABEL[section]} />}
             <Group wrap="nowrap" gap="xs" align="stretch">
-              <Cell row={aRow} props={props} hidden={hiddenFor(aRow)} />
+              <Cell row={aRow} props={props} dim={dimFor(aRow)} />
               <GlassSlotChip label={slotLabel(aRow?.slot ?? bRow?.slot)} />
               {props.teamBRows === undefined && props.teamBLoading ? (
                 <SkeletonCell />
               ) : (
-                <Cell
-                  row={props.teamBRows ? bRow : undefined}
-                  props={props}
-                  hidden={hiddenFor(bRow)}
-                />
+                <Cell row={props.teamBRows ? bRow : undefined} props={props} dim={dimFor(bRow)} />
               )}
             </Group>
           </Fragment>
