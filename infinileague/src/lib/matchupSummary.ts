@@ -20,6 +20,10 @@ export const STARTER_SLOTS = new Set<SlotLabel>([
   "K",
 ]);
 
+export function isStarter(row: TeamRosterRow): boolean {
+  return row.slot !== undefined && STARTER_SLOTS.has(row.slot);
+}
+
 export function sumStarterPoints(
   rows: TeamRosterRow[] | undefined,
   pointsFor: (row: TeamRosterRow) => number,

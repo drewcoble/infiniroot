@@ -15,6 +15,7 @@ import {
 import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { toMatchupCardData } from "../../../lib/matchupCardData";
 import {
+  isStarter,
   LIVE_REFRESH_MS,
   matchupHeaderTeam,
   matchupResult,
@@ -154,11 +155,7 @@ function MatchupPage() {
   const now = useNow(60 * 1000);
   const anyGameLive = isCurrentWeek && isAnyGameLive(weekGames, now);
   const refreshMs = anyGameLive ? LIVE_REFRESH_MS : null;
-  // "Live only" - only offered (and only applied) while a game in the
-  // viewed week is actually on, so it can't strand the page empty once the
-  // games end.
   const [liveOnly, setLiveOnly] = useState(false);
-  const showLiveOnly = liveOnly && anyGameLive;
   // Every game in the viewed week is over - the header shows the result
   // instead of a win probability.
   const weekComplete =
@@ -244,6 +241,13 @@ function MatchupPage() {
     (row) => row.fpid !== undefined,
   );
   const scaleMax = meterScaleMax(filledRows.map(toCardData));
+  // "Live only" - only offered (and only applied) while a starter on either
+  // side is in a live game, so it can't strand the page empty once their
+  // games end.
+  const anyStarterLive = filledRows.some(
+    (row) => isStarter(row) && toCardData(row).gameState === "live",
+  );
+  const showLiveOnly = liveOnly && anyStarterLive;
 
   // Starters whose games are underway / not yet started, for the header.
   const headerTeam = (
@@ -341,7 +345,7 @@ function MatchupPage() {
         }
       />
 
-      {anyGameLive && teamARoster.rows !== undefined && (
+      {anyStarterLive && (
         <Group justify="flex-end">
           <LiveOnlyToggle on={liveOnly} onChange={setLiveOnly} />
         </Group>

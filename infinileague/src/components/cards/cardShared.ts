@@ -61,8 +61,7 @@ export function positionBadge(data: GlassMatchupCardData): string {
 }
 
 // Card fades: finished players a little (they're settled), bye/IR players
-// more (they won't score) - the latter also being the Matchup tab's "Live
-// only" fade for non-live players. Mirrored in GlassMatchupCard.module.css's
+// more (they won't score). Mirrored in GlassMatchupCard.module.css's
 // .finalCard / .muted.
 export const FINAL_CARD_OPACITY = 0.7;
 export const MUTED_CARD_OPACITY = 0.45;
