@@ -8,6 +8,7 @@ export const glassClasses = glassModule as Record<
   | "button"
   | "buttonLabel"
   | "iconButton"
+  | "iconButtonActive"
   | "controls"
   | "logoPanel"
   | "navItem"

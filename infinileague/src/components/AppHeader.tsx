@@ -62,6 +62,7 @@ export function AppHeader() {
         <Link
           to="/matchups"
           className={glassClasses.iconButton}
+          activeProps={{ className: glassClasses.iconButtonActive }}
           aria-label="Matchups"
           title="Matchups"
           style={{ marginRight: "auto" }}
