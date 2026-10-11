@@ -62,6 +62,7 @@ export function toMatchupCardData(
         row.projectedPoints,
         row.actualPoints,
         remainingFraction(game, now),
+        row.position,
       ),
     };
   }

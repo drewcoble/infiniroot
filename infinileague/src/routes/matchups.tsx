@@ -223,6 +223,7 @@ function LeagueMatchup({
       row.projectedPoints,
       row.actualPoints,
       remainingFraction(row.team ? gamesByTeam?.get(row.team) : undefined, now),
+      row.position,
     );
   const actualFor = (row: TeamRosterRow) => row.actualPoints ?? 0;
   const toCardData = (row: TeamRosterRow) =>

@@ -174,6 +174,7 @@ function TeamPage() {
               row.projectedPoints,
               row.actualPoints,
               remainingFraction(row.team ? gamesByTeam.get(row.team) : undefined, now),
+              row.position,
             ),
           ),
       liveCount,
