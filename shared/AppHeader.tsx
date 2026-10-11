@@ -32,7 +32,8 @@ interface AppHeaderProps {
   // Convex query) - omitted whenever hideLeagueControls is set.
   selectedLeagueLabel?: string | undefined;
   leagueMenuItems?: ReactNode;
-  // infinidraft's Setup/Draft Room mode-switch button; omitted elsewhere.
+  // Extra control right of the league picker - infinidraft's Setup/Draft
+  // Room mode-switch button, infinileague's Matchups button.
   modeSwitchSlot?: ReactNode;
   // App-specific overflow items, one slot per labeled group: NFL-wide
   // reference pages (Depth Charts, Injuries), super-admin tools, and
