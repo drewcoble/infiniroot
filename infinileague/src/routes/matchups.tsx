@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 // useConvexAuth from convex/react, not @convex-dev/auth/react's - see
 // __root.tsx's comment on the same import.
@@ -11,11 +11,19 @@ import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { PageContainer } from "@shared/PageContainer";
 import { AppHeader } from "../components/AppHeader";
 import { GlassMatchupHeader } from "../components/cards/GlassMatchupHeader";
+import { GlassPopover } from "../components/cards/GlassPopover";
+import {
+  MatchupSummaryDetail,
+  type MatchupDetailTeam,
+} from "../components/cards/MatchupSummaryDetail";
+import { useExpandableCard } from "../components/cards/useExpandableCard";
+import cardClasses from "../components/cards/GlassMatchupCard.module.css";
 import { useTeamRoster } from "../hooks/useTeamRoster";
 import { setStoredLeagueId } from "../lib/leagueStorage";
 import { toMatchupCardData } from "../lib/matchupCardData";
 import {
   LIVE_REFRESH_MS,
+  STARTER_SLOTS,
   matchupHeaderTeam,
   matchupResult,
   sumStarterPoints,
@@ -29,6 +37,7 @@ import {
   useNow,
   type WeekGame,
 } from "../lib/liveGames";
+import { buildShortNames } from "../lib/shortPlayerName";
 import type { LinkedSeason, StandingsRow, TeamRosterRow } from "../types/season";
 
 export const Route = createFileRoute("/matchups")({
@@ -151,7 +160,9 @@ function MatchupsPage() {
 // as the Matchup tab (routes/league/$leagueId/matchup.tsx), minus the
 // per-player cards. No manual opponent picker for a bye week here: the
 // right side just stays "Opponent —", and tapping through to the league's
-// Matchup tab offers the picker.
+// Matchup tab offers the picker. Long-press (or Space) opens
+// MatchupSummaryDetail: both teams' standing, top performers, and top
+// upcoming players.
 function LeagueMatchup({
   season,
   context,
@@ -213,8 +224,9 @@ function LeagueMatchup({
       remainingFraction(row.team ? gamesByTeam?.get(row.team) : undefined, now),
     );
   const actualFor = (row: TeamRosterRow) => row.actualPoints ?? 0;
-  const gameStateFor = (row: TeamRosterRow) =>
-    toMatchupCardData(row, gamesByTeam, now, undefined, undefined).gameState;
+  const toCardData = (row: TeamRosterRow) =>
+    toMatchupCardData(row, gamesByTeam, now, undefined, undefined);
+  const gameStateFor = (row: TeamRosterRow) => toCardData(row).gameState;
 
   const nameA = self?.name ?? "Your team";
   const nameB = standings?.find((row) => row.teamId === teamBId)?.name ?? "Opponent";
@@ -225,6 +237,33 @@ function LeagueMatchup({
   const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
 
   const error = current?.error ?? teamARoster.error ?? teamBRoster.error;
+
+  const { cardProps, anchor, expanded, pressing, close } = useExpandableCard<HTMLAnchorElement>(
+    `${season.name} matchup: ${nameA} vs. ${teamBId !== null ? nameB : "no opponent"}`,
+    { asLink: true },
+  );
+  const titleId = useId();
+  const starters = (rows: TeamRosterRow[] | undefined) =>
+    (rows ?? [])
+      .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
+      .map(toCardData);
+  const detailTeams: MatchupDetailTeam[] = [
+    { name: nameA, standing: self, starters: starters(teamARoster.rows) },
+    ...(teamBId !== null
+      ? [
+          {
+            name: nameB,
+            standing: standings?.find((row) => row.teamId === teamBId),
+            starters: starters(teamBRoster.rows),
+          },
+        ]
+      : []),
+  ];
+  const shortName = buildShortNames(
+    [...(teamARoster.rows ?? []), ...(teamBRoster.rows ?? [])].flatMap((row) =>
+      row.name ? [row.name] : [],
+    ),
+  );
 
   return (
     <Stack gap={6}>
@@ -239,7 +278,18 @@ function LeagueMatchup({
         <Link
           to="/league/$leagueId/matchup"
           params={{ leagueId: season._id }}
-          onClick={onOpen}
+          {...cardProps}
+          onClick={(event) => {
+            cardProps.onClick(event);
+            if (!event.defaultPrevented) onOpen();
+          }}
+          className={[
+            cardClasses.pressable,
+            pressing && cardClasses.pressing,
+            expanded && cardClasses.hidden,
+          ]
+            .filter(Boolean)
+            .join(" ")}
           style={{ display: "block", color: "inherit", textDecoration: "none" }}
         >
           <GlassMatchupHeader
@@ -263,6 +313,18 @@ function LeagueMatchup({
             }
           />
         </Link>
+      )}
+      {anchor && (
+        <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
+          <MatchupSummaryDetail
+            title={season.name}
+            titleId={titleId}
+            subtitle={`Week ${week}`}
+            teams={detailTeams}
+            shortName={shortName}
+            onClose={close}
+          />
+        </GlassPopover>
       )}
       {error && (
         <Text size="xs" c="red">

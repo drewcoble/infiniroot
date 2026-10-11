@@ -1,0 +1,65 @@
+/* The Matchups page's long-press detail (MatchupSummaryDetail.tsx) - only
+   what GlassMatchupCard.module.css's stat panels don't already cover. */
+
+/* Team names as the stats table's column headers: cap each column so a
+   long name truncates instead of widening the table past the popover. */
+.teamTable thead th {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* One panel per player list, a column per team with a hairline between. */
+.columns {
+  display: grid;
+  overflow: hidden;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.column + .column {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.player {
+  padding: 7px 10px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.player + .player {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.playerName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.playerName .playerNameText {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Position badge a size down from the cards' own, to fit two columns. */
+.playerName > :first-child {
+  flex-shrink: 0;
+  height: 17px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.playerDetail {
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
