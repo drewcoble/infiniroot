@@ -8,14 +8,17 @@ type WeekInjury = { fpid: number; status: string; statusShort: string };
 // what getTeamRosterForWeek attaches to its rows, so the Matchup tab shows
 // the designation that applied to the week being viewed rather than
 // today's:
-// - A week whose game has kicked off (past weeks, or the current week once
-//   that player's team has played): the status as of kickoff, from the
-//   injurySnapshots change log - the latest row recorded at or before
-//   kickoff ("cleared" = healthy). A team on bye uses the week's last
-//   kickoff instead. Snapshots only exist from when that table was
-//   introduced, so an injury that predates it and never changed reads as
-//   healthy for those early weeks.
-// - The current week before that player's game: the live injuries table.
+// - Past weeks: the status as of kickoff, from the injurySnapshots change
+//   log - the latest row recorded at or before kickoff ("cleared" =
+//   healthy). A team on bye uses the week's last kickoff instead. Snapshots
+//   only exist from when that table was introduced, so an injury that
+//   predates it and never changed reads as healthy for those early weeks.
+// - The current week: the live injuries table, even once that player's
+//   game has kicked off - an in-game injury shows up as it's reported, and
+//   a pregame tag Sleeper clears for an active player drops off. The
+//   pregame designation isn't lost: injurySnapshots is append-only, so this
+//   week reads as of kickoff here (and in gameLog.ts's history) once it's
+//   past.
 // - Future weeks: only IR carries forward - a Questionable/Out tag
 //   describes this week's game, not next month's.
 // `team` is each player's NFL team (Sleeper codes, as on players.team).
@@ -36,10 +39,10 @@ export const getInjuriesForWeek = internalQuery({
         .withIndex("by_fpid", (q) => q.eq("fpid", fpid))
         .first();
 
-    if (viewedWeek > currentWeek) {
+    if (viewedWeek >= currentWeek) {
       const rows = await Promise.all(args.players.map((player) => currentInjuryFor(player.fpid)));
       return rows.flatMap((row) =>
-        row && row.statusShort === "IR"
+        row && (viewedWeek === currentWeek || row.statusShort === "IR")
           ? [{ fpid: row.fpid, status: row.status, statusShort: row.statusShort }]
           : [],
       );
@@ -55,15 +58,10 @@ export const getInjuriesForWeek = internalQuery({
       kickoffByTeam.set(normalizeNflTeam(game.awayTeam), game.kickoffAt);
     }
     const lastKickoff = games.length > 0 ? Math.max(...games.map((game) => game.kickoffAt)) : undefined;
-    const now = Date.now();
 
     const results = await Promise.all(
       args.players.map(async (player): Promise<WeekInjury | null> => {
         const cutoff = (player.team ? kickoffByTeam.get(player.team) : undefined) ?? lastKickoff;
-        if (viewedWeek === currentWeek && (cutoff === undefined || cutoff > now)) {
-          const row = await currentInjuryFor(player.fpid);
-          return row ? { fpid: row.fpid, status: row.status, statusShort: row.statusShort } : null;
-        }
         if (cutoff === undefined) return null;
 
         const snapshots = await ctx.db

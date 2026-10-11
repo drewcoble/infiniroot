@@ -391,9 +391,9 @@ export const getTeamRosterForWeek = action({
       ctx.runQuery(api.projections.getAllProjections, { week: args.week }),
     ]);
 
-    // The designation for the week being viewed, not today's - see
-    // weekInjuries.ts (status at kickoff for played weeks, only IR carried
-    // into future weeks).
+    // The designation for the week being viewed - see weekInjuries.ts
+    // (status at kickoff for past weeks, live for the current week, only IR
+    // carried into future weeks).
     const weekInjuries = await ctx.runQuery(
       internal.infinileague.season.weekInjuries.getInjuriesForWeek,
       {
