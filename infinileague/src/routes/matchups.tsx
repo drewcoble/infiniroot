@@ -18,6 +18,7 @@ import {
 } from "../components/cards/MatchupSummaryDetail";
 import { useExpandableCard } from "../components/cards/useExpandableCard";
 import cardClasses from "../components/cards/GlassMatchupCard.module.css";
+import detailClasses from "../components/cards/MatchupSummaryDetail.module.css";
 import { useTeamRoster } from "../hooks/useTeamRoster";
 import { setStoredLeagueId } from "../lib/leagueStorage";
 import { toMatchupCardData } from "../lib/matchupCardData";
@@ -284,6 +285,7 @@ function LeagueMatchup({
             if (!event.defaultPrevented) onOpen();
           }}
           className={[
+            detailClasses.cardLink,
             cardClasses.pressable,
             pressing && cardClasses.pressing,
             expanded && cardClasses.hidden,

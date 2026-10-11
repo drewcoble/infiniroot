@@ -63,3 +63,21 @@
   margin-top: 2px;
   font-variant-numeric: tabular-nums;
 }
+
+/* The Matchups page's link around each score header is what takes focus
+   (long-press closes back onto it), not the .card inside - so the card
+   ring rule in GlassMatchupCard.module.css doesn't reach it. Same policy:
+   no ring on touch, and on desktop the card's own ring rather than the
+   browser's outline around the link. */
+.cardLink {
+  outline: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cardLink:focus-visible > * {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.9),
+      0 0 0 5px rgba(96, 165, 250, 0.9),
+      0 6px 20px rgba(0, 0, 0, 0.22);
+  }
+}
