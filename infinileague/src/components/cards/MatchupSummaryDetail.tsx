@@ -18,6 +18,13 @@ export interface MatchupDetailTeam {
 // How many players each list shows per team.
 const TOP_COUNT = 3;
 
+// Every starter whose game is underway right now, most points first.
+function liveNow(starters: GlassMatchupCardData[]): GlassMatchupCardData[] {
+  return starters
+    .filter((card) => card.gameState === "live")
+    .sort((a, b) => (b.actualPoints ?? 0) - (a.actualPoints ?? 0));
+}
+
 // Starters with the most points this week, among those who've already met
 // or beaten their projection - the players carrying the week so far.
 function topPerformers(starters: GlassMatchupCardData[]): GlassMatchupCardData[] {
@@ -138,7 +145,8 @@ function PlayerSection({
 }
 
 // The Matchups page's long-press detail (routes/matchups.tsx): both teams'
-// standing in the league, then this week's top performers and the best
+// standing in the league, then (while any of their games are on) every
+// starter playing right now, this week's top performers and the best
 // players still to play on each side. `teams` is one team on a bye week
 // (no opponent), otherwise [yours, opponent's] - same sides as the header.
 export function MatchupSummaryDetail({
@@ -174,6 +182,18 @@ export function MatchupSummaryDetail({
 
       <div className={`${classes.statGroups} ${detailClasses.teamTable}`}>
         <StatGroups groups={[teamStats(teams)]} />
+        {teams.some((team) => liveNow(team.starters).length > 0) && (
+          <PlayerSection
+            label="Live now"
+            teams={teams}
+            pick={liveNow}
+            detail={(card) =>
+              [`${formatProj(card.actualPoints)} pts`, card.status].filter(Boolean).join(" · ")
+            }
+            shortName={shortName}
+            empty="None playing"
+          />
+        )}
         <PlayerSection
           label="Top performers"
           teams={teams}
