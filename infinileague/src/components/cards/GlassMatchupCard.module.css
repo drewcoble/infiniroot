@@ -746,15 +746,38 @@
   overflow-wrap: anywhere;
 }
 
-/* The standings rank badge leading a header team name (GlassMatchupHeader)
-   - inline in the name's text, so a long name wraps under it. A touch
-   shorter than other pills so the first line isn't taller than the second.
-   On the baseline its center sits ~3.5px up, a little under the middle of
-   the name's capitals at 14px - raised 1px to center on the first line. */
+/* A header team's rank badge and name (GlassMatchupHeader): one centered
+   row while both fit, otherwise the name wraps to its own line under the
+   badge - a flex line break, so it's decided by the name's full one-line
+   width, and on that line the name can use the whole column (and wrap
+   within it) instead of squeezing beside the badge. Bottom-aligned in its
+   row like a bare name; right-aligned on the right-hand team. */
+.headerTeamTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 3px;
+  max-width: 100%;
+  min-width: 0;
+  align-self: end;
+}
+
+.headerTeamRight .headerTeamTitle {
+  justify-content: flex-end;
+}
+
+/* Centered on the badge - .headerTeamName's own align-self: end is for the
+   team column's grid, and here would sit it low beside the badge. */
+.headerTeamTitle > .headerTeamName {
+  min-width: 0;
+  align-self: center;
+}
+
+/* A touch shorter than other pills, to sit level with the 14px name. */
 .headerRank {
+  flex-shrink: 0;
   height: 18px;
-  margin-right: 6px;
-  vertical-align: 1px;
 }
 
 .headerTotal {
