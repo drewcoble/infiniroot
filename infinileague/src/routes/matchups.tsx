@@ -226,8 +226,25 @@ function LeagueMatchup({
       row.position,
     );
   const actualFor = (row: TeamRosterRow) => row.actualPoints ?? 0;
+  // This week's actual position rank per player - the detail's top
+  // performers show it on their badges ("QB4"), same as the Matchup tab's
+  // cards.
+  const weekRanks = useQuery(
+    api.infinileague.season.matchup.getWeekPositionRanks,
+    isAuthenticated ? { seasonId, week } : "skip",
+  );
+  const weekRankByFpid = useMemo(
+    () => new Map((weekRanks ?? []).map((entry) => [entry.fpid, entry.rank])),
+    [weekRanks],
+  );
   const toCardData = (row: TeamRosterRow) =>
-    toMatchupCardData(row, gamesByTeam, now, undefined, undefined);
+    toMatchupCardData(
+      row,
+      gamesByTeam,
+      now,
+      undefined,
+      row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
+    );
   const gameStateFor = (row: TeamRosterRow) => toCardData(row).gameState;
 
   const nameA = self?.name ?? "Your team";

@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { positionColorOrDefault } from "@shared/positionColors";
 import type { StandingsRow } from "../../types/season";
-import { formatProj, pillStyle, type GlassMatchupCardData } from "./cardShared";
+import { formatProj, pillStyle, positionBadge, type GlassMatchupCardData } from "./cardShared";
 import { StatGroups, type StatGroup } from "./StatGroups";
 import classes from "./GlassMatchupCard.module.css";
 import detailClasses from "./MatchupSummaryDetail.module.css";
@@ -94,7 +94,7 @@ function PlayerColumn({
         <div key={card.fpid ?? card.name} className={detailClasses.player}>
           <div className={detailClasses.playerName}>
             <span className={classes.pill} style={pillStyle(positionColorOrDefault(card.position))}>
-              {card.position}
+              {positionBadge(card)}
             </span>
             <span className={detailClasses.playerNameText}>{shortName(card.name)}</span>
           </div>
