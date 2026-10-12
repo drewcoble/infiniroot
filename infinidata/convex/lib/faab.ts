@@ -10,6 +10,7 @@ import {
   gatherPlayerForms,
   type ValuedPlayer,
 } from "./playerValue";
+import { loadSeasonRosVorRows } from "./leagueShape";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -74,18 +75,16 @@ interface PlayerValueEntry {
 // momentum/injury-boost value for every rosterable player already, so
 // reading it here avoids redoing convex/lib/playerValue.ts's live
 // gather-forms/injury-boost work (the expensive O(positions * weeks) reads)
-// on every single FAAB query. Returns null on a genuine cache miss (empty
-// for this season/week - a brand-new league before the next cron cycle) so
+// on every single FAAB query. Returns null on a genuine cache miss (no
+// board for this season's shape/week - a league with brand-new settings
+// before rosVor.ts's ensureSeasonRosVor or the next cron cycle fills it) so
 // the caller can fall back to computing live, same convention convex/
 // draftValues.ts's getRealDraftValues already uses for its own cache.
 async function loadCachedPlayerValues(
   ctx: QueryCtx,
-  args: { seasonId: Id<"seasons">; week: string },
+  args: { season: Doc<"seasons">; week: string },
 ): Promise<Map<number, PlayerValueEntry> | null> {
-  const rows = await ctx.db
-    .query("rosVorSnapshots")
-    .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
-    .collect();
+  const rows = await loadSeasonRosVorRows(ctx, args.season, args.week);
   if (rows.length === 0) return null;
 
   const values = new Map<number, PlayerValueEntry>();
@@ -376,7 +375,7 @@ export async function computeFaabSuggestions(
   }
 
   const playerValues =
-    (await loadCachedPlayerValues(ctx, { seasonId: args.seasonId, week: nflState.week })) ??
+    (await loadCachedPlayerValues(ctx, { season: settings, week: nflState.week })) ??
     (await computeLivePlayerValues(ctx, {
       settings,
       activePositions,

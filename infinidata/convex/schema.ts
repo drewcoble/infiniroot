@@ -7,6 +7,7 @@ import { injuryAssessmentValidator } from "./jev/validators";
 import { liveGameValidator } from "./lib/liveGames";
 import { draftTypeValidator } from "./draftType";
 import { leagueTypeValidator } from "./leagueType";
+import { leagueShapeFieldsValidator } from "./lib/leagueShape";
 
 // Shared by seasons/drafts below.
 const rosterSlotsValidator = v.object({
@@ -100,6 +101,91 @@ const keeperRulesValidator = v.object({
   // maxConsecutiveYears.
   trackConsecutiveYears: v.optional(v.boolean()),
 });
+
+// Shared by rosVorShapeSnapshots and the LEGACY rosVorSnapshots below.
+// One row per (shape, week, player) - a full weekly history of every
+// rosterable player's value, rostered or free agent (unlike faabValues,
+// which only ever surfaces free agents). Upserted daily by convex/rosVor.ts's
+// refreshRosVor, keyed by week so a same-week rerun refreshes that week's
+// numbers in place rather than piling up duplicates, and a new row only
+// appears once the NFL week actually advances - "weekly snapshots" for
+// free out of a daily cron, the same trick powerRankingSnapshots uses.
+// Every past week's row stays (never deleted/overwritten across weeks),
+// so this doubles as the full-season history next season's draft prep
+// wants, not just a "current" cache the way draftValues is.
+const rosVorBoardFields = {
+  week: v.string(),
+  fpid: v.number(),
+  position: positionValidator,
+  // Snapshotted from players at compute time, same reasoning as
+  // projections.name/team - renders a full weekly board without an extra
+  // lookup per row.
+  name: v.string(),
+  team: v.union(v.string(), v.null()),
+  // Forward-looking: rest-of-season value (recency/volume-adjusted
+  // momentum on top of projections, see convex/lib/playerValue.ts) above
+  // this position's replacement level among the current free-agent pool -
+  // same VOR concept convex/draftValues.ts's pre-draft process uses,
+  // genuinely unclamped (can go negative) for the same reason that field
+  // is. rosRank is the display-facing int derived from it (1 = best,
+  // global across every position) - UI should show rosRank, not raw
+  // rosVor, per the product call on how this should read.
+  rosVor: v.number(),
+  rosRank: v.number(),
+  // Raw rest-of-season value (same momentum-adjusted number rosVor is
+  // computed from, injury boost included) - stored alongside rosVor so a
+  // consumer like convex/lib/faab.ts can read a ready-made per-player
+  // value straight off this cache instead of recomputing convex/lib/
+  // playerValue.ts's momentum/injury-boost machinery on every live query.
+  // Optional since rows written before this field existed predate it -
+  // convex/lib/faab.ts treats a missing value as a cache miss for that
+  // row (see its own comment).
+  rosValue: v.optional(v.number()),
+  // Injury-boost narrative, when this row's rosValue includes one (see
+  // playerValue.ts's findInjuryBoosts) - stored so a cache consumer
+  // doesn't have to redo boost detection just to explain a surprising
+  // number. v.null() rather than v.optional(): this row gets patched in
+  // place week to week (see refreshRosVor's upsert), and a boost that
+  // applied last week can legitimately stop applying this week - patch
+  // only touches keys it's given, so an *absent* key would leave a stale
+  // reason in place forever, while an explicit null always overwrites it.
+  boostReason: v.union(v.string(), v.null()),
+  // Backward-looking: this season's actual points scored so far
+  // (playerSeasonStats.totalPoints for this league's exact scoring
+  // combo) above the same free-agent-pool replacement level, computed
+  // off actual totals instead of rosValue - "who has actually delivered
+  // value this season," independent of projections entirely. Same
+  // display convention as rosVor/rosRank above.
+  actualVor: v.number(),
+  actualRank: v.number(),
+  // Display-facing per-game rates, computed once at write time rather
+  // than derived later from rosValue/actualVor - remainingWeeks and
+  // gamesPlayed are both specific to the week this row was computed for,
+  // so dividing by "the current week's" values would be wrong for every
+  // past week's row once the season moves on. Optional since rows
+  // written before these fields existed predate them.
+  rosPpg: v.optional(v.number()),
+  actualPpg: v.optional(v.number()),
+  // Forward-looking, but scoped to just THIS week's projection (momentum-
+  // adjusted, no remainingWeeks multiplier) instead of rosVor's full
+  // rest-of-season sum - "who's the best play this week specifically,"
+  // distinct from both rosVor (rest of season) and actualVor (backward,
+  // season-to-date). Replacement level is computed off this same
+  // single-week pool, so weekVor isn't just rosVor/remainingWeeks - a
+  // player can rank differently week-to-week vs. their ROS rank as
+  // matchups/roles shift. Optional since rows written before this field
+  // existed predate it.
+  weekVor: v.optional(v.number()),
+  weekRank: v.optional(v.number()),
+  // The plain scoring-config projection (no momentum adjustment) -
+  // weekVor/weekRank above are still momentum-adjusted for ranking
+  // quality, but this is deliberately the same number convex/
+  // infinileague/season/teamRoster.ts's projectedPoints shows for this
+  // player/week, so the Players tab's "This Week" view and My Team never
+  // disagree on what a player's projected for.
+  weekPpg: v.optional(v.number()),
+  computedAt: v.number(),
+};
 
 export default defineSchema({
   ...authTables,
@@ -1231,92 +1317,46 @@ export default defineSchema({
     computedAt: v.number(),
   }).index("by_season_week", ["seasonId", "week"]),
 
-  // One row per (season, week, player) - a full weekly history of every
-  // rosterable player's value, rostered or free agent (unlike faabValues,
-  // which only ever surfaces free agents). Upserted daily by convex/rosVor.ts's
-  // refreshRosVor, keyed by week so a same-week rerun refreshes that week's
-  // numbers in place rather than piling up duplicates, and a new row only
-  // appears once the NFL week actually advances - "weekly snapshots" for
-  // free out of a daily cron, same trick powerRankingSnapshots above uses.
-  // Every past week's row stays (never deleted/overwritten across weeks),
-  // so this doubles as the full-season history next season's draft prep
-  // wants, not just a "current" cache the way draftValues is.
+  // LEGACY - superseded by rosVorShapeSnapshots below (one board per
+  // league shape instead of per season); nothing reads or writes this any
+  // more. Kept defined until rosVor.backfillRosVorShapeSnapshots has copied
+  // it over and rosVor.clearLegacyRosVorSnapshots has emptied it, then this
+  // definition (and leagues.ts's purgeSeasonData batch for it) can go.
   rosVorSnapshots: defineTable({
     seasonId: v.id("seasons"),
-    week: v.string(),
-    fpid: v.number(),
-    position: positionValidator,
-    // Snapshotted from players at compute time, same reasoning as
-    // projections.name/team - renders a full weekly board without an extra
-    // lookup per row.
-    name: v.string(),
-    team: v.union(v.string(), v.null()),
-    // Forward-looking: rest-of-season value (recency/volume-adjusted
-    // momentum on top of projections, see convex/lib/playerValue.ts) above
-    // this position's replacement level among the current free-agent pool -
-    // same VOR concept convex/draftValues.ts's pre-draft process uses,
-    // genuinely unclamped (can go negative) for the same reason that field
-    // is. rosRank is the display-facing int derived from it (1 = best,
-    // global across every position) - UI should show rosRank, not raw
-    // rosVor, per the product call on how this should read.
-    rosVor: v.number(),
-    rosRank: v.number(),
-    // Raw rest-of-season value (same momentum-adjusted number rosVor is
-    // computed from, injury boost included) - stored alongside rosVor so a
-    // consumer like convex/lib/faab.ts can read a ready-made per-player
-    // value straight off this cache instead of recomputing convex/lib/
-    // playerValue.ts's momentum/injury-boost machinery on every live query.
-    // Optional since rows written before this field existed predate it -
-    // convex/lib/faab.ts treats a missing value as a cache miss for that
-    // row (see its own comment).
-    rosValue: v.optional(v.number()),
-    // Injury-boost narrative, when this row's rosValue includes one (see
-    // playerValue.ts's findInjuryBoosts) - stored so a cache consumer
-    // doesn't have to redo boost detection just to explain a surprising
-    // number. v.null() rather than v.optional(): this row gets patched in
-    // place week to week (see refreshRosVor's upsert), and a boost that
-    // applied last week can legitimately stop applying this week - patch
-    // only touches keys it's given, so an *absent* key would leave a stale
-    // reason in place forever, while an explicit null always overwrites it.
-    boostReason: v.union(v.string(), v.null()),
-    // Backward-looking: this season's actual points scored so far
-    // (playerSeasonStats.totalPoints for this league's exact scoring
-    // combo) above the same free-agent-pool replacement level, computed
-    // off actual totals instead of rosValue - "who has actually delivered
-    // value this season," independent of projections entirely. Same
-    // display convention as rosVor/rosRank above.
-    actualVor: v.number(),
-    actualRank: v.number(),
-    // Display-facing per-game rates, computed once at write time rather
-    // than derived later from rosValue/actualVor - remainingWeeks and
-    // gamesPlayed are both specific to the week this row was computed for,
-    // so dividing by "the current week's" values would be wrong for every
-    // past week's row once the season moves on. Optional since rows
-    // written before these fields existed predate them.
-    rosPpg: v.optional(v.number()),
-    actualPpg: v.optional(v.number()),
-    // Forward-looking, but scoped to just THIS week's projection (momentum-
-    // adjusted, no remainingWeeks multiplier) instead of rosVor's full
-    // rest-of-season sum - "who's the best play this week specifically,"
-    // distinct from both rosVor (rest of season) and actualVor (backward,
-    // season-to-date). Replacement level is computed off this same
-    // single-week pool, so weekVor isn't just rosVor/remainingWeeks - a
-    // player can rank differently week-to-week vs. their ROS rank as
-    // matchups/roles shift. Optional since rows written before this field
-    // existed predate it.
-    weekVor: v.optional(v.number()),
-    weekRank: v.optional(v.number()),
-    // The plain scoring-config projection (no momentum adjustment) -
-    // weekVor/weekRank above are still momentum-adjusted for ranking
-    // quality, but this is deliberately the same number convex/
-    // infinileague/season/teamRoster.ts's projectedPoints shows for this
-    // player/week, so the Players tab's "This Week" view and My Team never
-    // disagree on what a player's projected for.
-    weekPpg: v.optional(v.number()),
-    computedAt: v.number(),
+    ...rosVorBoardFields,
   })
     .index("by_season_week", ["seasonId", "week"])
     .index("by_season_fpid", ["seasonId", "fpid"]),
+
+  // One row per distinct combination of the season settings the rest-of-
+  // season board is computed from (see lib/leagueShape.ts) - every league
+  // with the same settings shares one shape and one board. Not tied to any
+  // season: created on demand by the first refresh that needs it, and never
+  // deleted, since its rosVorShapeSnapshots history may still back a league
+  // that has since changed settings or been deleted. A shape no current
+  // season uses simply stops being refreshed (the refresh walks seasons).
+  leagueShapes: defineTable({
+    // lib/leagueShape.ts's leagueShapeKey - the deterministic lookup string.
+    key: v.string(),
+    ...leagueShapeFieldsValidator.fields,
+    createdAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  // The rest-of-season board, one row per (shape, week, player) - see
+  // rosVorBoardFields above for the row itself. Read through a season's
+  // current shape (lib/leagueShape.ts's loadSeasonRosVorRows), so a league
+  // whose settings match an existing shape has a board the moment it's
+  // created.
+  rosVorShapeSnapshots: defineTable({
+    shapeId: v.id("leagueShapes"),
+    ...rosVorBoardFields,
+  })
+    // Board reads (shapeId + week prefix) and the backfill's per-row
+    // existence check (full key).
+    .index("by_shape_week_fpid", ["shapeId", "week", "fpid"])
+    // One player's weekly history (getPlayerRosVorHistory).
+    .index("by_shape_fpid", ["shapeId", "fpid"]),
 
   // LEGACY - superseded by rosProjTotalSets below; nothing reads or
   // writes this any more. Kept defined only until its rows are cleared
@@ -1332,7 +1372,7 @@ export default defineSchema({
   // fpid/week), so weeksIncluded is bye-aware with no special-casing needed.
   // Entirely rebuilt (delete+reinsert) on each refresh, same as valueGaps -
   // there's no "history" concept here, only "current as of the last cron
-  // run," unlike rosVorSnapshots above which keeps one.
+  // run," unlike rosVorShapeSnapshots above which keeps one.
   rosProjTotals: defineTable({
     fpid: v.number(),
     position: positionValidator,

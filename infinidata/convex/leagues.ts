@@ -23,6 +23,7 @@ import {
   refreshDraftValuesForLeague,
 } from "./draftValues";
 import { ensureValueGapsCached } from "./valueGaps";
+import { scheduleEnsureSeasonRosVor } from "./rosVor";
 import {
   requireSeasonOwner,
   requireRealDraft,
@@ -601,6 +602,9 @@ export const updateSeason = mutation({
     // flex/superflexPositions) feeds getDraftValues' $ engine - see
     // convex/draftValues.ts.
     await invalidateDraftValues(ctx, draft._id);
+    // These fields are also the league's shape (lib/leagueShape.ts), so
+    // its rest-of-season board may need building for the new shape.
+    await scheduleEnsureSeasonRosVor(ctx, id);
     return await ctx.db.get(id);
   },
 });

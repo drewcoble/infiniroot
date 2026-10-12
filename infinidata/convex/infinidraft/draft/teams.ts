@@ -7,6 +7,7 @@ import {
 } from "../../lib/access";
 import { insertSeasonTeams } from "../../lib/seasonTeams";
 import { invalidateDraftValues } from "../../draftValues";
+import { scheduleEnsureSeasonRosVor } from "../../rosVor";
 import { resolveDraftType } from "../../draftType";
 
 export const listSeasonTeams = query({
@@ -155,6 +156,8 @@ export const addSeasonTeam = mutation({
     // (see convex/draftValues.ts), same invalidation removeSeasonTeam
     // triggers for the opposite direction.
     await invalidateDraftValues(ctx, draft._id);
+    // teamCount is part of the league's shape (lib/leagueShape.ts).
+    await scheduleEnsureSeasonRosVor(ctx, season._id);
     return teamId;
   },
 });
@@ -241,6 +244,8 @@ export const removeSeasonTeam = mutation({
     // pool size (see convex/draftValues.ts), same invalidation a
     // league-settings edit already triggers.
     await invalidateDraftValues(ctx, draft._id);
+    // teamCount is part of the league's shape (lib/leagueShape.ts).
+    await scheduleEnsureSeasonRosVor(ctx, season._id);
     return null;
   },
 });

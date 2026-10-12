@@ -17,6 +17,7 @@ import { syncDraftStatus } from "../infinidraft/draft/status";
 import { upsertSyncStatus } from "../infinidraft/draft/draftSyncShared";
 import { expandRosterSlots } from "../lib/rosterSlots";
 import { invalidateDraftValues } from "../draftValues";
+import { scheduleEnsureSeasonRosVor } from "../rosVor";
 import { positionValidator } from "../positions";
 import { scoringValidator, teScoringValidator } from "../scoring";
 import {
@@ -341,6 +342,9 @@ export const applySleeperSettingsResync = internalMutation({
       sixPointPassTds: args.sixPointPassTds,
     });
     await invalidateDraftValues(ctx, args.draftId);
+    // These fields are also the league's shape (lib/leagueShape.ts), so
+    // its rest-of-season board may need building for the new shape.
+    await scheduleEnsureSeasonRosVor(ctx, args.seasonId);
     await syncDraftStatus(ctx, args.draftId);
     return { changed: true };
   },

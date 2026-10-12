@@ -17,6 +17,7 @@ import { syncDraftStatus } from "../draft/status";
 import { upsertSyncStatus } from "../draft/draftSyncShared";
 import { expandRosterSlots } from "../../lib/rosterSlots";
 import { invalidateDraftValues } from "../../draftValues";
+import { scheduleEnsureSeasonRosVor } from "../../rosVor";
 import { positionValidator } from "../../positions";
 import { scoringValidator, teScoringValidator } from "../../scoring";
 import { leagueTypeValidator, type LeagueType } from "../../leagueType";
@@ -315,6 +316,9 @@ export const applyYahooSettingsResync = internalMutation({
       leagueType: args.leagueType,
     });
     await invalidateDraftValues(ctx, args.draftId);
+    // These fields are also the league's shape (lib/leagueShape.ts), so
+    // its rest-of-season board may need building for the new shape.
+    await scheduleEnsureSeasonRosVor(ctx, args.seasonId);
     await syncDraftStatus(ctx, args.draftId);
     return { changed: true };
   },
