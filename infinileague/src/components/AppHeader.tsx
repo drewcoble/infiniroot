@@ -10,13 +10,13 @@ import {
   LayoutGrid,
   Plus,
   ShieldCheck,
-  Ticket,
 } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader as SharedAppHeader } from "@shared/AppHeader";
 import { glassClasses } from "@shared/glassClasses";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { setStoredLeagueId } from "../lib/leagueStorage";
+import { TicketStack } from "./icons/TicketStack";
 import type { LinkedSeason } from "../types/season";
 
 // Thin infinileague-specific wrapper around @shared/AppHeader: backed by
@@ -67,7 +67,7 @@ export function AppHeader() {
           title="Matchups"
           style={{ marginRight: "auto" }}
         >
-          <Ticket size={18} strokeWidth={2.5} />
+          <TicketStack size={18} strokeWidth={2.5} />
         </Link>
       }
       leagueMenuItems={
