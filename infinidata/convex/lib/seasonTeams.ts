@@ -31,6 +31,8 @@ export async function insertSeasonTeams(
       | undefined;
     selfYahooTeamKey?: string | undefined;
     opponentYahooTeamKeys?: (string | null)[] | undefined;
+    selfEspnTeamId?: string | undefined;
+    opponentEspnTeamIds?: (string | null)[] | undefined;
   },
 ): Promise<Id<"seasonTeams">> {
   const now = Date.now();
@@ -42,11 +44,13 @@ export async function insertSeasonTeams(
     createdAt: now,
     ...(args.selfSleeperLink ?? {}),
     ...(args.selfYahooTeamKey ? { yahooTeamKey: args.selfYahooTeamKey } : {}),
+    ...(args.selfEspnTeamId ? { espnTeamId: args.selfEspnTeamId } : {}),
   });
   const teamIds = [selfId];
   for (const [index, name] of args.opponentNames.entries()) {
     const link = args.opponentSleeperLinks?.[index];
     const yahooTeamKey = args.opponentYahooTeamKeys?.[index];
+    const espnTeamId = args.opponentEspnTeamIds?.[index];
     teamIds.push(
       await ctx.db.insert("seasonTeams", {
         seasonId: args.seasonId,
@@ -56,6 +60,7 @@ export async function insertSeasonTeams(
         createdAt: now,
         ...(link ?? {}),
         ...(yahooTeamKey ? { yahooTeamKey } : {}),
+        ...(espnTeamId ? { espnTeamId } : {}),
       }),
     );
   }

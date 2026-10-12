@@ -40,6 +40,7 @@ import { SharingPanel } from "./components/SharingPanel";
 import { LeagueCreateChoice } from "./components/LeagueCreateChoice";
 import { LeagueImportWizard } from "./components/LeagueImportWizard";
 import { YahooLeagueImportWizard } from "./components/YahooLeagueImportWizard";
+import { EspnLeagueImportWizard } from "./components/EspnLeagueImportWizard";
 import { LiveSyncCard } from "./components/LiveSyncCard";
 import { UpgradePrompt } from "../../components/UpgradePrompt";
 import { LockedNotice } from "../../components/LockedNotice";
@@ -105,11 +106,11 @@ export function LeagueDetails({
 
   const [isEditing, setIsEditing] = useState(false);
   // Gates the "+ New League" flow's first screen (Custom Setup vs. Import
-  // from Sleeper/Yahoo - see LeagueCreateChoice.tsx) ahead of isEditing/
+  // from Sleeper/Yahoo/ESPN - see LeagueCreateChoice.tsx) ahead of isEditing/
   // SettingsForm taking over for the custom path. null once a choice has
   // been made or there's no creation in progress.
   const [createMode, setCreateMode] = useState<
-    "choice" | "sleeperImport" | "yahooImport" | null
+    "choice" | "sleeperImport" | "yahooImport" | "espnImport" | null
   >(null);
   const [form, setForm] = useState<LeagueSettingsFormValues>(DEFAULT_FORM);
   const [isSaving, setIsSaving] = useState(false);
@@ -481,6 +482,7 @@ export function LeagueDetails({
         }}
         onChooseSleeperImport={() => setCreateMode("sleeperImport")}
         onChooseYahooImport={() => setCreateMode("yahooImport")}
+        onChooseEspnImport={() => setCreateMode("espnImport")}
       />
     );
   }
@@ -504,6 +506,22 @@ export function LeagueDetails({
   if (createMode === "yahooImport") {
     return (
       <YahooLeagueImportWizard
+        onImported={(id) => {
+          setCreateMode(null);
+          onLeagueSaved(id);
+          onDoneCreating();
+        }}
+        onCancel={() => {
+          setCreateMode(null);
+          onDoneCreating();
+        }}
+      />
+    );
+  }
+
+  if (createMode === "espnImport") {
+    return (
+      <EspnLeagueImportWizard
         onImported={(id) => {
           setCreateMode(null);
           onLeagueSaved(id);

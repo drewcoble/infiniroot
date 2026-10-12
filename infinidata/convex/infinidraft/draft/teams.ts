@@ -68,6 +68,10 @@ export const initializeSeasonTeams = mutation({
     // Sleeper's link does (see seasonTeams.yahooTeamKey's schema comment).
     selfYahooTeamKey: v.optional(v.string()),
     opponentYahooTeamKeys: v.optional(v.array(v.union(v.string(), v.null()))),
+    // ESPN equivalent, set by the ESPN import/connect wizards (see
+    // convex/espn/league.ts's previewEspnImport) - ESPN's numeric team id.
+    selfEspnTeamId: v.optional(v.string()),
+    opponentEspnTeamIds: v.optional(v.array(v.union(v.string(), v.null()))),
   },
   handler: async (ctx, args) => {
     const { season, draft } = await requireDraftNotStarted(ctx, args.seasonId);
@@ -98,6 +102,8 @@ export const initializeSeasonTeams = mutation({
       opponentSleeperLinks: args.opponentSleeperLinks,
       selfYahooTeamKey: args.selfYahooTeamKey,
       opponentYahooTeamKeys: args.opponentYahooTeamKeys,
+      selfEspnTeamId: args.selfEspnTeamId,
+      opponentEspnTeamIds: args.opponentEspnTeamIds,
     });
   },
 });
@@ -317,6 +323,25 @@ export const setTeamYahooLink = mutation({
     await requireSeasonOwner(ctx, team.seasonId);
     await ctx.db.patch(args.teamId, {
       yahooTeamKey: args.yahooTeamKey ?? undefined,
+    });
+    return await ctx.db.get(args.teamId);
+  },
+});
+
+// ESPN equivalent of setTeamSleeperLink above.
+export const setTeamEspnLink = mutation({
+  args: {
+    teamId: v.id("seasonTeams"),
+    espnTeamId: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const team = await ctx.db.get(args.teamId);
+    if (!team) {
+      throw new Error("Team not found.");
+    }
+    await requireSeasonOwner(ctx, team.seasonId);
+    await ctx.db.patch(args.teamId, {
+      espnTeamId: args.espnTeamId ?? undefined,
     });
     return await ctx.db.get(args.teamId);
   },

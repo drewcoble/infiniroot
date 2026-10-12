@@ -2,7 +2,7 @@ import { useEffect, useId, type CSSProperties } from "react";
 import { X } from "lucide-react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
-import { pillStyle } from "./cardShared";
+import { pillStyle, rankPillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
 import { StatGroups, type StatGroup } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
@@ -32,16 +32,6 @@ export interface GlassPlayerRowData {
   // Labeled tiles for the long-press detail popover.
   // Grouped numbers for the detail popover (see StatGroups).
   stats: StatGroup[];
-}
-
-// Rank chip outside the row - glass gray, saddlebrown for your own players
-// (the app's "yours" color, as on the team cards and My Team header).
-function rankChipStyle(isOnMyTeam: boolean): CSSProperties {
-  return {
-    color: isOnMyTeam ? "color-mix(in srgb, #8b4513 15%, #fff)" : "#f8fafc",
-    fontFamily: "var(--font-numeric)",
-    "--pill-tint": isOnMyTeam ? "#8b4513" : "var(--mantine-color-gray-5)",
-  } as CSSProperties;
 }
 
 // One row of the Players board in the full-width glass card layout (see
@@ -84,7 +74,7 @@ export function GlassPlayerRow({
     <div className={classes.rosterRow}>
       <span
         className={`${classes.pill} ${classes.slotChip}`}
-        style={rankChipStyle(data.isOnMyTeam)}
+        style={rankPillStyle(data.isOnMyTeam)}
         aria-hidden
       >
         {data.rank}
@@ -161,7 +151,7 @@ export function GlassPlayerRow({
         <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
           <div className={classes.expandedHeader}>
             <div className={classes.teamCardPopoverTitle}>
-              <span className={classes.pill} style={rankChipStyle(data.isOnMyTeam)}>
+              <span className={classes.pill} style={rankPillStyle(data.isOnMyTeam)}>
                 #{data.rank}
               </span>
               <span id={titleId} className={classes.expandedName}>

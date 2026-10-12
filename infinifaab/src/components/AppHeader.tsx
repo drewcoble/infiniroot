@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Menu } from "@mantine/core";
-import { Check, Database, Import, Plus, ShieldCheck } from "lucide-react";
+import { Check, Database, Plus, ShieldCheck } from "lucide-react";
 import { AppHeader as SharedAppHeader } from "@shared/AppHeader";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { useCurrentUser } from "@shared-core/useCurrentUser";
@@ -10,7 +10,7 @@ import { useMyAuctionSeasons } from "@shared-core/useMyAuctionSeasons";
 // Thin infinifaab-specific wrapper around @shared/AppHeader: backed by
 // listMyAuctionSeasons instead of infinidraft's listSeasons so an invited
 // team member sees the seasons they've been added to, not just ones they
-// own, and its own "Connect League" footer item instead of "New League".
+// own, and its own "Add League" footer item instead of "New League".
 export function AppHeader() {
   const navigate = useNavigate();
   const { leagueId } = useParams({ strict: false });
@@ -49,15 +49,9 @@ export function AppHeader() {
           <Menu.Divider />
           <Menu.Item
             leftSection={<Plus size={16} />}
-            onClick={() => void navigate({ to: "/connect-sleeper" })}
+            onClick={() => void navigate({ to: "/add-league" })}
           >
-            Connect Sleeper League
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<Import size={16} />}
-            onClick={() => void navigate({ to: "/connect-yahoo" })}
-          >
-            Import from Yahoo
+            Add League
           </Menu.Item>
         </>
       }

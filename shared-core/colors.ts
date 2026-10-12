@@ -258,6 +258,21 @@ export const yahoo = [
   "#4e00b0",
 ] as const;
 
+// ESPN's brand red - shade 8 (~#c8102e) is the one buttons use, same as
+// yahoo.8 above.
+export const espn = [
+  "#ffe8eb",
+  "#ffd0d5",
+  "#fba0aa",
+  "#f76d7c",
+  "#f34155",
+  "#f1263c",
+  "#f0172f",
+  "#d60823",
+  "#c8102e",
+  "#a8001a",
+] as const;
+
 // Dark-mode surface retint - a very dark, desaturated forest green instead
 // of a plain blue-black ink or Mantine's neutral gray dark palette. Only
 // shades 6-9 (the ones Mantine actually uses for body/card/border/hover

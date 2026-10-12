@@ -7,22 +7,23 @@ import {
   Database,
   GalleryVerticalEnd,
   HeartPulse,
-  Import,
   LayoutGrid,
   Plus,
   ShieldCheck,
 } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader as SharedAppHeader } from "@shared/AppHeader";
+import { glassClasses } from "@shared/glassClasses";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { setStoredLeagueId } from "../lib/leagueStorage";
+import { TicketStack } from "./icons/TicketStack";
 import type { LinkedSeason } from "../types/season";
 
 // Thin infinileague-specific wrapper around @shared/AppHeader: backed by
-// listLinkedSeasons, and its own "Connect League" footer item instead of
+// listLinkedSeasons, and its own "Add League" footer item instead of
 // infinidraft's "New League" - no draft phase/status, no TV board/report
-// card/billing overflow items, no mode-switch button (none of those
-// concepts exist here).
+// card/billing overflow items (none of those concepts exist here). The
+// shared header's mode-switch slot holds the Matchups button instead.
 export function AppHeader() {
   const navigate = useNavigate();
   const { leagueId } = useParams({ strict: false });
@@ -53,6 +54,22 @@ export function AppHeader() {
       // ~10% wider than the shared default (150 / 220).
       leagueButtonWidth={{ base: 165, sm: 242 }}
       selectedLeagueLabel={selectedLeague?.name}
+      // Every league's matchup this week on one page (routes/matchups.tsx) -
+      // icon-only glass button right of the league switcher. marginRight
+      // auto keeps it beside the switcher on mobile, where the controls row
+      // spreads its pieces to the edges (see shared glass.module.css).
+      modeSwitchSlot={
+        <Link
+          to="/matchups"
+          className={glassClasses.iconButton}
+          activeProps={{ className: glassClasses.iconButtonActive }}
+          aria-label="Matchups"
+          title="Matchups"
+          style={{ marginRight: "auto" }}
+        >
+          <TicketStack size={18} strokeWidth={2.5} />
+        </Link>
+      }
       leagueMenuItems={
         <>
           {leagueGroups.map(({ latest, seasons }) => (
@@ -71,15 +88,9 @@ export function AppHeader() {
           <Menu.Divider />
           <Menu.Item
             leftSection={<Plus size={16} />}
-            onClick={() => void navigate({ to: "/connect-sleeper" })}
+            onClick={() => void navigate({ to: "/add-league" })}
           >
-            Connect Sleeper League
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<Import size={16} />}
-            onClick={() => void navigate({ to: "/connect-yahoo" })}
-          >
-            Import from Yahoo
+            Add League
           </Menu.Item>
         </>
       }

@@ -1,0 +1,124 @@
+/* The Matchups page's long-press detail (MatchupSummaryDetail.tsx) - only
+   what GlassMatchupCard.module.css's stat panels don't already cover. */
+
+/* One panel per section (standings, each player list), a column per team
+   with a hairline between. */
+.columns {
+  display: grid;
+  overflow: hidden;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.column + .column {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.player {
+  padding: 7px 10px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.player + .player {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* A team's standing column: rank badge and name, then record and PPG. */
+.team {
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.teamTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.teamTitle > .teamName {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teamTitle > :first-child:not(.teamName) {
+  flex-shrink: 0;
+}
+
+.teamRecord {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.25;
+  color: rgba(248, 250, 252, 0.68);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+/* A player row in the trade summary's layout (GlassTradeHeader's
+   tradeHeaderEntry): position badge in its own column spanning both rows,
+   name on the first row, the section's line under it. Composed from those
+   classes so the two stay in step. */
+.playerGrid {
+  composes: tradeHeaderEntry from "./GlassMatchupCard.module.css";
+}
+
+.badge {
+  composes: tradeHeaderBadge from "./GlassMatchupCard.module.css";
+}
+
+/* Keeps "+N more" lined up under the names, like the trade summary's
+   2-for-1 row. */
+.badgeSpace {
+  composes: tradeHeaderBadgeSpace from "./GlassMatchupCard.module.css";
+}
+
+.playerNameText {
+  composes: tradeHeaderPlayerName from "./GlassMatchupCard.module.css";
+}
+
+.playerDetail {
+  margin-top: 2px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The dot-matrix scores and clocks on a player's line, tightened: Lumen is
+   monospace, so at this small size its digits, "." and ":" sit in wide
+   cells and the numbers read loose (the header's decimals pull in the same
+   way - see .scoreDecimals). Two classes so it beats the 0 that
+   .playerPoints / .liveClock set. */
+.playerDetail .dotText {
+  letter-spacing: -0.08em;
+}
+
+/* The Matchups page's link around each score header is what takes focus
+   (long-press closes back onto it), not the .card inside - so the card
+   ring rule in GlassMatchupCard.module.css doesn't reach it. Same policy:
+   no ring on touch, and on desktop the card's own ring rather than the
+   browser's outline around the link. */
+.cardLink {
+  outline: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cardLink:focus-visible > * {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.9),
+      0 0 0 5px rgba(96, 165, 250, 0.9),
+      0 6px 20px rgba(0, 0, 0, 0.22);
+  }
+}

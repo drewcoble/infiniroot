@@ -39,11 +39,22 @@ export function isAnyGameLive(games: WeekGame[] | undefined, now: number): boole
 
 // Points so far plus the not-yet-played share of the pregame projection -
 // equals the projection before kickoff and the actual score once final.
+//
+// Defenses don't accumulate like that: their score starts at the league's
+// full "0 points allowed" bonus and drops as the offense they face scores,
+// and that bonus is already baked into the pregame projection - adding the
+// two would double-count it the moment the game kicks off. So a DST's live
+// projection instead slides from the projection toward its current score
+// as the game is played.
 export function liveProjection(
   projected: number | undefined,
   actual: number | undefined,
   fraction: number,
+  position: string | undefined,
 ): number {
+  if (position === "DST") {
+    return (actual ?? 0) * (1 - fraction) + (projected ?? 0) * fraction;
+  }
   return (actual ?? 0) + (projected ?? 0) * fraction;
 }
 

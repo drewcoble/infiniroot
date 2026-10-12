@@ -1,3 +1,4 @@
+import { rankPillStyle } from "./cardShared";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -10,6 +11,10 @@ export interface MatchupHeaderTeam {
   // Starters whose games are underway / not yet started.
   liveCount: number;
   toPlayCount: number;
+  // Standings rank, as a badge before the name - saddlebrown for your own
+  // team, gray otherwise (cardShared's rankPillStyle). Absent while
+  // standings load.
+  rank?: { value: number; isMine: boolean } | undefined;
 }
 
 // Each win-probability segment is tinted by who's favored rather than by
@@ -55,7 +60,19 @@ function TeamSide({
 }) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
-      <div className={classes.headerTeamName}>{team.name}</div>
+      {/* Rank badge and name on one line - a long name is truncated (see
+          .headerTeamTitle). */}
+      <div className={classes.headerTeamTitle}>
+        {team.rank && (
+          <span
+            className={`${classes.pill} ${classes.headerRank}`}
+            style={rankPillStyle(team.rank.isMine)}
+          >
+            #{team.rank.value}
+          </span>
+        )}
+        <div className={classes.headerTeamName}>{team.name}</div>
+      </div>
       <div className={classes.headerTotal}>
         <ScoreWithDecimals value={team.actualPoints} />
       </div>
@@ -129,7 +146,7 @@ export function GlassMatchupHeader({
   const pctA = Math.round((winProbA ?? 0.5) * 100);
   const pctB = 100 - pctA;
   const teamText = (team: MatchupHeaderTeam) =>
-    `${team.name} ${team.actualPoints.toFixed(2)}, projected ${team.projectedPoints.toFixed(1)}, ${countsText(team)}`;
+    `${team.rank ? `rank ${team.rank.value}, ` : ""}${team.name} ${team.actualPoints.toFixed(2)}, projected ${team.projectedPoints.toFixed(1)}, ${countsText(team)}`;
   const loaded = teamA !== "loading" && teamB !== "loading" && teamB !== null;
   const ariaLabel =
     teamA === "loading"

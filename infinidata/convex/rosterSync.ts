@@ -4,8 +4,9 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 import { isLeagueAuthorized } from "./lib/access";
 
-// Shared by both provider syncs (convex/sleeper/league.ts's syncLeagueRoster
-// and convex/infinidraft/yahoo/league.ts's syncYahooLeagueRoster), which both apps'
+// Shared by every provider sync (convex/sleeper/league.ts's syncLeagueRoster,
+// convex/infinidraft/yahoo/league.ts's syncYahooLeagueRoster and
+// convex/espn/league.ts's syncEspnLeagueRoster), which both apps'
 // season-roster-sync flows ultimately trigger - both need "confirm the
 // caller owns this season" (via its league) before touching its
 // rosterPlayers/faabSpent, and neither check has anything provider- or
@@ -42,8 +43,9 @@ export const requireOwnedSeasonForSync = internalQuery({
   },
 });
 
-// Shared write path for both provider syncs (convex/sleeper/league.ts's
-// syncLeagueRoster and convex/infinidraft/yahoo/league.ts's syncYahooLeagueRoster) -
+// Shared write path for every provider sync (convex/sleeper/league.ts's
+// syncLeagueRoster, convex/infinidraft/yahoo/league.ts's syncYahooLeagueRoster
+// and convex/espn/league.ts's syncEspnLeagueRoster) -
 // replace-all-on-sync for one team's roster. See schema.ts's rosterPlayers
 // comment for why this table (and this mutation) is provider-agnostic.
 export const replaceRosterForTeam = internalMutation({
@@ -104,8 +106,8 @@ export const replaceRosterForTeam = internalMutation({
 // Companion to replaceRosterForTeam - season-level (not per-team) waiver
 // settings, re-written on every sync rather than only at connect time (see
 // convex/sleeper/league.ts's syncLeagueRoster for why). Provider-agnostic
-// shape (just patches season fields) even though only the Sleeper sync
-// calls it today - same convention as replaceRosterForTeam.
+// shape (just patches season fields), called by every provider sync - same
+// convention as replaceRosterForTeam.
 export const updateSeasonWaiverSettings = internalMutation({
   args: {
     seasonId: v.id("seasons"),

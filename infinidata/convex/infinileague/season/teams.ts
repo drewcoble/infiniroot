@@ -31,6 +31,10 @@ export const initializeSeasonTeams = mutation({
     opponentYahooTeamKeys: v.optional(
       v.array(v.union(v.string(), v.null())),
     ),
+    // ESPN equivalent, set by the ESPN import/connect wizards (see
+    // convex/espn/league.ts's previewEspnImport) - ESPN's numeric team id.
+    selfEspnTeamId: v.optional(v.string()),
+    opponentEspnTeamIds: v.optional(v.array(v.union(v.string(), v.null()))),
   },
   handler: async (ctx, args) => {
     const { season, draft } = await requireDraftNotStarted(ctx, args.seasonId);
@@ -61,6 +65,8 @@ export const initializeSeasonTeams = mutation({
       opponentSleeperLinks: args.opponentSleeperLinks,
       selfYahooTeamKey: args.selfYahooTeamKey,
       opponentYahooTeamKeys: args.opponentYahooTeamKeys,
+      selfEspnTeamId: args.selfEspnTeamId,
+      opponentEspnTeamIds: args.opponentEspnTeamIds,
     });
   },
 });

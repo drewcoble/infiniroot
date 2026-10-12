@@ -5,15 +5,18 @@ interface LeagueCreateChoiceProps {
   onChooseCustom: () => void;
   onChooseSleeperImport: () => void;
   onChooseYahooImport: () => void;
+  onChooseEspnImport: () => void;
 }
 
 // First screen of the "+ New League" flow (see LeagueDetails.tsx) - a fork
 // between today's blank-form setup and importing settings/teams from a real
-// Sleeper or Yahoo league (see LeagueImportWizard.tsx / YahooLeagueImportWizard.tsx).
+// Sleeper, Yahoo, or ESPN league (see LeagueImportWizard.tsx /
+// YahooLeagueImportWizard.tsx / EspnLeagueImportWizard.tsx).
 export function LeagueCreateChoice({
   onChooseCustom,
   onChooseSleeperImport,
   onChooseYahooImport,
+  onChooseEspnImport,
 }: LeagueCreateChoiceProps) {
   return (
     <Stack gap="md" py="sm" maw={500}>
@@ -57,6 +60,21 @@ export function LeagueCreateChoice({
             leftSection={<Import size={16} />}
             onClick={onChooseYahooImport}
             color="yahoo.8"
+            style={{ flexShrink: 0 }}
+          >
+            Import
+          </Button>
+        </Group>
+      </Card>
+      <Card padding="md">
+        <Group justify="space-between" wrap="nowrap">
+          <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+            <Text fw={500}>Import from ESPN</Text>
+          </Stack>
+          <Button
+            leftSection={<Import size={16} />}
+            onClick={onChooseEspnImport}
+            color="espn.8"
             style={{ flexShrink: 0 }}
           >
             Import

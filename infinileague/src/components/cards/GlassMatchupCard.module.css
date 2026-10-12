@@ -746,6 +746,39 @@
   overflow-wrap: anywhere;
 }
 
+/* A header team's rank badge and name (GlassMatchupHeader) on one line,
+   centered on each other - a name too long for it is cut off with an
+   ellipsis rather than wrapping. Bottom-aligned in its row like a bare
+   name; right-aligned on the right-hand team. */
+.headerTeamTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  align-self: end;
+}
+
+.headerTeamRight .headerTeamTitle {
+  justify-content: flex-end;
+}
+
+/* One truncated line instead of .headerTeamName's two-line clamp, centered
+   on the badge (its own align-self: end is for the team column's grid). */
+.headerTeamTitle > .headerTeamName {
+  display: block;
+  min-width: 0;
+  align-self: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A touch shorter than other pills, to sit level with the 14px name. */
+.headerRank {
+  flex-shrink: 0;
+  height: 18px;
+}
+
 .headerTotal {
   margin-top: 2px;
   font-size: 30px;

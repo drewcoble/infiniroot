@@ -5,6 +5,7 @@ import { Id } from "../../_generated/dataModel";
 import { fetchSleeperJson } from "../../sleeper/league";
 import { fetchYahooOpponentTeamKey } from "../../infinidraft/yahoo/league";
 import { withYahooToken } from "../../infinidraft/yahoo/oauth";
+import { fetchEspnOpponentTeamId } from "../../espn/league";
 import type { SleeperMatchupEntry } from "./teamRoster";
 import { requireSeasonOwner } from "../../lib/access";
 import { loadWeekPoints } from "../../lib/weekPoints";
@@ -13,7 +14,8 @@ import { loadWeekPoints } from "../../lib/weekPoints";
 // matchup_id (Sleeper groups exactly two roster_ids under the same
 // matchup_id per week - documented behavior); Yahoo-linked teams resolve it
 // from the league's scoreboard resource (see fetchYahooOpponentTeamKey,
-// NOT confirmed against a live response - see YAHOO.md). Unlinked teams, or
+// NOT confirmed against a live response - see YAHOO.md); ESPN-linked teams
+// from the league's schedule (see fetchEspnOpponentTeamId). Unlinked teams, or
 // either provider's genuine bye week (an odd team count leaves one roster
 // with no matchup some weeks), just get opponentTeamId: null - the Matchup
 // tab falls back to letting the viewer pick an opponent manually then.
@@ -60,6 +62,23 @@ export const getOpponentForWeek = action({
         seasonId: team.seasonId,
       });
       const opponentTeam = teams.find((t) => t.yahooTeamKey === opponentTeamKey);
+      return { opponentTeamId: opponentTeam?._id ?? null };
+    }
+
+    if (team.espnTeamId && season.espnLeagueId) {
+      const opponentEspnTeamId = await fetchEspnOpponentTeamId(
+        season.espnLeagueId,
+        season.year,
+        args.week,
+        team.espnTeamId,
+      );
+      if (opponentEspnTeamId === null) {
+        return { opponentTeamId: null };
+      }
+      const teams = await ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, {
+        seasonId: team.seasonId,
+      });
+      const opponentTeam = teams.find((t) => t.espnTeamId === opponentEspnTeamId);
       return { opponentTeamId: opponentTeam?._id ?? null };
     }
 

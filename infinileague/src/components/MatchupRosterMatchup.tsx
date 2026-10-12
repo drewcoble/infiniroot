@@ -2,6 +2,7 @@ import { Box, Group, Text } from "@mantine/core";
 import type { TeamRosterRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
 import { slotLabel } from "../lib/matchupCardData";
+import { isStarter } from "../lib/matchupSummary";
 import { Fragment } from "react";
 import {
   FINAL_CARD_OPACITY,
@@ -28,9 +29,10 @@ interface MatchupRosterMatchupProps {
   shortName: (fullName: string) => string;
   // Shared meter scale for every card on the page (see meterScale.ts).
   scaleMax: number;
-  // "Live only": rows with no live player on either side are dropped; a
-  // row with a live player on one side still shows both, the non-live one
-  // dimmed so the live side leads. See the Matchup page's toggle.
+  // "Live only": just the rows with a starter whose game is underway - every
+  // other row is dropped, and a row with a live starter on only one side
+  // still shows the other side's player, dimmed so the live side leads.
+  // See the Matchup page's toggle.
   liveOnly?: boolean;
 }
 
@@ -103,6 +105,8 @@ export function MatchupRosterSkeleton() {
 export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
   const stateOf = (row: TeamRosterRow | undefined) =>
     row?.fpid !== undefined ? props.toCardData(row).gameState : undefined;
+  const isLiveStarter = (row: TeamRosterRow | undefined) =>
+    row !== undefined && isStarter(row) && stateOf(row) === "live";
   // Live only fades a non-live player to the bye/IR level (45%) overall,
   // accounting for the fade its card already has: none more for bye/IR,
   // just the difference for a finished card (already at 70%).
@@ -113,13 +117,13 @@ export function MatchupRosterMatchup(props: MatchupRosterMatchupProps) {
     return state === "final" ? MUTED_CARD_OPACITY / FINAL_CARD_OPACITY : MUTED_CARD_OPACITY;
   };
   const rows = alignRosterRows(props.teamARows, props.teamBRows).filter(
-    (row) => !props.liveOnly || stateOf(row.a) === "live" || stateOf(row.b) === "live",
+    (row) => !props.liveOnly || isLiveStarter(row.a) || isLiveStarter(row.b),
   );
 
   if (props.liveOnly && rows.length === 0) {
     return (
       <Text size="sm" c="dimmed" ta="center" py="md">
-        No players in this matchup are in a live game right now.
+        No starters in this matchup are in a live game right now.
       </Text>
     );
   }

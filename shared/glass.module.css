@@ -132,6 +132,21 @@
   outline: none;
 }
 
+/* An icon button for the page you're on (infinileague's Matchups) - a
+   brighter, more raised pane than the resting glass, with the icon in the
+   bottom nav's active-tab burlywood (BottomNav's c="burlywood", which
+   Mantine resolves to this -text variable) and a faint burlywood edge. */
+.iconButtonActive {
+  color: var(--mantine-color-burlywood-text);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.1) 100%),
+    color-mix(in srgb, var(--mantine-color-body) 55%, transparent);
+  border-color: color-mix(in srgb, var(--mantine-color-burlywood-text) 45%, transparent);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
 @media (hover: hover) and (pointer: fine) {
   .button:focus-visible,
   .iconButton:focus-visible,

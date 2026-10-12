@@ -28,10 +28,10 @@ interface TeamOption {
   label: string;
 }
 
-type Provider = "sleeper" | "yahoo";
+type Provider = "sleeper" | "yahoo" | "espn";
 
 // One-time-per-season setup for in-season tooling: link this league to a
-// real Sleeper or Yahoo league, map each app team to a real roster/team, set
+// real Sleeper, Yahoo, or ESPN league, map each app team to a real roster/team, set
 // the league's FAAB pool, and sync rosters/spend on demand - see the plan
 // doc ("In-Season Tooling: FAAB Bid Value Calculator") for why this stays
 // manually-triggered rather than a background cron for v1, and Part 3 for
@@ -59,6 +59,11 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
   const listMyYahooLeagues = useAction(api.infinidraft.yahoo.league.listMyYahooLeagues);
   const fetchYahooLeagueTeams = useAction(api.infinidraft.yahoo.league.fetchYahooLeagueTeams);
   const syncYahooLeagueRoster = useAction(api.infinidraft.yahoo.league.syncYahooLeagueRoster);
+  const setEspnLeagueId = useMutation(api.leagues.setEspnLeagueId);
+  const setTeamEspnLink = useMutation(api.infinidraft.draft.teams.setTeamEspnLink);
+  const previewEspnImport = useAction(api.espn.league.previewEspnImport);
+  const fetchEspnLeagueTeams = useAction(api.espn.league.fetchEspnLeagueTeams);
+  const syncEspnLeagueRoster = useAction(api.espn.league.syncEspnLeagueRoster);
 
   const [provider, setProvider] = useState<Provider>("sleeper");
   const [sleeperUsernameInput, setSleeperUsernameInput] = useState("");
@@ -78,13 +83,21 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingYahooLeagues, setLoadingYahooLeagues] = useState(false);
   const [connectingYahoo, setConnectingYahoo] = useState(false);
+  const [espnLeagueInput, setEspnLeagueInput] = useState("");
+  const [linkingEspn, setLinkingEspn] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    setProvider(settings?.yahooLeagueKey ? "yahoo" : "sleeper");
-  }, [settings?.yahooLeagueKey, settings?.sleeperLeagueId]);
+    setProvider(
+      settings?.yahooLeagueKey
+        ? "yahoo"
+        : settings?.espnLeagueId
+          ? "espn"
+          : "sleeper",
+    );
+  }, [settings?.yahooLeagueKey, settings?.sleeperLeagueId, settings?.espnLeagueId]);
 
   useEffect(() => {
     setFaabBudgetInput(settings?.faabBudget);
@@ -246,6 +259,60 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
     }
   };
 
+  const espnTeamOptions = (
+    rows: Array<{ teamId: string; teamName: string; ownerName?: string | undefined }>,
+  ): TeamOption[] =>
+    rows.map((t) => ({
+      key: t.teamId,
+      label: t.ownerName ? `${t.teamName} (${t.ownerName})` : t.teamName,
+    }));
+
+  // Validates the pasted id/URL against ESPN (public leagues only - a
+  // private league comes back as a readable error) before saving the link,
+  // and loads its teams for mapping in the same round trip.
+  const handleLinkEspnLeague = async () => {
+    setError(null);
+    setStatus(null);
+    setLinkingEspn(true);
+    try {
+      const preview = await previewEspnImport({ leagueInput: espnLeagueInput });
+      await setEspnLeagueId({ id: seasonId, espnLeagueId: preview.espnLeagueId });
+      setTeamOptions(espnTeamOptions(preview.teams));
+      setEspnLeagueInput("");
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to link ESPN league."));
+    } finally {
+      setLinkingEspn(false);
+    }
+  };
+
+  const handleUnlinkEspnLeague = async () => {
+    setError(null);
+    try {
+      await setEspnLeagueId({ id: seasonId, espnLeagueId: null });
+      setTeamOptions(null);
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to save."));
+    }
+  };
+
+  const handleLoadEspnTeams = async () => {
+    if (!settings.espnLeagueId) return;
+    setError(null);
+    setStatus(null);
+    setLoadingTeams(true);
+    try {
+      const result = await fetchEspnLeagueTeams({
+        espnLeagueId: settings.espnLeagueId,
+      });
+      setTeamOptions(espnTeamOptions(result));
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to load teams."));
+    } finally {
+      setLoadingTeams(false);
+    }
+  };
+
   const handleMapTeam = async (teamId: Id<"seasonTeams">, key: string | null) => {
     setError(null);
     try {
@@ -255,8 +322,10 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
           sleeperRosterId: key,
           sleeperOwnerId: key ? (teamKeyToOwner[key] ?? key) : null,
         });
-      } else {
+      } else if (provider === "yahoo") {
         await setTeamYahooLink({ teamId, yahooTeamKey: key });
+      } else {
+        await setTeamEspnLink({ teamId, espnTeamId: key });
       }
     } catch (err) {
       setError(getErrorMessage(err, "Failed to map team."));
@@ -271,7 +340,9 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
       const result =
         provider === "sleeper"
           ? await syncLeagueRoster({ seasonId })
-          : await syncYahooLeagueRoster({ seasonId });
+          : provider === "yahoo"
+            ? await syncYahooLeagueRoster({ seasonId })
+            : await syncEspnLeagueRoster({ seasonId });
       setStatus(
         `Synced ${result.syncedTeams} team${result.syncedTeams === 1 ? "" : "s"}.`,
       );
@@ -283,14 +354,20 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
   };
 
   const linkedTeamKey = (team: (typeof teams)[number]) =>
-    provider === "sleeper" ? team.sleeperRosterId : team.yahooTeamKey;
+    provider === "sleeper"
+      ? team.sleeperRosterId
+      : provider === "yahoo"
+        ? team.yahooTeamKey
+        : team.espnTeamId;
   const mappedCount = teams.filter((t) => linkedTeamKey(t)).length;
   const isLinked =
-    provider === "sleeper" ? !!settings.sleeperLeagueId : !!settings.yahooLeagueKey;
-  const canSync =
     provider === "sleeper"
       ? !!settings.sleeperLeagueId
-      : !!settings.yahooLeagueKey;
+      : provider === "yahoo"
+        ? !!settings.yahooLeagueKey
+        : !!settings.espnLeagueId;
+  const providerLabel =
+    provider === "sleeper" ? "Sleeper" : provider === "yahoo" ? "Yahoo" : "ESPN";
 
   return (
     <Stack gap="lg" maw={640}>
@@ -302,6 +379,7 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
         data={[
           { label: "Sleeper", value: "sleeper" },
           { label: "Yahoo", value: "yahoo" },
+          { label: "ESPN", value: "espn" },
         ]}
       />
 
@@ -348,6 +426,59 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
                 >
                   Load Sleeper teams
                 </Button>
+              </>
+            )}
+          </Stack>
+        </Card>
+      ) : provider === "espn" ? (
+        <Card padding="md">
+          <Stack gap="sm">
+            <Text fw={500}>ESPN league</Text>
+            {settings.espnLeagueId ? (
+              <>
+                <Group gap="xs">
+                  <Text size="xs" c="dimmed">
+                    Linked league id: {settings.espnLeagueId}
+                  </Text>
+                  <Button
+                    size="compact-xs"
+                    variant="subtle"
+                    color="red"
+                    onClick={() => void handleUnlinkEspnLeague()}
+                  >
+                    Unlink
+                  </Button>
+                </Group>
+                <Button
+                  variant="default"
+                  onClick={() => void handleLoadEspnTeams()}
+                  loading={loadingTeams}
+                  w="fit-content"
+                >
+                  Load ESPN teams
+                </Button>
+              </>
+            ) : (
+              <>
+                <Text size="sm" c="dimmed">
+                  Paste your league's ESPN URL or its league ID. The league
+                  must be public.
+                </Text>
+                <Group gap="xs" wrap="nowrap">
+                  <TextInput
+                    value={espnLeagueInput}
+                    onChange={(e) => setEspnLeagueInput(e.currentTarget.value)}
+                    placeholder="League URL or ID"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    onClick={() => void handleLinkEspnLeague()}
+                    loading={linkingEspn}
+                    disabled={!espnLeagueInput.trim()}
+                  >
+                    Link League
+                  </Button>
+                </Group>
               </>
             )}
           </Stack>
@@ -417,7 +548,7 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
             </Group>
             {teamOptions === null ? (
               <Text size="sm" c="dimmed">
-                Click "Load {provider === "sleeper" ? "Sleeper" : "Yahoo"} teams" above to see options.
+                Click "Load {providerLabel} teams" above to see options.
               </Text>
             ) : (
               <Stack gap={6}>
@@ -480,7 +611,7 @@ export function SeasonSettingsTab({ seasonId }: SeasonSettingsTabProps) {
           leftSection={<RefreshCw size={16} />}
           onClick={() => void handleSync()}
           loading={syncing}
-          disabled={!canSync || mappedCount === 0}
+          disabled={!isLinked || mappedCount === 0}
         >
           Sync Roster & FAAB Now
         </Button>
