@@ -1,7 +1,14 @@
+import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { positionColorOrDefault } from "@shared/positionColors";
 import type { StandingsRow } from "../../types/season";
-import { formatProj, pillStyle, positionBadge, type GlassMatchupCardData } from "./cardShared";
+import {
+  formatPoints,
+  formatProj,
+  pillStyle,
+  positionBadge,
+  type GlassMatchupCardData,
+} from "./cardShared";
 import { StatGroups, type StatGroup } from "./StatGroups";
 import classes from "./GlassMatchupCard.module.css";
 import detailClasses from "./MatchupSummaryDetail.module.css";
@@ -72,6 +79,13 @@ function teamStats(teams: MatchupDetailTeam[]): StatGroup {
   };
 }
 
+// A player's actual points in the dot-matrix font, as on the Matchup
+// tab's player cards (.playerPoints) - live and final scores only; the
+// projections and kickoff times around them stay in the plain numerals.
+function ScoreboardPoints({ points }: { points: number | undefined }) {
+  return <span className={classes.playerPoints}>{formatPoints(points)}</span>;
+}
+
 // One team's column of a player list - position badge and short name, with
 // the list's numbers underneath.
 function PlayerColumn({
@@ -81,7 +95,7 @@ function PlayerColumn({
   empty,
 }: {
   players: GlassMatchupCardData[];
-  detail: (card: GlassMatchupCardData) => string;
+  detail: (card: GlassMatchupCardData) => ReactNode;
   shortName: (fullName: string) => string;
   empty: string;
 }) {
@@ -99,7 +113,7 @@ function PlayerColumn({
             <span className={detailClasses.playerNameText}>{shortName(card.name)}</span>
           </div>
           <div className={`${classes.gameLine} ${detailClasses.playerDetail}`}>
-            <span className={classes.gameLineText}>{detail(card)}</span>
+            {detail(card)}
           </div>
         </div>
       ))}
@@ -122,7 +136,7 @@ function PlayerSection({
   live?: boolean;
   teams: MatchupDetailTeam[];
   pick: (starters: GlassMatchupCardData[]) => GlassMatchupCardData[];
-  detail: (card: GlassMatchupCardData) => string;
+  detail: (card: GlassMatchupCardData) => ReactNode;
   shortName: (fullName: string) => string;
   empty: string;
 }) {
@@ -195,9 +209,14 @@ export function MatchupSummaryDetail({
             live
             teams={teams}
             pick={liveNow}
-            detail={(card) =>
-              [`${formatProj(card.actualPoints)} pts`, card.status].filter(Boolean).join(" · ")
-            }
+            detail={(card) => (
+              <>
+                <span className={classes.gameLineText}>
+                  <ScoreboardPoints points={card.actualPoints} /> pts
+                </span>
+                {card.status && <span className={classes.liveClock}>{card.status}</span>}
+              </>
+            )}
             shortName={shortName}
             empty="None playing"
           />
@@ -206,9 +225,12 @@ export function MatchupSummaryDetail({
           label="Top performers"
           teams={teams}
           pick={topPerformers}
-          detail={(card) =>
-            `${formatProj(card.actualPoints)} pts · proj ${formatProj(card.projectedPoints)}`
-          }
+          detail={(card) => (
+            <span className={classes.gameLineText}>
+              <ScoreboardPoints points={card.actualPoints} /> pts · proj{" "}
+              {formatProj(card.projectedPoints)}
+            </span>
+          )}
           shortName={shortName}
           empty="None yet"
         />
@@ -216,9 +238,11 @@ export function MatchupSummaryDetail({
           label="Top upcoming"
           teams={teams}
           pick={topUpcoming}
-          detail={(card) =>
-            [`Proj ${formatProj(card.projectedPoints)}`, card.status].filter(Boolean).join(" · ")
-          }
+          detail={(card) => (
+            <span className={classes.gameLineText}>
+              {[`Proj ${formatProj(card.projectedPoints)}`, card.status].filter(Boolean).join(" · ")}
+            </span>
+          )}
           shortName={shortName}
           empty="All games started"
         />
