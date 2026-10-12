@@ -316,13 +316,20 @@ function LeagueMatchup({
             teamA={
               teamARoster.rows === undefined
                 ? "loading"
-                : matchupHeaderTeam(nameA, teamARoster.rows, actualA, projA, gameStateFor)
+                : matchupHeaderTeam(nameA, teamARoster.rows, actualA, projA, gameStateFor, self)
             }
             teamB={
               current === undefined || (teamBId !== null && teamBRoster.rows === undefined)
                 ? "loading"
                 : teamBId !== null
-                  ? matchupHeaderTeam(nameB, teamBRoster.rows, actualB, projB, gameStateFor)
+                  ? matchupHeaderTeam(
+                      nameB,
+                      teamBRoster.rows,
+                      actualB,
+                      projB,
+                      gameStateFor,
+                      standings?.find((row) => row.teamId === teamBId),
+                    )
                   : null
             }
             winProbA={matchupReady ? winProbability(projA, projB) : null}

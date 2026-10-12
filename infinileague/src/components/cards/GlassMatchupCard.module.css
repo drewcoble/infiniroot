@@ -733,6 +733,22 @@
   text-align: right;
 }
 
+/* Rank badge and name on one row (GlassMatchupHeader) - the badge stays
+   centered beside a name that wraps to two lines, and leads the name on
+   the right-hand side too. */
+.headerTeamTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  align-self: end;
+}
+
+.headerTeamTitle > .pill {
+  flex-shrink: 0;
+}
+
 .headerTeamName {
   max-width: 100%;
   align-self: end;

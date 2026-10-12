@@ -251,12 +251,20 @@ function MatchupPage() {
 
   // Starters whose games are underway / not yet started, for the header.
   const headerTeam = (
+    teamId: string | null,
     name: string,
     rows: TeamRosterRow[] | undefined,
     actual: number,
     proj: number,
   ): MatchupHeaderTeam =>
-    matchupHeaderTeam(name, rows, actual, proj, (row) => toCardData(row).gameState);
+    matchupHeaderTeam(
+      name,
+      rows,
+      actual,
+      proj,
+      (row) => toCardData(row).gameState,
+      standings?.find((row) => row.teamId === teamId),
+    );
 
   // Header and rows hold their shape with glass skeletons while loading,
   // rather than a bare spinner or blank column.
@@ -328,13 +336,13 @@ function MatchupPage() {
         teamA={
           teamARoster.rows === undefined
             ? "loading"
-            : headerTeam(selfTeamName, teamARoster.rows, actualA, projA)
+            : headerTeam(teamAId, selfTeamName, teamARoster.rows, actualA, projA)
         }
         teamB={
           opponentPending || (teamBId !== null && teamBRoster.rows === undefined)
             ? "loading"
             : teamBId !== null
-              ? headerTeam(opponentName, teamBRoster.rows, actualB, projB)
+              ? headerTeam(teamBId, opponentName, teamBRoster.rows, actualB, projB)
               : null
         }
         winProbA={matchupReady ? winProbA : null}

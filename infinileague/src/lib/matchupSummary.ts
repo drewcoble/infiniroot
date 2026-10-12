@@ -1,6 +1,6 @@
 import type { MatchupHeaderTeam } from "../components/cards/GlassMatchupHeader";
 import type { GameState } from "../components/cards/cardShared";
-import type { SlotLabel, TeamRosterRow } from "../types/season";
+import type { SlotLabel, StandingsRow, TeamRosterRow } from "../types/season";
 
 // The score-header math shared by the Matchup tab and the cross-league
 // Matchups page (routes/matchups.tsx) - both build the same
@@ -54,13 +54,15 @@ export function winProbability(projA: number, projB: number): number {
 
 // One side of the header: score, live projection, and how many starters
 // are live / still to play. `gameStateFor` is each row's card game state
-// (see lib/matchupCardData.ts's toMatchupCardData).
+// (see lib/matchupCardData.ts's toMatchupCardData). `standing` adds the
+// rank badge before the name.
 export function matchupHeaderTeam(
   name: string,
   rows: TeamRosterRow[] | undefined,
   actual: number,
   proj: number,
   gameStateFor: (row: TeamRosterRow) => GameState,
+  standing?: StandingsRow | undefined,
 ): MatchupHeaderTeam {
   const states = (rows ?? [])
     .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
@@ -78,6 +80,7 @@ export function matchupHeaderTeam(
     projectedPoints: allFinal ? sumStarterPoints(rows, (row) => row.projectedPoints ?? 0) : proj,
     liveCount,
     toPlayCount,
+    ...(standing ? { rank: { value: standing.rank, isMine: standing.isSelf } } : {}),
   };
 }
 
