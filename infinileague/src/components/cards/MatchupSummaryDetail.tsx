@@ -83,7 +83,11 @@ function teamStats(teams: MatchupDetailTeam[]): StatGroup {
 // tab's player cards (.playerPoints) - live and final scores only; the
 // projections and kickoff times around them stay in the plain numerals.
 function ScoreboardPoints({ points }: { points: number | undefined }) {
-  return <span className={classes.playerPoints}>{formatPoints(points)}</span>;
+  return (
+    <span className={`${classes.playerPoints} ${detailClasses.dotText}`}>
+      {formatPoints(points)}
+    </span>
+  );
 }
 
 // One team's column of a player list - the trade summary's row layout:
@@ -233,7 +237,11 @@ export function MatchupSummaryDetail({
                 <span className={classes.gameLineText}>
                   <ScoreboardPoints points={card.actualPoints} /> pts
                 </span>
-                {card.status && <span className={classes.liveClock}>{card.status}</span>}
+                {card.status && (
+                  <span className={`${classes.liveClock} ${detailClasses.dotText}`}>
+                    {card.status}
+                  </span>
+                )}
               </>
             )}
             shortName={shortName}

@@ -63,6 +63,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The dot-matrix scores and clocks on a player's line, tightened: Lumen is
+   monospace, so at this small size its digits, "." and ":" sit in wide
+   cells and the numbers read loose (the header's decimals pull in the same
+   way - see .scoreDecimals). Two classes so it beats the 0 that
+   .playerPoints / .liveClock set. */
+.playerDetail .dotText {
+  letter-spacing: -0.08em;
+}
+
 /* The Matchups page's link around each score header is what takes focus
    (long-press closes back onto it), not the .card inside - so the card
    ring rule in GlassMatchupCard.module.css doesn't reach it. Same policy:
