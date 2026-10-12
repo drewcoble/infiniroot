@@ -1,8 +1,9 @@
-import { useId, type CSSProperties, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, X } from "lucide-react";
 import type { TeamPositionRanks } from "../../types/season";
 import { TeamPositionRanksPanel } from "../TeamPositionRanksPanel";
+import { rankPillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
 import { StatGroups, type StatGroup } from "./StatGroups";
 import { useExpandableCard } from "./useExpandableCard";
@@ -29,16 +30,6 @@ export interface GlassTeamCardData {
   // Labeled tiles for the detail popover.
   // Grouped numbers for the detail popover (see StatGroups).
   stats: StatGroup[];
-}
-
-// Rank chip outside the card, like the roster cards' slot chip - glass gray,
-// or saddlebrown for your own team (the "yours" color, same as the My Team
-// header's rank badge) - the only "this is you" marker on the card.
-function rankChipStyle(isSelf: boolean): CSSProperties {
-  return {
-    color: isSelf ? "color-mix(in srgb, #8b4513 15%, #fff)" : "#f8fafc",
-    "--pill-tint": isSelf ? "#8b4513" : "var(--mantine-color-gray-5)",
-  } as CSSProperties;
 }
 
 // League-home team card (Standings / Power Rankings / Elimination Watch) in
@@ -71,7 +62,7 @@ export function GlassTeamCard({
     <div className={classes.rosterRow}>
       <span
         className={`${classes.pill} ${classes.slotChip}`}
-        style={{ ...rankChipStyle(data.isSelf), fontFamily: "var(--font-numeric)" }}
+        style={rankPillStyle(data.isSelf)}
         aria-hidden
       >
         {data.rank}
@@ -119,7 +110,7 @@ export function GlassTeamCard({
             <div className={classes.teamCardPopoverTitle}>
               <span
                 className={classes.pill}
-                style={{ ...rankChipStyle(data.isSelf), fontFamily: "var(--font-numeric)" }}
+                style={rankPillStyle(data.isSelf)}
               >
                 #{data.rank}
               </span>

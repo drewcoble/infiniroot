@@ -1,15 +1,8 @@
 /* The Matchups page's long-press detail (MatchupSummaryDetail.tsx) - only
    what GlassMatchupCard.module.css's stat panels don't already cover. */
 
-/* Team names as the stats table's column headers: cap each column so a
-   long name truncates instead of widening the table past the popover. */
-.teamTable thead th {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* One panel per player list, a column per team with a hairline between. */
+/* One panel per section (standings, each player list), a column per team
+   with a hairline between. */
 .columns {
   display: grid;
   overflow: hidden;
@@ -33,6 +26,56 @@
 
 .player + .player {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* A team's standing column: name, then the rank badge with record and
+   PPG, then opponents' PPG. */
+.team {
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.teamName {
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.teamSeason {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.teamSeason > :first-child {
+  flex-shrink: 0;
+}
+
+.teamSeasonText,
+.teamSub {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-weight: var(--font-numeric-weight);
+}
+
+.teamSeasonText {
+  color: rgba(248, 250, 252, 0.78);
+}
+
+.teamSub {
+  color: rgba(248, 250, 252, 0.6);
 }
 
 /* A player row in the trade summary's layout (GlassTradeHeader's

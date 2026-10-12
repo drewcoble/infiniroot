@@ -7,9 +7,9 @@ import {
   formatProj,
   pillStyle,
   positionBadge,
+  rankPillStyle,
   type GlassMatchupCardData,
 } from "./cardShared";
-import { StatGroups, type StatGroup } from "./StatGroups";
 import classes from "./GlassMatchupCard.module.css";
 import detailClasses from "./MatchupSummaryDetail.module.css";
 
@@ -54,29 +54,55 @@ function upcoming(starters: GlassMatchupCardData[]): GlassMatchupCardData[] {
     .sort((a, b) => (b.projectedPoints ?? 0) - (a.projectedPoints ?? 0));
 }
 
-function seasonPpg(standing: StandingsRow, points: number): string {
+// Points per game played - null before any game has been played.
+function perGame(standing: StandingsRow, points: number): number | null {
   const games = standing.wins + standing.losses + standing.ties;
-  return games > 0 ? (points / games).toFixed(1) : "—";
+  return games > 0 ? points / games : null;
 }
 
-function teamStats(teams: MatchupDetailTeam[]): StatGroup {
-  const value = (team: MatchupDetailTeam, read: (standing: StandingsRow) => string) =>
-    team.standing ? read(team.standing) : "—";
-  return {
-    columns: teams.map((team) => team.name),
-    rows: [
-      { label: "Rank", values: teams.map((team) => value(team, (s) => `#${s.rank}`)) },
-      {
-        label: "Record",
-        values: teams.map((team) => value(team, (s) => `${s.wins}-${s.losses}-${s.ties}`)),
-      },
-      { label: "PPG", values: teams.map((team) => value(team, (s) => seasonPpg(s, s.pointsFor))) },
-      {
-        label: "Opp PPG",
-        values: teams.map((team) => value(team, (s) => seasonPpg(s, s.pointsAgainst))),
-      },
-    ],
-  };
+// Each team's season standing - name, then the rank badge with record and
+// points per game (the My Team header's season line), then what opponents
+// have scored against them. Columns as in the player sections below.
+function TeamStandings({ teams }: { teams: MatchupDetailTeam[] }) {
+  return (
+    <div
+      className={`${classes.statPanel} ${detailClasses.columns}`}
+      style={{ gridTemplateColumns: `repeat(${teams.length}, minmax(0, 1fr))` }}
+    >
+      {teams.map((team, index) => {
+        const standing = team.standing;
+        const ppg = standing ? perGame(standing, standing.pointsFor) : null;
+        const oppPpg = standing ? perGame(standing, standing.pointsAgainst) : null;
+        return (
+          <div key={index} className={`${detailClasses.column} ${detailClasses.team}`}>
+            <div className={detailClasses.teamName}>{team.name}</div>
+            {standing ? (
+              <>
+                <div className={detailClasses.teamSeason}>
+                  <span
+                    className={classes.pill}
+                    style={rankPillStyle(standing.isSelf)}
+                    aria-label={`Rank ${standing.rank}`}
+                  >
+                    #{standing.rank}
+                  </span>
+                  <span className={detailClasses.teamSeasonText}>
+                    {standing.wins}-{standing.losses}-{standing.ties}
+                    {ppg !== null && ` · ${ppg.toFixed(1)} PPG`}
+                  </span>
+                </div>
+                {oppPpg !== null && (
+                  <div className={detailClasses.teamSub}>{oppPpg.toFixed(1)} Opp PPG</div>
+                )}
+              </>
+            ) : (
+              <div className={`${detailClasses.teamSub} ${classes.statEmpty}`}>—</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 // A player's actual points in the dot-matrix font, as on the Matchup
@@ -224,8 +250,8 @@ export function MatchupSummaryDetail({
         </button>
       </div>
 
-      <div className={`${classes.statGroups} ${detailClasses.teamTable}`}>
-        <StatGroups groups={[teamStats(teams)]} />
+      <div className={classes.statGroups}>
+        <TeamStandings teams={teams} />
         {teams.some((team) => liveNow(team.starters).length > 0) && (
           <PlayerSection
             label="Live now"
