@@ -86,8 +86,8 @@ function ScoreboardPoints({ points }: { points: number | undefined }) {
   return <span className={classes.playerPoints}>{formatPoints(points)}</span>;
 }
 
-// One team's column of a player list - position badge and short name, with
-// the list's numbers underneath.
+// One team's column of a player list - the trade summary's row layout:
+// position badge spanning both rows, short name over the list's numbers.
 function PlayerColumn({
   players,
   detail,
@@ -110,20 +110,27 @@ function PlayerColumn({
   return (
     <>
       {shown.map((card) => (
-        <div key={card.fpid ?? card.name} className={detailClasses.player}>
-          <div className={detailClasses.playerName}>
-            <span className={classes.pill} style={pillStyle(positionColorOrDefault(card.position))}>
-              {positionBadge(card)}
-            </span>
-            <span className={detailClasses.playerNameText}>{shortName(card.name)}</span>
-          </div>
+        <div
+          key={card.fpid ?? card.name}
+          className={`${detailClasses.player} ${detailClasses.playerGrid}`}
+        >
+          <span
+            className={`${classes.pill} ${detailClasses.badge}`}
+            style={pillStyle(positionColorOrDefault(card.position))}
+          >
+            {positionBadge(card)}
+          </span>
+          <span className={detailClasses.playerNameText}>{shortName(card.name)}</span>
           <div className={`${classes.gameLine} ${detailClasses.playerDetail}`}>
             {detail(card)}
           </div>
         </div>
       ))}
       {hidden > 0 && (
-        <div className={`${detailClasses.player} ${classes.statEmpty}`}>+{hidden} more</div>
+        <div className={`${detailClasses.player} ${detailClasses.playerGrid} ${classes.statEmpty}`}>
+          <span className={detailClasses.badgeSpace} />
+          <span>+{hidden} more</span>
+        </div>
       )}
     </>
   );

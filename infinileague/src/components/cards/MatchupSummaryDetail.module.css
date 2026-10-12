@@ -35,32 +35,31 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.playerName {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+/* A player row in the trade summary's layout (GlassTradeHeader's
+   tradeHeaderEntry): position badge in its own column spanning both rows,
+   name on the first row, the section's line under it. Composed from those
+   classes so the two stay in step. */
+.playerGrid {
+  composes: tradeHeaderEntry from "./GlassMatchupCard.module.css";
 }
 
-.playerName .playerNameText {
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 650;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.badge {
+  composes: tradeHeaderBadge from "./GlassMatchupCard.module.css";
 }
 
-/* Position badge a size down from the cards' own, to fit two columns. */
-.playerName > :first-child {
-  flex-shrink: 0;
-  height: 17px;
-  padding: 0 6px;
-  font-size: 10px;
+/* Keeps "+N more" lined up under the names, like the trade summary's
+   2-for-1 row. */
+.badgeSpace {
+  composes: tradeHeaderBadgeSpace from "./GlassMatchupCard.module.css";
+}
+
+.playerNameText {
+  composes: tradeHeaderPlayerName from "./GlassMatchupCard.module.css";
 }
 
 .playerDetail {
   margin-top: 2px;
+  min-width: 0;
   font-variant-numeric: tabular-nums;
 }
 
