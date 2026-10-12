@@ -60,13 +60,19 @@ function TeamSide({
 }) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
-      <div className={classes.headerTeamTitle}>
+      {/* The rank badge flows inline at the start of the name, so a long
+          name wraps under it rather than leaving the badge beside a
+          two-line block. */}
+      <div className={classes.headerTeamName}>
         {team.rank && (
-          <span className={classes.pill} style={rankPillStyle(team.rank.isMine)}>
+          <span
+            className={`${classes.pill} ${classes.headerRank}`}
+            style={rankPillStyle(team.rank.isMine)}
+          >
             #{team.rank.value}
           </span>
         )}
-        <div className={classes.headerTeamName}>{team.name}</div>
+        {team.name}
       </div>
       <div className={classes.headerTotal}>
         <ScoreWithDecimals value={team.actualPoints} />

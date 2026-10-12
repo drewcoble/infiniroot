@@ -733,22 +733,6 @@
   text-align: right;
 }
 
-/* Rank badge and name on one row (GlassMatchupHeader) - the badge stays
-   centered beside a name that wraps to two lines, and leads the name on
-   the right-hand side too. */
-.headerTeamTitle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
-  align-self: end;
-}
-
-.headerTeamTitle > .pill {
-  flex-shrink: 0;
-}
-
 .headerTeamName {
   max-width: 100%;
   align-self: end;
@@ -760,6 +744,17 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
+}
+
+/* The standings rank badge leading a header team name (GlassMatchupHeader)
+   - inline in the name's text, so a long name wraps under it. A touch
+   shorter than other pills so the first line isn't taller than the second.
+   On the baseline its center sits ~3.5px up, a little under the middle of
+   the name's capitals at 14px - raised 1px to center on the first line. */
+.headerRank {
+  height: 18px;
+  margin-right: 6px;
+  vertical-align: 1px;
 }
 
 .headerTotal {
