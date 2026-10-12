@@ -60,9 +60,8 @@ function TeamSide({
 }) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
-      {/* Rank badge beside the name when both fit on one line; a name too
-          long for that drops below the badge to its own full-width line
-          (see .headerTeamTitle). */}
+      {/* Rank badge and name on one line - a long name is truncated (see
+          .headerTeamTitle). */}
       <div className={classes.headerTeamTitle}>
         {team.rank && (
           <span

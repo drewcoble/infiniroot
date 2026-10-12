@@ -746,18 +746,14 @@
   overflow-wrap: anywhere;
 }
 
-/* A header team's rank badge and name (GlassMatchupHeader): one centered
-   row while both fit, otherwise the name wraps to its own line under the
-   badge - a flex line break, so it's decided by the name's full one-line
-   width, and on that line the name can use the whole column (and wrap
-   within it) instead of squeezing beside the badge. Bottom-aligned in its
-   row like a bare name; right-aligned on the right-hand team. */
+/* A header team's rank badge and name (GlassMatchupHeader) on one line,
+   centered on each other - a name too long for it is cut off with an
+   ellipsis rather than wrapping. Bottom-aligned in its row like a bare
+   name; right-aligned on the right-hand team. */
 .headerTeamTitle {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  column-gap: 6px;
-  row-gap: 3px;
+  gap: 6px;
   max-width: 100%;
   min-width: 0;
   align-self: end;
@@ -767,11 +763,14 @@
   justify-content: flex-end;
 }
 
-/* Centered on the badge - .headerTeamName's own align-self: end is for the
-   team column's grid, and here would sit it low beside the badge. */
+/* One truncated line instead of .headerTeamName's two-line clamp, centered
+   on the badge (its own align-self: end is for the team column's grid). */
 .headerTeamTitle > .headerTeamName {
+  display: block;
   min-width: 0;
   align-self: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* A touch shorter than other pills, to sit level with the 14px name. */
