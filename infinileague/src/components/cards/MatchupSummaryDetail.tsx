@@ -227,8 +227,7 @@ export function MatchupSummaryDetail({
           pick={topPerformers}
           detail={(card) => (
             <span className={classes.gameLineText}>
-              <ScoreboardPoints points={card.actualPoints} /> pts · proj{" "}
-              {formatProj(card.projectedPoints)}
+              <ScoreboardPoints points={card.actualPoints} /> pts
             </span>
           )}
           shortName={shortName}
