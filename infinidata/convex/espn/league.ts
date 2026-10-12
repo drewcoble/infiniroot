@@ -432,6 +432,11 @@ export const syncEspnLeagueRoster = action({
       });
     }
 
+    // Fills in this league's rest-of-season board now if it doesn't have
+    // one yet (a just-connected league), rather than at the next daily
+    // cron - see rosVor.ts's ensureSeasonRosVor.
+    await ctx.scheduler.runAfter(0, internal.rosVor.ensureSeasonRosVor, { seasonId: args.seasonId });
+
     return { syncedTeams: linked.length };
   },
 });

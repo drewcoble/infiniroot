@@ -1,5 +1,5 @@
 import { v, type Infer } from "convex/values";
-import { internalMutation, internalQuery, query, type ActionCtx } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, query, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { POSITIONS, positionValidator } from "./positions";
@@ -144,6 +144,39 @@ function activePositionsFor(settings: Doc<"seasons">): Position[] {
     (pos) => settings.rosterSlots[pos] > 0 || settings.flexPositions.includes(pos) || settings.superflexPositions.includes(pos),
   );
 }
+
+// Builds one season's board for the current week right away if it doesn't
+// have one yet, instead of leaving a just-connected league's Players/Trade/
+// Free Agents tabs empty until the next daily cron. Scheduled from every
+// provider roster sync (Sleeper/ESPN/Yahoo), which is infinileague's first
+// touch on a new league - a no-op once the board exists, so the routine
+// re-syncs cost one indexed read. Same per-scoring-setup path the cron
+// uses, just for this one season.
+export const ensureSeasonRosVor = internalAction({
+  args: { seasonId: v.id("seasons") },
+  handler: async (ctx, args): Promise<void> => {
+    const season = await ctx.runQuery(internal.rosVor.getSeasonMissingRosVor, { seasonId: args.seasonId });
+    if (season === null) return;
+    await refreshAllRosVor(ctx, { seasons: [season] });
+  },
+});
+
+// The season's doc when it has no board for the current week, else null
+// (board already there, season gone, or not an NFL regular-season week).
+export const getSeasonMissingRosVor = internalQuery({
+  args: { seasonId: v.id("seasons") },
+  handler: async (ctx, args): Promise<Doc<"seasons"> | null> => {
+    const nflState = await ctx.db.query("nflState").first();
+    if (!nflState || nflState.seasonType !== "regular") return null;
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) return null;
+    const row = await ctx.db
+      .query("rosVorSnapshots")
+      .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", nflState.week))
+      .first();
+    return row === null ? season : null;
+  },
+});
 
 export const getRosVorWeek = internalQuery({
   args: {},
