@@ -235,7 +235,7 @@ export function MatchupSummaryDetail({
             detail={(card) => (
               <>
                 <span className={classes.gameLineText}>
-                  <ScoreboardPoints points={card.actualPoints} /> pts
+                  <ScoreboardPoints points={card.actualPoints} />
                 </span>
                 {card.status && (
                   <span className={`${classes.liveClock} ${detailClasses.dotText}`}>
@@ -254,7 +254,7 @@ export function MatchupSummaryDetail({
           pick={topPerformers}
           detail={(card) => (
             <span className={classes.gameLineText}>
-              <ScoreboardPoints points={card.actualPoints} /> pts
+              <ScoreboardPoints points={card.actualPoints} />
             </span>
           )}
           shortName={shortName}
