@@ -28,54 +28,44 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* A team's standing column: name, then the rank badge with record and
-   PPG, then opponents' PPG. */
+/* A team's standing column: rank badge and name, then record and PPG. */
 .team {
   gap: 4px;
   padding: 8px 10px;
 }
 
-.teamName {
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.teamSeason {
+.teamTitle {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
 }
 
-.teamSeason > :first-child {
+.teamTitle > .teamName {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teamTitle > :first-child:not(.teamName) {
   flex-shrink: 0;
 }
 
-.teamSeasonText,
-.teamSub {
+.teamRecord {
   min-width: 0;
   font-size: 12px;
   line-height: 1.25;
+  color: rgba(248, 250, 252, 0.68);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
   font-weight: var(--font-numeric-weight);
-}
-
-.teamSeasonText {
-  color: rgba(248, 250, 252, 0.78);
-}
-
-.teamSub {
-  color: rgba(248, 250, 252, 0.6);
 }
 
 /* A player row in the trade summary's layout (GlassTradeHeader's

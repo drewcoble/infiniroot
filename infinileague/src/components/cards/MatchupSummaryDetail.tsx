@@ -60,9 +60,8 @@ function perGame(standing: StandingsRow, points: number): number | null {
   return games > 0 ? points / games : null;
 }
 
-// Each team's season standing - name, then the rank badge with record and
-// points per game (the My Team header's season line), then what opponents
-// have scored against them. Columns as in the player sections below.
+// Each team's season standing: rank badge and name, then record and points
+// per game. Columns as in the player sections below.
 function TeamStandings({ teams }: { teams: MatchupDetailTeam[] }) {
   return (
     <div
@@ -72,32 +71,26 @@ function TeamStandings({ teams }: { teams: MatchupDetailTeam[] }) {
       {teams.map((team, index) => {
         const standing = team.standing;
         const ppg = standing ? perGame(standing, standing.pointsFor) : null;
-        const oppPpg = standing ? perGame(standing, standing.pointsAgainst) : null;
         return (
           <div key={index} className={`${detailClasses.column} ${detailClasses.team}`}>
-            <div className={detailClasses.teamName}>{team.name}</div>
-            {standing ? (
-              <>
-                <div className={detailClasses.teamSeason}>
-                  <span
-                    className={classes.pill}
-                    style={rankPillStyle(standing.isSelf)}
-                    aria-label={`Rank ${standing.rank}`}
-                  >
-                    #{standing.rank}
-                  </span>
-                  <span className={detailClasses.teamSeasonText}>
-                    {standing.wins}-{standing.losses}-{standing.ties}
-                    {ppg !== null && ` · ${ppg.toFixed(1)} PPG`}
-                  </span>
-                </div>
-                {oppPpg !== null && (
-                  <div className={detailClasses.teamSub}>{oppPpg.toFixed(1)} Opp PPG</div>
-                )}
-              </>
-            ) : (
-              <div className={`${detailClasses.teamSub} ${classes.statEmpty}`}>—</div>
-            )}
+            <div className={detailClasses.teamTitle}>
+              {standing && (
+                <span
+                  className={classes.pill}
+                  style={rankPillStyle(standing.isSelf)}
+                  aria-label={`Rank ${standing.rank}`}
+                >
+                  #{standing.rank}
+                </span>
+              )}
+              <span className={detailClasses.teamName}>{team.name}</span>
+            </div>
+            <div className={`${detailClasses.teamRecord} ${standing ? "" : classes.statEmpty}`}>
+              {standing
+                ? `${standing.wins}-${standing.losses}-${standing.ties}` +
+                  (ppg !== null ? ` · ${ppg.toFixed(1)} PPG` : "")
+                : "—"}
+            </div>
           </div>
         );
       })}
