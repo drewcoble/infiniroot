@@ -109,6 +109,7 @@ function PlayerColumn({
 
 function PlayerSection({
   label,
+  live = false,
   teams,
   pick,
   detail,
@@ -116,6 +117,9 @@ function PlayerSection({
   empty,
 }: {
   label: string;
+  // Pulsing green dot before the label - the same live dot as the cards'
+  // corners and the Live only chip.
+  live?: boolean;
   teams: MatchupDetailTeam[];
   pick: (starters: GlassMatchupCardData[]) => GlassMatchupCardData[];
   detail: (card: GlassMatchupCardData) => string;
@@ -124,7 +128,10 @@ function PlayerSection({
 }) {
   return (
     <section aria-label={label}>
-      <div className={classes.statGroupLabel}>{label}</div>
+      <div className={classes.statGroupLabel}>
+        {live && <span className={classes.dot} style={{ verticalAlign: 0 }} aria-hidden />}
+        {label}
+      </div>
       <div
         className={`${classes.statPanel} ${detailClasses.columns}`}
         style={{ gridTemplateColumns: `repeat(${teams.length}, minmax(0, 1fr))` }}
@@ -185,6 +192,7 @@ export function MatchupSummaryDetail({
         {teams.some((team) => liveNow(team.starters).length > 0) && (
           <PlayerSection
             label="Live now"
+            live
             teams={teams}
             pick={liveNow}
             detail={(card) =>
