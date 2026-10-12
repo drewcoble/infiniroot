@@ -163,7 +163,7 @@ function MatchupsPage() {
 // right side just stays "Opponent —", and tapping through to the league's
 // Matchup tab offers the picker. Long-press (or Space) opens
 // MatchupSummaryDetail: both teams' standing, starters playing right now,
-// top performers, and top upcoming players.
+// top performers, and upcoming players.
 function LeagueMatchup({
   season,
   context,

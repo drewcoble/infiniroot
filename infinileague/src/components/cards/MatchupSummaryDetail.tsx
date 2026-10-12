@@ -46,12 +46,12 @@ function topPerformers(starters: GlassMatchupCardData[]): GlassMatchupCardData[]
     .slice(0, TOP_COUNT);
 }
 
-// Starters whose games haven't kicked off yet, highest projection first.
-function topUpcoming(starters: GlassMatchupCardData[]): GlassMatchupCardData[] {
+// Every starter whose game hasn't kicked off yet, highest projection first
+// - the section shows the first TOP_COUNT and counts the rest.
+function upcoming(starters: GlassMatchupCardData[]): GlassMatchupCardData[] {
   return starters
     .filter((card) => card.gameState === "pre")
-    .sort((a, b) => (b.projectedPoints ?? 0) - (a.projectedPoints ?? 0))
-    .slice(0, TOP_COUNT);
+    .sort((a, b) => (b.projectedPoints ?? 0) - (a.projectedPoints ?? 0));
 }
 
 function seasonPpg(standing: StandingsRow, points: number): string {
@@ -93,18 +93,23 @@ function PlayerColumn({
   detail,
   shortName,
   empty,
+  limit,
 }: {
   players: GlassMatchupCardData[];
   detail: (card: GlassMatchupCardData) => ReactNode;
   shortName: (fullName: string) => string;
   empty: string;
+  // Show at most this many, then a dimmed "+N more" row for the rest.
+  limit?: number | undefined;
 }) {
   if (players.length === 0) {
     return <div className={`${detailClasses.player} ${classes.statEmpty}`}>{empty}</div>;
   }
+  const shown = limit !== undefined ? players.slice(0, limit) : players;
+  const hidden = players.length - shown.length;
   return (
     <>
-      {players.map((card) => (
+      {shown.map((card) => (
         <div key={card.fpid ?? card.name} className={detailClasses.player}>
           <div className={detailClasses.playerName}>
             <span className={classes.pill} style={pillStyle(positionColorOrDefault(card.position))}>
@@ -117,6 +122,9 @@ function PlayerColumn({
           </div>
         </div>
       ))}
+      {hidden > 0 && (
+        <div className={`${detailClasses.player} ${classes.statEmpty}`}>+{hidden} more</div>
+      )}
     </>
   );
 }
@@ -129,6 +137,7 @@ function PlayerSection({
   detail,
   shortName,
   empty,
+  limit,
 }: {
   label: string;
   // Pulsing green dot before the label - the same live dot as the cards'
@@ -139,6 +148,7 @@ function PlayerSection({
   detail: (card: GlassMatchupCardData) => ReactNode;
   shortName: (fullName: string) => string;
   empty: string;
+  limit?: number;
 }) {
   return (
     <section aria-label={label}>
@@ -157,6 +167,7 @@ function PlayerSection({
               detail={detail}
               shortName={shortName}
               empty={empty}
+              limit={limit}
             />
           </div>
         ))}
@@ -167,9 +178,10 @@ function PlayerSection({
 
 // The Matchups page's long-press detail (routes/matchups.tsx): both teams'
 // standing in the league, then (while any of their games are on) every
-// starter playing right now, this week's top performers and the best
-// players still to play on each side. `teams` is one team on a bye week
-// (no opponent), otherwise [yours, opponent's] - same sides as the header.
+// starter playing right now, this week's top performers, and the players
+// still to play on each side (top 3 by projection, then a count). `teams`
+// is one team on a bye week (no opponent), otherwise [yours, opponent's] -
+// same sides as the header.
 export function MatchupSummaryDetail({
   title,
   titleId,
@@ -234,9 +246,10 @@ export function MatchupSummaryDetail({
           empty="None yet"
         />
         <PlayerSection
-          label="Top upcoming"
+          label="Upcoming"
           teams={teams}
-          pick={topUpcoming}
+          pick={upcoming}
+          limit={TOP_COUNT}
           detail={(card) => (
             <span className={classes.gameLineText}>
               {[`Proj ${formatProj(card.projectedPoints)}`, card.status].filter(Boolean).join(" · ")}
