@@ -142,8 +142,8 @@ function LeaguePage() {
 
   // This week's slate with live game status - drives Elimination Watch's
   // live projections (see lib/eliminationWatch.ts) and, while any game is
-  // being played, a periodic re-fetch so points so far keep up. Guillotine
-  // only - the other views don't change during games.
+  // being played, a periodic re-fetch so lineups and points so far keep up.
+  // Guillotine only - the other views don't change during games.
   const nflState: NflState | null | undefined = useQuery(
     api.nflState.getNflState,
     isAuthenticated && isGuillotine ? {} : "skip",
@@ -153,10 +153,6 @@ function LeaguePage() {
   const weekGames: WeekGame[] | undefined = useQuery(
     api.sleeper.livePoints.getWeekGames,
     nflState && currentWeek ? { season: nflState.season, week: currentWeek } : "skip",
-  );
-  const gamesByTeam = useMemo(
-    () => (weekGames ? new Map(weekGames.map((game) => [game.team, game])) : undefined),
-    [weekGames],
   );
   const now = useNow(60 * 1000);
   const anyGameLive = isGuillotine && isAnyGameLive(weekGames, now);
@@ -180,8 +176,8 @@ function LeaguePage() {
   }, [leagueId, isAuthenticated, anyGameLive]);
 
   const liveEliminationWatch = useMemo(
-    () => eliminationWatch && rankLive(eliminationWatch, gamesByTeam, now),
-    [eliminationWatch, gamesByTeam, now],
+    () => eliminationWatch && rankLive(eliminationWatch, weekGames, now),
+    [eliminationWatch, weekGames, now],
   );
 
   // Backs every team card's long-press popover radar chart (see

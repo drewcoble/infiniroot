@@ -23,14 +23,13 @@ const STATUS_BADGE: Record<EliminationWatchRow["status"], { label: string; color
   safe: { label: "Safe", color: "green" },
 };
 
-// This week's guillotine elimination projection: each team's optimal-lineup
-// total for just the current NFL week (see convex/infinileague/season/
+// This week's guillotine elimination projection: each team's set lineup
+// for just the current NFL week (see convex/infinileague/season/
 // eliminationWatch.ts), ranked best-to-worst same as PowerRankingsList, with
 // the bottom slice flagged red (projected cut) / gold (bubble) / green
 // (safe) via the status badge instead of a week-over-week rank arrow. Once
-// the week's games start, the totals are live projections off each team's
-// set lineup (see lib/eliminationWatch.ts), so the order moves as players
-// score.
+// the week's games start, the totals are live projections (see
+// lib/eliminationWatch.ts), so the order moves as players score.
 export function EliminationWatchList({
   leagueId,
   rows,
