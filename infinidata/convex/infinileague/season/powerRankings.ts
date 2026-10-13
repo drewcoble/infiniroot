@@ -116,6 +116,7 @@ export const saveSnapshot = internalMutation({
 
 export interface PowerRankingsInputs {
   season: Doc<"seasons">;
+  league: Doc<"leagues">;
   currentWeek: number;
   teams: Doc<"seasonTeams">[];
   // Every rostered player except taxi/IR - same eligible-pool rule as
@@ -145,7 +146,7 @@ export async function gatherPowerRankingsInputs(
   seasonId: Id<"seasons">,
   weeksAhead?: number,
 ): Promise<PowerRankingsInputs> {
-  const { season } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
+  const { season, league } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
     seasonId,
   });
   if (!season.sleeperLeagueId && !season.yahooLeagueKey && !season.espnLeagueId) {
@@ -224,7 +225,15 @@ export async function gatherPowerRankingsInputs(
     (rows) => new Map(rows.map((row) => [row.fpid, row])),
   );
 
-  return { season, currentWeek, teams, eligibleFpidsByTeam, positionByFpid, projectionMapsByWeek };
+  return {
+    season,
+    league,
+    currentWeek,
+    teams,
+    eligibleFpidsByTeam,
+    positionByFpid,
+    projectionMapsByWeek,
+  };
 }
 
 // One week's LineupPick list for a given fpid list - shared by

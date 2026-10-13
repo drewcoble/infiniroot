@@ -77,6 +77,9 @@ export interface EliminationWatchRow {
   weekPoints: number;
   rank: number;
   status: "cut" | "bubble" | "safe";
+  // Set lineup with points so far, once the week's first game has kicked
+  // off - see lib/eliminationWatch.ts's rankLive.
+  starters?: TeamRosterRow[];
 }
 
 // Roster-slot categories the position radar chart ranks by - mirrors
