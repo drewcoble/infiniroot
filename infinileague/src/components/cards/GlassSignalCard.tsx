@@ -15,6 +15,9 @@ export interface GlassSignalCardData {
   position: Position;
   // ROS position rank (0 = none) and season-to-date position rank.
   positionRank: number;
+  // Where the market ranks him at his position - the gap between this and
+  // positionRank is what makes him a buy or sell.
+  marketPositionRank: number;
   seasonPositionRank: number | undefined;
   team: string | null;
   // Who rosters him - shown on Buys (where he'd come from); null on Sells
@@ -29,17 +32,13 @@ export interface GlassSignalCardData {
   rosPpg: number | undefined;
 }
 
-function signedValue(value: number): string {
-  return `${value >= 0 ? "+" : "−"}${formatTradeValue(Math.abs(value))}`;
-}
-
 const positionLabel = (position: string, rank: number | undefined) =>
   rank ? `${position}${rank}` : "—";
 
 // Slim player card for the Trade tab's Buys / Sells strips - about an
-// analyzer card's width. Position badge and the gap between infinivalue
-// and market value (what makes him a buy or sell) on top, the name, who
-// rosters him (Buys) or his NFL team (Sells), then market | infinivalue.
+// analyzer card's width. Our position rank badge and the market's rank
+// (what makes him a buy or sell) on top, the name, who rosters him (Buys)
+// or his NFL team (Sells), then market | infinivalue.
 // A tap loads him into the analyzer below; long-press opens his value
 // details.
 export function GlassSignalCard({
@@ -54,10 +53,11 @@ export function GlassSignalCard({
   active: boolean;
   onTap: () => void;
 }) {
-  const gap = data.infinivalue - data.marketValue;
+  const marketRankLabel = positionLabel(data.position, data.marketPositionRank);
   const label = [
     data.name,
     positionLabel(data.position, data.positionRank),
+    `market rank ${marketRankLabel}`,
     data.owner ? `rostered by ${data.owner}` : data.team,
     data.signal === "buy" ? "buy" : "sell",
     `infinivalue ${formatTradeValue(data.infinivalue)}`,
@@ -91,9 +91,11 @@ export function GlassSignalCard({
             {positionLabel(data.position, data.positionRank)}
           </span>
           <span
-            className={`${classes.signalGap} ${gap >= 0 ? classes.impactUp : classes.impactDown}`}
+            className={`${classes.signalGap} ${
+              data.signal === "buy" ? classes.impactUp : classes.impactDown
+            }`}
           >
-            {signedValue(gap)}
+            Mkt {marketRankLabel}
           </span>
         </div>
         <div aria-hidden>
@@ -172,6 +174,7 @@ export function GlassSignalCard({
                   { label: "Infinivalue", value: formatTradeValue(data.infinivalue) },
                   { label: "Market value", value: formatTradeValue(data.marketValue) },
                   { label: "Avg value", value: formatTradeValue(data.avgValue) },
+                  { label: "Mkt rank", value: marketRankLabel },
                 ],
               },
               {

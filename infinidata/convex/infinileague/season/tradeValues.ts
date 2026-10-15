@@ -14,31 +14,76 @@ export interface TradeValueRow {
   // list is priced at 0 (it only lists players it considers worth
   // anything).
   marketValue: number | null;
-  // "Infinivalue": our rest-of-season VOR, put on FantasyCalc's scale by
-  // rank - the player with our Nth-best rosVor gets FantasyCalc's
-  // Nth-highest value, so the two halves of `value` are directly
-  // comparable.
+  // "Infinivalue": our own rest-of-season value on a 0-10,000 scale - see
+  // infinivalues() below.
   projectionValue: number;
+  // This player's rank at his position by market value, among the same
+  // board players the board's own positionRank (our order) ranks - so the
+  // two read side by side ("WR11 vs. market WR21"). null whenever
+  // marketValue is.
+  marketPositionRank: number | null;
   // Where our read and the market's disagree enough to act on (see
-  // SIGNAL_MIN_SHARE / SIGNAL_MIN_POINTS): "buy" = we value him well above
-  // the market (get him cheap), "sell" = well below it (move him while the
-  // market pays). null = close enough, or no market value (K/DST).
+  // positionalSignal): "buy" = we rank him well above where the market
+  // does at his position (get him cheap), "sell" = well below (move him
+  // while the market pays). null = close enough, or no market value
+  // (K/DST).
   signal: "buy" | "sell" | null;
 }
 
-// A buy/sell call needs the gap between infinivalue and market value to be
-// at least SIGNAL_MIN_SHARE of the larger of the two AND at least
-// SIGNAL_MIN_POINTS - the share keeps a 300-point gap between two 9,000
-// stars from counting, the floor keeps a 40 vs. 80 gap between two
-// afterthoughts from counting. Tunable.
-const SIGNAL_MIN_SHARE = 0.2;
-const SIGNAL_MIN_POINTS = 400;
+// Infinivalue = 10,000 * ((rosVor - floor) / (topVor - floor))^CURVE, where
+// floor is the rosVor of the last player who'd make a roster league-wide
+// (overall rank teamCount * roster size, bench included). Measuring from
+// there rather than from 0 (replacement level, the last starter) keeps
+// bench-worthy players with a negative rosVor worth something, and only
+// true waiver fodder lands on 0. A curve above 1 pulls the bench back down
+// so it isn't overpriced - 1.3 fit FantasyCalc's value curve best on the
+// week-6 2026 boards (1.2-1.35 across 1QB/superflex/half-PPR shapes).
+// Tunable.
+const INFINIVALUE_TOP = 10000;
+const INFINIVALUE_CURVE = 1.3;
 
-function buySellSignal(infinivalue: number, market: number | null): "buy" | "sell" | null {
-  if (market === null) return null;
-  const gap = infinivalue - market;
-  if (Math.abs(gap) < SIGNAL_MIN_POINTS) return null;
-  if (Math.abs(gap) < SIGNAL_MIN_SHARE * Math.max(infinivalue, market)) return null;
+function infinivalues(
+  board: { fpid: number; rosVor: number }[],
+  rosterSpots: number,
+): Map<number, number> {
+  const vors = board.map((row) => row.rosVor).sort((a, b) => b - a);
+  const top = vors[0] ?? 0;
+  const floor = vors[Math.min(Math.max(rosterSpots, 1), vors.length) - 1] ?? 0;
+  const span = top - floor;
+  return new Map(
+    board.map((row) => {
+      const share = span > 0 ? Math.max((row.rosVor - floor) / span, 0) : 0;
+      return [row.fpid, Math.round(INFINIVALUE_TOP * share ** INFINIVALUE_CURVE)];
+    }),
+  );
+}
+
+// A buy/sell call compares positional ranks, not values: our value and the
+// market's disagree on how much whole positions are worth (superflex QBs
+// especially - the market pays a premium rosVor's last-starter replacement
+// level deliberately doesn't), and on how steep the top of the curve is, so
+// raw value gaps flagged entire positions and every elite player at once.
+// Ranks within a position cancel both out. The ranks must differ by at
+// least SIGNAL_MIN_SPOTS and by SIGNAL_MIN_SHARE of the better rank (WR2 vs.
+// WR5 counts, WR40 vs. WR43 doesn't), and one side must value him at
+// SIGNAL_MIN_VALUE or more, so deep-bench afterthoughts never get flagged.
+// Tunable.
+const SIGNAL_MIN_SPOTS = 3;
+const SIGNAL_MIN_SHARE = 0.3;
+const SIGNAL_MIN_VALUE = 500;
+
+function positionalSignal(
+  infinivalue: number,
+  market: number | null,
+  rank: number,
+  marketRank: number | null,
+): "buy" | "sell" | null {
+  if (market === null || marketRank === null || rank === 0) return null;
+  if (Math.max(infinivalue, market) < SIGNAL_MIN_VALUE) return null;
+  const gap = marketRank - rank;
+  if (Math.abs(gap) < Math.max(SIGNAL_MIN_SPOTS, SIGNAL_MIN_SHARE * Math.min(rank, marketRank))) {
+    return null;
+  }
   return gap > 0 ? "buy" : "sell";
 }
 
@@ -148,32 +193,42 @@ export async function loadTradeValues(
     ppr: season.scoring === "PPR" ? 1 : season.scoring === "HALF" ? 0.5 : 0,
   });
 
-  // Rank-match our board onto the market's value curve. Without market
-  // data there's no curve to borrow - fall back to a plain rescale of
-  // rosVor (best player = 10,000).
-  const marketCurve = market ? [...market.values()].sort((a, b) => b - a) : null;
-  const byVor = [...board].sort((a, b) => b.rosVor - a.rosVor);
-  const topVor = Math.max(byVor[0]?.rosVor ?? 0, 1);
-  const projectionByFpid = new Map(
-    byVor.map((row, index) => [
-      row.fpid,
-      Math.round(
-        marketCurve ? (marketCurve[index] ?? 0) : Math.max(row.rosVor, 0) * (10000 / topVor),
-      ),
-    ]),
-  );
+  const rosterSpots =
+    teams.length * Object.values(season.rosterSlots).reduce((sum, slots) => sum + slots, 0);
+  const projectionByFpid = infinivalues(board, rosterSpots);
+  const marketValueOf = (row: (typeof board)[number]) =>
+    market === null || UNPRICED_POSITIONS.has(row.position) ? null : (market.get(row.fpid) ?? 0);
+
+  // Market positional ranks over the same board players positionRank
+  // covers - market value, ties (the many unlisted players at 0) broken
+  // by rosVor, the same order positionRank uses.
+  const marketRankByFpid = new Map<number, number>();
+  const byPosition = new Map<string, typeof board>();
+  for (const row of board) {
+    const list = byPosition.get(row.position) ?? [];
+    list.push(row);
+    byPosition.set(row.position, list);
+  }
+  for (const rows of byPosition.values()) {
+    if (rows.every((row) => marketValueOf(row) === null)) continue;
+    [...rows]
+      .sort((a, b) => (marketValueOf(b) ?? 0) - (marketValueOf(a) ?? 0) || b.rosVor - a.rosVor)
+      .forEach((row, index) => marketRankByFpid.set(row.fpid, index + 1));
+  }
 
   return board.map((row) => {
     const projectionValue = projectionByFpid.get(row.fpid) ?? 0;
-    const marketValue =
-      market === null || UNPRICED_POSITIONS.has(row.position) ? null : (market.get(row.fpid) ?? 0);
+    const marketValue = marketValueOf(row);
+    const marketPositionRank =
+      marketValue === null ? null : (marketRankByFpid.get(row.fpid) ?? null);
     return {
       fpid: row.fpid,
       value:
         marketValue === null ? projectionValue : Math.round((marketValue + projectionValue) / 2),
       marketValue,
       projectionValue,
-      signal: buySellSignal(projectionValue, marketValue),
+      marketPositionRank,
+      signal: positionalSignal(projectionValue, marketValue, row.positionRank, marketPositionRank),
     };
   });
 }

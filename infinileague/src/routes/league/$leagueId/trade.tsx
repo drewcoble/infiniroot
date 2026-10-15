@@ -311,20 +311,29 @@ function TradePage() {
 
   // Buys: the biggest buy signals on other teams' rosters, league-wide
   // (free agents left out - there's no one to trade with). Sells: your own
-  // roster's biggest sell signals. Both ordered by the gap between
-  // infinivalue and market value, biggest first (see convex/infinileague/
-  // season/tradeValues.ts's buy/sell rule).
+  // roster's biggest sell signals. Both ordered by how far apart our
+  // position rank and the market's are, relative to the better of the two
+  // (WR2 vs. WR6 outranks WR30 vs. WR40), biggest first - see convex/
+  // infinileague/season/tradeValues.ts's buy/sell rule.
   const myFpids = new Set((teamARoster.rows ?? []).flatMap((row) => (row.fpid ? [row.fpid] : [])));
   const teamIdByName = new Map((standings ?? []).map((row) => [row.name, row.teamId]));
   const signalCard = (row: RosVorRow, signal: "buy" | "sell", owner: string | null) => {
     const value = valueByFpid?.get(row.fpid);
-    if (!value || value.signal !== signal || value.marketValue === null) return [];
+    if (
+      !value ||
+      value.signal !== signal ||
+      value.marketValue === null ||
+      value.marketPositionRank === null
+    ) {
+      return [];
+    }
     return [
       {
         fpid: row.fpid,
         name: row.name,
         position: row.position,
         positionRank: row.positionRank,
+        marketPositionRank: value.marketPositionRank,
         seasonPositionRank: seasonPositionRankByFpid.get(row.fpid),
         team: row.team,
         owner,
@@ -338,8 +347,10 @@ function TradePage() {
       },
     ];
   };
-  const byGap = (a: GlassSignalCardData, b: GlassSignalCardData) =>
-    Math.abs(b.infinivalue - b.marketValue) - Math.abs(a.infinivalue - a.marketValue);
+  const rankGap = (card: GlassSignalCardData) =>
+    Math.abs(card.marketPositionRank - card.positionRank) /
+    Math.max(Math.min(card.marketPositionRank, card.positionRank), 1);
+  const byGap = (a: GlassSignalCardData, b: GlassSignalCardData) => rankGap(b) - rankGap(a);
   const buys = (vorRows ?? [])
     .flatMap((row) =>
       row.rosteredByTeamName && !myFpids.has(row.fpid)

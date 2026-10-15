@@ -232,13 +232,17 @@ export interface TeamRosterRow {
 // Mirrors convex/infinileague/season/tradeValues.ts's TradeValueRow - a
 // FantasyCalc-style trade value per player (thousands scale, additive):
 // the blend of FantasyCalc's market value (null for K/DST, which it
-// doesn't price) and our rest-of-season VOR put on the same scale.
+// doesn't price) and our own rest-of-season value on the same scale.
 export interface TradeValueRow {
   fpid: number;
   value: number;
   marketValue: number | null;
   // "Infinivalue".
   projectionValue: number;
-  // Infinivalue well above ("buy") / below ("sell") market value.
+  // Rank at his position by market value - the counterpart of the board's
+  // positionRank. null when marketValue is.
+  marketPositionRank: number | null;
+  // We rank him well above ("buy") / below ("sell") where the market does
+  // at his position.
   signal: "buy" | "sell" | null;
 }
