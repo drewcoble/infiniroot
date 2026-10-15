@@ -3,11 +3,12 @@ import { pillStyle } from "./cards/cardShared";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
 import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
 import classes from "./cards/GlassMatchupCard.module.css";
+import type { LiveEliminationRow } from "../lib/eliminationWatch";
 import type { EliminationWatchRow, TeamPositionRanks } from "../types/season";
 
 interface EliminationWatchListProps {
   leagueId: string;
-  rows: EliminationWatchRow[] | undefined;
+  rows: LiveEliminationRow[] | undefined;
   // See StandingsList's identical prop.
   positionRanksByTeam: Map<string, TeamPositionRanks> | undefined;
 }
@@ -22,11 +23,13 @@ const STATUS_BADGE: Record<EliminationWatchRow["status"], { label: string; color
   safe: { label: "Safe", color: "green" },
 };
 
-// This week's guillotine elimination projection: each team's optimal-lineup
-// total for just the current NFL week (see convex/infinileague/season/
+// This week's guillotine elimination projection: each team's set lineup
+// for just the current NFL week (see convex/infinileague/season/
 // eliminationWatch.ts), ranked best-to-worst same as PowerRankingsList, with
 // the bottom slice flagged red (projected cut) / gold (bubble) / green
-// (safe) via the status badge instead of a week-over-week rank arrow.
+// (safe) via the status badge instead of a week-over-week rank arrow. Once
+// the week's games start, the totals are live projections (see
+// lib/eliminationWatch.ts), so the order moves as players score.
 export function EliminationWatchList({
   leagueId,
   rows,
@@ -46,6 +49,7 @@ export function EliminationWatchList({
     <Stack gap={8}>
       {rows.map((row) => {
         const status = STATUS_BADGE[row.status];
+        const isLive = row.actualPoints !== undefined;
         return (
           <GlassTeamCard
             key={row.teamId}
@@ -61,12 +65,25 @@ export function EliminationWatchList({
                 </span>
               ),
               primary: row.weekPoints.toFixed(1),
-              secondaryRight: "Week pts",
+              ...(row.actualPoints !== undefined
+                ? {
+                    secondaryLeft: (
+                      <span className="num">{`${row.actualPoints.toFixed(1)} scored`}</span>
+                    ),
+                  }
+                : {}),
+              secondaryRight: isLive ? "Live proj" : "Week pts",
               stats: [
                 {
                   label: "This week",
                   items: [
-                    { label: "Points", value: row.weekPoints.toFixed(1) },
+                    ...(row.actualPoints !== undefined
+                      ? [{ label: "Scored", value: row.actualPoints.toFixed(1) }]
+                      : []),
+                    {
+                      label: isLive ? "Live proj" : "Points",
+                      value: row.weekPoints.toFixed(1),
+                    },
                     { label: "Status", value: status.label },
                   ],
                 },

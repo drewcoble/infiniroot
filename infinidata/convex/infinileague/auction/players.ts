@@ -4,6 +4,7 @@ import { POSITIONS } from "../../positions";
 import type { Id } from "../../_generated/dataModel";
 import { requireSeasonOwner, requireSeasonParticipant } from "../../lib/access";
 import { getEligibleFpidSet, type CycleType } from "./eligibility";
+import { loadSeasonRosVorRows } from "../../lib/leagueShape";
 
 export type Position = (typeof POSITIONS)[number];
 
@@ -22,16 +23,16 @@ export interface PlayerDisplayInfo {
 // getWaiverEligiblePlayers (Players tab) and getBidsBoard (bids.ts's Bids
 // tab, which needs the same PlayerCard-shaped info for its own smaller set
 // of actively-bid-on fpids) both build on this instead of duplicating the
-// rosVorSnapshots/injuries join and position-rank computation a third time.
+// rosVor board/injuries join and position-rank computation a third time.
 //
 // The base source is the `players` table itself (always populated), NOT
-// rosVorSnapshots - a freshly-connected season has zero rosVorSnapshots
-// rows until convex/rosVor.ts's refreshRosVor next runs (once/day via
-// fetchAllData.ts), which showed up as a real bug: a brand-new league's
-// Players tab was empty regardless of eligibility, because the ranking
-// cache itself was empty, not because nothing was eligible. Rank/PPG are
-// layered on top from rosVorSnapshots when available (real numbers once
-// the cache has run) and fall back to the same "0 = no rank, don't
+// the rosVor board - a season whose shape has no board yet (rare now:
+// boards are shared per league shape, and rosVor.ts's ensureSeasonRosVor
+// builds a missing one on first sync) has nothing to rank by, which once
+// showed up as a real bug: a brand-new league's Players tab was empty
+// regardless of eligibility, because the ranking cache itself was empty,
+// not because nothing was eligible. Rank/PPG are layered on top from the
+// board when available and fall back to the same "0 = no rank, don't
 // fabricate one" sentinel PlayerCard already treats specially.
 //
 // positionRank is always computed from the FULL league-wide board, not
@@ -42,21 +43,16 @@ export async function getPlayerDisplayInfoByFpid(
   seasonId: Id<"seasons">,
   fpids: Set<number>,
 ): Promise<Map<number, PlayerDisplayInfo>> {
-  const [allPlayers, injuries, nflState] = await Promise.all([
+  const [allPlayers, injuries, nflState, season] = await Promise.all([
     ctx.db.query("players").collect(),
     ctx.db.query("injuries").collect(),
     ctx.db.query("nflState").first(),
+    ctx.db.get(seasonId),
   ]);
   const injuryByFpid = new Map(injuries.map((row) => [row.fpid, row]));
 
-  const snapshotRows = nflState
-    ? await ctx.db
-        .query("rosVorSnapshots")
-        .withIndex("by_season_week", (q) =>
-          q.eq("seasonId", seasonId).eq("week", String(nflState.week)),
-        )
-        .collect()
-    : [];
+  const snapshotRows =
+    nflState && season ? await loadSeasonRosVorRows(ctx, season, String(nflState.week)) : [];
   const snapshotByFpid = new Map(snapshotRows.map((row) => [row.fpid, row]));
 
   const byPosition = new Map<Position, typeof snapshotRows>();

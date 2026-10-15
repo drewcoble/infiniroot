@@ -3,7 +3,7 @@ import type { Doc } from "./_generated/dataModel";
 
 // A league's weekly-elimination format, orthogonal to draftType.ts's
 // DraftType - a guillotine league still drafts snake or auction, it just
-// also cuts the lowest weekly optimal-lineup score every week (see
+// also cuts the lowest weekly score every week (see
 // convex/infinileague/season/eliminationWatch.ts).
 export const leagueTypeValidator = v.union(
   v.literal("redraft"),

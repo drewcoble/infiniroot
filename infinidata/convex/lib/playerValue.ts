@@ -363,7 +363,9 @@ export interface ValuedPlayer {
 // "the next player up if this slot opens," for both FAAB's tiebreak
 // ranking and rosVor's own valueOverReplacement.
 export function computeReplacementLevels(
-  settings: Doc<"seasons">,
+  settings: Pick<Doc<"seasons">, "teamCount" | "flexPositions" | "superflexPositions"> & {
+    rosterSlots: Record<Position | "FLEX" | "SUPERFLEX", number>;
+  },
   activePositions: Position[],
   freeAgentsByPosition: Map<Position, ValuedPlayer[]>,
 ): Record<Position, number> {

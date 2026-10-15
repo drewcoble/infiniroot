@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
@@ -13,6 +13,9 @@ import { GlassSegmented } from "../../../components/cards/GlassSegmented";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
+import { isAnyGameLive, useNow, type WeekGame } from "../../../lib/liveGames";
+import { LIVE_REFRESH_MS } from "../../../lib/matchupSummary";
+import { rankLive } from "../../../lib/eliminationWatch";
 import type {
   EliminationWatchRow,
   LinkedSeason,
@@ -36,6 +39,11 @@ const ROSTER_STALE_MS = 15 * 60 * 1000;
 interface RosterSyncStatusRow {
   teamId: string;
   syncedAt: number;
+}
+
+interface NflState {
+  season: string;
+  week: string;
 }
 
 function LeaguePage() {
@@ -131,6 +139,46 @@ function LeaguePage() {
     // Same dep convention as the getPowerRankings effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, isAuthenticated, isGuillotine]);
+
+  // This week's slate with live game status - drives Elimination Watch's
+  // live projections (see lib/eliminationWatch.ts) and, while any game is
+  // being played, a periodic re-fetch so lineups and points so far keep up.
+  // Guillotine only - the other views don't change during games.
+  const nflState: NflState | null | undefined = useQuery(
+    api.nflState.getNflState,
+    isAuthenticated && isGuillotine ? {} : "skip",
+  );
+  // Same pre-season clamp as gatherPowerRankingsInputs' current week.
+  const currentWeek = nflState ? String(Math.max(Number(nflState.week), 1)) : null;
+  const weekGames: WeekGame[] | undefined = useQuery(
+    api.sleeper.livePoints.getWeekGames,
+    nflState && currentWeek ? { season: nflState.season, week: currentWeek } : "skip",
+  );
+  const now = useNow(60 * 1000);
+  const anyGameLive = isGuillotine && isAnyGameLive(weekGames, now);
+
+  useEffect(() => {
+    if (!isAuthenticated || !anyGameLive) return;
+    let cancelled = false;
+    // A failed refresh keeps the last rows on screen rather than an error.
+    const id = setInterval(() => {
+      getEliminationWatch({ seasonId })
+        .then((rows) => {
+          if (!cancelled) setEliminationWatch(rows);
+        })
+        .catch(() => {});
+    }, LIVE_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated, anyGameLive]);
+
+  const liveEliminationWatch = useMemo(
+    () => eliminationWatch && rankLive(eliminationWatch, weekGames, now),
+    [eliminationWatch, weekGames, now],
+  );
 
   // Backs every team card's long-press popover radar chart (see
   // GlassTeamCard) - fetched once per league visit rather than per popover,
@@ -291,7 +339,7 @@ function LeaguePage() {
           )}
           <EliminationWatchList
             leagueId={leagueId}
-            rows={eliminationWatch}
+            rows={liveEliminationWatch}
             positionRanksByTeam={positionRanksByTeam}
           />
         </>

@@ -1,5 +1,5 @@
 import { v, type Infer } from "convex/values";
-import { internalMutation, internalQuery, query, type ActionCtx } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { POSITIONS, positionValidator } from "./positions";
@@ -8,6 +8,14 @@ import { requireSeasonOwner } from "./lib/access";
 import { loadWeekPoints } from "./lib/weekPoints";
 import { computeReplacementLevels, findInjuryBoosts, forwardRate, gatherPlayerForms, momentumMultiplier, type ValuedPlayer } from "./lib/playerValue";
 import { gatherRosProjTotals } from "./rosProjTotals";
+import {
+  ensureLeagueShapeId,
+  findLeagueShapeId,
+  leagueShapeFieldsValidator,
+  leagueShapeOf,
+  loadSeasonRosVorRows,
+  type LeagueShapeFields,
+} from "./lib/leagueShape";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -42,7 +50,7 @@ export interface RosVorRow {
   actualPpg: number;
   // Single-week counterpart to rosVor/rosRank/rosPpg above - "best play
   // this week specifically" rather than summed over the rest of the
-  // season. See schema.ts's comment on rosVorSnapshots.weekVor for why this
+  // season. See schema.ts's comment on rosVorBoardFields.weekVor for why this
   // isn't just rosVor/remainingWeeks.
   weekVor: number;
   weekRank: number;
@@ -70,10 +78,10 @@ export interface RosVorRow {
   isOnMyTeam: boolean;
 }
 
-// Recomputes and upserts one week's full rosVorSnapshots board for every
-// season - called from convex/fetchAllData.ts's daily
-// refreshCachedComputations, same as draftValues' own per-season refresh.
-// Upserted by (seasonId, week, fpid): a same-week rerun (the cron runs
+// Recomputes and upserts one week's full rosVorShapeSnapshots board for
+// every league shape any season currently has (see lib/leagueShape.ts) -
+// called from convex/fetchAllData.ts's daily refreshCachedComputations.
+// Upserted by (shapeId, week, fpid): a same-week rerun (the cron runs
 // daily, this is meant to read as weekly) just refreshes that week's
 // numbers in place, and a new row per player only appears once the NFL
 // week actually advances - same trick convex/infinileague/season/
@@ -83,22 +91,23 @@ export interface RosVorRow {
 // every week's board, not just the latest).
 //
 // Split in two so the expensive part runs once per scoring setup, not
-// once per league: computeRosVorInputs does every heavy read (projections,
+// once per shape: computeRosVorInputs does every heavy read (projections,
 // recent playerPoints, playerSeasonStats, injuries, rosProjTotalSets) and
-// produces each player's league-independent values, and refreshRosVor
-// then only does the cheap per-league part (replacement levels off the
-// league's own roster settings, VOR, ranks, upsert). Every input to a
-// player's values is scoped to that player's own position (injury boosts
-// only match same-position teammates), so computing over the union of a
-// group's positions gives each league exactly what it would have computed
-// alone.
+// produces each player's shape-independent values, and refreshRosVor then
+// only does the cheap per-shape part (replacement levels off the shape's
+// roster settings, VOR, ranks, upsert). Every input to a player's values is
+// scoped to that player's own position (injury boosts only match same-
+// position teammates), so computing over the union of a group's positions
+// gives each shape exactly what it would have computed alone. Leagues
+// sharing a shape share the one board, so N identical leagues cost one
+// refreshRosVor, not N.
 //
 // `scheduled` marks a daily-cron run. On a deployment with the
 // ROS_VOR_WEEKLY_ONLY env var set to "true" (dev - this refresh is one of
 // the biggest DB I/O costs there, and dev doesn't need daily numbers), a
 // scheduled run only does real work on Thursday's run (the cron fires at
 // 12:00 UTC, so Wed night/Thu morning US time) - or for any season whose
-// current week has no board yet, so a week rollover never leaves the
+// shape has no board for the current week yet, so a rollover never leaves the
 // Players/Trade tabs empty until Thursday. Manual runs (fetchAll/
 // refreshCaches) always refresh.
 const WEEKLY_REFRESH_UTC_DAY = 4; // Thursday
@@ -116,14 +125,15 @@ export async function refreshAllRosVor(
   const throttled =
     args.scheduled === true && process.env.ROS_VOR_WEEKLY_ONLY === "true" && new Date().getUTCDay() !== WEEKLY_REFRESH_UTC_DAY;
 
-  const groups = new Map<string, { scoringConfig: ScoringConfig; positions: Set<Position>; seasonIds: Id<"seasons">[] }>();
+  const groups = new Map<string, { scoringConfig: ScoringConfig; positions: Set<Position>; shapes: Map<string, LeagueShapeFields> }>();
   for (const season of args.seasons) {
-    if (throttled && (await ctx.runQuery(internal.rosVor.hasRosVorBoard, { seasonId: season._id, week }))) continue;
+    const shape = leagueShapeOf(season);
+    if (throttled && (await ctx.runQuery(internal.rosVor.hasRosVorBoard, { shapeKey: shape.key, week }))) continue;
     const scoringConfig = scoringConfigFromSeason(season);
     const key = `${scoringConfig.scoring}|${scoringConfig.teScoring}|${scoringConfig.sixPointPassTds}`;
-    const group = groups.get(key) ?? { scoringConfig, positions: new Set<Position>(), seasonIds: [] };
-    for (const pos of activePositionsFor(season)) group.positions.add(pos);
-    group.seasonIds.push(season._id);
+    const group = groups.get(key) ?? { scoringConfig, positions: new Set<Position>(), shapes: new Map() };
+    for (const pos of activePositionsFor(shape.fields)) group.positions.add(pos);
+    group.shapes.set(shape.key, shape.fields);
     groups.set(key, group);
   }
 
@@ -133,16 +143,63 @@ export async function refreshAllRosVor(
       positions: POSITIONS.filter((pos) => group.positions.has(pos)),
       scoringConfig: group.scoringConfig,
     });
-    for (const seasonId of group.seasonIds) {
-      await ctx.runMutation(internal.rosVor.refreshRosVor, { seasonId, week, players });
+    for (const shape of group.shapes.values()) {
+      await ctx.runMutation(internal.rosVor.refreshRosVor, { shape, week, players });
     }
   }
 }
 
-function activePositionsFor(settings: Doc<"seasons">): Position[] {
+function activePositionsFor(settings: LeagueShapeFields): Position[] {
   return POSITIONS.filter(
     (pos) => settings.rosterSlots[pos] > 0 || settings.flexPositions.includes(pos) || settings.superflexPositions.includes(pos),
   );
+}
+
+// Builds one season's board for the current week right away if its shape
+// doesn't have one yet (a league with settings no other league has, or one
+// whose settings just changed), instead of leaving its Players/Trade/Free
+// Agents tabs empty until the next daily cron. Scheduled from every
+// provider roster sync (Sleeper/ESPN/Yahoo), which is infinileague's first
+// touch on a new league, and from every settings change - a no-op once the
+// board exists, so it costs a couple of indexed reads. Same path the cron
+// uses, just for this one season's shape.
+export const ensureSeasonRosVor = internalAction({
+  args: { seasonId: v.id("seasons") },
+  handler: async (ctx, args): Promise<void> => {
+    const season = await ctx.runQuery(internal.rosVor.getSeasonMissingRosVor, { seasonId: args.seasonId });
+    if (season === null) return;
+    await refreshAllRosVor(ctx, { seasons: [season] });
+  },
+});
+
+// For mutations that change a season's shape fields (teamCount, scoring,
+// roster slots, flex eligibility) - the season now reads a different
+// shape's board, which may not exist yet.
+export async function scheduleEnsureSeasonRosVor(ctx: MutationCtx, seasonId: Id<"seasons">): Promise<void> {
+  await ctx.scheduler.runAfter(0, internal.rosVor.ensureSeasonRosVor, { seasonId });
+}
+
+// The season's doc when its shape has no board for the current week, else
+// null (board already there, season gone, or not an NFL regular-season week).
+export const getSeasonMissingRosVor = internalQuery({
+  args: { seasonId: v.id("seasons") },
+  handler: async (ctx, args): Promise<Doc<"seasons"> | null> => {
+    const nflState = await ctx.db.query("nflState").first();
+    if (!nflState || nflState.seasonType !== "regular") return null;
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) return null;
+    return (await shapeHasBoard(ctx, leagueShapeOf(season).key, nflState.week)) ? null : season;
+  },
+});
+
+async function shapeHasBoard(ctx: QueryCtx, shapeKey: string, week: string): Promise<boolean> {
+  const shapeId = await findLeagueShapeId(ctx, shapeKey);
+  if (!shapeId) return false;
+  const row = await ctx.db
+    .query("rosVorShapeSnapshots")
+    .withIndex("by_shape_week_fpid", (q) => q.eq("shapeId", shapeId).eq("week", week))
+    .first();
+  return row !== null;
 }
 
 export const getRosVorWeek = internalQuery({
@@ -154,14 +211,8 @@ export const getRosVorWeek = internalQuery({
 });
 
 export const hasRosVorBoard = internalQuery({
-  args: { seasonId: v.id("seasons"), week: v.string() },
-  handler: async (ctx, args): Promise<boolean> => {
-    const row = await ctx.db
-      .query("rosVorSnapshots")
-      .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
-      .first();
-    return row !== null;
-  },
+  args: { shapeKey: v.string(), week: v.string() },
+  handler: async (ctx, args): Promise<boolean> => shapeHasBoard(ctx, args.shapeKey, args.week),
 });
 
 // One player's league-independent values for one scoring setup - see
@@ -273,12 +324,12 @@ export const computeRosVorInputs = internalQuery({
   },
 });
 
-// Per-league half of the refresh - see refreshAllRosVor's comment above.
+// Per-shape half of the refresh - see refreshAllRosVor's comment above.
 export const refreshRosVor = internalMutation({
-  args: { seasonId: v.id("seasons"), week: v.string(), players: v.array(rosVorInputValidator) },
+  args: { shape: leagueShapeFieldsValidator, week: v.string(), players: v.array(rosVorInputValidator) },
   handler: async (ctx, args) => {
-    const settings = await ctx.db.get(args.seasonId);
-    if (!settings) return;
+    const settings = args.shape;
+    const shapeId = await ensureLeagueShapeId(ctx, settings);
 
     const activePositions = activePositionsFor(settings);
     const active = new Set<Position>(activePositions);
@@ -335,8 +386,8 @@ export const refreshRosVor = internalMutation({
     const weekRankByFpid = rankBy((row) => row.weekVor);
 
     const existing = await ctx.db
-      .query("rosVorSnapshots")
-      .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
+      .query("rosVorShapeSnapshots")
+      .withIndex("by_shape_week_fpid", (q) => q.eq("shapeId", shapeId).eq("week", args.week))
       .collect();
     const existingByFpid = new Map(existing.map((row) => [row.fpid, row]));
     const now = Date.now();
@@ -371,8 +422,8 @@ export const refreshRosVor = internalMutation({
         const changed = (Object.keys(fields) as (keyof typeof fields)[]).some((key) => match[key] !== fields[key]);
         if (changed) await ctx.db.patch(match._id, { ...fields, computedAt: now });
       } else {
-        await ctx.db.insert("rosVorSnapshots", {
-          seasonId: args.seasonId,
+        await ctx.db.insert("rosVorShapeSnapshots", {
+          shapeId,
           week: args.week,
           fpid: player.fpid,
           ...fields,
@@ -410,13 +461,10 @@ export const getRosVorBoard = query({
     teamId: v.optional(v.id("seasonTeams")),
   },
   handler: async (ctx, args): Promise<RosVorRow[]> => {
-    await requireSeasonOwner(ctx, args.seasonId);
+    const { season } = await requireSeasonOwner(ctx, args.seasonId);
 
     const [rows, rosteredRows, teams, injuries] = await Promise.all([
-      ctx.db
-        .query("rosVorSnapshots")
-        .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId).eq("week", args.week))
-        .collect(),
+      loadSeasonRosVorRows(ctx, season, args.week),
       ctx.db
         .query("rosterPlayers")
         .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
@@ -508,12 +556,87 @@ export const getWeekPoints = query({
 export const getPlayerRosVorHistory = query({
   args: { seasonId: v.id("seasons"), fpid: v.number() },
   handler: async (ctx, args) => {
-    await requireSeasonOwner(ctx, args.seasonId);
+    const { season } = await requireSeasonOwner(ctx, args.seasonId);
 
+    // The season's current shape for every week - see lib/leagueShape.ts's
+    // loadSeasonRosVorRows on why past weeks don't follow a settings change.
+    const shapeId = await findLeagueShapeId(ctx, leagueShapeOf(season).key);
+    if (!shapeId) return [];
     const rows = await ctx.db
-      .query("rosVorSnapshots")
-      .withIndex("by_season_fpid", (q) => q.eq("seasonId", args.seasonId).eq("fpid", args.fpid))
+      .query("rosVorShapeSnapshots")
+      .withIndex("by_shape_fpid", (q) => q.eq("shapeId", shapeId).eq("fpid", args.fpid))
       .collect();
     return rows.sort((a, b) => Number(a.week) - Number(b.week));
+  },
+});
+
+// One-off migration from the LEGACY per-season rosVorSnapshots table to the
+// per-shape rosVorShapeSnapshots one (see schema.ts) - run once per
+// deployment after this ships (`npx convex run rosVor:backfillRosVorShapeSnapshots`),
+// reschedules itself until the whole table has been walked. Each row goes
+// to its season's CURRENT shape; leagues that share a shape hold identical
+// rows for a week, so the first one copied wins and the rest are skipped.
+// Rows for deleted seasons are dropped. Safe to rerun (only ever inserts
+// rows that are missing), and safe alongside the daily refresh.
+export const backfillRosVorShapeSnapshots = internalMutation({
+  args: { cursor: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const result = await ctx.db.query("rosVorSnapshots").paginate({ cursor: args.cursor ?? null, numItems: 200 });
+
+    const shapeIdBySeason = new Map<Id<"seasons">, Id<"leagueShapes"> | null>();
+    for (const row of result.page) {
+      if (!shapeIdBySeason.has(row.seasonId)) {
+        const season = await ctx.db.get(row.seasonId);
+        shapeIdBySeason.set(row.seasonId, season ? await ensureLeagueShapeId(ctx, leagueShapeOf(season).fields) : null);
+      }
+      const shapeId = shapeIdBySeason.get(row.seasonId);
+      if (!shapeId) continue;
+
+      const existing = await ctx.db
+        .query("rosVorShapeSnapshots")
+        .withIndex("by_shape_week_fpid", (q) => q.eq("shapeId", shapeId).eq("week", row.week).eq("fpid", row.fpid))
+        .first();
+      if (existing) continue;
+      await ctx.db.insert("rosVorShapeSnapshots", {
+        shapeId,
+        week: row.week,
+        fpid: row.fpid,
+        position: row.position,
+        name: row.name,
+        team: row.team,
+        rosVor: row.rosVor,
+        rosRank: row.rosRank,
+        ...(row.rosValue !== undefined ? { rosValue: row.rosValue } : {}),
+        boostReason: row.boostReason,
+        actualVor: row.actualVor,
+        actualRank: row.actualRank,
+        ...(row.rosPpg !== undefined ? { rosPpg: row.rosPpg } : {}),
+        ...(row.actualPpg !== undefined ? { actualPpg: row.actualPpg } : {}),
+        ...(row.weekVor !== undefined ? { weekVor: row.weekVor } : {}),
+        ...(row.weekRank !== undefined ? { weekRank: row.weekRank } : {}),
+        ...(row.weekPpg !== undefined ? { weekPpg: row.weekPpg } : {}),
+        computedAt: row.computedAt,
+      });
+    }
+
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(0, internal.rosVor.backfillRosVorShapeSnapshots, { cursor: result.continueCursor });
+    }
+  },
+});
+
+// One-off cleanup for the LEGACY rosVorSnapshots table, same pattern as
+// valueGaps.ts's clearValueGaps - run only after the backfill above has
+// finished, then that table's definition can be removed.
+export const clearLegacyRosVorSnapshots = internalMutation({
+  args: { cursor: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const result = await ctx.db.query("rosVorSnapshots").paginate({ cursor: args.cursor ?? null, numItems: 500 });
+    for (const row of result.page) {
+      await ctx.db.delete(row._id);
+    }
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(0, internal.rosVor.clearLegacyRosVorSnapshots, { cursor: result.continueCursor });
+    }
   },
 });

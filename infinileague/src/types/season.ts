@@ -66,7 +66,7 @@ export interface PowerRankingRow {
 }
 
 // Mirrors convex/infinileague/season/eliminationWatch.ts's
-// EliminationWatchRow - this week's optimal-lineup total only (not
+// EliminationWatchRow - this week's set-lineup projection only (not
 // rest-of-season, unlike PowerRankingRow above), already ranked descending
 // (rank 1 = best/safest, same convention as every other list here) with the
 // bottom slice flagged red/gold/green.
@@ -77,6 +77,9 @@ export interface EliminationWatchRow {
   weekPoints: number;
   rank: number;
   status: "cut" | "bubble" | "safe";
+  // Set starting lineup, with points so far once games are played - see
+  // lib/eliminationWatch.ts's rankLive.
+  starters: TeamRosterRow[];
 }
 
 // Roster-slot categories the position radar chart ranks by - mirrors
