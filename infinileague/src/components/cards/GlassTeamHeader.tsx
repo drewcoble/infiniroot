@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { StandingsRow } from "../../types/season";
+import { rankPillStyle } from "./cardShared";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -13,14 +14,12 @@ export interface TeamWeekSummary {
   toPlayCount: number;
 }
 
-// Standings rank as a glass badge like the player cards' position badges,
-// tinted saddlebrown - the same "this one's yours" color the old cards used
-// for your own players/selections (shared/PlayerCard.tsx).
+// Standings rank as a glass badge like the player cards' position badges -
+// the same gray as every other team's rank badge (saddlebrown read as
+// confusing), with the numeric weight on top.
 const RANK_PILL_STYLE = {
-  color: "color-mix(in srgb, #8b4513 15%, #fff)",
-  fontFamily: "var(--font-numeric)",
+  ...rankPillStyle(false),
   fontWeight: "var(--font-numeric-weight)",
-  "--pill-tint": "#8b4513",
 } as CSSProperties;
 
 // Points for per game played - null before any game has been played.

@@ -80,7 +80,7 @@ export function matchupHeaderTeam(
     projectedPoints: allFinal ? sumStarterPoints(rows, (row) => row.projectedPoints ?? 0) : proj,
     liveCount,
     toPlayCount,
-    ...(standing ? { rank: { value: standing.rank, isMine: standing.isSelf } } : {}),
+    ...(standing ? { rank: { value: standing.rank } } : {}),
   };
 }
 
