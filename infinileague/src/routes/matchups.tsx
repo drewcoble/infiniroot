@@ -257,6 +257,11 @@ function LeagueMatchup({
     { asLink: true },
   );
   const titleId = useId();
+  // A guillotine league has no head-to-head games, so no meaningful rank
+  // or record - the header and detail leave both out.
+  const headToHead = season.leagueType !== "guillotine";
+  const standingFor = (teamId: string | null) =>
+    headToHead ? standings?.find((row) => row.teamId === teamId) : undefined;
   const starters = (rows: TeamRosterRow[] | undefined) =>
     (rows ?? [])
       .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
@@ -311,7 +316,14 @@ function LeagueMatchup({
             teamA={
               teamARoster.rows === undefined
                 ? "loading"
-                : matchupHeaderTeam(nameA, teamARoster.rows, actualA, projA, gameStateFor, self)
+                : matchupHeaderTeam(
+                    nameA,
+                    teamARoster.rows,
+                    actualA,
+                    projA,
+                    gameStateFor,
+                    headToHead ? self : undefined,
+                  )
             }
             teamB={
               current === undefined || (teamBId !== null && teamBRoster.rows === undefined)
@@ -323,7 +335,7 @@ function LeagueMatchup({
                       actualB,
                       projB,
                       gameStateFor,
-                      standings?.find((row) => row.teamId === teamBId),
+                      standingFor(teamBId),
                     )
                   : null
             }
@@ -343,6 +355,7 @@ function LeagueMatchup({
             titleId={titleId}
             subtitle={`Week ${week}`}
             teams={detailTeams}
+            headToHead={headToHead}
             shortName={shortName}
             onClose={close}
           />

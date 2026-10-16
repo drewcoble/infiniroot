@@ -36,7 +36,12 @@ import {
   useNow,
   type WeekGame,
 } from "../../../lib/liveGames";
-import type { RosVorRow, StandingsRow, TeamRosterRow } from "../../../types/season";
+import type {
+  LinkedSeason,
+  RosVorRow,
+  StandingsRow,
+  TeamRosterRow,
+} from "../../../types/season";
 
 // Regular-season weeks the week picker steps through.
 const REGULAR_SEASON_WEEKS = 18;
@@ -80,6 +85,14 @@ function MatchupPage() {
     api.infinileague.season.standings.getStandings,
     isAuthenticated ? { seasonId } : "skip",
   );
+  // A guillotine league has no head-to-head games, so no meaningful rank -
+  // the header leaves the rank badges out.
+  const seasonsList: LinkedSeason[] | undefined = useQuery(
+    api.leagues.listLinkedSeasons,
+    isAuthenticated ? {} : "skip",
+  );
+  const isGuillotine =
+    seasonsList?.find((season) => season._id === leagueId)?.leagueType === "guillotine";
 
   const [teamAId, setTeamAId] = useState<string | null>(null);
   useEffect(() => {
@@ -258,7 +271,7 @@ function MatchupPage() {
       actual,
       proj,
       (row) => toCardData(row).gameState,
-      standings?.find((row) => row.teamId === teamId),
+      isGuillotine ? undefined : standings?.find((row) => row.teamId === teamId),
     );
 
   // Header and rows hold their shape with glass skeletons while loading,
