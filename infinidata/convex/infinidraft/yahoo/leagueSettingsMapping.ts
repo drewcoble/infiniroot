@@ -1,5 +1,6 @@
 import { POSITIONS } from "../../positions";
 import type { Scoring, TeScoring } from "../../scoring";
+import { parseAllowedRange, sortDstScoring, type DstScoring } from "../../lib/dstScoring";
 import { findNodesByKey, mergeYahooFields } from "./client";
 
 type Position = (typeof POSITIONS)[number];
@@ -227,4 +228,57 @@ export function mapYahooTeScoring(settingsNode: unknown): TeScoring {
   if (bonus >= 0.75) return "FULL";
   if (bonus >= 0.25) return "HALF";
   return "NONE";
+}
+
+// Yahoo's DST play stat ids -> our projection keys (per Yahoo's NFL stat
+// table; their names - "Sack", "Interception", "Fumble Recovery",
+// "Touchdown", "Safety", "Block Kick" - match a real league's settings
+// page). By id rather than name: "Interception"/"Touchdown" would also
+// match offensive stats.
+const YAHOO_DST_PLAY_KEYS: Record<string, string> = {
+  "32": "sack",
+  "33": "int",
+  "34": "fum_rec",
+  "35": "def_td",
+  "36": "safe",
+  "37": "blk_kick",
+  "49": "st_td",
+};
+
+// A league's DST scoring (see convex/lib/dstScoring.ts). Yahoo lists each
+// allowed tier as its own stat category ("Points Allowed 14-20 points" -
+// confirmed against a real league's settings page), so the range is read
+// out of the stat's name; plays map by stat id. Same two-step
+// stat_categories -> stat_modifiers lookup as findYahooStatModifierValue.
+// A per-point "Points Allowed" stat (no range in its name) is skipped.
+// Unverified against a live API response - see YAHOO.md.
+export function mapYahooDstScoring(settingsNode: unknown): DstScoring {
+  const statCategoriesRoot = findNodesByKey(settingsNode, "stat_categories");
+  const labelByStatId = new Map(
+    findNodesByKey(statCategoriesRoot, "stat")
+      .map(mergeYahooFields)
+      .map((stat) => [
+        String(stat.stat_id),
+        String(stat.name ?? stat.display_name ?? "").toLowerCase(),
+      ]),
+  );
+  const scoring: DstScoring = { pointsTiers: [], yardsTiers: [], playValues: {} };
+  const statModifiersRoot = findNodesByKey(settingsNode, "stat_modifiers");
+  for (const modifier of findNodesByKey(statModifiersRoot, "stat").map(mergeYahooFields)) {
+    const statId = String(modifier.stat_id);
+    const points = Number(modifier.value) || 0;
+    if (points === 0) continue;
+    const playKey = YAHOO_DST_PLAY_KEYS[statId];
+    if (playKey) {
+      scoring.playValues[playKey] = points;
+      continue;
+    }
+    const label = labelByStatId.get(statId) ?? "";
+    const isPoints = /(points|pts) allow/.test(label);
+    const isYards = /(yards|yds) allow/.test(label);
+    const range = isPoints || isYards ? parseAllowedRange(label) : undefined;
+    if (!range) continue;
+    (isPoints ? scoring.pointsTiers : scoring.yardsTiers).push({ ...range, points });
+  }
+  return sortDstScoring(scoring);
 }

@@ -35,7 +35,12 @@ export interface GlassTradeCardData {
   tradeValue: number | undefined;
   marketValue: number | null | undefined;
   projectionValue: number | undefined;
-  // Infinivalue well above / below market value - see tradeValues.ts.
+  // Rank at his position by market value (null = not priced there,
+  // undefined while the values load) - what the buy / sell call compares
+  // positionRank against.
+  marketPositionRank: number | null | undefined;
+  // Ranked well above / below the market at his position - see
+  // tradeValues.ts.
   signal: "buy" | "sell" | null | undefined;
 }
 
@@ -50,8 +55,8 @@ const formatPositionRank = (position: string, rank: number | undefined) =>
 const formatValue = (value: number | null | undefined) =>
   value === undefined || value === null ? "—" : formatTradeValue(value);
 
-// Buy / sell call (infinivalue vs. market value) as a glass badge - green
-// buy, red sell.
+// Buy / sell call (our position rank vs. the market's) as a glass badge -
+// green buy, red sell.
 function SignalBadge({ signal }: { signal: "buy" | "sell" }) {
   return (
     <span
@@ -59,8 +64,8 @@ function SignalBadge({ signal }: { signal: "buy" | "sell" }) {
       style={pillStyle(signal === "buy" ? "green" : "red")}
       title={
         signal === "buy"
-          ? "Infinivalue well above market value"
-          : "Infinivalue well below market value"
+          ? "Ranked well above the market at his position"
+          : "Ranked well below the market at his position"
       }
     >
       {signal === "buy" ? "BUY" : "SELL"}
@@ -143,8 +148,8 @@ export function GlassTradeCard({
     data.injury?.status,
     values.leftSpoken,
     values.rightSpoken,
-    data.signal === "buy" ? "buy: infinivalue well above market" : null,
-    data.signal === "sell" ? "sell: infinivalue well below market" : null,
+    data.signal === "buy" ? "buy: ranked well above market" : null,
+    data.signal === "sell" ? "sell: ranked well below market" : null,
   ]
     .filter(Boolean)
     .join(", ");
@@ -266,6 +271,13 @@ export function GlassTradeCard({
                     value: data.marketValue === null ? "n/a" : formatValue(data.marketValue),
                   },
                   { label: "Avg value", value: formatValue(data.tradeValue) },
+                  {
+                    label: "Mkt rank",
+                    value:
+                      data.marketPositionRank === null
+                        ? "n/a"
+                        : formatPositionRank(data.position, data.marketPositionRank),
+                  },
                 ],
               },
               {

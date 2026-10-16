@@ -58,12 +58,7 @@ export function toMatchupCardData(
       matchup,
       status,
       gameState: "live",
-      liveProjectedPoints: liveProjection(
-        row.projectedPoints,
-        row.actualPoints,
-        remainingFraction(game, now),
-        row.position,
-      ),
+      liveProjectedPoints: liveProjection(row, remainingFraction(game, now)),
     };
   }
   return { ...base, matchup, status, gameState: isGameFinal(game, now) ? "final" : "pre" };

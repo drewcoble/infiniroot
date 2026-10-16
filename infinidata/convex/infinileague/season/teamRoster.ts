@@ -14,6 +14,15 @@ import { withYahooToken } from "../../infinidraft/yahoo/oauth";
 import { fetchEspnTeamWeekEntries } from "../../espn/league";
 import { ESPN_IR_SLOT_ID, ESPN_SLOT_MAP } from "../../espn/leagueSettingsMapping";
 import { fetchYahooApi, findNodesByKey, mergeYahooFields } from "../../infinidraft/yahoo/client";
+import { fetchYahooLeagueSettings } from "../../infinidraft/yahoo/league";
+import { mapYahooDstScoring } from "../../infinidraft/yahoo/leagueSettingsMapping";
+import {
+  dstProjection,
+  hasAllowedTiers,
+  sleeperDstScoring,
+  type AllowedTier,
+  type DstScoring,
+} from "../../lib/dstScoring";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -109,8 +118,28 @@ export interface TeamRosterRow {
   // team linked to neither provider, or a player/week neither returned a
   // value for.
   actualPoints?: number;
-  // Absent whenever this week simply hasn't been projected yet.
+  // Absent whenever this week simply hasn't been projected yet. A DST's is
+  // scored with its league's own DST scoring when that could be read (see
+  // dstScoring below), not the projections table's default-scored one.
   projectedPoints?: number;
+  // DST only, and only when the league's allowed tiers could be read -
+  // what infinileague's live DST projection needs on top of the points
+  // above (see its src/lib/liveGames.ts).
+  dstScoring?: DstLiveScoring;
+}
+
+export interface DstLiveScoring {
+  pointsTiers: AllowedTier[];
+  yardsTiers: AllowedTier[];
+  // Allowed so far this week, per Sleeper's live stats - read in the same
+  // load as actualPoints so the two stay in step. Absent when the live poll
+  // has no entry for this defense (before kickoff, or a past week whose
+  // live copy has been pruned).
+  allowed?: { points: number; yards: number };
+  // projectedPoints' breakdown - see lib/dstScoring.ts's dstProjection.
+  projectedPlays: number;
+  projectedPointsAllowed: number;
+  projectedYardsAllowed: number;
 }
 
 // Maps each starters[] entry to the actual slot it's occupying, via the
@@ -182,6 +211,9 @@ export async function loadTeamRosterForWeek(
   // rather than Sleeper's native player id.
   let actualPointsByFpid: Map<number, number> | undefined;
   const actualPointsBySleeperId = new Map<string, number>();
+  // The league's DST scoring, from whichever provider's settings this
+  // load already reads (or, for Yahoo, one extra settings call).
+  let dstScoring: DstScoring | undefined;
 
   if (isSleeperLinked && team.sleeperRosterId && season.sleeperLeagueId) {
     const [matchups, leagueSettings, rosters] = await Promise.all([
@@ -202,6 +234,8 @@ export async function loadTeamRosterForWeek(
     // sleeper/league.ts's SleeperRoster.taxi/reserve) - both are subsets
     // of entry.players that never appear in starters, so they have to be
     // excluded explicitly or they'd fall into the bench bucket below.
+    dstScoring = sleeperDstScoring(leagueSettings.scoring_settings);
+
     const taxiIds = new Set(roster?.taxi ?? []);
     const reserveIds = new Set(roster?.reserve ?? []);
     const startingSlotSequence = buildStartingSlotSequence(
@@ -255,7 +289,7 @@ export async function loadTeamRosterForWeek(
         actualPointsBySleeperId.set(playerId, rawPoints[playerId]);
       }
     }
-  } else if (isYahooLinked && team.yahooTeamKey) {
+  } else if (isYahooLinked && team.yahooTeamKey && season.yahooLeagueKey) {
     // Yahoo's roster resource supports a per-week sub-resource selector
     // (`;week=`, same `;status=W` pattern convex/infinidraft/yahoo/waivers.ts
     // uses) - each player node carries a `selected_position` field for
@@ -270,12 +304,25 @@ export async function loadTeamRosterForWeek(
     // against a live response - see YAHOO.md. No fixed-slot-count source
     // exists here (unlike Sleeper's roster_positions), so this only ever
     // produces rows for players actually rostered this week.
-    const rosterJson = await withYahooToken(ctx, league.ownerId, (accessToken) =>
-      fetchYahooApi<unknown>(
-        accessToken,
-        `/team/${team.yahooTeamKey}/roster;week=${week}/players/stats;type=week;week=${week}`,
-      ),
+    const yahooLeagueKey = season.yahooLeagueKey;
+    const [rosterJson, settingsRaw] = await withYahooToken(ctx, league.ownerId, (accessToken) =>
+      Promise.all([
+        fetchYahooApi<unknown>(
+          accessToken,
+          `/team/${team.yahooTeamKey}/roster;week=${week}/players/stats;type=week;week=${week}`,
+        ),
+        // Only for the DST allowed tiers - a failure here just leaves the
+        // live DST projection on its tier-less fallback.
+        fetchYahooLeagueSettings(accessToken, yahooLeagueKey).then(
+          (settings) => settings.raw,
+          (error: unknown) => {
+            console.error("getTeamRosterForWeek (Yahoo): settings fetch failed", error);
+            return undefined;
+          },
+        ),
+      ]),
     );
+    if (settingsRaw !== undefined) dstScoring = mapYahooDstScoring(settingsRaw);
     const rosterEntries = findNodesByKey(rosterJson, "player")
       .map((node) => {
         const fields = mergeYahooFields(node);
@@ -357,12 +404,14 @@ export async function loadTeamRosterForWeek(
     // lineupSlotId maps through the same ESPN_SLOT_MAP the import uses
     // (narrow flexes -> FLEX, OP -> SUPERFLEX), plus IR as its own row.
     // Only players actually rostered, same as the Yahoo path.
-    const entries = await fetchEspnTeamWeekEntries(
+    const espnWeek = await fetchEspnTeamWeekEntries(
       season.espnLeagueId,
       season.year,
       week,
       team.espnTeamId,
     );
+    const entries = espnWeek.entries;
+    dstScoring = espnWeek.dstScoring;
     const resolved: Array<{ espnId: number; fpid: number }> = await ctx.runQuery(
       internal.espn.league.resolveEspnPlayersToFpids,
       {
@@ -402,10 +451,14 @@ export async function loadTeamRosterForWeek(
     );
   }
 
-  const [players, byeWeeks, weekProjections] = await Promise.all([
+  const leagueDstScoring = dstScoring && hasAllowedTiers(dstScoring) ? dstScoring : undefined;
+  const [players, byeWeeks, weekProjections, liveDstAllowed] = await Promise.all([
     ctx.runQuery(api.players.getPlayersByFpids, { fpids }),
     ctx.runQuery(api.nflSchedule.getByeWeeks, {}),
     ctx.runQuery(api.projections.getAllProjections, { week: week }),
+    leagueDstScoring
+      ? ctx.runQuery(internal.sleeper.livePoints.getLiveDstAllowed, { season: season.year, week })
+      : Promise.resolve([]),
   ]);
 
   // The designation for the week being viewed - see weekInjuries.ts
@@ -423,6 +476,7 @@ export async function loadTeamRosterForWeek(
     weekProjections.map((row) => [row.fpid, row]),
   );
   const playerByFpid = new Map(players.map((player) => [player.fpid, player]));
+  const liveDstAllowedByFpid = new Map(liveDstAllowed.map((entry) => [entry.fpid, entry]));
 
   function buildFilledRow(
     fpid: number,
@@ -433,7 +487,7 @@ export async function loadTeamRosterForWeek(
     if (!player) return null;
     const injury = injuryByFpid.get(fpid);
     const projection = projectionByFpid.get(fpid);
-    const projectedPoints = projection
+    let projectedPoints = projection
       ? season.scoring === "PPR"
         ? projection.pointsPpr
         : season.scoring === "HALF"
@@ -441,6 +495,25 @@ export async function loadTeamRosterForWeek(
           : projection.pointsStd
       : undefined;
     const byeWeek = player.team ? byeWeeks[player.team] : undefined;
+    let dstLiveScoring: DstLiveScoring | undefined;
+    if (
+      player.position === "DST" &&
+      leagueDstScoring &&
+      projection &&
+      projectedPoints !== undefined
+    ) {
+      const live = liveDstAllowedByFpid.get(fpid);
+      const dst = dstProjection(leagueDstScoring, projection.stats, projectedPoints);
+      projectedPoints = dst.projectedPoints;
+      dstLiveScoring = {
+        pointsTiers: leagueDstScoring.pointsTiers,
+        yardsTiers: leagueDstScoring.yardsTiers,
+        ...(live ? { allowed: { points: live.ptsAllow, yards: live.ydsAllow } } : {}),
+        projectedPlays: dst.projectedPlays,
+        projectedPointsAllowed: dst.projectedPointsAllowed,
+        projectedYardsAllowed: dst.projectedYardsAllowed,
+      };
+    }
 
     return {
       fpid,
@@ -455,6 +528,7 @@ export async function loadTeamRosterForWeek(
       ...(slot !== undefined ? { slot } : {}),
       ...(actualPoints !== undefined ? { actualPoints } : {}),
       ...(projectedPoints !== undefined ? { projectedPoints } : {}),
+      ...(dstLiveScoring ? { dstScoring: dstLiveScoring } : {}),
     };
   }
 

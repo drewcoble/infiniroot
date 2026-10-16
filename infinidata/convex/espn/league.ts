@@ -5,6 +5,7 @@ import { Doc, Id } from "../_generated/dataModel";
 import { currentSeason } from "../lib/dataFetch";
 import { DEF_TEAM_FPIDS } from "../sleeper/client";
 import { normalizePlayerName } from "../playerNameMatch";
+import { espnDstScoring, type DstScoring } from "../lib/dstScoring";
 import {
   mapEspnDraftType,
   mapEspnRosterSlots,
@@ -479,22 +480,24 @@ export interface EspnWeekEntry {
 // today's), and each player's stats then include that week's actual block
 // (statSourceId 0, absent until they've played) with appliedTotal already in
 // the league's own scoring - the ESPN counterpart to Sleeper's
-// players_points.
+// players_points. mSettings rides along on the same request for the
+// league's DST scoring (infinileague's DST projections).
 export async function fetchEspnTeamWeekEntries(
   espnLeagueId: string,
   season: string,
   week: string,
   espnTeamId: string,
-): Promise<EspnWeekEntry[]> {
-  const league = await fetchEspnLeague(espnLeagueId, season, ["mRoster"], {
+): Promise<{ entries: EspnWeekEntry[]; dstScoring: DstScoring }> {
+  const league = await fetchEspnLeague(espnLeagueId, season, ["mRoster", "mSettings"], {
     scoringPeriodId: week,
   });
+  const dstScoring = espnDstScoring(league.settings?.scoringSettings?.scoringItems);
   const team = (league.teams ?? []).find((t) => String(t.id) === espnTeamId);
-  if (!team) return [];
+  if (!team) return { entries: [], dstScoring };
   const rosterPlayers = new Map(
     extractRosterPlayers(team).map((player) => [player.espnId, player]),
   );
-  return (team.roster?.entries ?? []).map((entry) => {
+  const entries = (team.roster?.entries ?? []).map((entry) => {
     const actual = entry.playerPoolEntry?.player?.stats?.find(
       (block) =>
         block.statSourceId === 0 &&
@@ -513,4 +516,5 @@ export async function fetchEspnTeamWeekEntries(
         : {}),
     };
   });
+  return { entries, dstScoring };
 }

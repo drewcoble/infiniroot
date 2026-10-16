@@ -25,6 +25,11 @@ const liveEntryValidator = v.object({
   ptsPpr: v.number(),
   rec: v.number(),
   passTd: v.number(),
+  // DST only - points/yards its defense has allowed so far, which the live
+  // DST projection reads its league's allowed tiers against (see
+  // infinileague/season/teamRoster.ts).
+  ptsAllow: v.optional(v.number()),
+  ydsAllow: v.optional(v.number()),
 });
 
 // Which (season, week)s have a game inside its live window right now.
@@ -71,7 +76,9 @@ function sameEntries(a: LiveEntry[], b: LiveEntry[]): boolean {
         x.ptsHalf === y.ptsHalf &&
         x.ptsPpr === y.ptsPpr &&
         x.rec === y.rec &&
-        x.passTd === y.passTd
+        x.passTd === y.passTd &&
+        x.ptsAllow === y.ptsAllow &&
+        x.ydsAllow === y.ydsAllow
       );
     })
   );
@@ -118,6 +125,27 @@ export const upsertLiveWeekPoints = internalMutation({
   },
 });
 
+// Each DST's points/yards allowed so far this week, for the live DST
+// projection (see infinileague/season/teamRoster.ts). Empty before the
+// week's live window opens - every defense has allowed nothing yet.
+export const getLiveDstAllowed = internalQuery({
+  args: { season: v.string(), week: v.string() },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<Array<{ fpid: number; ptsAllow: number; ydsAllow: number }>> => {
+    const liveWeek = await ctx.db
+      .query("liveWeekPoints")
+      .withIndex("by_season_week", (q) => q.eq("season", args.season).eq("week", args.week))
+      .first();
+    return (liveWeek?.players ?? []).flatMap((entry) =>
+      entry.position === "DST"
+        ? [{ fpid: entry.fpid, ptsAllow: entry.ptsAllow ?? 0, ydsAllow: entry.ydsAllow ?? 0 }]
+        : [],
+    );
+  },
+});
+
 // Drops every live document other than the given current week's - called
 // by the daily sync (fetchAllData.ts), by which point playerPoints has
 // that finished week's numbers and the live copy is no longer read.
@@ -160,6 +188,9 @@ export const pollLivePointsInternal = internalAction({
           ptsPpr: row.ptsPpr,
           rec: row.stats.rec ?? 0,
           passTd: row.stats.pass_td ?? 0,
+          ...(row.position === "DST"
+            ? { ptsAllow: row.stats.pts_allow ?? 0, ydsAllow: row.stats.yds_allow ?? 0 }
+            : {}),
         }))
         // Stable order so upsertLiveWeekPoints' unchanged check isn't
         // fooled by Sleeper returning the same players in a new order.
