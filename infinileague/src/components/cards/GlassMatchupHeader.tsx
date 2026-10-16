@@ -11,10 +11,10 @@ export interface MatchupHeaderTeam {
   // Starters whose games are underway / not yet started.
   liveCount: number;
   toPlayCount: number;
-  // Standings rank, as a badge before the name - saddlebrown for your own
-  // team, gray otherwise (cardShared's rankPillStyle). Absent while
+  // Standings rank, as a badge before the name - gray for both teams, your
+  // own included (saddlebrown read as confusing here). Absent while
   // standings load.
-  rank?: { value: number; isMine: boolean } | undefined;
+  rank?: { value: number } | undefined;
 }
 
 // Each win-probability segment is tinted by who's favored rather than by
@@ -66,7 +66,7 @@ function TeamSide({
         {team.rank && (
           <span
             className={`${classes.pill} ${classes.headerRank}`}
-            style={rankPillStyle(team.rank.isMine)}
+            style={rankPillStyle(false)}
           >
             #{team.rank.value}
           </span>

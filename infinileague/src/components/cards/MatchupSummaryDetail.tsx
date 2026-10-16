@@ -77,7 +77,8 @@ function TeamStandings({ teams }: { teams: MatchupDetailTeam[] }) {
               {standing && (
                 <span
                   className={classes.pill}
-                  style={rankPillStyle(standing.isSelf)}
+                  // Gray for both teams, same as the matchup header's.
+                  style={rankPillStyle(false)}
                   aria-label={`Rank ${standing.rank}`}
                 >
                   #{standing.rank}
