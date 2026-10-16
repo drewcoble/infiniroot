@@ -131,7 +131,10 @@ async function fetchProjectionsHandler(
       for (const [key, value] of Object.entries(stats)) {
         if (
           typeof value === "number" &&
-          !key.startsWith("pts_") &&
+          // pts_allow (a DST's projected points allowed) is a real stat,
+          // not a scoring total - infinileague's live DST projection reads
+          // it.
+          (!key.startsWith("pts_") || key === "pts_allow") &&
           !key.startsWith("adp_") &&
           // bonus_rec_wr/rb/te just mirror "rec" (PPR reception-bonus
           // scoring inputs, not a distinct stat) - confirmed against live

@@ -1105,8 +1105,9 @@ export default defineSchema({
   // who've actually played so far (Sleeper's gp > 0), and is an array
   // rather than an fpid-keyed object to stay clear of Convex's per-object
   // field limit. rec/passTd are the only stats bonusPoints needs (TE
-  // premium, 6pt passing TDs). Pruned by the daily sync once the NFL week
-  // moves on (see fetchAllData.ts).
+  // premium, 6pt passing TDs); ptsAllow/ydsAllow (DST only) feed
+  // infinileague's live DST projection. Pruned by the daily sync once the
+  // NFL week moves on (see fetchAllData.ts).
   liveWeekPoints: defineTable({
     season: v.string(),
     week: v.string(),
@@ -1120,6 +1121,8 @@ export default defineSchema({
         ptsPpr: v.number(),
         rec: v.number(),
         passTd: v.number(),
+        ptsAllow: v.optional(v.number()),
+        ydsAllow: v.optional(v.number()),
       }),
     ),
     // Per-team game status from ESPN's scoreboard (see lib/liveGames.ts),

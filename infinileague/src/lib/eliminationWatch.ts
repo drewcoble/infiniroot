@@ -32,12 +32,7 @@ export function rankLive(
     let actual = 0;
     for (const starter of row.starters) {
       const game = starter.team ? gamesByTeam.get(starter.team) : undefined;
-      projected += liveProjection(
-        starter.projectedPoints,
-        starter.actualPoints,
-        remainingFraction(game, now),
-        starter.position,
-      );
+      projected += liveProjection(starter, remainingFraction(game, now));
       actual += starter.actualPoints ?? 0;
     }
     return { ...row, weekPoints: projected, ...(weekStarted ? { actualPoints: actual } : {}) };

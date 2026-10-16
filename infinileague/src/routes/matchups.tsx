@@ -219,12 +219,7 @@ function LeagueMatchup({
   const teamBRoster = useTeamRoster(teamBId, week, refreshMs);
 
   const liveProjFor = (row: TeamRosterRow) =>
-    liveProjection(
-      row.projectedPoints,
-      row.actualPoints,
-      remainingFraction(row.team ? gamesByTeam?.get(row.team) : undefined, now),
-      row.position,
-    );
+    liveProjection(row, remainingFraction(row.team ? gamesByTeam?.get(row.team) : undefined, now));
   const actualFor = (row: TeamRosterRow) => row.actualPoints ?? 0;
   // This week's actual position rank per player - the detail's top
   // performers show it on their badges ("QB4"), same as the Matchup tab's

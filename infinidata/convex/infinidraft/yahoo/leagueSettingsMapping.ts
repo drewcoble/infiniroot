@@ -1,5 +1,6 @@
 import { POSITIONS } from "../../positions";
 import type { Scoring, TeScoring } from "../../scoring";
+import { parseAllowedRange, sortAllowedTiers, type DstAllowedScoring } from "../../lib/dstScoring";
 import { findNodesByKey, mergeYahooFields } from "./client";
 
 type Position = (typeof POSITIONS)[number];
@@ -227,4 +228,32 @@ export function mapYahooTeScoring(settingsNode: unknown): TeScoring {
   if (bonus >= 0.75) return "FULL";
   if (bonus >= 0.25) return "HALF";
   return "NONE";
+}
+
+// DST points/yards-allowed tiers (see convex/lib/dstScoring.ts). Yahoo
+// lists each tier as its own stat category ("Points Allowed 14-20 points",
+// "Yards Allowed 300-399" - per general knowledge of Yahoo's defaults), so
+// the range is read out of the stat's name, same two-step stat_categories
+// -> stat_modifiers lookup as findYahooStatModifierValue. A per-point
+// "Points Allowed" stat (no range in its name) is skipped. Unverified
+// against a live response - see YAHOO.md.
+export function mapYahooDstScoring(settingsNode: unknown): DstAllowedScoring {
+  const statCategoriesRoot = findNodesByKey(settingsNode, "stat_categories");
+  const labelByStatId = new Map(
+    findNodesByKey(statCategoriesRoot, "stat")
+      .map(mergeYahooFields)
+      .map((stat) => [String(stat.stat_id), String(stat.name ?? stat.display_name ?? "").toLowerCase()]),
+  );
+  const scoring: DstAllowedScoring = { pointsTiers: [], yardsTiers: [] };
+  const statModifiersRoot = findNodesByKey(settingsNode, "stat_modifiers");
+  for (const modifier of findNodesByKey(statModifiersRoot, "stat").map(mergeYahooFields)) {
+    const label = labelByStatId.get(String(modifier.stat_id)) ?? "";
+    const isPoints = /(points|pts) allow/.test(label);
+    const isYards = /(yards|yds) allow/.test(label);
+    const range = isPoints || isYards ? parseAllowedRange(label) : undefined;
+    const points = Number(modifier.value) || 0;
+    if (!range || points === 0) continue;
+    (isPoints ? scoring.pointsTiers : scoring.yardsTiers).push({ ...range, points });
+  }
+  return sortAllowedTiers(scoring);
 }

@@ -171,10 +171,8 @@ function TeamPage() {
         ? sumStarterPoints(roster, (row) => row.projectedPoints ?? 0)
         : sumStarterPoints(roster, (row) =>
             liveProjection(
-              row.projectedPoints,
-              row.actualPoints,
+              row,
               remainingFraction(row.team ? gamesByTeam.get(row.team) : undefined, now),
-              row.position,
             ),
           ),
       liveCount,

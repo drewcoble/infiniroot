@@ -377,7 +377,14 @@ interface SleeperLeagueSettings {
   // against a real connected league the way rec/waiver_type above are - see
   // mapSixPointPassTds/mapTeScoring in ./leagueSettingsMapping.ts, the
   // first callers of either field.
-  scoring_settings?: { rec?: number; pass_td?: number; bonus_rec_te?: number };
+  // The index signature is every other scoring key - only read in bulk, by
+  // lib/dstScoring.ts's sleeperDstScoring.
+  scoring_settings?: {
+    rec?: number;
+    pass_td?: number;
+    bonus_rec_te?: number;
+    [key: string]: number | undefined;
+  };
   previous_league_id?: string | null;
   draft_id?: string | null;
   // waiver_budget is present (defaulted to 100) even for a league that
