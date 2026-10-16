@@ -15,6 +15,7 @@ import { compareSortValues } from "../../../lib/tableSort";
 import type {
   FaabSuggestionRow,
   FaabSuggestionsResult,
+  LinkedSeason,
   RosVorRow,
   StandingsRow,
 } from "../../../types/season";
@@ -25,14 +26,18 @@ export const Route = createFileRoute("/league/$leagueId/freeAgents")({
 
 const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 
-// Same Week / Season views and sorts as the Players page, plus Bid:
-// "rank" = the view's rosVOR rank (weekRank / rosRank); "bid" = suggested
-// bid (market value without one) - the default; "actual" / "projected" =
-// this week's points / projection in Week view, season PPG / ROS PPG in
-// Season view. Players with no rosVOR board row (or no points yet) sort
-// last; ties fall back to the bid, then name.
+// Same Week / Season views and sorts as the Players page, plus Bid (FAAB
+// leagues only - the default there, Rank otherwise): "rank" = the view's
+// rosVOR rank (weekRank / rosRank); "bid" = suggested bid (market value
+// without one); "actual" / "projected" = this week's points / projection
+// in Week view, season PPG / ROS PPG in Season view. Players with no
+// rosVOR board row (or no points yet) sort last. Ties fall back to the
+// rank, then name - and a Bid sort's ties to the market value first: with
+// little or no FAAB left most suggested bids are $0, and market value then
+// rank still order those meaningfully.
 type View = "week" | "ros";
 type SortKey = "rank" | "bid" | "actual" | "projected";
+type SortValueKey = SortKey | "market";
 
 const SORT_LABELS: Record<View, { actual: string; projected: string }> = {
   week: { actual: "Actual", projected: "Proj" },
@@ -85,7 +90,23 @@ function FreeAgentsPage() {
   // Same position filter and sort control as the Players page.
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
   const [view, setView] = useState<View>("ros");
-  const [sortKey, setSortKey] = useState<SortKey>("bid");
+  // Bid only means something with FAAB - a priority-waiver league hides it
+  // and defaults to Rank. Unknown (seasons still loading, or not synced
+  // yet) keeps the FAAB default.
+  const seasonsList: LinkedSeason[] | undefined = useQuery(
+    api.leagues.listLinkedSeasons,
+    isAuthenticated ? {} : "skip",
+  );
+  const usesFaab =
+    seasonsList?.find((season) => season._id === leagueId)?.waiverType !== "priority";
+  // null = no manual pick yet, so the default follows the waiver type.
+  const [pickedSortKey, setSortKey] = useState<SortKey | null>(null);
+  const sortKey: SortKey =
+    pickedSortKey === null || (pickedSortKey === "bid" && !usesFaab)
+      ? usesFaab
+        ? "bid"
+        : "rank"
+      : pickedSortKey;
 
   // This week's actual points (live during games) for the Week view's
   // Actual sort - same query the Players page uses.
@@ -121,10 +142,11 @@ function FreeAgentsPage() {
 
   // Higher-is-better value for a sort key (rank is negated so "desc"
   // still puts #1 first).
-  const sortValue = (row: FaabSuggestionRow, key: SortKey): number | undefined => {
+  const sortValue = (row: FaabSuggestionRow, key: SortValueKey): number | undefined => {
     const board = rosVorByFpid.get(row.fpid);
     const isWeek = view === "week";
     if (key === "bid") return row.suggestedBid ?? row.marketValue;
+    if (key === "market") return row.marketValue;
     if (key === "rank") {
       const rank = board ? (isWeek ? board.weekRank : board.rosRank) : undefined;
       return rank ? -rank : undefined;
@@ -132,13 +154,19 @@ function FreeAgentsPage() {
     if (key === "actual") return isWeek ? weekPointsByFpid.get(row.fpid) : board?.actualPpg;
     return isWeek ? board?.weekPpg : board?.rosPpg;
   };
+  const sortChain: SortValueKey[] =
+    sortKey === "bid"
+      ? ["bid", "market", "rank"]
+      : sortKey === "rank"
+        ? ["rank"]
+        : [sortKey, "rank"];
   const rows = result.suggestions
     .filter((row) => selectedPositions.includes(row.position))
     .sort((a, b) => {
-      const primary = compareSortValues(sortValue(a, sortKey), sortValue(b, sortKey), "desc");
-      if (primary !== 0) return primary;
-      const secondary = compareSortValues(sortValue(a, "bid"), sortValue(b, "bid"), "desc");
-      if (secondary !== 0) return secondary;
+      for (const key of sortChain) {
+        const order = compareSortValues(sortValue(a, key), sortValue(b, key), "desc");
+        if (order !== 0) return order;
+      }
       return compareSortValues(a.name, b.name, "asc");
     });
 
@@ -164,7 +192,7 @@ function FreeAgentsPage() {
             onChange={setSortKey}
             options={[
               { label: "Rank", value: "rank" as const },
-              { label: "Bid", value: "bid" as const },
+              ...(usesFaab ? [{ label: "Bid", value: "bid" as const }] : []),
               { label: SORT_LABELS[view].actual, value: "actual" as const },
               { label: SORT_LABELS[view].projected, value: "projected" as const },
             ]}
