@@ -5,7 +5,7 @@ import { Doc, Id } from "../_generated/dataModel";
 import { currentSeason } from "../lib/dataFetch";
 import { DEF_TEAM_FPIDS } from "../sleeper/client";
 import { normalizePlayerName } from "../playerNameMatch";
-import { espnDstScoring, type DstAllowedScoring } from "../lib/dstScoring";
+import { espnDstScoring, type DstScoring } from "../lib/dstScoring";
 import {
   mapEspnDraftType,
   mapEspnRosterSlots,
@@ -481,13 +481,13 @@ export interface EspnWeekEntry {
 // (statSourceId 0, absent until they've played) with appliedTotal already in
 // the league's own scoring - the ESPN counterpart to Sleeper's
 // players_points. mSettings rides along on the same request for the
-// league's DST allowed tiers (infinileague's live DST projection).
+// league's DST scoring (infinileague's DST projections).
 export async function fetchEspnTeamWeekEntries(
   espnLeagueId: string,
   season: string,
   week: string,
   espnTeamId: string,
-): Promise<{ entries: EspnWeekEntry[]; dstScoring: DstAllowedScoring }> {
+): Promise<{ entries: EspnWeekEntry[]; dstScoring: DstScoring }> {
   const league = await fetchEspnLeague(espnLeagueId, season, ["mRoster", "mSettings"], {
     scoringPeriodId: week,
   });

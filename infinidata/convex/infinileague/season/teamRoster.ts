@@ -17,9 +17,11 @@ import { fetchYahooApi, findNodesByKey, mergeYahooFields } from "../../infinidra
 import { fetchYahooLeagueSettings } from "../../infinidraft/yahoo/league";
 import { mapYahooDstScoring } from "../../infinidraft/yahoo/leagueSettingsMapping";
 import {
+  dstProjection,
   hasAllowedTiers,
   sleeperDstScoring,
-  type DstAllowedScoring,
+  type AllowedTier,
+  type DstScoring,
 } from "../../lib/dstScoring";
 
 type Position = (typeof POSITIONS)[number];
@@ -116,7 +118,9 @@ export interface TeamRosterRow {
   // team linked to neither provider, or a player/week neither returned a
   // value for.
   actualPoints?: number;
-  // Absent whenever this week simply hasn't been projected yet.
+  // Absent whenever this week simply hasn't been projected yet. A DST's is
+  // scored with its league's own DST scoring when that could be read (see
+  // dstScoring below), not the projections table's default-scored one.
   projectedPoints?: number;
   // DST only, and only when the league's allowed tiers could be read -
   // what infinileague's live DST projection needs on top of the points
@@ -124,16 +128,18 @@ export interface TeamRosterRow {
   dstScoring?: DstLiveScoring;
 }
 
-export interface DstLiveScoring extends DstAllowedScoring {
+export interface DstLiveScoring {
+  pointsTiers: AllowedTier[];
+  yardsTiers: AllowedTier[];
   // Allowed so far this week, per Sleeper's live stats - read in the same
   // load as actualPoints so the two stay in step. Absent when the live poll
   // has no entry for this defense (before kickoff, or a past week whose
   // live copy has been pruned).
   allowed?: { points: number; yards: number };
-  // Sleeper's projection for the full game - absent on a projection
-  // fetched before pts_allow was kept (see sleeper/projections.ts).
-  projectedPointsAllowed?: number;
-  projectedYardsAllowed?: number;
+  // projectedPoints' breakdown - see lib/dstScoring.ts's dstProjection.
+  projectedPlays: number;
+  projectedPointsAllowed: number;
+  projectedYardsAllowed: number;
 }
 
 // Maps each starters[] entry to the actual slot it's occupying, via the
@@ -205,9 +211,9 @@ export async function loadTeamRosterForWeek(
   // rather than Sleeper's native player id.
   let actualPointsByFpid: Map<number, number> | undefined;
   const actualPointsBySleeperId = new Map<string, number>();
-  // The league's DST allowed tiers, from whichever provider's settings this
+  // The league's DST scoring, from whichever provider's settings this
   // load already reads (or, for Yahoo, one extra settings call).
-  let dstScoring: DstAllowedScoring | undefined;
+  let dstScoring: DstScoring | undefined;
 
   if (isSleeperLinked && team.sleeperRosterId && season.sleeperLeagueId) {
     const [matchups, leagueSettings, rosters] = await Promise.all([
@@ -481,7 +487,7 @@ export async function loadTeamRosterForWeek(
     if (!player) return null;
     const injury = injuryByFpid.get(fpid);
     const projection = projectionByFpid.get(fpid);
-    const projectedPoints = projection
+    let projectedPoints = projection
       ? season.scoring === "PPR"
         ? projection.pointsPpr
         : season.scoring === "HALF"
@@ -490,15 +496,22 @@ export async function loadTeamRosterForWeek(
       : undefined;
     const byeWeek = player.team ? byeWeeks[player.team] : undefined;
     let dstLiveScoring: DstLiveScoring | undefined;
-    if (player.position === "DST" && leagueDstScoring) {
+    if (
+      player.position === "DST" &&
+      leagueDstScoring &&
+      projection &&
+      projectedPoints !== undefined
+    ) {
       const live = liveDstAllowedByFpid.get(fpid);
-      const projectedPointsAllowed = projection?.stats?.pts_allow;
-      const projectedYardsAllowed = projection?.stats?.yds_allow;
+      const dst = dstProjection(leagueDstScoring, projection.stats, projectedPoints);
+      projectedPoints = dst.projectedPoints;
       dstLiveScoring = {
-        ...leagueDstScoring,
+        pointsTiers: leagueDstScoring.pointsTiers,
+        yardsTiers: leagueDstScoring.yardsTiers,
         ...(live ? { allowed: { points: live.ptsAllow, yards: live.ydsAllow } } : {}),
-        ...(projectedPointsAllowed !== undefined ? { projectedPointsAllowed } : {}),
-        ...(projectedYardsAllowed !== undefined ? { projectedYardsAllowed } : {}),
+        projectedPlays: dst.projectedPlays,
+        projectedPointsAllowed: dst.projectedPointsAllowed,
+        projectedYardsAllowed: dst.projectedYardsAllowed,
       };
     }
 

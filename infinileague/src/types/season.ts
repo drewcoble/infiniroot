@@ -232,7 +232,8 @@ export interface TeamRosterRow {
 
 // Mirrors convex/infinileague/season/teamRoster.ts's DstLiveScoring (and
 // convex/lib/dstScoring.ts's AllowedTier) - a DST row's league allowed
-// tiers plus how much it has allowed so far, for liveProjection.
+// tiers, its projection's breakdown and how much it has allowed so far,
+// for liveProjection.
 export interface AllowedTier {
   min: number;
   max: number | null;
@@ -243,8 +244,9 @@ export interface DstLiveScoring {
   pointsTiers: AllowedTier[];
   yardsTiers: AllowedTier[];
   allowed?: { points: number; yards: number };
-  projectedPointsAllowed?: number;
-  projectedYardsAllowed?: number;
+  projectedPlays: number;
+  projectedPointsAllowed: number;
+  projectedYardsAllowed: number;
 }
 
 // Mirrors convex/infinileague/season/tradeValues.ts's TradeValueRow - a

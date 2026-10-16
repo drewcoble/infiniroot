@@ -53,27 +53,10 @@ export function liveProjection(
   return actual + projected * fraction;
 }
 
-// Sleeper's default points-allowed tiers - what our DST projections (its
-// pts_std) are scored with, so the part of a projection that came from its
-// projected points allowed can be backed out of it. Its default yards-
-// allowed tiers are all 0.
-const SLEEPER_DEFAULT_POINTS_TIERS: AllowedTier[] = [
-  { min: 0, max: 0, points: 10 },
-  { min: 1, max: 6, points: 7 },
-  { min: 7, max: 13, points: 4 },
-  { min: 14, max: 20, points: 1 },
-  { min: 21, max: 27, points: 0 },
-  { min: 28, max: 34, points: -1 },
-  { min: 35, max: null, points: -4 },
-];
-
-// Full-game points/yards a defense allows - roughly the league average,
-// for a projection fetched before Sleeper's own projected values were kept
-// - and how far a real game strays from the projected number (one standard
-// deviation over a full game; the remaining share's spread shrinks with the
-// square root of what's left).
-const FALLBACK_POINTS_ALLOWED = 22;
-const FALLBACK_YARDS_ALLOWED = 330;
+// How far a real game strays from the projected allowed totals - one
+// standard deviation over a full game, same as convex/lib/dstScoring.ts's
+// pregame projection; the remaining share's spread shrinks with the square
+// root of what's left.
 const POINTS_ALLOWED_SD = 10;
 const YARDS_ALLOWED_SD = 75;
 
@@ -125,14 +108,11 @@ function expectedTierPoints(
 // expected allowed-tier points given what's been allowed so far and the
 // unplayed share of the projected total - 14 points allowed by halftime
 // has already cost the shutout tiers for good, with half a game left to
-// slip further.
+// slip further. The server's projection (convex/lib/dstScoring.ts's
+// dstProjection) is the same model at kickoff, so this equals it then and
+// the actual score once final.
 //
-// The pregame projection is scored with Sleeper's default tiers, not the
-// league's, so the model's kickoff value differs from it - that gap is
-// carried in proportion to what's left to play, so this still equals the
-// projection at kickoff and the actual score once final.
-//
-// Without the league's tiers or live allowed totals (an unreadable
+// Without the league's scoring or live allowed totals (an unreadable
 // settings shape, a pruned past week), falls back to sliding from the
 // projection toward the current score as the game is played.
 function dstLiveProjection(
@@ -144,42 +124,27 @@ function dstLiveProjection(
   if (fraction <= 0) return actual;
   if (!scoring?.allowed) return actual * (1 - fraction) + projected * fraction;
 
-  const projectedPoints = scoring.projectedPointsAllowed ?? FALLBACK_POINTS_ALLOWED;
-  const projectedYards = scoring.projectedYardsAllowed ?? FALLBACK_YARDS_ALLOWED;
-  const expectedAllowedTiers = (points: number, yards: number, share: number) => {
-    const spread = Math.sqrt(share);
-    return (
-      expectedTierPoints(
-        scoring.pointsTiers,
-        points,
-        projectedPoints * share,
-        POINTS_ALLOWED_SD * spread,
-      ) +
-      expectedTierPoints(
-        scoring.yardsTiers,
-        yards,
-        projectedYards * share,
-        YARDS_ALLOWED_SD * spread,
-      )
-    );
-  };
-
-  const projectedPlays = Math.max(
-    projected - tierPoints(SLEEPER_DEFAULT_POINTS_TIERS, projectedPoints),
-    0,
-  );
+  const { points, yards } = scoring.allowed;
+  const spread = Math.sqrt(fraction);
   const bankedPlays = Math.max(
-    actual -
-      tierPoints(scoring.pointsTiers, scoring.allowed.points) -
-      tierPoints(scoring.yardsTiers, scoring.allowed.yards),
+    actual - tierPoints(scoring.pointsTiers, points) - tierPoints(scoring.yardsTiers, yards),
     0,
   );
-  const atKickoff = projectedPlays + expectedAllowedTiers(0, 0, 1);
   return (
     bankedPlays +
-    projectedPlays * fraction +
-    expectedAllowedTiers(scoring.allowed.points, scoring.allowed.yards, fraction) +
-    (projected - atKickoff) * fraction
+    scoring.projectedPlays * fraction +
+    expectedTierPoints(
+      scoring.pointsTiers,
+      points,
+      scoring.projectedPointsAllowed * fraction,
+      POINTS_ALLOWED_SD * spread,
+    ) +
+    expectedTierPoints(
+      scoring.yardsTiers,
+      yards,
+      scoring.projectedYardsAllowed * fraction,
+      YARDS_ALLOWED_SD * spread,
+    )
   );
 }
 
