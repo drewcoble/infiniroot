@@ -120,6 +120,9 @@ export const updateSeasonWaiverSettings = internalMutation({
     waiverClearDays: v.optional(v.number()),
     dailyWaivers: v.optional(v.boolean()),
     dailyWaiversHour: v.optional(v.number()),
+    // Sleeper-only - set when Sleeper marks the league guillotine (see
+    // sleeper/league.ts's isSleeperGuillotine), absent otherwise.
+    leagueType: v.optional(v.literal("guillotine")),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.seasonId, {
@@ -137,6 +140,7 @@ export const updateSeasonWaiverSettings = internalMutation({
       ...(args.dailyWaiversHour !== undefined
         ? { dailyWaiversHour: args.dailyWaiversHour }
         : {}),
+      ...(args.leagueType !== undefined ? { leagueType: args.leagueType } : {}),
     });
   },
 });

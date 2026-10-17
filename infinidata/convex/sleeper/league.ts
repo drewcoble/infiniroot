@@ -11,6 +11,7 @@ import {
 } from "./leagueSettingsMapping";
 import type { Scoring, TeScoring } from "../scoring";
 import type { DraftType } from "../draftType";
+import type { LeagueType } from "../leagueType";
 
 // Sleeper's real, documented consumer API - same base fetchCurrentNflWeek
 // uses (see ./state.ts), as opposed to the undocumented api.sleeper.com
@@ -140,6 +141,9 @@ export const syncLeagueRoster = action({
     // Re-read every sync, not just at connect time - self-heals a season
     // connected before this field existed, and keeps up with a mid-season
     // commissioner change to waiver settings instead of going stale.
+    // leagueType only ever gets set to guillotine here, never back to
+    // redraft, so a manual League Type pick (leagues.ts's setLeagueType)
+    // on a league Sleeper doesn't flag still sticks.
     await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
       seasonId: args.seasonId,
       waiverType: mapWaiverType(leagueSettings.settings?.waiver_type),
@@ -158,6 +162,7 @@ export const syncLeagueRoster = action({
       ...(leagueSettings.settings?.daily_waivers_hour !== undefined
         ? { dailyWaiversHour: leagueSettings.settings.daily_waivers_hour }
         : {}),
+      ...(isSleeperGuillotine(leagueSettings) ? { leagueType: "guillotine" as const } : {}),
     });
 
     const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
@@ -420,7 +425,16 @@ interface SleeperLeagueSettings {
     // independent of roster_positions, which never lists "TAXI" itself.
     // Absent means the league doesn't use a taxi squad at all.
     taxi_slots?: number;
+    // League format - verified live: 0 redraft, 1 keeper, 2 dynasty (across
+    // five real leagues), 3 guillotine (Brotha Man Guillotine, whose weekly
+    // matchups also give every roster its own matchup_id - no opponent).
+    type?: number;
   };
+}
+
+// Sleeper's guillotine signal (settings.type 3, see above).
+export function isSleeperGuillotine(settings: SleeperLeagueSettings): boolean {
+  return settings.settings?.type === 3;
 }
 
 export function mapWaiverType(
@@ -599,6 +613,7 @@ export interface SleeperImportPreview {
   // lookup otherwise failed (see fetchSleeperDraftType) - the wizard falls
   // back to "auction" in that case, same as before this was detected at all.
   draftType: DraftType | undefined;
+  leagueType: LeagueType;
   scoring: Scoring;
   teScoring: TeScoring;
   sixPointPassTds: boolean;
@@ -639,6 +654,7 @@ export const previewSleeperImport = action({
       season: settings.season,
       teamCount: settings.total_rosters,
       draftType,
+      leagueType: isSleeperGuillotine(settings) ? "guillotine" : "redraft",
       scoring,
       teScoring,
       sixPointPassTds,

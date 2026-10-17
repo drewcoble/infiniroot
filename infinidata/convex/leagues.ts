@@ -831,9 +831,9 @@ export const setDraftType = mutation({
 // setDraftType/setUseKeepers above, this is never locked to pre-draft (no
 // requireDraftNotStarted, no Pro gate): nothing about leagueType is tied to
 // already-recorded picks or keeper prices, and a commissioner fixing a wrong
-// Sleeper-import guess (Sleeper has no native guillotine signal - see
-// convex/sleeper/league.ts) is exactly as likely to need this mid-season as
-// before the draft.
+// provider-import guess (see convex/sleeper/league.ts's isSleeperGuillotine
+// and yahoo/league.ts's scoring_type read) is exactly as likely to need
+// this mid-season as before the draft.
 export const setLeagueType = mutation({
   args: {
     id: v.id("seasons"),
