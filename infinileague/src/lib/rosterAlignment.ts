@@ -1,25 +1,23 @@
-import type { TeamRosterRow } from "../types/season";
+import type { SlotLabel, TeamRosterRow } from "../types/season";
+
+// Lineup + bench slots in the backend's canonical order (see TeamRosterRow).
+const LINEUP_SLOTS: SlotLabel[] = ["QB", "SUPERFLEX", "RB", "WR", "FLEX", "TE", "DST", "K", "BENCH"];
 
 // Pairs two teams' weekly rosters into side-by-side rows for the Trade and
-// Matchup tabs. Lined up index-for-index within each section - lineup +
-// bench first (unfilled slots kept, so an empty bench spot on one side
-// still gets a row), then IR, then TAXI (Sleeper's empty taxi spots
-// included) - so a team with more bench rows (Yahoo has no fixed bench
-// count) or more IR players never pushes the other team's IR/taxi players
-// up against the wrong slots; the shorter side just gets empty cells at
-// the end of that section.
+// Matchup tabs. Lined up slot by slot - each team's first RB against the
+// other's first RB, and so on - then IR, then TAXI (Sleeper's empty taxi
+// spots included). Matched by slot rather than by position in the list:
+// Yahoo/ESPN rosters only have rows for rostered players, so a team with an
+// unfilled starting spot (an empty QB slot) would otherwise shift every
+// player below it up against the wrong slot. A side short on any slot
+// (that empty QB, fewer bench or IR rows) just gets empty cells there.
 export function alignRosterRows(
   teamARows: TeamRosterRow[],
   teamBRows: TeamRosterRow[] | undefined,
 ): Array<{ a: TeamRosterRow | undefined; b: TeamRosterRow | undefined }> {
-  const sections = [
-    (row: TeamRosterRow) => row.slot !== undefined && row.slot !== "IR" && row.slot !== "TAXI",
-    (row: TeamRosterRow) => row.slot === "IR",
-    (row: TeamRosterRow) => row.slot === "TAXI",
-  ];
-  return sections.flatMap((inSection) => {
-    const a = teamARows.filter(inSection);
-    const b = teamBRows?.filter(inSection) ?? [];
+  return [...LINEUP_SLOTS, "IR" as const, "TAXI" as const].flatMap((slot) => {
+    const a = teamARows.filter((row) => row.slot === slot);
+    const b = teamBRows?.filter((row) => row.slot === slot) ?? [];
     return Array.from({ length: Math.max(a.length, b.length) }, (_, index) => ({
       a: a[index],
       b: b[index],
