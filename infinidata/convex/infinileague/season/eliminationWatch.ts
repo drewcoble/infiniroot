@@ -38,8 +38,11 @@ function dangerZoneSize(activeTeamCount: number): number {
 // best-to-worst by its pregame projection, with the bottom slice flagged as
 // cut/bubble/safe. Each team's lineup comes from the same per-week roster
 // load the Matchup tab makes (loadTeamRosterForWeek), one per team.
+// `week` defaults to the current NFL week; the Matchup tab passes the week
+// it's viewing, since a guillotine league's "opponent" is the lowest
+// projected team that week (see infinileague's useGuillotineOpponent).
 export const getEliminationWatch = action({
-  args: { seasonId: v.id("seasons") },
+  args: { seasonId: v.id("seasons"), week: v.optional(v.string()) },
   handler: async (ctx: ActionCtx, args): Promise<EliminationWatchRow[]> => {
     const { season, league } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
       seasonId: args.seasonId,
@@ -48,10 +51,11 @@ export const getEliminationWatch = action({
       throw new Error("This league isn't linked to Sleeper, Yahoo, or ESPN yet.");
     }
 
-    const nflState = await ctx.runQuery(api.nflState.getNflState, {});
     // Same pre-season clamp as gatherPowerRankingsInputs - week "0" isn't a
     // real week to project from.
-    const week = String(nflState ? Math.max(Number(nflState.week), 1) : 1);
+    const nflState =
+      args.week === undefined ? await ctx.runQuery(api.nflState.getNflState, {}) : null;
+    const week = args.week ?? String(nflState ? Math.max(Number(nflState.week), 1) : 1);
 
     const teams = await ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, {
       seasonId: args.seasonId,

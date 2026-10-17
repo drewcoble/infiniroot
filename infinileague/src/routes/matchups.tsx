@@ -19,6 +19,7 @@ import {
 import { useExpandableCard } from "../components/cards/useExpandableCard";
 import cardClasses from "../components/cards/GlassMatchupCard.module.css";
 import detailClasses from "../components/cards/MatchupSummaryDetail.module.css";
+import { useGuillotineOpponent } from "../hooks/useGuillotineOpponent";
 import { useTeamRoster } from "../hooks/useTeamRoster";
 import { setStoredLeagueId } from "../lib/leagueStorage";
 import { toMatchupCardData } from "../lib/matchupCardData";
@@ -55,6 +56,7 @@ interface NflState {
 // up once here rather than per league.
 interface WeekContext {
   week: string;
+  games: WeekGame[] | undefined;
   gamesByTeam: Map<string, WeekGame> | undefined;
   now: number;
   refreshMs: number | null;
@@ -120,6 +122,7 @@ function MatchupsPage() {
     }
     const context: WeekContext = {
       week: nflState.week,
+      games: weekGames,
       gamesByTeam: weekGames ? gamesByTeam : undefined,
       now,
       refreshMs: isAnyGameLive(weekGames, now) ? LIVE_REFRESH_MS : null,
@@ -173,7 +176,7 @@ function LeagueMatchup({
   context: WeekContext;
   onOpen: () => void;
 }) {
-  const { week, gamesByTeam, now, refreshMs, weekComplete } = context;
+  const { week, games, gamesByTeam, now, refreshMs, weekComplete } = context;
   const seasonId = season._id as Id<"seasons">;
   const { isAuthenticated } = useConvexAuth();
 
@@ -185,9 +188,12 @@ function LeagueMatchup({
   const teamAId = self?.teamId ?? null;
 
   // Same tagged-result pattern as the Matchup tab - undefined = still
-  // looking up, null = no opponent this week.
+  // looking up, null = no opponent this week. A guillotine league's
+  // opponent is the lowest live-projected other team instead (see
+  // useGuillotineOpponent).
+  const isGuillotine = season.leagueType === "guillotine";
   const getOpponentForWeek = useAction(api.infinileague.season.matchup.getOpponentForWeek);
-  const opponentKey = teamAId !== null ? `${teamAId}:${week}` : null;
+  const opponentKey = teamAId !== null && !isGuillotine ? `${teamAId}:${week}` : null;
   const [opponent, setOpponent] = useState<{
     key: string;
     opponentId: string | null;
@@ -212,7 +218,20 @@ function LeagueMatchup({
       cancelled = true;
     };
   }, [teamAId, week, opponentKey, getOpponentForWeek]);
-  const current = opponent !== null && opponent.key === opponentKey ? opponent : undefined;
+  const guillotine = useGuillotineOpponent(
+    isGuillotine ? seasonId : null,
+    week,
+    games,
+    now,
+    refreshMs,
+  );
+  const current = isGuillotine
+    ? guillotine.opponentId === undefined
+      ? undefined
+      : { opponentId: guillotine.opponentId, error: guillotine.error ?? undefined }
+    : opponent !== null && opponent.key === opponentKey
+      ? opponent
+      : undefined;
   const teamBId = current?.opponentId ?? null;
 
   const teamARoster = useTeamRoster(teamAId, week, refreshMs);
@@ -259,7 +278,7 @@ function LeagueMatchup({
   const titleId = useId();
   // A guillotine league has no head-to-head games, so no meaningful rank
   // or record - the header and detail leave both out.
-  const headToHead = season.leagueType !== "guillotine";
+  const headToHead = !isGuillotine;
   const standingFor = (teamId: string | null) =>
     headToHead ? standings?.find((row) => row.teamId === teamId) : undefined;
   const starters = (rows: TeamRosterRow[] | undefined) =>
