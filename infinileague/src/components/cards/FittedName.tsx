@@ -11,13 +11,17 @@ import classes from "./GlassMatchupCard.module.css";
 // shortName: these cards also show the headshot and NFL team, which tell
 // "B. Robinson" from "B. Robinson Jr.".
 //
+// `shorten` false: never the short form, just the ellipsis - for team
+// defenses ("Chicago Bears" isn't a first and last name; "C. Bears" reads
+// wrong).
+//
 // Must sit directly in its flex row (.nameRow / .teamCardName): what's left
 // for the name is the row's width less its other children and gaps.
-export function FittedName({ name }: { name: string }) {
+export function FittedName({ name, shorten = true }: { name: string; shorten?: boolean }) {
   const nameRef = useRef<HTMLSpanElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const [useShort, setUseShort] = useState(false);
-  const shortName = buildShortNames([name])(name);
+  const shortName = shorten ? buildShortNames([name])(name) : name;
 
   useLayoutEffect(() => {
     const nameEl = nameRef.current;

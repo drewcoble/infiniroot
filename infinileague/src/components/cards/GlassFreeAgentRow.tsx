@@ -85,7 +85,7 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
       >
         <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
         <div className={`${classes.wideName} ${classes.teamCardName}`}>
-          <FittedName name={data.name} />
+          <FittedName name={data.name} shorten={data.position !== "DST"} />
           {data.isRookie && (
             <span className={`${classes.pill} ${classes.nameBadge}`} style={pillStyle("grape")}>
               R

@@ -65,7 +65,7 @@ export function GlassRosterCard({
             status icon + points, then position/injury/game | projection. */}
         {/* Injury badge after the name, same as the Matchup cards. */}
         <div className={`${classes.nameRow} ${classes.wideName}`} aria-hidden>
-          <FittedName name={data.name} />
+          <FittedName name={data.name} shorten={data.position !== "DST"} />
           {data.injury && (
             <span
               className={`${classes.pill} ${classes.nameBadge}`}
