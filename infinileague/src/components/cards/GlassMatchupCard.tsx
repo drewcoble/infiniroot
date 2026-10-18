@@ -63,18 +63,12 @@ export function GlassMatchupCard({
             <span className={classes.pill} style={pillStyle(positionColor)}>
               {positionBadge(data)}
             </span>
-            <PlayerHeadshot
-              fpid={data.fpid}
-              position={data.position}
-              team={data.team}
-              className={classes.headshotSmall}
-            />
           </div>
-          {/* Status in the top row: the live dot, "FINAL" once it's over,
-              the clock icon before kickoff. A live game's clock rides the
-              game line's right edge instead (GameLineText) - beside the
-              position badge and headshot there's no room for it. */}
+          {/* Status in the top row: the clock beside the live dot, "FINAL"
+              once it's over, the clock icon before kickoff (the game line
+              below then shows just the opponent when live or final). */}
           <div className={classes.topRowStatus}>
+            {isLive && data.status && <span className={classes.topClock}>{data.status}</span>}
             {data.gameState === "final" && <span className={classes.topClock}>FINAL</span>}
             <GameStatusGlyph state={data.gameState} />
           </div>
@@ -96,8 +90,15 @@ export function GlassMatchupCard({
               </span>
             )}
           </div>
+          {/* Headshot, then the game. */}
           <div className={classes.gameLine}>
-            <GameLineText data={data} statusInTopRow={!isLive} />
+            <PlayerHeadshot
+              fpid={data.fpid}
+              position={data.position}
+              team={data.team}
+              className={classes.headshotInline}
+            />
+            <GameLineText data={data} statusInTopRow />
           </div>
         </div>
 

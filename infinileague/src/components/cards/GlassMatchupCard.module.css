@@ -1097,58 +1097,21 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
-/* Half-width Matchup card: tiny, before the name - the Matchup header's
-   team logo size (TeamLogo at 22px), corners scaled to match. */
-.headshotSmall {
+/* Half-width cards (Matchup, Trade, Buys / Sells): at the start of the
+   line under the name - the name's own line height (15px at 1.2) tall. */
+.headshotInline {
   flex-shrink: 0;
   align-self: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
+  width: 18px;
+  height: 18px;
+  margin-right: 5px;
+  border-radius: 5px;
 }
 
-.headshotSmall .headshotLogo,
 .headshotInline .headshotLogo {
   inset: 2px;
   width: calc(100% - 4px);
   height: calc(100% - 4px);
-}
-
-/* Trade tab cards: at the start of the NFL-team line under the name. */
-.headshotInline {
-  flex-shrink: 0;
-  align-self: center;
-  width: 20px;
-  height: 20px;
-  margin-right: 6px;
-  border-radius: 6px;
-}
-
-/* A half-width card's top row (position badge, headshot, then FINAL /
-   status at the right) runs out of width on narrow phones
-   with a two-digit rank. Sized off the row itself: a little tighter at
-   375px-phone widths, and below that (360px phones) no headshot at all
-   rather than pushing the status off the card. */
-.topRow:has(.headshotSmall) {
-  container-type: inline-size;
-}
-
-@container (max-width: 119px) {
-  .pills:has(.headshotSmall) {
-    gap: 2px;
-  }
-
-  .headshotSmall {
-    width: 20px;
-    height: 20px;
-    border-radius: 6px;
-  }
-}
-
-@container (max-width: 111px) {
-  .headshotSmall {
-    display: none;
-  }
 }
 
 /* Sleeper's photos are landscape (head and shoulders, head centered near
