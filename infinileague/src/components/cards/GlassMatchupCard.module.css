@@ -537,6 +537,7 @@
 }
 
 .expandedHeader > .headshot {
+  align-self: center;
   flex-shrink: 0;
   width: 56px;
   height: 56px;
@@ -1021,8 +1022,8 @@
 }
 
 /* With a headshot (PlayerHeadshot): a third column on the left holding the
-   photo, centered across the name and detail rows; the meter still runs
-   the card's full width underneath. */
+   photo beside the name and detail rows; the meter still runs the card's
+   full width underneath. */
 .withHeadshot {
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas:
@@ -1033,6 +1034,10 @@
 
 .headshot {
   grid-area: photo;
+  /* Bottom-aligned, so its bottom edge lines up with the position badge's
+     (the two rows run ~2px taller than the photo; centered, the badge sat
+     lower). */
+  align-self: end;
   position: relative;
   width: 40px;
   height: 40px;
