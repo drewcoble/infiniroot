@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { pillStyle, rankPillStyle } from "./cardShared";
+import { FittedName } from "./FittedName";
 import { GlassPopover } from "./GlassPopover";
 import { StatGroups, type StatGroup } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
@@ -96,7 +97,7 @@ export function GlassPlayerRow({
       >
         <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
         <div className={`${classes.wideName} ${classes.teamCardName}`}>
-          <span className={classes.name}>{data.name}</span>
+          <FittedName name={data.name} />
           {data.isRookie && (
             <span className={`${classes.pill} ${classes.nameBadge}`} style={pillStyle("grape")}>
               R

@@ -9,6 +9,7 @@ import {
   type GlassMatchupCardData,
 } from "./cardShared";
 import { ExpandedMatchupCard } from "./ExpandedMatchupCard";
+import { FittedName } from "./FittedName";
 import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassSlotChip } from "./GlassMatchupCard";
@@ -24,7 +25,7 @@ import classes from "./GlassMatchupCard.module.css";
 // PlayerHeadshot), then the full name (and injury badge) with position/game
 // beneath, status (live clock / icon) on the name's row with the projection
 // and actual score on the game line's row, and the meter running the width
-// underneath. Full names fit here, so no shortening.
+// underneath. Full names when they fit (see FittedName).
 export function GlassRosterCard({
   data,
   slot,
@@ -64,7 +65,7 @@ export function GlassRosterCard({
             status icon + points, then position/injury/game | projection. */}
         {/* Injury badge after the name, same as the Matchup cards. */}
         <div className={`${classes.nameRow} ${classes.wideName}`} aria-hidden>
-          <span className={classes.name}>{data.name}</span>
+          <FittedName name={data.name} />
           {data.injury && (
             <span
               className={`${classes.pill} ${classes.nameBadge}`}

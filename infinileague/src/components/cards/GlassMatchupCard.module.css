@@ -1021,15 +1021,37 @@
   min-width: 0;
 }
 
-/* With a headshot (PlayerHeadshot): a third column on the left holding the
+/* With a headshot (PlayerHeadshot): a column on the left holding the
    photo beside the name and detail rows; the meter still runs the card's
-   full width underneath. */
+   full width underneath. The right side is split in two so the name only
+   gives up what its own row's right side needs (a status icon, "FINAL"),
+   not the width of the second row's numbers ("Proj 20.1  19.86") - the
+   name runs on over that column's unused part. With the photo taking its
+   share, a long name plus an injury badge otherwise wrapped. */
 .withHeadshot {
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "photo name points"
-    "photo detail proj"
-    "meter meter meter";
+    "photo name name points"
+    "photo detail proj proj"
+    "meter meter meter meter";
+}
+
+/* FittedName: one line, ellipsis as the last resort. */
+.fittedName {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: unset;
+}
+
+.nameMeasure {
+  position: absolute;
+  display: block;
+  width: max-content;
+  white-space: nowrap;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .headshot {
@@ -1432,8 +1454,8 @@
 
 .playerRow.withHeadshot {
   grid-template-areas:
-    "photo name points"
-    "photo detail proj";
+    "photo name name points"
+    "photo detail proj proj";
 }
 
 /* --- Position filter (GlassPositionFilter) ------------------------------ */
@@ -1546,9 +1568,9 @@
 
 .freeAgentRowNoted.withHeadshot {
   grid-template-areas:
-    "photo name points"
-    "photo detail proj"
-    "note note note";
+    "photo name name points"
+    "photo detail proj proj"
+    "note note note note";
 }
 
 .freeAgentNote {
