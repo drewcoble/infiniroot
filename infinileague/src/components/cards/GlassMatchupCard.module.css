@@ -1107,14 +1107,25 @@
   border-radius: 7px;
 }
 
-.headshotSmall .headshotLogo {
+.headshotSmall .headshotLogo,
+.headshotInline .headshotLogo {
   inset: 2px;
   width: calc(100% - 4px);
   height: calc(100% - 4px);
 }
 
-/* A half-width card's top row (position badge, headshot, then a buy / sell
-   arrow or FINAL / status at the right) runs out of width on narrow phones
+/* Trade tab cards: at the start of the NFL-team line under the name. */
+.headshotInline {
+  flex-shrink: 0;
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  border-radius: 6px;
+}
+
+/* A half-width card's top row (position badge, headshot, then FINAL /
+   status at the right) runs out of width on narrow phones
    with a two-digit rank. Sized off the row itself: a little tighter at
    375px-phone widths, and below that (360px phones) no headshot at all
    rather than pushing the status off the card. */
@@ -2327,11 +2338,9 @@
   cursor: pointer;
 }
 
-/* Trade card's compact buy / sell badge - just the arrow. */
-.signalArrow {
-  width: 19px;
-  padding: 0;
-  justify-content: center;
+/* Buys card: the owner's fantasy team, under the NFL team line. */
+.signalOwner {
+  margin-top: 2px;
 }
 
 /* The infinivalue - market value gap, top right. */

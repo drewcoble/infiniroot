@@ -88,17 +88,9 @@ export function GlassSignalCard({
           .join(" ")}
       >
         <div className={classes.topRow} aria-hidden>
-          <div className={classes.pills}>
-            <span className={classes.pill} style={pillStyle(positionColor)}>
-              {positionLabel(data.position, data.positionRank)}
-            </span>
-            <PlayerHeadshot
-              fpid={data.fpid}
-              position={data.position}
-              team={data.team}
-              className={classes.headshotSmall}
-            />
-          </div>
+          <span className={classes.pill} style={pillStyle(positionColor)}>
+            {positionLabel(data.position, data.positionRank)}
+          </span>
           <span
             className={`${classes.signalGap} ${
               data.signal === "buy" ? classes.impactUp : classes.impactDown
@@ -119,9 +111,23 @@ export function GlassSignalCard({
               </span>
             )}
           </div>
+          {/* Headshot and NFL team, then (Buys) who rosters him - who to
+              start the trade with - on a line of its own, since the card's
+              too narrow for both on one. */}
           <div className={classes.gameLine}>
-            <span className={classes.gameLineText}>{data.owner ?? data.team ?? "FA"}</span>
+            <PlayerHeadshot
+              fpid={data.fpid}
+              position={data.position}
+              team={data.team}
+              className={classes.headshotInline}
+            />
+            <span className={classes.gameLineText}>{data.team ?? "FA"}</span>
           </div>
+          {data.owner && (
+            <div className={`${classes.gameLine} ${classes.signalOwner}`}>
+              <span className={classes.gameLineText}>{data.owner}</span>
+            </div>
+          )}
         </div>
         <div
           className={`${classes.statsRow} ${classes.statsRowSplit} ${classes.tradeStats}`}

@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { ArrowDown, ArrowUp, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
@@ -57,14 +57,11 @@ const formatValue = (value: number | null | undefined) =>
   value === undefined || value === null ? "—" : formatTradeValue(value);
 
 // Buy / sell call (our position rank vs. the market's) as a glass badge -
-// green buy, red sell. `compact`: just an up / down arrow, for the card's
-// top row, which also holds the position badge, headshot and check (the
-// card's label spells it out); the detail popover says BUY / SELL.
-function SignalBadge({ signal, compact = false }: { signal: "buy" | "sell"; compact?: boolean }) {
-  const Arrow = signal === "buy" ? ArrowUp : ArrowDown;
+// green buy, red sell.
+function SignalBadge({ signal }: { signal: "buy" | "sell" }) {
   return (
     <span
-      className={`${classes.pill} ${classes.nameBadge} ${compact ? classes.signalArrow : ""}`}
+      className={`${classes.pill} ${classes.nameBadge}`}
       style={pillStyle(signal === "buy" ? "green" : "red")}
       title={
         signal === "buy"
@@ -72,7 +69,7 @@ function SignalBadge({ signal, compact = false }: { signal: "buy" | "sell"; comp
           : "Ranked well below the market at his position"
       }
     >
-      {compact ? <Arrow size={11} strokeWidth={3} /> : signal === "buy" ? "BUY" : "SELL"}
+      {signal === "buy" ? "BUY" : "SELL"}
     </span>
   );
 }
@@ -184,13 +181,7 @@ export function GlassTradeCard({
             <span className={classes.pill} style={pillStyle(positionColor)}>
               {positionLabel}
             </span>
-            <PlayerHeadshot
-              fpid={data.fpid}
-              position={data.position}
-              team={data.team}
-              className={classes.headshotSmall}
-            />
-            {data.signal && <SignalBadge signal={data.signal} compact />}
+            {data.signal && <SignalBadge signal={data.signal} />}
           </div>
           <span className={classes.tradeCheck}>
             {selected && <Check size={12} strokeWidth={3.5} />}
@@ -210,7 +201,14 @@ export function GlassTradeCard({
               </span>
             )}
           </div>
+          {/* Headshot, then the NFL team. */}
           <div className={classes.gameLine}>
+            <PlayerHeadshot
+              fpid={data.fpid}
+              position={data.position}
+              team={data.team}
+              className={classes.headshotInline}
+            />
             <span className={classes.gameLineText}>{data.team || "FA"}</span>
           </div>
         </div>
