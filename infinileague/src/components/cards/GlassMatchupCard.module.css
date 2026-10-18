@@ -1018,7 +1018,8 @@
   position: relative;
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  /* The card's own corner radius (.card). */
+  border-radius: 16px;
   overflow: hidden;
   background: linear-gradient(
     180deg,
@@ -1030,7 +1031,7 @@
 }
 
 /* Sleeper's photos are landscape (head and shoulders, head centered near
-   the top) - fill the circle's height and crop the sides, zoomed a touch
+   the top) - fill the well's height and crop the sides, zoomed a touch
    so the face, not the jersey, fills it. */
 .headshotImg {
   position: absolute;
@@ -1099,6 +1100,12 @@
   to {
     background-position: -100% 0;
   }
+}
+
+/* The skeleton's headshot well keeps the real one's corners, not the
+   bars' pill rounding. */
+.skeletonBar.headshot {
+  border-radius: 16px;
 }
 
 @media (prefers-reduced-motion: reduce) {

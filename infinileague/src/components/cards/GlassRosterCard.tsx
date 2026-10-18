@@ -152,7 +152,7 @@ export function EmptyGlassRosterCard({ slot }: { slot: string }) {
 }
 
 // Loading placeholder in the full-width card's shape (slot chip outside,
-// headshot circle, name/detail bars and a meter bar inside) - see GlassSkeletonCard.
+// headshot well, name/detail bars and a meter bar inside) - see GlassSkeletonCard.
 export function GlassRosterSkeletonCard() {
   return (
     <div className={classes.rosterRow} aria-hidden>
