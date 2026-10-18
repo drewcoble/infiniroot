@@ -299,6 +299,18 @@ export default defineSchema({
     .index("by_espn_id", ["espnId"])
     .index("by_yahoo_id", ["yahooId"]),
 
+  // Short-lived cache of Yahoo reads that barely change but were refetched on
+  // every page load / live refresh (see convex/infinidraft/yahoo/cache.ts's
+  // cachedYahoo): "dst:<leagueKey>" - the league's DST scoring, mapped from
+  // its settings (lib/dstScoring.ts's DstScoring); "opponent:<teamKey>:<week>"
+  // - that week's opponent's team key, or null. `data` is v.any() since each
+  // key's shape belongs to its one caller.
+  yahooCache: defineTable({
+    key: v.string(),
+    data: v.any(),
+    fetchedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   // External platforms' own player values/rankings, for comparing against
   // this app's own draft values rather than replacing them - see convex/
   // espn/rankings.ts for the first source (ESPN's draft-kit ranks).
