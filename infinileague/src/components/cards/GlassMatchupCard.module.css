@@ -1113,6 +1113,33 @@
   height: calc(100% - 4px);
 }
 
+/* A half-width card's top row (position badge, headshot, then a buy / sell
+   arrow or FINAL / status at the right) runs out of width on narrow phones
+   with a two-digit rank. Sized off the row itself: a little tighter at
+   375px-phone widths, and below that (360px phones) no headshot at all
+   rather than pushing the status off the card. */
+.topRow:has(.headshotSmall) {
+  container-type: inline-size;
+}
+
+@container (max-width: 119px) {
+  .pills:has(.headshotSmall) {
+    gap: 2px;
+  }
+
+  .headshotSmall {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+  }
+}
+
+@container (max-width: 111px) {
+  .headshotSmall {
+    display: none;
+  }
+}
+
 /* Sleeper's photos are landscape (head and shoulders, head centered near
    the top) - fill the well's height and crop the sides, zoomed a touch
    so the face, not the jersey, fills it. */
@@ -2298,6 +2325,13 @@
   flex: 0 0 160px;
   scroll-snap-align: start;
   cursor: pointer;
+}
+
+/* Trade card's compact buy / sell badge - just the arrow. */
+.signalArrow {
+  width: 19px;
+  padding: 0;
+  justify-content: center;
 }
 
 /* The infinivalue - market value gap, top right. */
