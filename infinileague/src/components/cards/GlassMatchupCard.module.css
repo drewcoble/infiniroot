@@ -1018,8 +1018,9 @@
   position: relative;
   width: 40px;
   height: 40px;
-  /* The card's own corner radius (.card). */
-  border-radius: 16px;
+  /* Concentric with the card's corner: its 16px radius less its 10px
+     padding. */
+  border-radius: 6px;
   overflow: hidden;
   background: linear-gradient(
     180deg,
@@ -1105,7 +1106,7 @@
 /* The skeleton's headshot well keeps the real one's corners, not the
    bars' pill rounding. */
 .skeletonBar.headshot {
-  border-radius: 16px;
+  border-radius: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
