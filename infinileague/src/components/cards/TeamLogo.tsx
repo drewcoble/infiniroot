@@ -12,16 +12,9 @@ function teamInitials(name: string): string {
   return (words[0]![0]! + words[1]![0]!).toUpperCase();
 }
 
-// A stable hue per name, so a team's initials badge keeps its color.
-function nameHue(name: string): number {
-  let hash = 0;
-  for (const char of name) hash = (hash * 31 + char.codePointAt(0)!) | 0;
-  return Math.abs(hash) % 360;
-}
-
 // A fantasy team's logo/avatar from its provider (seasonTeams.logoUrl, see
 // the Sleeper/ESPN/Yahoo syncs) in a rounded glass well, or the team's
-// initials on a tint of its own when there's no logo or it fails to load
+// initials on clear glass when there's no logo or it fails to load
 // (ESPN's custom logos are links to anywhere). Decorative - the team's name
 // is always beside it.
 export function TeamLogo({
@@ -43,7 +36,6 @@ export function TeamLogo({
     // The headshot well's 12px at 40px, scaled.
     borderRadius: Math.round(size * 0.3),
     fontSize: Math.round(size * 0.38),
-    "--logo-hue": nameHue(name),
   } as CSSProperties;
 
   return (

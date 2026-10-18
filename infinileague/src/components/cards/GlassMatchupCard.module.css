@@ -1224,18 +1224,22 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-/* No logo: the initials on a glass tint of the team's own hue - same
-   recipe as the pills (.pill). */
+/* No logo: the initials on clear, uncolored glass - a white sheen and
+   edge only, so whatever's behind it (the card, a live card's green)
+   shows through. */
 .teamLogoInitials {
-  color: hsl(var(--logo-hue) 70% 92%);
+  color: rgba(248, 250, 252, 0.88);
   font-family: var(--font-badge);
   font-weight: var(--font-badge-weight);
   letter-spacing: 0.02em;
   line-height: 1;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.02) 100%),
-    hsl(var(--logo-hue) 45% 40% / 0.55);
-  border-color: hsl(var(--logo-hue) 50% 60% / 0.55);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* --- Loading skeletons --------------------------------------------------- */
