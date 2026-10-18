@@ -292,6 +292,7 @@ function MatchupPage() {
       proj,
       (row) => toCardData(row).gameState,
       isGuillotine ? undefined : standings?.find((row) => row.teamId === teamId),
+      standings?.find((row) => row.teamId === teamId)?.logoUrl,
     );
 
   // Header and rows hold their shape with glass skeletons while loading,

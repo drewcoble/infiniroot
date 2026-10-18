@@ -1116,6 +1116,48 @@
   font-size: 13px;
 }
 
+/* --- Fantasy team logo (TeamLogo) -------------------------------------- */
+
+/* Size, corner radius and initials size come inline from the size prop. */
+.teamLogo {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Logos are mostly square art with their own background - fill the well. */
+.teamLogoImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* No logo: the initials on a glass tint of the team's own hue - same
+   recipe as the pills (.pill). */
+.teamLogoInitials {
+  color: hsl(var(--logo-hue) 70% 92%);
+  font-family: var(--font-badge);
+  font-weight: var(--font-badge-weight);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.02) 100%),
+    hsl(var(--logo-hue) 45% 40% / 0.55);
+  border-color: hsl(var(--logo-hue) 50% 60% / 0.55);
+}
+
 /* --- Loading skeletons --------------------------------------------------- */
 
 .skeletonCard {
@@ -1212,6 +1254,16 @@
   overflow-wrap: anywhere;
 }
 
+/* Logo then name, in the name's grid cell - the logo stays off the season
+   row, which has no width to spare beside the week's counts. */
+.teamHeaderTitle {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .teamHeaderSeason {
   grid-area: season;
   display: flex;
@@ -1257,13 +1309,17 @@
 /* The whole card is the link to the team page - a third grid column holds
    the chevron that says so, centered across both rows. */
 .teamCard {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "name points chevron"
-    "detail proj chevron";
+    "logo name points chevron"
+    "logo detail proj chevron";
   color: inherit;
   text-decoration: none;
   cursor: pointer;
+}
+
+.teamCardLogo {
+  grid-area: logo;
 }
 
 .teamCardChevron {

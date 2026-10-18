@@ -179,6 +179,8 @@ export const syncLeagueRoster = action({
       // (the import path), so a manager's mid-season rename flows through.
       const owner = roster.owner_id ? userById.get(roster.owner_id) : undefined;
       const name = owner?.metadata?.team_name || owner?.display_name;
+      // An ownerless roster leaves the stored logo alone, like its name.
+      const logoUrl = owner ? sleeperTeamLogoUrl(owner) : undefined;
 
       await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
         seasonId: args.seasonId,
@@ -197,6 +199,7 @@ export const syncLeagueRoster = action({
           ? { waiverPosition: roster.settings.waiver_position }
           : {}),
         ...(name ? { name } : {}),
+        ...(logoUrl !== undefined ? { logoUrl } : {}),
       });
       syncedTeams += 1;
     }
@@ -267,7 +270,21 @@ export const listSleeperKeeperSuggestions = action({
 interface SleeperLeagueUser {
   user_id: string;
   display_name: string;
-  metadata?: { team_name?: string };
+  // The account avatar's id, for SLEEPER_AVATAR_URL - confirmed live that
+  // every user in a real league carried one.
+  avatar?: string | null;
+  // avatar here is the league-specific custom team avatar, a full
+  // sleepercdn.com/uploads URL (confirmed live; most managers set one).
+  metadata?: { team_name?: string; avatar?: string };
+}
+
+const SLEEPER_AVATAR_URL = "https://sleepercdn.com/avatars/thumbs";
+
+// The team's custom avatar, else the manager's account avatar - what the
+// Sleeper app itself shows. null when neither is set.
+function sleeperTeamLogoUrl(user: SleeperLeagueUser): string | null {
+  if (user.metadata?.avatar) return user.metadata.avatar;
+  return user.avatar ? `${SLEEPER_AVATAR_URL}/${user.avatar}` : null;
 }
 
 interface LeagueTeamRow {

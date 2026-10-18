@@ -342,6 +342,7 @@ function LeagueMatchup({
                     projA,
                     gameStateFor,
                     headToHead ? self : undefined,
+                    self?.logoUrl,
                   )
             }
             teamB={
@@ -355,6 +356,7 @@ function LeagueMatchup({
                       projB,
                       gameStateFor,
                       standingFor(teamBId),
+                      standings?.find((row) => row.teamId === teamBId)?.logoUrl,
                     )
                   : null
             }

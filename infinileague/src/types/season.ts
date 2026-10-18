@@ -36,6 +36,8 @@ export interface LinkedSeason {
 export interface StandingsRow {
   teamId: string;
   name: string;
+  // The provider's team logo/avatar - absent shows initials (TeamLogo).
+  logoUrl?: string;
   isSelf: boolean;
   rank: number;
   wins: number;

@@ -6,6 +6,8 @@ import { TeamPositionRanksPanel } from "../TeamPositionRanksPanel";
 import { rankPillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
 import { StatGroups, type StatGroup } from "./StatGroups";
+import { TeamLogo } from "./TeamLogo";
+import { useTeamLogoUrl } from "./teamLogos";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -33,7 +35,8 @@ export interface GlassTeamCardData {
 }
 
 // League-home team card (Standings / Power Rankings / Elimination Watch) in
-// the full-width glass card's layout: name and the list's headline number
+// the full-width glass card's layout: the team's logo (TeamLogo - from the
+// league layout's standings, by teamId), name and the list's headline number
 // on the first row, a supporting line under each, and a chevron - the whole
 // card is a link to the team page. Long-press (or Space) opens the team's
 // detail popover instead - its stats and the position-strength radar that
@@ -57,6 +60,7 @@ export function GlassTeamCard({
     { asLink: true },
   );
   const titleId = useId();
+  const logoUrl = useTeamLogoUrl(data.teamId);
 
   return (
     <div className={classes.rosterRow}>
@@ -82,6 +86,12 @@ export function GlassTeamCard({
           .filter(Boolean)
           .join(" ")}
       >
+        <TeamLogo
+          name={data.name}
+          logoUrl={logoUrl}
+          size={40}
+          className={classes.teamCardLogo}
+        />
         <div className={`${classes.wideName} ${classes.teamCardName}`} aria-hidden>
           <span className={classes.name}>{data.name}</span>
           {data.nameBadges}

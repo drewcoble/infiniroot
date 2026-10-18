@@ -63,6 +63,9 @@ export function matchupHeaderTeam(
   proj: number,
   gameStateFor: (row: TeamRosterRow) => GameState,
   standing?: StandingsRow | undefined,
+  // Separate from standing, which guillotine leagues leave out (no rank)
+  // but still have logos.
+  logoUrl?: string | undefined,
 ): MatchupHeaderTeam {
   const states = (rows ?? [])
     .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
@@ -81,6 +84,7 @@ export function matchupHeaderTeam(
     liveCount,
     toPlayCount,
     ...(standing ? { rank: { value: standing.rank } } : {}),
+    ...(logoUrl ? { logoUrl } : {}),
   };
 }
 

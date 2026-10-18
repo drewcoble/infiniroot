@@ -105,6 +105,19 @@ export interface YahooTeamStandings {
   // team resources, so this rides along for free and lets the sync pick up
   // a manager's mid-season rename. Absent if the node had no name.
   name?: string;
+  // The team's logo URL, from the same team resource - see yahooTeamLogoUrl.
+  logoUrl?: string;
+}
+
+// Yahoo's team resource carries `team_logos: [{ team_logo: { size, url } }]`
+// (Yahoo hosts a default logo for teams without a custom one) - from Yahoo's
+// documented response shape, NOT confirmed against a live response (see
+// YAHOO.md). Prefers the "large" size; undefined when none is found, which
+// leaves any stored logo alone.
+function yahooTeamLogoUrl(teamLogos: unknown): string | undefined {
+  const logos = findNodesByKey(teamLogos, "team_logo").map((node) => mergeYahooFields(node));
+  const pick = logos.find((logo) => logo.size === "large") ?? logos[0];
+  return typeof pick?.url === "string" && pick.url ? pick.url : undefined;
 }
 
 // One request covers every team in the league (unlike the per-team FAAB
@@ -132,6 +145,7 @@ async function fetchYahooStandingsForLeague(
     if (!teamKey) continue;
     const standingsFields = mergeYahooFields(fields.team_standings);
     const outcomeTotals = mergeYahooFields(standingsFields.outcome_totals);
+    const logoUrl = yahooTeamLogoUrl(fields.team_logos);
     standingsByTeamKey.set(teamKey, {
       wins: Number(outcomeTotals.wins) || 0,
       losses: Number(outcomeTotals.losses) || 0,
@@ -141,6 +155,7 @@ async function fetchYahooStandingsForLeague(
       ...(typeof fields.name === "string" && fields.name
         ? { name: fields.name }
         : {}),
+      ...(logoUrl ? { logoUrl } : {}),
     });
   }
   if (standingsByTeamKey.size === 0) {
@@ -479,6 +494,7 @@ export const syncYahooLeagueRoster = action({
           pointsFor: standings?.pointsFor ?? 0,
           pointsAgainst: standings?.pointsAgainst ?? 0,
           ...(standings?.name ? { name: standings.name } : {}),
+          ...(standings?.logoUrl ? { logoUrl: standings.logoUrl } : {}),
         });
         syncedTeams += 1;
       }

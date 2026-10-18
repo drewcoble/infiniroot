@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { StandingsRow } from "../../types/season";
 import { rankPillStyle } from "./cardShared";
 import { GameStatusGlyph } from "./GameStatusGlyph";
+import { TeamLogo } from "./TeamLogo";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface TeamWeekSummary {
@@ -29,7 +30,8 @@ function seasonPpg(team: StandingsRow): number | null {
 }
 
 // My Team's header in the same glass as the Matchup header and roster
-// cards, on two shared rows like the full-width player card: team name |
+// cards, on two shared rows like the full-width player card: the team's
+// logo (TeamLogo, initials without one) and name |
 // the week's score, then the season line (rank, record, points per game) |
 // the starters' live/to-play counts and the week's projection. The week
 // itself is picked from the page's title row (see WeekPicker). `team`
@@ -69,7 +71,10 @@ export function GlassTeamHeader({
         </>
       ) : (
         <>
-          <h3 className={classes.teamHeaderName}>{team.name}</h3>
+          <div className={classes.teamHeaderTitle}>
+            <TeamLogo name={team.name} logoUrl={team.logoUrl} size={30} />
+            <h3 className={classes.teamHeaderName}>{team.name}</h3>
+          </div>
           <div className={classes.teamHeaderSeason}>
             <span className={classes.pill} style={RANK_PILL_STYLE} aria-label={`Rank ${team.rank}`}>
               #{team.rank}
