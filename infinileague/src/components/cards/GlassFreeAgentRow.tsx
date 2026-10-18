@@ -122,6 +122,7 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
       {anchor && (
         <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
           <div className={classes.expandedHeader}>
+            <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
             <div className={classes.teamCardPopoverTitle}>
               <span className={classes.pill} style={RANK_CHIP_STYLE}>
                 #{data.rank}

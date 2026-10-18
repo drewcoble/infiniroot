@@ -153,6 +153,7 @@ export function GlassPlayerRow({
       {anchor && (
         <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
           <div className={classes.expandedHeader}>
+            <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
             <div className={classes.teamCardPopoverTitle}>
               <span className={classes.pill} style={rankPillStyle(data.isOnMyTeam)}>
                 #{data.rank}

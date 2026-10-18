@@ -529,6 +529,24 @@
   gap: 12px;
 }
 
+/* Player detail cards lead with a larger headshot (PlayerHeadshot); the
+   title beside it takes the free width, so the close button stays right,
+   and the three center on each other. */
+.expandedHeader:has(> .headshot) {
+  align-items: center;
+}
+
+.expandedHeader > .headshot {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+}
+
+.expandedHeader > .headshot + * {
+  flex: 1;
+  min-width: 0;
+}
+
 .expandedName {
   font-size: 20px;
   font-weight: 700;

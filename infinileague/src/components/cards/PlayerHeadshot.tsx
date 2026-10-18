@@ -16,9 +16,11 @@ function headshotSrc(fpid: number, position: Position, team: string | null): str
 }
 
 // The headshot well at the left of the full-width player cards (roster,
-// Players board, Free Agents). Decorative - the card's aria-label already
-// names the player. A missing photo (Sleeper 403s an unknown id) or an
-// empty slot leaves the bare glass well, so every card keeps its shape.
+// Players board, Free Agents), and larger at the head of every single-player
+// detail popover (see .expandedHeader). Not on the half-width cards - no
+// room beside a name there. Decorative - the card's label already names the
+// player. A missing photo (Sleeper 403s an unknown id) or an empty slot
+// leaves the bare glass well, so every card keeps its shape.
 export function PlayerHeadshot({
   fpid,
   position,
