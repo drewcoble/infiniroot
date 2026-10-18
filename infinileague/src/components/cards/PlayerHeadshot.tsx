@@ -19,7 +19,7 @@ function headshotSrc(fpid: number, position: Position, team: string | null): str
 // Players board, Free Agents), and larger at the head of every single-player
 // detail popover (see .expandedHeader). Small elsewhere: at the start of
 // the line under the name on the half-width cards - Matchup, Trade, Buys /
-// Sells (.headshotInline) - and in the trade header's player list. Decorative - the card's label
+// Sells (.headshotInline). 4:3 throughout, like the photos themselves. Decorative - the card's label
 // already names the player. A missing photo (Sleeper 403s an unknown id) or an empty slot
 // leaves the bare glass well, so every card keeps its shape.
 export function PlayerHeadshot({

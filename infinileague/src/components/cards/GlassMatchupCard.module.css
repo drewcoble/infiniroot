@@ -539,7 +539,8 @@
 .expandedHeader > .headshot {
   align-self: center;
   flex-shrink: 0;
-  width: 56px;
+  /* 4:3, as on the cards. */
+  width: 75px;
   height: 56px;
 }
 
@@ -1061,7 +1062,9 @@
      lower). */
   align-self: end;
   position: relative;
-  width: 40px;
+  /* 4:3, like the half-width cards' inline headshot - closer to the
+     photos' own landscape shape than a square. */
+  width: 53px;
   height: 40px;
   border-radius: 12px;
   overflow: hidden;
@@ -2225,42 +2228,10 @@
 
 /* The position badge, smaller than the cards' - and no rank. A fixed
    width so every name (and the 2-for-1 row) starts at the same x. */
-/* With a headshot: the photo spans both rows, the badge sits beside the
-   name, and the numbers run under both - the photo costs the name row its
-   width, not the numbers. (.headshot already places itself in "photo".) */
-.tradeHeaderEntry:has(.tradeHeaderHeadshot, .tradeHeaderHeadshotSpace) {
-  grid-template-columns: auto auto minmax(0, 1fr);
-  grid-template-areas:
-    "photo badge name"
-    "photo numbers numbers";
-}
-
-.tradeHeaderHeadshot,
-.tradeHeaderHeadshotSpace {
-  grid-area: photo;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  align-self: center;
-}
-
 .tradeHeaderBadge,
 .tradeHeaderBadgeSpace {
   grid-row: 1 / span 2;
   width: 30px;
-}
-
-.tradeHeaderEntry:has(.tradeHeaderHeadshot, .tradeHeaderHeadshotSpace)
-  > :is(.tradeHeaderBadge, .tradeHeaderBadgeSpace) {
-  grid-area: badge;
-}
-
-.tradeHeaderEntry:has(.tradeHeaderHeadshot, .tradeHeaderHeadshotSpace) > .tradeHeaderPlayerName {
-  grid-area: name;
-}
-
-.tradeHeaderEntry:has(.tradeHeaderHeadshot, .tradeHeaderHeadshotSpace) > .tradeHeaderNumbers {
-  grid-area: numbers;
 }
 
 .tradeHeaderBadge {

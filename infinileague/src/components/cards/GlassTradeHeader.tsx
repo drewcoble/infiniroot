@@ -4,7 +4,6 @@ import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
 import { pillStyle } from "./cardShared";
 import type { TradeMetric } from "./GlassTradeCard";
-import { PlayerHeadshot } from "./PlayerHeadshot";
 import { TeamLogo } from "./TeamLogo";
 import { useTeamLogoUrl } from "./teamLogos";
 import classes from "./GlassMatchupCard.module.css";
@@ -13,8 +12,6 @@ import classes from "./GlassMatchupCard.module.css";
 // whichever the switch picks.
 export interface TradeHeaderPlayer {
   fpid: number;
-  // NFL team - DST's headshot is its team logo (PlayerHeadshot).
-  team: string | null;
   // Short name (lib/shortPlayerName.ts), as on the cards.
   name: string;
   position: Position;
@@ -91,12 +88,6 @@ function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetr
     <div className={classes.tradeHeaderPlayers}>
       {team.players.map((player) => (
         <div key={player.fpid} className={classes.tradeHeaderEntry}>
-          <PlayerHeadshot
-            fpid={player.fpid}
-            position={player.position}
-            team={player.team}
-            className={classes.tradeHeaderHeadshot}
-          />
           <span
             className={`${classes.pill} ${classes.tradeHeaderBadge}`}
             style={pillStyle(positionColorOrDefault(player.position))}
@@ -109,7 +100,6 @@ function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetr
       ))}
       {metric === "value" && team.credit > 0 && (
         <div className={classes.tradeHeaderEntry}>
-          <span className={classes.tradeHeaderHeadshotSpace} />
           <span className={classes.tradeHeaderBadgeSpace} />
           <span className={classes.tradeHeaderPlayerName}>2-for-1 adj.</span>
           <div className={classes.tradeHeaderNumbers}>
