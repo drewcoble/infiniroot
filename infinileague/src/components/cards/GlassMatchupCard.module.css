@@ -1144,6 +1144,27 @@
   object-fit: cover;
 }
 
+/* Glass over the logo: a soft white fade from the top and a thin bright
+   top edge, like the cards' own sheen - the logo reads as sitting under
+   glass rather than pasted on. Initials already carry it in their
+   background (.teamLogoInitials). */
+.teamLogo:not(.teamLogoInitials)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.32) 0%,
+    rgba(255, 255, 255, 0.1) 38%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
 /* No logo: the initials on a glass tint of the team's own hue - same
    recipe as the pills (.pill). */
 .teamLogoInitials {
