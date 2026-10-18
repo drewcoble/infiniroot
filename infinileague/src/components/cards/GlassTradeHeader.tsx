@@ -4,12 +4,17 @@ import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
 import { pillStyle } from "./cardShared";
 import type { TradeMetric } from "./GlassTradeCard";
+import { PlayerHeadshot } from "./PlayerHeadshot";
+import { TeamLogo } from "./TeamLogo";
+import { useTeamLogoUrl } from "./teamLogos";
 import classes from "./GlassMatchupCard.module.css";
 
 // One player a side sends, with every view's numbers - the header shows
 // whichever the switch picks.
 export interface TradeHeaderPlayer {
   fpid: number;
+  // NFL team - DST's headshot is its team logo (PlayerHeadshot).
+  team: string | null;
   // Short name (lib/shortPlayerName.ts), as on the cards.
   name: string;
   position: Position;
@@ -23,6 +28,8 @@ export interface TradeHeaderPlayer {
 }
 
 export interface TradeHeaderTeam {
+  // For the team's logo (teamLogos.ts's useTeamLogoUrl).
+  teamId: string;
   name: string;
   // Players this team gives up.
   players: TradeHeaderPlayer[];
@@ -84,6 +91,12 @@ function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetr
     <div className={classes.tradeHeaderPlayers}>
       {team.players.map((player) => (
         <div key={player.fpid} className={classes.tradeHeaderEntry}>
+          <PlayerHeadshot
+            fpid={player.fpid}
+            position={player.position}
+            team={player.team}
+            className={classes.tradeHeaderHeadshot}
+          />
           <span
             className={`${classes.pill} ${classes.tradeHeaderBadge}`}
             style={pillStyle(positionColorOrDefault(player.position))}
@@ -96,6 +109,7 @@ function PlayerList({ team, metric }: { team: TradeHeaderTeam; metric: TradeMetr
       ))}
       {metric === "value" && team.credit > 0 && (
         <div className={classes.tradeHeaderEntry}>
+          <span className={classes.tradeHeaderHeadshotSpace} />
           <span className={classes.tradeHeaderBadgeSpace} />
           <span className={classes.tradeHeaderPlayerName}>2-for-1 adj.</span>
           <div className={classes.tradeHeaderNumbers}>
@@ -120,13 +134,19 @@ function TeamSide({
   name?: ReactNode;
 }) {
   const summary = sideTotals(team, metric);
+  const logoUrl = useTeamLogoUrl(team.teamId);
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
-      {name ?? (
-        <div className={classes.headerTeamName} aria-hidden>
-          {team.name}
-        </div>
-      )}
+      {/* Logo and name (or the partner picker) on one line, like the
+          Matchup header. */}
+      <div className={classes.headerTeamTitle}>
+        <TeamLogo name={team.name} logoUrl={logoUrl} size={22} />
+        {name ?? (
+          <div className={classes.headerTeamName} aria-hidden>
+            {team.name}
+          </div>
+        )}
+      </div>
       {summary ? (
         <>
           <div className={`${classes.headerTotal} ${classes.tradeHeaderTotal}`} aria-hidden>

@@ -17,25 +17,28 @@ function headshotSrc(fpid: number, position: Position, team: string | null): str
 
 // The headshot well at the left of the full-width player cards (roster,
 // Players board, Free Agents), and larger at the head of every single-player
-// detail popover (see .expandedHeader). Not on the half-width cards - no
-// room beside a name there. Decorative - the card's label already names the
+// detail popover (see .expandedHeader), tiny beside the position badge on
+// the Trade tab's Buys / Sells cards (.headshotSmall - the Matchup header's
+// team logo size), and in the trade header's player list. Decorative - the card's label already names the
 // player. A missing photo (Sleeper 403s an unknown id) or an empty slot
 // leaves the bare glass well, so every card keeps its shape.
 export function PlayerHeadshot({
   fpid,
   position,
   team,
+  className,
 }: {
   fpid: number | undefined;
   position: Position;
   team: string | null;
+  className?: string | undefined;
 }) {
   const src = fpid === undefined ? null : headshotSrc(fpid, position, team);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const isLogo = position === "DST";
 
   return (
-    <span className={classes.headshot} aria-hidden>
+    <span className={className ? `${classes.headshot} ${className}` : classes.headshot} aria-hidden>
       {src && src !== failedSrc && (
         <img
           src={src}

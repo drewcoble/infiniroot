@@ -1097,6 +1097,22 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
+/* Half-width Matchup card: tiny, before the name - the Matchup header's
+   team logo size (TeamLogo at 22px), corners scaled to match. */
+.headshotSmall {
+  flex-shrink: 0;
+  align-self: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+
+.headshotSmall .headshotLogo {
+  inset: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+}
+
 /* Sleeper's photos are landscape (head and shoulders, head centered near
    the top) - fill the well's height and crop the sides, zoomed a touch
    so the face, not the jersey, fills it. */
@@ -2032,6 +2048,14 @@
   min-width: 0;
 }
 
+/* Partner logo and name, the name truncating. */
+.suggestionPartnerTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 /* Trade header's sent totals: the app's numeric font, not the Matchup
    header's dot-matrix scoreboard font - that's reserved for live scores. */
 .tradeHeaderTotal {
@@ -2187,10 +2211,42 @@
 
 /* The position badge, smaller than the cards' - and no rank. A fixed
    width so every name (and the 2-for-1 row) starts at the same x. */
+/* With a headshot: the photo spans both rows, the badge sits beside the
+   name, and the numbers run under both - the photo costs the name row its
+   width, not the numbers. (.headshot already places itself in "photo".) */
+.tradeHeaderEntry:has(.tradeHeaderHeadshot, .tradeHeaderHeadshotSpace) {
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "photo badge name"
+    "photo numbers numbers";
+}
+
+.tradeHeaderHeadshot,
+.tradeHeaderHeadshotSpace {
+  grid-area: photo;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  align-self: center;
+}
+
 .tradeHeaderBadge,
 .tradeHeaderBadgeSpace {
   grid-row: 1 / span 2;
   width: 30px;
+}
+
+.tradeHeaderEntry:has(.tradeHeaderHeadshot, .tradeHeaderHeadshotSpace)
+  > :is(.tradeHeaderBadge, .tradeHeaderBadgeSpace) {
+  grid-area: badge;
+}
+
+.tradeHeaderEntry:has(.tradeHeaderHeadshot, .tradeHeaderHeadshotSpace) > .tradeHeaderPlayerName {
+  grid-area: name;
+}
+
+.tradeHeaderEntry:has(.tradeHeaderHeadshot, .tradeHeaderHeadshotSpace) > .tradeHeaderNumbers {
+  grid-area: numbers;
 }
 
 .tradeHeaderBadge {

@@ -88,9 +88,17 @@ export function GlassSignalCard({
           .join(" ")}
       >
         <div className={classes.topRow} aria-hidden>
-          <span className={classes.pill} style={pillStyle(positionColor)}>
-            {positionLabel(data.position, data.positionRank)}
-          </span>
+          <div className={classes.pills}>
+            <span className={classes.pill} style={pillStyle(positionColor)}>
+              {positionLabel(data.position, data.positionRank)}
+            </span>
+            <PlayerHeadshot
+              fpid={data.fpid}
+              position={data.position}
+              team={data.team}
+              className={classes.headshotSmall}
+            />
+          </div>
           <span
             className={`${classes.signalGap} ${
               data.signal === "buy" ? classes.impactUp : classes.impactDown

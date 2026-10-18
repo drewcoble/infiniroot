@@ -4,6 +4,8 @@ import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { gradeColor } from "../../lib/gradeColor";
 import { formatTradeValue } from "../../lib/tradeValue";
 import { pillStyle } from "./cardShared";
+import { TeamLogo } from "./TeamLogo";
+import { useTeamLogoUrl } from "./teamLogos";
 import { GlassPopover } from "./GlassPopover";
 import { StatGroups } from "./StatGroups";
 import { useExpandableCard } from "./useExpandableCard";
@@ -117,6 +119,7 @@ export function GlassTradeSuggestionCard({
     onTap: onApply,
   });
   const titleId = useId();
+  const partnerLogoUrl = useTeamLogoUrl(suggestion.partnerTeamId);
 
   const playerRows = (players: TradeSuggestionPlayer[]) =>
     players.map((player) => {
@@ -154,7 +157,10 @@ export function GlassTradeSuggestionCard({
           .join(" ")}
       >
         <div className={classes.suggestionTop} aria-hidden>
-          <span className={classes.suggestionPartner}>{suggestion.partnerName}</span>
+          <span className={classes.suggestionPartnerTitle}>
+            <TeamLogo name={suggestion.partnerName} logoUrl={partnerLogoUrl} size={22} />
+            <span className={classes.suggestionPartner}>{suggestion.partnerName}</span>
+          </span>
           <span className={classes.pill} style={gradePillStyle(suggestion.grade)}>
             {suggestion.grade}
           </span>
