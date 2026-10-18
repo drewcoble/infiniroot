@@ -1110,6 +1110,17 @@
   border-radius: 5px;
 }
 
+/* Lighter glass again at this size - about half the larger headshots'. */
+.headshotInline:has(img)::after {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.03) 38%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
 .headshotInline .headshotLogo {
   inset: 2px;
   width: calc(100% - 4px);
