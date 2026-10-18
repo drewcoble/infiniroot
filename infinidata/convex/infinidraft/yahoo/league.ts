@@ -395,6 +395,56 @@ export function extractRosterPlayers(
     );
 }
 
+interface YahooTeamRoster {
+  players: Array<{ name: string; position: string; teamAbbr?: string }>;
+  // Remaining FAAB dollars, when the response carried it.
+  faabBalance: number | undefined;
+}
+
+// A team resource's remaining FAAB balance - field name not confirmed live
+// (see YAHOO.md); waiver_budget_used is the older fallback this sync has
+// always read.
+function readFaabBalance(fields: Record<string, unknown>): number | undefined {
+  const raw = fields.faab_balance ?? fields.waiver_budget_used;
+  if (typeof raw !== "string" && typeof raw !== "number") return undefined;
+  const balance = Number(raw);
+  return Number.isFinite(balance) ? balance : undefined;
+}
+
+// Every team's current roster (and FAAB balance, when the team resource
+// carries it) in one request - `/league/{leagueKey}/teams/roster`, the
+// teams collection with each team's roster subresource, from Yahoo's
+// documented resource/collection chaining and NOT confirmed against a live
+// response (see YAHOO.md). Keyed by team_key. Returns an empty map when no
+// team came back with any players - an unexpected shape, which would
+// otherwise read as every roster being empty and wipe them - so the caller
+// falls back to per-team requests.
+async function fetchYahooLeagueRosters(
+  accessToken: string,
+  leagueKey: string,
+): Promise<Map<string, YahooTeamRoster>> {
+  const json = await fetchYahooApi<unknown>(accessToken, `/league/${leagueKey}/teams/roster`);
+  const rosters = new Map<string, YahooTeamRoster>();
+  for (const teamNode of findNodesByKey(json, "team")) {
+    const fields = mergeYahooFields(teamNode);
+    if (typeof fields.team_key !== "string") continue;
+    rosters.set(fields.team_key, {
+      players: extractRosterPlayers(findNodesByKey(teamNode, "player")),
+      faabBalance: readFaabBalance(fields),
+    });
+  }
+  if (![...rosters.values()].some((roster) => roster.players.length > 0)) {
+    // Diagnostic for the unconfirmed shape - remove once checked against a
+    // real response.
+    console.error(
+      "fetchYahooLeagueRosters: no team rosters found, raw response:",
+      JSON.stringify(json),
+    );
+    return new Map();
+  }
+  return rosters;
+}
+
 // Pulls every mapped team's current roster + FAAB spend from the linked
 // Yahoo league (see schema.ts's seasons.yahooLeagueKey and
 // seasonTeams.yahooTeamKey) and replaces rosterPlayers/faabSpent for each -
@@ -428,55 +478,74 @@ export const syncYahooLeagueRoster = action({
       // rationale as convex/sleeper/league.ts's syncLeagueRoster. Doesn't
       // pass faabBudget (see mapYahooWaiverType's comment) - leaves
       // whatever the commissioner has set in Season Settings untouched.
+      const waiverType = mapYahooWaiverType(settings.raw);
       await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
         seasonId: args.seasonId,
-        waiverType: mapYahooWaiverType(settings.raw),
+        waiverType,
       });
+
+      // Every team's roster in one request rather than two per team (a
+      // 12-team league was 26 back-to-back requests, the kind of burst
+      // Yahoo throttles - see client.ts's fetchYahooApi). Unconfirmed
+      // shape, so any team it doesn't cover falls back to its own requests,
+      // as before.
+      const leagueRosters = await fetchYahooLeagueRosters(accessToken, yahooLeagueKey).catch(
+        (error: unknown) => {
+          console.error("syncYahooLeagueRoster: league rosters fetch failed", error);
+          return new Map<string, YahooTeamRoster>();
+        },
+      );
 
       for (const team of teams) {
         if (!team.yahooTeamKey) continue;
 
-        const rosterJson = await fetchYahooApi<unknown>(
-          accessToken,
-          `/team/${team.yahooTeamKey}/roster`,
-        );
-        const rosterPlayers = extractRosterPlayers(
-          findNodesByKey(rosterJson, "player"),
-        );
+        let teamRoster = leagueRosters.get(team.yahooTeamKey);
+        if (!teamRoster) {
+          const rosterJson = await fetchYahooApi<unknown>(
+            accessToken,
+            `/team/${team.yahooTeamKey}/roster`,
+          );
+          const rosterTeamNode = findNodesByKey(rosterJson, "team")[0] ?? rosterJson;
+          teamRoster = {
+            players: extractRosterPlayers(findNodesByKey(rosterJson, "player")),
+            faabBalance: readFaabBalance(mergeYahooFields(rosterTeamNode)),
+          };
+        }
         const fpids: number[] = await ctx.runQuery(
           internal.infinidraft.yahoo.league.resolveFpidsByName,
-          { players: rosterPlayers },
+          { players: teamRoster.players },
         );
 
         // FAAB field name not confirmed live - see YAHOO.md. Best-effort:
         // a missing/unreachable field just leaves faabSpent at 0 rather
-        // than failing the whole sync.
-        let faabSpent = 0;
-        try {
-          const teamJson = await fetchYahooApi<unknown>(
-            accessToken,
-            `/team/${team.yahooTeamKey}`,
-          );
-          const teamNode = findNodesByKey(teamJson, "team")[0] ?? teamJson;
-          const fields = mergeYahooFields(teamNode);
-          const remainingBalance = fields.faab_balance ?? fields.waiver_budget_used;
-          if (typeof remainingBalance === "string" || typeof remainingBalance === "number") {
-            // faab_balance is the team's current REMAINING FAAB dollars,
-            // not amount spent (confirmed live: every team read "-100 FAAB
-            // left" when this stored the raw balance straight into
-            // faabSpent). Converting remaining -> spent against whatever
-            // budget baseline getStandings/bids.ts will later subtract it
-            // back out of (faabBudgetOverride ?? season.faabBudget ?? 0)
-            // makes the two operations exact inverses regardless of that
-            // budget's actual value - this doesn't need Yahoo's real
-            // configured budget at all, just internal consistency with the
-            // read side. See YAHOO.md.
-            const effectiveBudget = team.faabBudgetOverride ?? season.faabBudget ?? 0;
-            faabSpent = effectiveBudget - Number(remainingBalance);
+        // than failing the whole sync. Only a FAAB league asks the team
+        // resource itself when the roster response didn't carry it.
+        let remainingBalance = teamRoster.faabBalance;
+        if (remainingBalance === undefined && waiverType === "faab") {
+          try {
+            const teamJson = await fetchYahooApi<unknown>(
+              accessToken,
+              `/team/${team.yahooTeamKey}`,
+            );
+            const teamNode = findNodesByKey(teamJson, "team")[0] ?? teamJson;
+            remainingBalance = readFaabBalance(mergeYahooFields(teamNode));
+          } catch {
+            // Leave faabSpent at 0.
           }
-        } catch {
-          // Leave faabSpent at 0.
         }
+        // faab_balance is the team's current REMAINING FAAB dollars, not
+        // amount spent (confirmed live: every team read "-100 FAAB left"
+        // when this stored the raw balance straight into faabSpent).
+        // Converting remaining -> spent against whatever budget baseline
+        // getStandings/bids.ts will later subtract it back out of
+        // (faabBudgetOverride ?? season.faabBudget ?? 0) makes the two
+        // operations exact inverses regardless of that budget's actual
+        // value - this doesn't need Yahoo's real configured budget at all,
+        // just internal consistency with the read side. See YAHOO.md.
+        const faabSpent =
+          remainingBalance === undefined
+            ? 0
+            : (team.faabBudgetOverride ?? season.faabBudget ?? 0) - remainingBalance;
 
         // Falls back to zeroed standings (rather than leaving them unset)
         // for any team fetchYahooStandingsForLeague didn't find a match
