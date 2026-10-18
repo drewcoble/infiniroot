@@ -6,6 +6,7 @@ import { pillStyle, rankPillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
 import { StatGroups, type StatGroup } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -85,6 +86,7 @@ export function GlassPlayerRow({
           classes.card,
           classes.wide,
           classes.playerRow,
+          classes.withHeadshot,
           classes.pressable,
           pressing && classes.pressing,
           expanded && classes.hidden,
@@ -92,6 +94,7 @@ export function GlassPlayerRow({
           .filter(Boolean)
           .join(" ")}
       >
+        <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
         <div className={`${classes.wideName} ${classes.teamCardName}`}>
           <span className={classes.name}>{data.name}</span>
           {data.isRookie && (
