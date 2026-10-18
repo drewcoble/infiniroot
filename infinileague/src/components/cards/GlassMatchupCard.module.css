@@ -1098,11 +1098,13 @@
 }
 
 /* Half-width cards (Matchup, Trade, Buys / Sells): at the start of the
-   line under the name - the name's own line height (15px at 1.2) tall. */
+   line under the name - the name's own line height (15px at 1.2) tall,
+   and 4:3 rather than square, closer to the photos' own landscape shape
+   (a square read oddly that small). */
 .headshotInline {
   flex-shrink: 0;
   align-self: center;
-  width: 18px;
+  width: 24px;
   height: 18px;
   margin-right: 5px;
   border-radius: 5px;
