@@ -129,10 +129,23 @@ export async function fetchYahooApi<T>(
   path: string,
 ): Promise<T> {
   const separator = path.includes("?") ? "&" : "?";
-  const response = await fetch(
-    `${YAHOO_API_BASE_URL}${path}${separator}format=json`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
+  let response: Response | undefined;
+  try {
+    response = await fetch(`${YAHOO_API_BASE_URL}${path}${separator}format=json`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch (error) {
+    // Yahoo answers a caller it's throttling or blocking with HTTP 999 -
+    // outside the 200-599 range a Response can hold, so the runtime's fetch
+    // throws this RangeError instead of returning one (it surfaced in the app
+    // as "Failed to construct 'Response'"). Usually clears on its own.
+    if (!(error instanceof RangeError)) throw error;
+  }
+  if (response === undefined) {
+    throw new Error(
+      "Yahoo is temporarily refusing requests (likely rate limiting) - try again in a few minutes.",
+    );
+  }
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw new Error(
