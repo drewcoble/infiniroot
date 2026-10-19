@@ -11,6 +11,7 @@ export function SegmentGauge({
   level,
   color,
   confidence,
+  note,
 }: {
   title: string;
   // Step names, low to high. Only the two ends are printed under the bar.
@@ -20,9 +21,12 @@ export function SegmentGauge({
   color: string;
   // 0-1.
   confidence?: number | undefined;
+  // Shown after the value in place of the confidence (e.g. why the step
+  // is certain).
+  note?: string | undefined;
 }) {
   const current = steps[level] ?? "—";
-  const opacity = confidence === undefined ? 1 : 0.45 + 0.55 * confidence;
+  const opacity = confidence === undefined || note ? 1 : 0.45 + 0.55 * confidence;
   const columns = `repeat(${steps.length}, minmax(0, 1fr))`;
   return (
     <div
@@ -30,14 +34,16 @@ export function SegmentGauge({
       role="img"
       aria-label={
         `${title}: ${current}, step ${level + 1} of ${steps.length}` +
-        (confidence !== undefined ? `, ${Math.round(confidence * 100)}% confident` : "")
+        (note ? `, ${note}` : "") +
+        (confidence !== undefined && !note ? `, ${Math.round(confidence * 100)}% confident` : "")
       }
     >
       <div className={classes.gaugeHead} aria-hidden>
         <span className={classes.gaugeTitle}>{title}</span>
         <span>
           <span className={classes.gaugeValue}>{current}</span>
-          {confidence !== undefined && (
+          {note && <span className={classes.gaugeTitle}>{` · ${note}`}</span>}
+          {confidence !== undefined && !note && (
             <span className={classes.gaugeTitle}>
               {` · ${Math.round(confidence * 100)}% sure`}
             </span>

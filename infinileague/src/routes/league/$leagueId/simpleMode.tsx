@@ -671,24 +671,24 @@ function InjuryExamples() {
   return (
     <Section title="Injuries" note="Sample data.">
       {/* Replaces “Questionable (2.31 / 4) conf 78%”, “p 64% · conf 71%”. */}
-      <Example title="Jev's read">
+      <Example title="Injury outlook">
         <Stack gap="sm">
           <SegmentGauge
-            title="Availability"
-            steps={["Playing", "Probable", "Questionable", "Doubtful", "Out"]}
+            title="Next game"
+            steps={["Full go", "Likely", "Game-time call", "Unlikely", "Out"]}
             level={2}
             color={STATUS.warning}
             confidence={0.78}
           />
           <SegmentGauge
             title="If he plays"
-            steps={["Full go", "Slightly limited", "Limited", "Decoy"]}
+            steps={["No impact", "Slightly limited", "Limited", "Decoy role"]}
             level={1}
             color={STATUS.warning}
             confidence={0.6}
           />
           <SegmentGauge
-            title="Timeline"
+            title="Time missed"
             steps={["No games", "≤ 1 game", "2–4 weeks", "5+ weeks", "Season"]}
             level={1}
             color={STATUS.serious}

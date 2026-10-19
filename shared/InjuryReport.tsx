@@ -52,7 +52,7 @@ interface InjuryReportProps {
   // shared). Omitted = player names render as plain text, not links.
   renderPlayerDetail?: (props: InjuryReportPlayerDetailProps) => ReactNode;
   // Extra app-specific content appended to a row's expanded detail (e.g.
-  // infinileague's Jev assessment). Only mounted while the row is expanded.
+  // infinileague's injury outlook). Only mounted while the row is expanded.
   renderExpandedExtra?: (row: {
     injury: Doc<"injuries">;
     player: Doc<"projections">;
