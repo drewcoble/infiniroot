@@ -61,8 +61,17 @@ function perGame(standing: StandingsRow, points: number): number | null {
 }
 
 // Each team's season standing: rank badge and name, then record and points
-// per game. Columns as in the player sections below.
-function TeamStandings({ teams }: { teams: MatchupDetailTeam[] }) {
+// per game. Columns as in the player sections below. `headToHead` false
+// (a guillotine league) shows just the names - rank and record come from
+// head-to-head games, which a guillotine league doesn't play (its record
+// reads 0-0-0, and points per game has no games to divide by).
+function TeamStandings({
+  teams,
+  headToHead,
+}: {
+  teams: MatchupDetailTeam[];
+  headToHead: boolean;
+}) {
   return (
     <div
       className={`${classes.statPanel} ${detailClasses.columns}`}
@@ -74,7 +83,7 @@ function TeamStandings({ teams }: { teams: MatchupDetailTeam[] }) {
         return (
           <div key={index} className={`${detailClasses.column} ${detailClasses.team}`}>
             <div className={detailClasses.teamTitle}>
-              {standing && (
+              {standing && headToHead && (
                 <span
                   className={classes.pill}
                   // Gray for both teams, same as the matchup header's.
@@ -86,12 +95,14 @@ function TeamStandings({ teams }: { teams: MatchupDetailTeam[] }) {
               )}
               <span className={detailClasses.teamName}>{team.name}</span>
             </div>
-            <div className={`${detailClasses.teamRecord} ${standing ? "" : classes.statEmpty}`}>
-              {standing
-                ? `${standing.wins}-${standing.losses}-${standing.ties}` +
-                  (ppg !== null ? ` · ${ppg.toFixed(1)} PPG` : "")
-                : "—"}
-            </div>
+            {headToHead && (
+              <div className={`${detailClasses.teamRecord} ${standing ? "" : classes.statEmpty}`}>
+                {standing
+                  ? `${standing.wins}-${standing.losses}-${standing.ties}` +
+                    (ppg !== null ? ` · ${ppg.toFixed(1)} PPG` : "")
+                  : "—"}
+              </div>
+            )}
           </div>
         );
       })}
@@ -212,12 +223,14 @@ function PlayerSection({
 // starter playing right now, this week's top performers, and the players
 // still to play on each side (top 3 by projection, then a count). `teams`
 // is one team on a bye week (no opponent), otherwise [yours, opponent's] -
-// same sides as the header.
+// same sides as the header. `headToHead` false (a guillotine league) drops
+// the rank badges and records - see TeamStandings.
 export function MatchupSummaryDetail({
   title,
   titleId,
   subtitle,
   teams,
+  headToHead,
   shortName,
   onClose,
 }: {
@@ -225,6 +238,7 @@ export function MatchupSummaryDetail({
   titleId: string;
   subtitle: string;
   teams: MatchupDetailTeam[];
+  headToHead: boolean;
   shortName: (fullName: string) => string;
   onClose: () => void;
 }) {
@@ -245,7 +259,7 @@ export function MatchupSummaryDetail({
       </div>
 
       <div className={classes.statGroups}>
-        <TeamStandings teams={teams} />
+        <TeamStandings teams={teams} headToHead={headToHead} />
         {teams.some((team) => liveNow(team.starters).length > 0) && (
           <PlayerSection
             label="Live now"

@@ -7,6 +7,7 @@ import { formatProj, pillStyle } from "./cardShared";
 import { GlassPopover } from "./GlassPopover";
 import { StatGroups } from "./StatGroups";
 import { useExpandableCard } from "./useExpandableCard";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassSignalCardData {
@@ -110,9 +111,23 @@ export function GlassSignalCard({
               </span>
             )}
           </div>
+          {/* Headshot and NFL team, then (Buys) who rosters him - who to
+              start the trade with - on a line of its own, since the card's
+              too narrow for both on one. */}
           <div className={classes.gameLine}>
-            <span className={classes.gameLineText}>{data.owner ?? data.team ?? "FA"}</span>
+            <PlayerHeadshot
+              fpid={data.fpid}
+              position={data.position}
+              team={data.team}
+              className={classes.headshotInline}
+            />
+            <span className={classes.gameLineText}>{data.team ?? "FA"}</span>
           </div>
+          {data.owner && (
+            <div className={`${classes.gameLine} ${classes.signalOwner}`}>
+              <span className={classes.gameLineText}>{data.owner}</span>
+            </div>
+          )}
         </div>
         <div
           className={`${classes.statsRow} ${classes.statsRowSplit} ${classes.tradeStats}`}
@@ -129,6 +144,7 @@ export function GlassSignalCard({
       {anchor && (
         <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
           <div className={classes.expandedHeader}>
+            <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
             <div style={{ minWidth: 0 }}>
               <div id={titleId} className={classes.expandedName}>
                 {data.name}

@@ -16,6 +16,7 @@ import { ESPN_IR_SLOT_ID, ESPN_SLOT_MAP } from "../../espn/leagueSettingsMapping
 import { fetchYahooApi, findNodesByKey, mergeYahooFields } from "../../infinidraft/yahoo/client";
 import { fetchYahooLeagueSettings } from "../../infinidraft/yahoo/league";
 import { mapYahooDstScoring } from "../../infinidraft/yahoo/leagueSettingsMapping";
+import { cachedYahoo } from "../../infinidraft/yahoo/cache";
 import {
   dstProjection,
   hasAllowedTiers,
@@ -23,6 +24,10 @@ import {
   type AllowedTier,
   type DstScoring,
 } from "../../lib/dstScoring";
+
+// How long a Yahoo league's DST scoring (from its settings) is reused - see
+// infinidraft/yahoo/cache.ts.
+const YAHOO_SETTINGS_CACHE_MS = 12 * 60 * 60 * 1000;
 
 type Position = (typeof POSITIONS)[number];
 
@@ -305,24 +310,25 @@ export async function loadTeamRosterForWeek(
     // exists here (unlike Sleeper's roster_positions), so this only ever
     // produces rows for players actually rostered this week.
     const yahooLeagueKey = season.yahooLeagueKey;
-    const [rosterJson, settingsRaw] = await withYahooToken(ctx, league.ownerId, (accessToken) =>
+    const [rosterJson, yahooDstScoring] = await withYahooToken(ctx, league.ownerId, (accessToken) =>
       Promise.all([
         fetchYahooApi<unknown>(
           accessToken,
           `/team/${team.yahooTeamKey}/roster;week=${week}/players/stats;type=week;week=${week}`,
         ),
-        // Only for the DST allowed tiers - a failure here just leaves the
-        // live DST projection on its tier-less fallback.
-        fetchYahooLeagueSettings(accessToken, yahooLeagueKey).then(
-          (settings) => settings.raw,
-          (error: unknown) => {
-            console.error("getTeamRosterForWeek (Yahoo): settings fetch failed", error);
-            return undefined;
-          },
-        ),
+        // Only for the DST allowed tiers, which only a commissioner's edit
+        // changes - cached rather than refetched with every roster load and
+        // live refresh. A failure with nothing cached just leaves the live
+        // DST projection on its tier-less fallback.
+        cachedYahoo(ctx, `dst:${yahooLeagueKey}`, YAHOO_SETTINGS_CACHE_MS, async () =>
+          mapYahooDstScoring((await fetchYahooLeagueSettings(accessToken, yahooLeagueKey)).raw),
+        ).catch((error: unknown) => {
+          console.error("getTeamRosterForWeek (Yahoo): settings fetch failed", error);
+          return undefined;
+        }),
       ]),
     );
-    if (settingsRaw !== undefined) dstScoring = mapYahooDstScoring(settingsRaw);
+    if (yahooDstScoring !== undefined) dstScoring = yahooDstScoring;
     const rosterEntries = findNodesByKey(rosterJson, "player")
       .map((node) => {
         const fields = mergeYahooFields(node);

@@ -16,7 +16,8 @@ interface EliminationWatchListProps {
 // Same red/gold/green three-band convention lib/gradeColor.ts uses (see
 // that file's comment on why those, not raw Mantine "yellow") - here keyed
 // off eliminationWatch.ts's own cut/bubble/safe status instead of a
-// continuous score.
+// continuous score. Only cut and bubble teams get a badge on the card -
+// "Safe" just shows in the long-press detail.
 const STATUS_BADGE: Record<EliminationWatchRow["status"], { label: string; color: string }> = {
   cut: { label: "Projected Cut", color: "red" },
   bubble: { label: "Bubble", color: "gold" },
@@ -26,8 +27,8 @@ const STATUS_BADGE: Record<EliminationWatchRow["status"], { label: string; color
 // This week's guillotine elimination projection: each team's set lineup
 // for just the current NFL week (see convex/infinileague/season/
 // eliminationWatch.ts), ranked best-to-worst same as PowerRankingsList, with
-// the bottom slice flagged red (projected cut) / gold (bubble) / green
-// (safe) via the status badge instead of a week-over-week rank arrow. Once
+// the bottom slice flagged red (projected cut) / gold (bubble) via a status
+// badge instead of a week-over-week rank arrow. Once
 // the week's games start, the totals are live projections (see
 // lib/eliminationWatch.ts), so the order moves as players score.
 export function EliminationWatchList({
@@ -59,11 +60,15 @@ export function EliminationWatchList({
               name: row.name,
               rank: row.rank,
               isSelf: row.isSelf,
-              nameBadges: (
-                <span className={classes.pill} style={pillStyle(status.color)}>
-                  {status.label}
-                </span>
-              ),
+              ...(row.status !== "safe"
+                ? {
+                    nameBadges: (
+                      <span className={classes.pill} style={pillStyle(status.color)}>
+                        {status.label}
+                      </span>
+                    ),
+                  }
+                : {}),
               primary: row.weekPoints.toFixed(1),
               ...(row.actualPoints !== undefined
                 ? {

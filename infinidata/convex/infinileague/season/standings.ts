@@ -6,6 +6,9 @@ import { requireSeasonOwner } from "../../lib/access";
 export interface StandingsRow {
   teamId: Id<"seasonTeams">;
   name: string;
+  // The provider's team logo/avatar (schema.ts's seasonTeams.logoUrl) -
+  // absent shows the team's initials.
+  logoUrl?: string;
   isSelf: boolean;
   rank: number;
   wins: number;
@@ -53,6 +56,7 @@ export const getStandings = query({
     return sorted.map((team, index) => ({
       teamId: team._id,
       name: team.name,
+      ...(team.logoUrl ? { logoUrl: team.logoUrl } : {}),
       isSelf: team.isSelf,
       rank: index + 1,
       wins: team.wins ?? 0,

@@ -299,6 +299,18 @@ export default defineSchema({
     .index("by_espn_id", ["espnId"])
     .index("by_yahoo_id", ["yahooId"]),
 
+  // Short-lived cache of Yahoo reads that barely change but were refetched on
+  // every page load / live refresh (see convex/infinidraft/yahoo/cache.ts's
+  // cachedYahoo): "dst:<leagueKey>" - the league's DST scoring, mapped from
+  // its settings (lib/dstScoring.ts's DstScoring); "opponent:<teamKey>:<week>"
+  // - that week's opponent's team key, or null. `data` is v.any() since each
+  // key's shape belongs to its one caller.
+  yahooCache: defineTable({
+    key: v.string(),
+    data: v.any(),
+    fetchedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   // External platforms' own player values/rankings, for comparing against
   // this app's own draft values rather than replacing them - see convex/
   // espn/rankings.ts for the first source (ESPN's draft-kit ranks).
@@ -962,6 +974,13 @@ export default defineSchema({
     // ESPN equivalent - the team's numeric id within its ESPN league,
     // stringified (see convex/espn/league.ts's syncEspnLeagueRoster).
     espnTeamId: v.optional(v.string()),
+    // The team's logo/avatar image URL on its linked provider, synced with
+    // the roster (see rosterSync.ts's replaceRosterForTeam): Sleeper's custom
+    // team avatar, else the owner's account avatar; ESPN's team logo (not
+    // its own uploads, which need an ESPN sign-in to load); Yahoo's team
+    // logo. Absent until the first sync, or when the provider has none -
+    // infinileague then shows the team's initials.
+    logoUrl: v.optional(v.string()),
     // In-season FAAB spent so far, synced from the linked provider roster -
     // defaults to 0 until the first sync.
     faabSpent: v.optional(v.number()),

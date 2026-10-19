@@ -60,6 +60,12 @@ interface EspnTeam {
   location?: string | null;
   nickname?: string | null;
   abbrev?: string;
+  // mTeam's team logo - confirmed live on the public test league: an ESPN
+  // logo-pack SVG (logoType VECTOR), a link to an image hosted anywhere
+  // (CUSTOM / CUSTOM_VALID), or an upload to ESPN's own image host
+  // (CUSTOM_UPLOAD), which answers 401 without an ESPN sign-in.
+  logo?: string;
+  logoType?: string;
   primaryOwner?: string;
   waiverRank?: number;
   record?: {
@@ -342,6 +348,13 @@ export const previewEspnImport = action({
   },
 });
 
+// A logo our app can actually load - not CUSTOM_UPLOAD (see EspnTeam.logo).
+// null otherwise, so infinileague shows the team's initials.
+function espnTeamLogoUrl(team: EspnTeam): string | null {
+  if (!team.logo || team.logoType === "CUSTOM_UPLOAD") return null;
+  return team.logo;
+}
+
 // infinidraft's Season Settings team-mapping step (for a league linked
 // after creation rather than through the import wizard).
 export const fetchEspnLeagueTeams = action({
@@ -430,6 +443,7 @@ export const syncEspnLeagueRoster = action({
           ? { waiverPosition: espnTeam.waiverRank }
           : {}),
         name: espnTeamName(espnTeam),
+        logoUrl: espnTeamLogoUrl(espnTeam),
       });
     }
 

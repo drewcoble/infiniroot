@@ -8,6 +8,7 @@ import { GlassPopover } from "./GlassPopover";
 import { StatGroups } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
 import { useExpandableCard } from "./useExpandableCard";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassTradeCardData {
@@ -200,7 +201,14 @@ export function GlassTradeCard({
               </span>
             )}
           </div>
+          {/* Headshot, then the NFL team. */}
           <div className={classes.gameLine}>
+            <PlayerHeadshot
+              fpid={data.fpid}
+              position={data.position}
+              team={data.team}
+              className={classes.headshotInline}
+            />
             <span className={classes.gameLineText}>{data.team || "FA"}</span>
           </div>
         </div>
@@ -224,6 +232,7 @@ export function GlassTradeCard({
       {anchor && (
         <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
           <div className={classes.expandedHeader}>
+            <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
             <div style={{ minWidth: 0 }}>
               <div id={titleId} className={classes.expandedName}>
                 {data.name}

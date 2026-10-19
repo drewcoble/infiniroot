@@ -16,6 +16,7 @@ import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
 import type { StandingsRow } from "../../../types/season";
+import { TeamLogosProvider } from "../../../components/cards/TeamLogo";
 
 export const Route = createFileRoute("/league/$leagueId")({
   component: LeagueLayout,
@@ -173,7 +174,9 @@ function LeagueLayout() {
             </Tabs.List>
           </Tabs>
         </Box>
-        <Outlet />
+        <TeamLogosProvider teams={standings}>
+          <Outlet />
+        </TeamLogosProvider>
       </Stack>
       <BottomNav
         glass

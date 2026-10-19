@@ -17,6 +17,7 @@ import { GlassPopover } from "./GlassPopover";
 import { StatGroups } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
 import { PointsMeter } from "./PointsMeter";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import classes from "./GlassMatchupCard.module.css";
 
 // The detail card has room to name the state its corner icon stands for.
@@ -77,6 +78,7 @@ export function ExpandedMatchupCard({
       className={isLive && classes.live}
     >
       <div className={classes.expandedHeader}>
+        <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
         <div style={{ minWidth: 0 }}>
           <div id={titleId} className={classes.expandedName}>
             {data.name}

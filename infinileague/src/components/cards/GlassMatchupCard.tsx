@@ -13,6 +13,7 @@ import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { PointsHeadline, PointsMeter } from "./PointsMeter";
 import { useExpandableCard } from "./useExpandableCard";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import classes from "./GlassMatchupCard.module.css";
 
 export type { GlassMatchupCardData } from "./cardShared";
@@ -89,7 +90,14 @@ export function GlassMatchupCard({
               </span>
             )}
           </div>
+          {/* Headshot, then the game. */}
           <div className={classes.gameLine}>
+            <PlayerHeadshot
+              fpid={data.fpid}
+              position={data.position}
+              team={data.team}
+              className={classes.headshotInline}
+            />
             <GameLineText data={data} statusInTopRow />
           </div>
         </div>

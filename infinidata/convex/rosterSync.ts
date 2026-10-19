@@ -70,6 +70,10 @@ export const replaceRosterForTeam = internalMutation({
     // when the provider response didn't include one - leaves the stored
     // name alone rather than clobbering it with a placeholder.
     name: v.optional(v.string()),
+    // The team's logo URL (schema.ts's seasonTeams.logoUrl). null = the
+    // provider has no usable logo for this team, so clear any stored one;
+    // absent = this sync didn't read logos, so leave it alone.
+    logoUrl: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -99,6 +103,8 @@ export const replaceRosterForTeam = internalMutation({
         ? { waiverPosition: args.waiverPosition }
         : {}),
       ...(args.name ? { name: args.name } : {}),
+      // Patching a field to undefined removes it.
+      ...(args.logoUrl !== undefined ? { logoUrl: args.logoUrl ?? undefined } : {}),
     });
   },
 });
@@ -120,6 +126,9 @@ export const updateSeasonWaiverSettings = internalMutation({
     waiverClearDays: v.optional(v.number()),
     dailyWaivers: v.optional(v.boolean()),
     dailyWaiversHour: v.optional(v.number()),
+    // Sleeper-only - set when Sleeper marks the league guillotine (see
+    // sleeper/league.ts's isSleeperGuillotine), absent otherwise.
+    leagueType: v.optional(v.literal("guillotine")),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.seasonId, {
@@ -137,6 +146,7 @@ export const updateSeasonWaiverSettings = internalMutation({
       ...(args.dailyWaiversHour !== undefined
         ? { dailyWaiversHour: args.dailyWaiversHour }
         : {}),
+      ...(args.leagueType !== undefined ? { leagueType: args.leagueType } : {}),
     });
   },
 });

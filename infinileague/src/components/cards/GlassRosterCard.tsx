@@ -9,9 +9,11 @@ import {
   type GlassMatchupCardData,
 } from "./cardShared";
 import { ExpandedMatchupCard } from "./ExpandedMatchupCard";
+import { FittedName } from "./FittedName";
 import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassSlotChip } from "./GlassMatchupCard";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PointsMeter } from "./PointsMeter";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
@@ -19,10 +21,11 @@ import classes from "./GlassMatchupCard.module.css";
 // Full-width (My Team) version of the glass player card - same pieces as
 // GlassMatchupCard, laid out for a full row on mobile: the roster slot chip
 // sits outside the card on the left (like the Matchup tab's slot chips
-// between columns), and inside it the full name (and injury badge) with
-// position/game beneath, status (live clock / icon) on the name's row with the projection
+// between columns), and inside it the player's headshot (see
+// PlayerHeadshot), then the full name (and injury badge) with position/game
+// beneath, status (live clock / icon) on the name's row with the projection
 // and actual score on the game line's row, and the meter running the width
-// underneath. Full names fit here, so no shortening.
+// underneath. Full names when they fit (see FittedName).
 export function GlassRosterCard({
   data,
   slot,
@@ -46,6 +49,7 @@ export function GlassRosterCard({
         className={[
           classes.card,
           classes.wide,
+          classes.withHeadshot,
           classes.pressable,
           isLive && classes.live,
           isBye && classes.muted,
@@ -56,11 +60,12 @@ export function GlassRosterCard({
           .filter(Boolean)
           .join(" ")}
       >
+        <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
         {/* Two shared rows so each side lines up with the other: name |
             status icon + points, then position/injury/game | projection. */}
         {/* Injury badge after the name, same as the Matchup cards. */}
         <div className={`${classes.nameRow} ${classes.wideName}`} aria-hidden>
-          <span className={classes.name}>{data.name}</span>
+          <FittedName name={data.name} shorten={data.position !== "DST"} />
           {data.injury && (
             <span
               className={`${classes.pill} ${classes.nameBadge}`}
@@ -148,12 +153,15 @@ export function EmptyGlassRosterCard({ slot }: { slot: string }) {
 }
 
 // Loading placeholder in the full-width card's shape (slot chip outside,
-// name/detail bars and a meter bar inside) - see GlassSkeletonCard.
+// headshot well, name/detail bars and a meter bar inside) - see GlassSkeletonCard.
 export function GlassRosterSkeletonCard() {
   return (
     <div className={classes.rosterRow} aria-hidden>
       <GlassSlotChip label="" />
-      <div className={`${classes.card} ${classes.wide} ${classes.wideSkeleton}`}>
+      <div
+        className={`${classes.card} ${classes.wide} ${classes.withHeadshot} ${classes.wideSkeleton}`}
+      >
+        <span className={`${classes.skeletonBar} ${classes.headshot}`} />
         <span
           className={`${classes.skeletonBar} ${classes.wideName}`}
           style={{ width: "55%", height: 14 }}

@@ -5,10 +5,15 @@ import { Id } from "../../_generated/dataModel";
 import { fetchSleeperJson } from "../../sleeper/league";
 import { fetchYahooOpponentTeamKey } from "../../infinidraft/yahoo/league";
 import { withYahooToken } from "../../infinidraft/yahoo/oauth";
+import { cachedYahoo } from "../../infinidraft/yahoo/cache";
 import { fetchEspnOpponentTeamId } from "../../espn/league";
 import type { SleeperMatchupEntry } from "./teamRoster";
 import { requireSeasonOwner } from "../../lib/access";
 import { loadWeekPoints } from "../../lib/weekPoints";
+
+// How long a Yahoo team's weekly opponent is reused - see
+// infinidraft/yahoo/cache.ts.
+const YAHOO_OPPONENT_CACHE_MS = 6 * 60 * 60 * 1000;
 
 // Who a team is playing this week - Sleeper-linked teams resolve it from
 // matchup_id (Sleeper groups exactly two roster_ids under the same
@@ -52,8 +57,18 @@ export const getOpponentForWeek = action({
     }
 
     if (team.yahooTeamKey && season.yahooLeagueKey) {
-      const opponentTeamKey = await withYahooToken(ctx, league.ownerId, (accessToken) =>
-        fetchYahooOpponentTeamKey(accessToken, season.yahooLeagueKey!, args.week, team.yahooTeamKey!),
+      // A week's pairings are set in advance - cached rather than re-read
+      // from Yahoo's scoreboard on every Matchup page load.
+      const leagueKey = season.yahooLeagueKey;
+      const teamKey = team.yahooTeamKey;
+      const opponentTeamKey = await cachedYahoo(
+        ctx,
+        `opponent:${teamKey}:${args.week}`,
+        YAHOO_OPPONENT_CACHE_MS,
+        () =>
+          withYahooToken(ctx, league.ownerId, (accessToken) =>
+            fetchYahooOpponentTeamKey(accessToken, leagueKey, args.week, teamKey),
+          ),
       );
       if (opponentTeamKey === null) {
         return { opponentTeamId: null };

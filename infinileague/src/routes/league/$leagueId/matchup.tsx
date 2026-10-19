@@ -5,6 +5,7 @@ import type { GenericId as Id } from "convex/values";
 import { Alert, Group, Select, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
+import { useGuillotineOpponent } from "../../../hooks/useGuillotineOpponent";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
 import { WeekPicker } from "../../../components/WeekPicker";
 import { LiveOnlyToggle } from "../../../components/cards/LiveOnlyToggle";
@@ -36,7 +37,12 @@ import {
   useNow,
   type WeekGame,
 } from "../../../lib/liveGames";
-import type { RosVorRow, StandingsRow, TeamRosterRow } from "../../../types/season";
+import type {
+  LinkedSeason,
+  RosVorRow,
+  StandingsRow,
+  TeamRosterRow,
+} from "../../../types/season";
 
 // Regular-season weeks the week picker steps through.
 const REGULAR_SEASON_WEEKS = 18;
@@ -62,7 +68,9 @@ interface NflState {
 // MatchupRosterMatchup.tsx) same layout as the Trade tab, minus the
 // selection/power-rankings machinery that's specific to building a trade.
 // Opponent is auto-detected via Sleeper's matchup_id or Yahoo's scoreboard
-// resource (see convex/infinileague/season/matchup.ts's getOpponentForWeek) -
+// resource (see convex/infinileague/season/matchup.ts's getOpponentForWeek),
+// or in a guillotine league is the lowest projected team (see
+// useGuillotineOpponent) -
 // a genuine bye week (an odd team count leaves one roster with no matchup
 // some weeks) has no real opponent to detect either way, so that falls back
 // to a manual team picker rather than blocking the page.
@@ -80,6 +88,17 @@ function MatchupPage() {
     api.infinileague.season.standings.getStandings,
     isAuthenticated ? { seasonId } : "skip",
   );
+  // A guillotine league has no head-to-head games, so no meaningful rank -
+  // the header leaves the rank badges out.
+  const seasonsList: LinkedSeason[] | undefined = useQuery(
+    api.leagues.listLinkedSeasons,
+    isAuthenticated ? {} : "skip",
+  );
+  const isGuillotine =
+    seasonsList?.find((season) => season._id === leagueId)?.leagueType === "guillotine";
+  // The opponent lookup waits on this - a guillotine league's opponent
+  // comes from useGuillotineOpponent instead of the provider.
+  const leagueTypeKnown = seasonsList !== undefined;
 
   const [teamAId, setTeamAId] = useState<string | null>(null);
   useEffect(() => {
@@ -96,51 +115,6 @@ function MatchupPage() {
   const isCurrentWeek = week === currentWeek;
   const goToWeek = (next: number) =>
     void navigate({ search: String(next) === currentWeek ? {} : { week: next } });
-
-  const getOpponentForWeek = useAction(api.infinileague.season.matchup.getOpponentForWeek);
-  // Tagged with the team/week it was looked up for, same as useTeamRoster -
-  // a week change reads as "still looking" immediately rather than briefly
-  // keeping last week's opponent. opponentId: null = resolved, but no
-  // auto-detected opponent (not provider-linked, or a bye week).
-  const opponentKey = teamAId !== null && week !== null ? `${teamAId}:${week}` : null;
-  const [autoOpponent, setAutoOpponent] = useState<{
-    key: string;
-    opponentId: string | null;
-  } | null>(null);
-  const [opponentError, setOpponentError] = useState<string | null>(null);
-  useEffect(() => {
-    if (teamAId === null || week === null || opponentKey === null) return;
-    let cancelled = false;
-    getOpponentForWeek({ teamId: teamAId as Id<"seasonTeams">, week })
-      .then((result) => {
-        if (!cancelled) setAutoOpponent({ key: opponentKey, opponentId: result.opponentTeamId });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setOpponentError(getErrorMessage(err, "Failed to look up this week's opponent."));
-        setAutoOpponent({ key: opponentKey, opponentId: null });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [teamAId, week, opponentKey, getOpponentForWeek]);
-  // undefined = still looking up the viewed week's opponent.
-  const autoOpponentId =
-    autoOpponent !== null && autoOpponent.key === opponentKey ? autoOpponent.opponentId : undefined;
-
-  // Only ever read from once autoOpponentId resolves to null (see above) -
-  // the manual Select stays hidden while auto-detection is still pending so
-  // it doesn't flash on screen for the common Sleeper-linked case. Kept per
-  // week, so a manual pick for one bye week doesn't follow you to others.
-  const [manualOpponent, setManualOpponent] = useState<{ week: string; teamId: string } | null>(
-    null,
-  );
-  const manualOpponentId =
-    manualOpponent !== null && manualOpponent.week === week ? manualOpponent.teamId : null;
-  const setManualOpponentId = (teamId: string | null) =>
-    setManualOpponent(teamId !== null && week !== null ? { week, teamId } : null);
-  const teamBId = autoOpponentId === undefined ? null : (autoOpponentId ?? manualOpponentId);
-  const opponentPending = autoOpponentId === undefined;
 
   // The viewed week's slate - opponent/kickoff per NFL team, plus live
   // game status from the 2-minute poll (see convex/sleeper/livePoints.ts).
@@ -162,6 +136,65 @@ function MatchupPage() {
     weekGames !== undefined &&
     weekGames.length > 0 &&
     weekGames.every((game) => isGameFinal(game, now));
+
+  const getOpponentForWeek = useAction(api.infinileague.season.matchup.getOpponentForWeek);
+  // Tagged with the team/week it was looked up for, same as useTeamRoster -
+  // a week change reads as "still looking" immediately rather than briefly
+  // keeping last week's opponent. opponentId: null = resolved, but no
+  // auto-detected opponent (not provider-linked, or a bye week).
+  const opponentKey =
+    teamAId !== null && week !== null && leagueTypeKnown && !isGuillotine
+      ? `${teamAId}:${week}`
+      : null;
+  const [autoOpponent, setAutoOpponent] = useState<{
+    key: string;
+    opponentId: string | null;
+  } | null>(null);
+  const [opponentError, setOpponentError] = useState<string | null>(null);
+  useEffect(() => {
+    if (teamAId === null || week === null || opponentKey === null) return;
+    let cancelled = false;
+    getOpponentForWeek({ teamId: teamAId as Id<"seasonTeams">, week })
+      .then((result) => {
+        if (!cancelled) setAutoOpponent({ key: opponentKey, opponentId: result.opponentTeamId });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setOpponentError(getErrorMessage(err, "Failed to look up this week's opponent."));
+        setAutoOpponent({ key: opponentKey, opponentId: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [teamAId, week, opponentKey, getOpponentForWeek]);
+  // A guillotine league's opponent is the lowest live-projected other team.
+  const guillotine = useGuillotineOpponent(
+    leagueTypeKnown && isGuillotine ? seasonId : null,
+    week,
+    weekGames,
+    now,
+    refreshMs,
+  );
+  // undefined = still looking up the viewed week's opponent.
+  const autoOpponentId = isGuillotine
+    ? guillotine.opponentId
+    : autoOpponent !== null && autoOpponent.key === opponentKey
+      ? autoOpponent.opponentId
+      : undefined;
+
+  // Only ever read from once autoOpponentId resolves to null (see above) -
+  // the manual Select stays hidden while auto-detection is still pending so
+  // it doesn't flash on screen for the common Sleeper-linked case. Kept per
+  // week, so a manual pick for one bye week doesn't follow you to others.
+  const [manualOpponent, setManualOpponent] = useState<{ week: string; teamId: string } | null>(
+    null,
+  );
+  const manualOpponentId =
+    manualOpponent !== null && manualOpponent.week === week ? manualOpponent.teamId : null;
+  const setManualOpponentId = (teamId: string | null) =>
+    setManualOpponent(teamId !== null && week !== null ? { week, teamId } : null);
+  const teamBId = autoOpponentId === undefined ? null : (autoOpponentId ?? manualOpponentId);
+  const opponentPending = autoOpponentId === undefined;
 
   const teamARoster = useTeamRoster(teamAId, week, refreshMs);
   const teamBRoster = useTeamRoster(teamBId, week, refreshMs);
@@ -258,7 +291,8 @@ function MatchupPage() {
       actual,
       proj,
       (row) => toCardData(row).gameState,
-      standings?.find((row) => row.teamId === teamId),
+      isGuillotine ? undefined : standings?.find((row) => row.teamId === teamId),
+      standings?.find((row) => row.teamId === teamId)?.logoUrl,
     );
 
   // Header and rows hold their shape with glass skeletons while loading,
@@ -312,6 +346,7 @@ function MatchupPage() {
           {opponentError}
         </Alert>
       )}
+      {guillotine.error && <Alert color="red">{guillotine.error}</Alert>}
       {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
       {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
 

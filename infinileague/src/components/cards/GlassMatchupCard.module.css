@@ -529,6 +529,26 @@
   gap: 12px;
 }
 
+/* Player detail cards lead with a larger headshot (PlayerHeadshot); the
+   title beside it takes the free width, so the close button stays right,
+   and the three center on each other. */
+.expandedHeader:has(> .headshot) {
+  align-items: center;
+}
+
+.expandedHeader > .headshot {
+  align-self: center;
+  flex-shrink: 0;
+  /* 4:3, as on the cards. */
+  width: 75px;
+  height: 56px;
+}
+
+.expandedHeader > .headshot + * {
+  flex: 1;
+  min-width: 0;
+}
+
 .expandedName {
   font-size: 20px;
   font-weight: 700;
@@ -1002,6 +1022,137 @@
   min-width: 0;
 }
 
+/* With a headshot (PlayerHeadshot): a column on the left holding the
+   photo beside the name and detail rows; the meter still runs the card's
+   full width underneath. The right side is split in two so the name only
+   gives up what its own row's right side needs (a status icon, "FINAL"),
+   not the width of the second row's numbers ("Proj 20.1  19.86") - the
+   name runs on over that column's unused part. With the photo taking its
+   share, a long name plus an injury badge otherwise wrapped. */
+.withHeadshot {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "photo name name points"
+    "photo detail proj proj"
+    "meter meter meter meter";
+}
+
+/* FittedName: one line, ellipsis as the last resort. */
+.fittedName {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: unset;
+}
+
+.nameMeasure {
+  position: absolute;
+  display: block;
+  width: max-content;
+  white-space: nowrap;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.headshot {
+  grid-area: photo;
+  /* Bottom-aligned, so its bottom edge lines up with the position badge's
+     (the two rows run ~2px taller than the photo; centered, the badge sat
+     lower). */
+  align-self: end;
+  position: relative;
+  /* 4:3, like the half-width cards' inline headshot - closer to the
+     photos' own landscape shape than a square. */
+  width: 53px;
+  height: 40px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* With a photo (or DST logo) in it, the team logos' glass (TeamLogo),
+   a little lighter - faces read through it: borderless, a soft white fade
+   from the top and a thin bright top edge. An empty well (no photo) keeps its border, so it still reads as
+   a well. */
+.headshot:has(img) {
+  border: 0;
+}
+
+.headshot:has(img)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 38%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* Half-width cards (Matchup, Trade, Buys / Sells): at the start of the
+   line under the name - the name's own line height (15px at 1.2) tall,
+   and 4:3 rather than square, closer to the photos' own landscape shape
+   (a square read oddly that small). */
+.headshotInline {
+  flex-shrink: 0;
+  align-self: center;
+  width: 24px;
+  height: 18px;
+  margin-right: 5px;
+  border-radius: 5px;
+}
+
+/* Lighter glass again at this size - about half the larger headshots'. */
+.headshotInline:has(img)::after {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.03) 38%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.headshotInline .headshotLogo {
+  inset: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+}
+
+/* Sleeper's photos are landscape (head and shoulders, head centered near
+   the top) - fill the well's height and crop the sides, zoomed a touch
+   so the face, not the jersey, fills it. */
+.headshotImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transform: scale(1.2);
+  transform-origin: center 20%;
+}
+
+/* DST's team logo - whole, inset from the rim. */
+.headshotLogo {
+  position: absolute;
+  inset: 5px;
+  width: calc(100% - 10px);
+  height: calc(100% - 10px);
+  object-fit: contain;
+}
+
 .wideMeter .meter {
   margin: 6px 0 2px;
 }
@@ -1019,6 +1170,76 @@
 
 .wideEmptyText {
   font-size: 13px;
+}
+
+/* --- Fantasy team logo (TeamLogo) -------------------------------------- */
+
+/* Size, corner radius and initials size come inline from the size prop. */
+.teamLogo {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Logos are mostly square art with their own background - fill the well. */
+.teamLogoImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A logo image goes borderless - the glass below is its edge. */
+.teamLogo:not(.teamLogoInitials) {
+  border: 0;
+}
+
+/* Glass over the logo: a soft white fade from the top and a thin bright
+   top edge, like the cards' own sheen - the logo reads as sitting under
+   glass rather than pasted on. Initials already carry it in their
+   background (.teamLogoInitials). */
+.teamLogo:not(.teamLogoInitials)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.32) 0%,
+    rgba(255, 255, 255, 0.1) 38%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* No logo: the initials on clear, uncolored glass - a white sheen and
+   edge only, so whatever's behind it (the card, a live card's green)
+   shows through. */
+.teamLogoInitials {
+  color: rgba(248, 250, 252, 0.88);
+  font-family: var(--font-badge);
+  font-weight: var(--font-badge-weight);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* --- Loading skeletons --------------------------------------------------- */
@@ -1049,6 +1270,12 @@
   to {
     background-position: -100% 0;
   }
+}
+
+/* The skeleton's headshot well keeps the real one's corners, not the
+   bars' pill rounding. */
+.skeletonBar.headshot {
+  border-radius: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1111,6 +1338,16 @@
   overflow-wrap: anywhere;
 }
 
+/* Logo then name, in the name's grid cell - the logo stays off the season
+   row, which has no width to spare beside the week's counts. */
+.teamHeaderTitle {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .teamHeaderSeason {
   grid-area: season;
   display: flex;
@@ -1156,13 +1393,17 @@
 /* The whole card is the link to the team page - a third grid column holds
    the chevron that says so, centered across both rows. */
 .teamCard {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "name points chevron"
-    "detail proj chevron";
+    "logo name points chevron"
+    "logo detail proj chevron";
   color: inherit;
   text-decoration: none;
   cursor: pointer;
+}
+
+.teamCardLogo {
+  grid-area: logo;
 }
 
 .teamCardChevron {
@@ -1351,6 +1592,12 @@
     "detail proj";
 }
 
+.playerRow.withHeadshot {
+  grid-template-areas:
+    "photo name name points"
+    "photo detail proj proj";
+}
+
 /* --- Position filter (GlassPositionFilter) ------------------------------ */
 
 /* Sticks just under the floating header on mobile (top of the viewport on
@@ -1457,6 +1704,13 @@
     "name points"
     "detail proj"
     "note note";
+}
+
+.freeAgentRowNoted.withHeadshot {
+  grid-template-areas:
+    "photo name name points"
+    "photo detail proj proj"
+    "note note note note";
 }
 
 .freeAgentNote {
@@ -1815,6 +2069,14 @@
   min-width: 0;
 }
 
+/* Partner logo and name, the name truncating. */
+.suggestionPartnerTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 /* Trade header's sent totals: the app's numeric font, not the Matchup
    header's dot-matrix scoreboard font - that's reserved for live scores. */
 .tradeHeaderTotal {
@@ -2025,6 +2287,11 @@
   flex: 0 0 160px;
   scroll-snap-align: start;
   cursor: pointer;
+}
+
+/* Buys card: the owner's fantasy team, under the NFL team line. */
+.signalOwner {
+  margin-top: 2px;
 }
 
 /* The infinivalue - market value gap, top right. */

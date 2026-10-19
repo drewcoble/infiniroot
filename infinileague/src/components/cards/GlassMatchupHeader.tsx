@@ -1,5 +1,6 @@
 import { rankPillStyle } from "./cardShared";
 import { GameStatusGlyph } from "./GameStatusGlyph";
+import { TeamLogo } from "./TeamLogo";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface MatchupHeaderTeam {
@@ -15,6 +16,8 @@ export interface MatchupHeaderTeam {
   // own included (saddlebrown read as confusing here). Absent while
   // standings load.
   rank?: { value: number } | undefined;
+  // The provider's team logo - absent shows initials (TeamLogo).
+  logoUrl?: string | undefined;
 }
 
 // Each win-probability segment is tinted by who's favored rather than by
@@ -60,8 +63,8 @@ function TeamSide({
 }) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
-      {/* Rank badge and name on one line - a long name is truncated (see
-          .headerTeamTitle). */}
+      {/* Rank badge, logo and name on one line - a long name is truncated
+          (see .headerTeamTitle). */}
       <div className={classes.headerTeamTitle}>
         {team.rank && (
           <span
@@ -71,6 +74,7 @@ function TeamSide({
             #{team.rank.value}
           </span>
         )}
+        <TeamLogo name={team.name} logoUrl={team.logoUrl} size={22} />
         <div className={classes.headerTeamName}>{team.name}</div>
       </div>
       <div className={classes.headerTotal}>

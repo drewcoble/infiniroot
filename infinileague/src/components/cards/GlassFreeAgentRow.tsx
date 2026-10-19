@@ -3,9 +3,11 @@ import { X } from "lucide-react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { pillStyle } from "./cardShared";
+import { FittedName } from "./FittedName";
 import { GlassPopover } from "./GlassPopover";
 import { StatGroups, type StatGroup } from "./StatGroups";
 import { PlayerGameLog } from "./PlayerGameLog";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -73,6 +75,7 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
           classes.card,
           classes.wide,
           note ? classes.freeAgentRowNoted : classes.playerRow,
+          classes.withHeadshot,
           classes.pressable,
           pressing && classes.pressing,
           expanded && classes.hidden,
@@ -80,8 +83,9 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
           .filter(Boolean)
           .join(" ")}
       >
+        <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
         <div className={`${classes.wideName} ${classes.teamCardName}`}>
-          <span className={classes.name}>{data.name}</span>
+          <FittedName name={data.name} shorten={data.position !== "DST"} />
           {data.isRookie && (
             <span className={`${classes.pill} ${classes.nameBadge}`} style={pillStyle("grape")}>
               R
@@ -119,6 +123,7 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
       {anchor && (
         <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
           <div className={classes.expandedHeader}>
+            <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
             <div className={classes.teamCardPopoverTitle}>
               <span className={classes.pill} style={RANK_CHIP_STYLE}>
                 #{data.rank}

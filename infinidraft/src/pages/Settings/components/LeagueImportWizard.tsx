@@ -116,11 +116,11 @@ export function LeagueImportWizard({
         // fetchSleeperDraftType). Still adjustable on this review step below,
         // gated the same as a from-scratch league (SNAKE_DRAFT_ENABLED).
         draftType: result.draftType ?? DEFAULT_FORM.draftType,
-        // Sleeper has no native guillotine signal (unlike Yahoo's
-        // scoring_type - see convex/infinidraft/yahoo/league.ts) - always
-        // defaults to redraft here, adjustable on this review step below
-        // via the same League Type control the Yahoo wizard uses.
-        leagueType: DEFAULT_FORM.leagueType,
+        // Detected from Sleeper's settings.type (see convex/sleeper/
+        // league.ts's isSleeperGuillotine) - still adjustable on this
+        // review step below via the same League Type control the Yahoo
+        // wizard uses.
+        leagueType: result.leagueType,
         salaryCap: DEFAULT_FORM.salaryCap,
         scoring: result.scoring,
         teScoring: result.teScoring,

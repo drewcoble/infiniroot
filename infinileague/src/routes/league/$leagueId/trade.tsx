@@ -522,6 +522,7 @@ function TradePage() {
 
   const headerTeam = (
     side: "A" | "B",
+    teamId: string,
     name: string,
     rows: TeamRosterRow[] | undefined,
     selected: Set<number>,
@@ -547,6 +548,7 @@ function TradePage() {
       };
     });
     return {
+      teamId,
       name,
       players,
       value: raw !== undefined ? raw + credit : undefined,
@@ -589,14 +591,14 @@ function TradePage() {
         teamA={
           teamAId === null || teamARoster.rows === undefined
             ? "loading"
-            : headerTeam("A", selfTeamName, teamARoster.rows, selectedA)
+            : headerTeam("A", teamAId, selfTeamName, teamARoster.rows, selectedA)
         }
         teamB={
           teamBId === null
             ? null
             : teamBRoster.rows === undefined
               ? "loading"
-              : headerTeam("B", teamBName, teamBRoster.rows, selectedB)
+              : headerTeam("B", teamBId, teamBName, teamBRoster.rows, selectedB)
         }
         partnerOptions={teamBOptions}
         partnerId={teamBId}
