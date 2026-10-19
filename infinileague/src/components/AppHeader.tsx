@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Menu } from "@mantine/core";
 import { useConvexAuth, useQuery } from "convex/react";
 import {
+  ChartColumn,
   Check,
   Database,
   GalleryVerticalEnd,
@@ -126,6 +127,18 @@ export function AppHeader() {
                   leftSection={<GalleryVerticalEnd size={16} />}
                 >
                   Cards
+                </Menu.Item>
+              </Link>
+            )}
+            {leagueId && (
+              // Chart sandbox for simple mode - see simpleMode.tsx.
+              <Link
+                to="/league/$leagueId/simpleMode"
+                params={{ leagueId }}
+                style={{ textDecoration: "none" }}
+              >
+                <Menu.Item component="span" leftSection={<ChartColumn size={16} />}>
+                  Simple mode
                 </Menu.Item>
               </Link>
             )}

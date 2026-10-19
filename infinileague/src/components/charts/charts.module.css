@@ -1,0 +1,239 @@
+/* Shared styles for the simple-mode charts (see chartTheme.ts for colors). */
+
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* The line above a chart that names whatever's tapped/hovered - the
+   mobile-friendly stand-in for a floating tooltip. Holds a fixed height so
+   the chart below never jumps. */
+.readout {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 34px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.readoutMain {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.readoutSub {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+.svg {
+  display: block;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+/* Keyboard focus only - a tap shouldn't leave a ring on the chart. */
+.svg:focus {
+  outline: none;
+}
+
+.svg:focus-visible {
+  outline: 2px solid rgba(248, 250, 252, 0.6);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.axisText {
+  font-size: 10px;
+  font-family: var(--font-numeric);
+  fill: rgba(248, 250, 252, 0.42);
+}
+
+.markLabel {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-numeric);
+  fill: #f8fafc;
+}
+
+.markLabelMuted {
+  font-size: 10px;
+  font-weight: 600;
+  fill: rgba(248, 250, 252, 0.65);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11px;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.swatchLine {
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.swatchRing {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid rgba(248, 250, 252, 0.65);
+}
+
+/* HTML bar rows (value bars, diverging bars): a label column and the bar
+   track. */
+.barRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: minmax(64px, 30%) 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.barLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.8);
+}
+
+.barTrack {
+  position: relative;
+  height: 22px;
+}
+
+.bar {
+  position: absolute;
+  top: 5px;
+  height: 12px;
+}
+
+.barEndRight {
+  border-radius: 0 4px 4px 0;
+}
+
+.barEndLeft {
+  border-radius: 4px 0 0 4px;
+}
+
+.barValue {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-numeric);
+  color: #f8fafc;
+  white-space: nowrap;
+}
+
+.barMarker {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: #f8fafc;
+}
+
+.barZero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Segmented gauge: a fixed row of steps, filled up to the level. */
+.gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gaugeHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.gaugeTitle {
+  color: rgba(248, 250, 252, 0.65);
+}
+
+.gaugeValue {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.gaugeSteps {
+  display: grid;
+  gap: 2px;
+}
+
+.gaugeStep {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.gaugeStep:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.gaugeStep:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.gaugeScale {
+  display: grid;
+  gap: 2px;
+  font-size: 10px;
+  color: rgba(248, 250, 252, 0.42);
+}
+
+.gaugeScale > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gaugeScale > span:last-child {
+  text-align: right;
+}
+
+.trendChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #f8fafc;
+}
