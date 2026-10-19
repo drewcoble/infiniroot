@@ -64,26 +64,15 @@ const TREND_TEXT: Record<Trend, string> = {
 };
 const TREND_ICON = { up: TrendingUp, steady: Minus, down: TrendingDown } as const;
 
-// One example: a glass card with the chart's name and what it replaces.
-function Example({
-  title,
-  replaces,
-  children,
-}: {
-  title: string;
-  replaces: string;
-  children: ReactNode;
-}) {
+// One example: a glass card with the chart's name. No caption - each chart
+// should read at a glance on its own (what it replaces is noted in a
+// comment at each use).
+function Example({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className={cardClasses.card} style={{ gap: 10, padding: 14 }}>
-      <Stack gap={2}>
-        <Text fw={600} size="sm">
-          {title}
-        </Text>
-        <Text size="xs" c="dimmed">
-          Replaces: {replaces}
-        </Text>
-      </Stack>
+      <Text fw={600} size="sm">
+        {title}
+      </Text>
       {children}
     </div>
   );
@@ -126,12 +115,7 @@ function SimpleModePage() {
 
   return (
     <Stack gap="xl">
-      <Stack gap={2}>
-        <Title order={3}>Simple mode</Title>
-        <Text size="sm" c="dimmed">
-          Chart sandbox. Tap or hover a chart to read exact values; arrow keys work too.
-        </Text>
-      </Stack>
+      <Title order={3}>Simple mode</Title>
       <PlayerExamples />
       <TradeExamples />
       <FreeAgentExamples />
@@ -242,10 +226,8 @@ function PlayerExamples() {
               <PointsExample weeks={log.weeks} position={player.position} />
             </>
           )}
-          <Example
-            title="Where he ranks"
-            replaces="the Season | ROS position-rank table and the projected-rank tile"
-          >
+          {/* Replaces the Season | ROS position-rank table and the projected-rank tile. */}
+          <Example title="Where he ranks">
             <RankDumbbell
               position={player.position}
               maxRank={RANK_AXIS[player.position]}
@@ -318,11 +300,9 @@ function UsageExample({
   // Same 0-100 scale for every player, so two players' charts compare.
   const max = Math.max(100, ...weeks.map((week) => week.total));
 
+  // Replaces the game log's Snaps / Rushing / Receiving columns (about 15 numbers a week).
   return (
-    <Example
-      title="Usage by week"
-      replaces="the game log's Snaps / Rushing / Receiving columns (about 15 numbers a week)"
-    >
+    <Example title="Usage by week">
       {trend && TrendIcon && (
         <span className={chartClasses.trendChip}>
           <TrendIcon size={15} strokeWidth={2.5} />
@@ -404,11 +384,9 @@ function PointsExample({
     (top, week) => (top === undefined || (week.points ?? 0) > (top.points ?? 0) ? week : top),
     undefined,
   );
+  // Replaces the game log's Pts and Rank columns, and the season PPG tile.
   return (
-    <Example
-      title="Points by week"
-      replaces="the game log's Pts and Rank columns, and the season PPG tile"
-    >
+    <Example title="Points by week">
       <WeeklyBars
         data={weeks.map((week) => ({
           week: week.week,
@@ -482,10 +460,8 @@ const SAMPLE_POWER: SlopeRow[] = [
 function TradeExamples() {
   return (
     <Section title="Trade" note="Sample data.">
-      <Example
-        title="Buys and sells"
-        replaces="the signal cards' “WR9 / Mkt WR18” pair and the BUY / SELL badge"
-      >
+      {/* Replaces the signal cards' “WR9 / Mkt WR18” pair and the BUY / SELL badge. */}
+      <Example title="Buys and sells">
         <RankDumbbell
           position="WR"
           maxRank={48}
@@ -499,10 +475,8 @@ function TradeExamples() {
         />
       </Example>
 
-      <Example
-        title="Trade value"
-        replaces="Mkt / Infini / Avg columns, the Value-PPG-Ranks switch, and the 2-for-1 row"
-      >
+      {/* Replaces Mkt / Infini / Avg columns, the Value-PPG-Ranks switch, and the 2-for-1 row. */}
+      <Example title="Trade value">
         <ValueBars
           color={SERIES[0]}
           barLabel="Our value"
@@ -528,10 +502,8 @@ function TradeExamples() {
         />
       </Example>
 
-      <Example
-        title="Who a suggested trade helps"
-        replaces="the suggestion card's gain, PPG gain, value net, and rank-move numbers"
-      >
+      {/* Replaces the suggestion card's gain, PPG gain, value net, and rank-move numbers. */}
+      <Example title="Who a suggested trade helps">
         <Stack gap={4}>
           <Text size="xs" c="dimmed">
             Points per week
@@ -555,10 +527,8 @@ function TradeExamples() {
         </Stack>
       </Example>
 
-      <Example
-        title="Post-trade power rankings"
-        replaces="the 12-row post-trade rankings list and its bottom sheet"
-      >
+      {/* Replaces the 12-row post-trade rankings list and its bottom sheet. */}
+      <Example title="Post-trade power rankings">
         <SlopeChart
           rows={SAMPLE_POWER}
           highlight={["you", "partner"]}
@@ -601,10 +571,8 @@ const SAMPLE_FREE_AGENTS = [
 function FreeAgentExamples() {
   return (
     <Section title="Free agents" note="Sample data.">
-      <Example
-        title="Rising usage at a glance"
-        replaces="the Week / Season views and the Actual / Proj sorts for spotting a breakout"
-      >
+      {/* Replaces the Week / Season views and the Actual / Proj sorts for spotting a breakout. */}
+      <Example title="Rising usage at a glance">
         <Stack gap={10}>
           {SAMPLE_FREE_AGENTS.map((player) => {
             const last = player.usage[player.usage.length - 1] ?? 0;
@@ -636,10 +604,8 @@ function FreeAgentExamples() {
         </Stack>
       </Example>
 
-      <Example
-        title="Bid vs. market"
-        replaces="the Bid | Mkt pair and the Your bid / Market / Your value tiles"
-      >
+      {/* Replaces the Bid | Mkt pair and the Your bid / Market / Your value tiles. */}
+      <Example title="Bid vs. market">
         <ValueBars
           color={SERIES[0]}
           barLabel="Suggested bid"
@@ -668,10 +634,9 @@ const SAMPLE_RANK_HISTORY = [
 function LeagueExamples() {
   return (
     <Section title="League" note="Sample data.">
-      <Example
-        title="Power rank over the season"
-        replaces="the one-week ▲/▼ badge - the whole climb or slide, not just the last step"
-      >
+      {/* Replaces the one-week ▲/▼ badge - the whole climb or slide, not just the
+          last step. */}
+      <Example title="Power rank over the season">
         <Stack gap={10}>
           {SAMPLE_RANK_HISTORY.map((team) => {
             const now = team.ranks[team.ranks.length - 1] ?? 0;
@@ -705,10 +670,8 @@ function LeagueExamples() {
 function InjuryExamples() {
   return (
     <Section title="Injuries" note="Sample data.">
-      <Example
-        title="Jev's read"
-        replaces="“Questionable (2.31 / 4) conf 78%”, “p 64% · conf 71%”"
-      >
+      {/* Replaces “Questionable (2.31 / 4) conf 78%”, “p 64% · conf 71%”. */}
+      <Example title="Jev's read">
         <Stack gap="sm">
           <SegmentGauge
             title="Availability"
