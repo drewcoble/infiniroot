@@ -17,6 +17,7 @@ import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
 import type { StandingsRow } from "../../../types/season";
 import { TeamLogosProvider } from "../../../components/cards/TeamLogo";
+import { TradeValuesProvider } from "../../../components/player/TradeValuesProvider";
 
 export const Route = createFileRoute("/league/$leagueId")({
   component: LeagueLayout,
@@ -174,8 +175,12 @@ function LeagueLayout() {
             </Tabs.List>
           </Tabs>
         </Box>
+        {/* Trade values back both the Trade tab and every player popover -
+            fetched once per league visit, on first use. */}
         <TeamLogosProvider teams={standings}>
-          <Outlet />
+          <TradeValuesProvider seasonId={leagueId}>
+            <Outlet />
+          </TradeValuesProvider>
         </TeamLogosProvider>
       </Stack>
       <BottomNav

@@ -256,15 +256,17 @@ function MatchupPage() {
   // true, rather than a wrong number that then jumps to the right one.
   const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
 
-  const toCardData = (row: TeamRosterRow) =>
-    toMatchupCardData(
+  const toCardData = (row: TeamRosterRow) => ({
+    ...toMatchupCardData(
       row,
       weekGames ? gamesByTeam : undefined,
       now,
       row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? seasonPositionRankByFpid.get(row.fpid) : undefined,
-    );
+    ),
+    ...(week !== null ? { week } : {}),
+  });
   const filledRows = [...(teamARoster.rows ?? []), ...(teamBRoster.rows ?? [])].filter(
     (row) => row.fpid !== undefined,
   );

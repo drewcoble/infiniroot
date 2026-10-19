@@ -8,12 +8,12 @@ import {
   positionBadge,
   type GlassMatchupCardData,
 } from "./cardShared";
-import { ExpandedMatchupCard } from "./ExpandedMatchupCard";
 import { FittedName } from "./FittedName";
 import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassSlotChip } from "./GlassMatchupCard";
 import { PlayerHeadshot } from "./PlayerHeadshot";
+import { PlayerPopover } from "../player/PlayerPopover";
 import { PointsMeter } from "./PointsMeter";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
@@ -127,12 +127,11 @@ export function GlassRosterCard({
         )}
       </div>
       {anchor && (
-        <ExpandedMatchupCard
-          data={data}
-          slot={slot}
+        <PlayerPopover
+          fpid={data.fpid}
           anchor={anchor}
-          scaleMax={scaleMax}
           onClose={close}
+          context={{ game: data, week: data.week, slot, scaleMax }}
         />
       )}
     </div>

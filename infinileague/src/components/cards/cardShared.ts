@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { Position } from "@shared/positionColors";
 
 // Shared by the base Matchup card (GlassMatchupCard.tsx) and its long-press
-// detail card (ExpandedMatchupCard.tsx).
+// detail card (components/player/PlayerPopover.tsx).
 
 // Where this player's game is this week - drives the card's emphasis and
 // which projection it shows (pregame vs. live), same states the current
@@ -41,6 +41,10 @@ export interface GlassMatchupCardData {
   // detail card's Season counterpart of positionRank.
   seasonPositionRank?: number;
   weekPositionRank?: number;
+  // The NFL week this card is for, when the page shows weeks other than
+  // the current one (Matchup / Team) - the player popover labels its
+  // numbers with it.
+  week?: string;
   // Position rank by points actually scored this week, among everyone at
   // the position - recomputed from each live scoring poll, so it moves
   // during games. Only shown once their game has started (see badgeRank).

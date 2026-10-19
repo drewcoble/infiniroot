@@ -48,8 +48,6 @@ function toTradeCardData(
     positionRank: vor?.positionRank ?? 0,
     team: row.team ?? "",
     injury: row.injury,
-    isRookie: row.isRookie ?? false,
-    byeWeek: row.byeWeek,
     seasonPpg: vor?.actualPpg,
     rosPpg: vor?.rosPpg,
     seasonPositionRank,

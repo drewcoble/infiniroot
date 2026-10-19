@@ -143,15 +143,17 @@ function TeamPage() {
     [weekRanks],
   );
 
-  const toCardData = (row: TeamRosterRow) =>
-    toMatchupCardData(
+  const toCardData = (row: TeamRosterRow) => ({
+    ...toMatchupCardData(
       row,
       weekGames ? gamesByTeam : undefined,
       now,
       row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? seasonPositionRankByFpid.get(row.fpid) : undefined,
-    );
+    ),
+    ...(week !== null ? { week } : {}),
+  });
 
   // The week's starters in header form: score, projection, and how many
   // are live / still to play. Same projection rule as the Matchup header -

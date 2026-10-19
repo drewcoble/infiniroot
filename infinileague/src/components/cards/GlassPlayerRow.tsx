@@ -1,14 +1,11 @@
-import { useEffect, useId, type CSSProperties } from "react";
-import { X } from "lucide-react";
+import { useEffect, type CSSProperties } from "react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { pillStyle, rankPillStyle } from "./cardShared";
 import { FittedName } from "./FittedName";
-import { GlassPopover } from "./GlassPopover";
-import { StatGroups, type StatGroup } from "./StatGroups";
-import { PlayerGameLog } from "./PlayerGameLog";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { useExpandableCard } from "./useExpandableCard";
+import { PlayerPopover } from "../player/PlayerPopover";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassPlayerRowData {
@@ -31,16 +28,12 @@ export interface GlassPlayerRowData {
   // average like season PPG (plain number font).
   actualIsScore: boolean;
   projection: string;
-  // Labeled tiles for the long-press detail popover.
-  // Grouped numbers for the detail popover (see StatGroups).
-  stats: StatGroup[];
 }
 
 // One row of the Players board in the full-width glass card layout (see
 // GlassRosterCard): name with rookie/injury badges | actual number, then
 // position + NFL team + who rosters them | projection. Long-press (or
-// Enter/Space) opens the player's detail popover - badges spelled out, the
-// owner, and season / rest-of-season / this-week stat tiles.
+// Enter/Space) opens the PlayerPopover.
 export function GlassPlayerRow({
   data,
   onExpandedChange,
@@ -67,7 +60,6 @@ export function GlassPlayerRow({
     .join(", ");
 
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label);
-  const titleId = useId();
   useEffect(() => {
     onExpandedChange?.(expanded);
   }, [expanded, onExpandedChange]);
@@ -152,54 +144,12 @@ export function GlassPlayerRow({
         <div className={classes.wideProj}>{data.projection}</div>
       </div>
       {anchor && (
-        <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
-          <div className={classes.expandedHeader}>
-            <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
-            <div className={classes.teamCardPopoverTitle}>
-              <span className={classes.pill} style={rankPillStyle(data.isOnMyTeam)}>
-                #{data.rank}
-              </span>
-              <span id={titleId} className={classes.expandedName}>
-                {data.name}
-              </span>
-            </div>
-            <button
-              type="button"
-              className={classes.closeButton}
-              onClick={close}
-              aria-label="Close"
-            >
-              <X size={16} strokeWidth={2.5} />
-            </button>
-          </div>
-
-          <div className={classes.pills}>
-            <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
-              {data.position}
-              {data.positionRank > 0 ? data.positionRank : ""}
-            </span>
-            {data.injury && (
-              <span className={classes.pill} style={pillStyle(injuryColor(data.injury.status))}>
-                {data.injury.status}
-              </span>
-            )}
-            {data.isRookie && (
-              <span className={classes.pill} style={pillStyle("grape")}>
-                Rookie
-              </span>
-            )}
-          </div>
-
-          <div className={classes.gameLine}>
-            <span className={classes.gameLineText}>
-              {[data.team, owner ?? "Free agent"].filter(Boolean).join(" · ")}
-            </span>
-          </div>
-
-          <StatGroups groups={data.stats} />
-
-          <PlayerGameLog fpid={data.fpid} position={data.position} />
-        </GlassPopover>
+        <PlayerPopover
+          fpid={data.fpid}
+          anchor={anchor}
+          onClose={close}
+          context={{ listRank: { rank: data.rank, isMine: data.isOnMyTeam } }}
+        />
       )}
     </div>
   );

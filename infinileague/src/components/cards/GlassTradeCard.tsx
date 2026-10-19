@@ -1,14 +1,11 @@
-import { useId } from "react";
-import { Check, X } from "lucide-react";
+import { Check } from "lucide-react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
 import { formatProj, pillStyle } from "./cardShared";
-import { GlassPopover } from "./GlassPopover";
-import { StatGroups } from "./StatGroups";
-import { PlayerGameLog } from "./PlayerGameLog";
 import { useExpandableCard } from "./useExpandableCard";
 import { PlayerHeadshot } from "./PlayerHeadshot";
+import { PlayerPopover } from "../player/PlayerPopover";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassTradeCardData {
@@ -21,8 +18,6 @@ export interface GlassTradeCardData {
   positionRank: number;
   team: string;
   injury?: { status: string; statusShort: string } | undefined;
-  isRookie: boolean;
-  byeWeek?: number | undefined;
   // The rosVOR board's per-game rates - undefined when the player isn't on
   // it (shown as a dash rather than a made-up 0.0).
   seasonPpg: number | undefined;
@@ -157,7 +152,6 @@ export function GlassTradeCard({
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label, {
     onTap: onToggle,
   });
-  const titleId = useId();
 
   return (
     <>
@@ -230,90 +224,12 @@ export function GlassTradeCard({
       </div>
 
       {anchor && (
-        <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
-          <div className={classes.expandedHeader}>
-            <PlayerHeadshot fpid={data.fpid} position={data.position} team={data.team} />
-            <div style={{ minWidth: 0 }}>
-              <div id={titleId} className={classes.expandedName}>
-                {data.name}
-              </div>
-              <div className={classes.gameLine}>
-                <span className={classes.gameLineText}>{data.team || "Free agent"}</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className={classes.closeButton}
-              onClick={close}
-              aria-label="Close"
-            >
-              <X size={16} strokeWidth={2.5} />
-            </button>
-          </div>
-
-          <div className={classes.pills}>
-            <span className={classes.pill} style={pillStyle(positionColor)}>
-              {positionLabel}
-            </span>
-            {data.injury && (
-              <span className={classes.pill} style={pillStyle(injuryColor(data.injury.status))}>
-                {data.injury.status}
-              </span>
-            )}
-            {data.isRookie && (
-              <span className={classes.pill} style={pillStyle("grape")}>
-                Rookie
-              </span>
-            )}
-            {data.signal && <SignalBadge signal={data.signal} />}
-            {selected && <span className={classes.statusLabel}>In trade</span>}
-          </div>
-
-          <StatGroups
-            groups={[
-              {
-                label: "Trade value",
-                items: [
-                  { label: "Infinivalue", value: formatValue(data.projectionValue) },
-                  {
-                    label: "Market value",
-                    value: data.marketValue === null ? "n/a" : formatValue(data.marketValue),
-                  },
-                  { label: "Avg value", value: formatValue(data.tradeValue) },
-                  {
-                    label: "Mkt rank",
-                    value:
-                      data.marketPositionRank === null
-                        ? "n/a"
-                        : formatPositionRank(data.position, data.marketPositionRank),
-                  },
-                ],
-              },
-              {
-                columns: ["Season", "ROS"],
-                rows: [
-                  { label: "PPG", values: [formatProj(data.seasonPpg), formatProj(data.rosPpg)] },
-                  {
-                    label: "Pos rank",
-                    values: [
-                      formatPositionRank(data.position, data.seasonPositionRank),
-                      formatPositionRank(data.position, data.positionRank),
-                    ],
-                  },
-                ],
-              },
-              {
-                label: "Roster",
-                items: [
-                  { label: "Slot", value: slot || "—" },
-                  { label: "Bye", value: data.byeWeek ? `Wk ${data.byeWeek}` : "—" },
-                ],
-              },
-            ]}
-          />
-
-          {data.fpid !== undefined && <PlayerGameLog fpid={data.fpid} position={data.position} />}
-        </GlassPopover>
+        <PlayerPopover
+          fpid={data.fpid}
+          anchor={anchor}
+          onClose={close}
+          context={{ slot, inTrade: selected }}
+        />
       )}
     </>
   );

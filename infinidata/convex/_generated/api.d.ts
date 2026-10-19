@@ -84,6 +84,7 @@ import type * as infinileague_season_teamRoster from "../infinileague/season/tea
 import type * as infinileague_season_teams from "../infinileague/season/teams.js";
 import type * as infinileague_season_tradeSuggestions from "../infinileague/season/tradeSuggestions.js";
 import type * as infinileague_season_tradeValues from "../infinileague/season/tradeValues.js";
+import type * as infinileague_season_usage from "../infinileague/season/usage.js";
 import type * as infinileague_season_weekInjuries from "../infinileague/season/weekInjuries.js";
 import type * as injuries from "../injuries.js";
 import type * as injurySnapshots from "../injurySnapshots.js";
@@ -106,6 +107,8 @@ import type * as lib_sameJson from "../lib/sameJson.js";
 import type * as lib_seasonTeams from "../lib/seasonTeams.js";
 import type * as lib_statsEqual from "../lib/statsEqual.js";
 import type * as lib_timezone from "../lib/timezone.js";
+import type * as lib_usageCalibration from "../lib/usageCalibration.js";
+import type * as lib_usageScore from "../lib/usageScore.js";
 import type * as lib_weekPoints from "../lib/weekPoints.js";
 import type * as nflSchedule from "../nflSchedule.js";
 import type * as nflState from "../nflState.js";
@@ -226,6 +229,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/teams": typeof infinileague_season_teams;
   "infinileague/season/tradeSuggestions": typeof infinileague_season_tradeSuggestions;
   "infinileague/season/tradeValues": typeof infinileague_season_tradeValues;
+  "infinileague/season/usage": typeof infinileague_season_usage;
   "infinileague/season/weekInjuries": typeof infinileague_season_weekInjuries;
   injuries: typeof injuries;
   injurySnapshots: typeof injurySnapshots;
@@ -248,6 +252,8 @@ declare const fullApi: ApiFromModules<{
   "lib/seasonTeams": typeof lib_seasonTeams;
   "lib/statsEqual": typeof lib_statsEqual;
   "lib/timezone": typeof lib_timezone;
+  "lib/usageCalibration": typeof lib_usageCalibration;
+  "lib/usageScore": typeof lib_usageScore;
   "lib/weekPoints": typeof lib_weekPoints;
   nflSchedule: typeof nflSchedule;
   nflState: typeof nflState;

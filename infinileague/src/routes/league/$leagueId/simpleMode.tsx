@@ -5,29 +5,18 @@ import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
 import { DivergingBars, ValueBars } from "../../../components/charts/BarRows";
-import { ChartTitle } from "../../../components/charts/ChartTitle";
 import { NEUTRAL_MARK, SERIES, STATUS } from "../../../components/charts/chartTheme";
 import { RankDumbbell } from "../../../components/charts/RankDumbbell";
 import { SegmentGauge } from "../../../components/charts/SegmentGauge";
 import { SlopeChart, type SlopeRow } from "../../../components/charts/SlopeChart";
 import { Sparkline } from "../../../components/charts/Sparkline";
-import {
-  WeeklyBars,
-  type ChartSeries,
-  type WeeklyBarDatum,
-} from "../../../components/charts/WeeklyBars";
+import { WeeklyBars } from "../../../components/charts/WeeklyBars";
 import chartClasses from "../../../components/charts/charts.module.css";
 import { GlassSegmented } from "../../../components/cards/GlassSegmented";
 import cardClasses from "../../../components/cards/GlassMatchupCard.module.css";
 import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
-import {
-  isUsagePosition,
-  usageAverage,
-  usageWeeks,
-  type UsagePosition,
-  type UsageWeek,
-} from "../../../lib/usageScore";
-import type { LinkedSeason, RosVorRow } from "../../../types/season";
+import { UsageChart } from "../../../components/player/UsageChart";
+import type { RosVorRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/simpleMode")({
   component: SimpleModePage,
@@ -44,38 +33,26 @@ interface NflState {
   week: string;
 }
 
+type UsagePosition = "QB" | "RB" | "WR" | "TE";
+
+function isUsagePosition(position: string): position is UsagePosition {
+  return position === "QB" || position === "RB" || position === "WR" || position === "TE";
+}
+
 // Axis depth per position for the rank dumbbells - about as deep as a
 // fantasy-relevant rank goes.
 const RANK_AXIS: Record<UsagePosition, number> = { QB: 36, RB: 60, WR: 72, TE: 36 };
 
-// Color follows the entity: rush is always slot 1, receiving slot 2,
-// passing slot 3, whichever ones a position shows.
-const USAGE_SERIES: Record<"rush" | "rec" | "pass", ChartSeries> = {
-  rush: { key: "rush", label: "Rushing", color: SERIES[0] },
-  rec: { key: "rec", label: "Receiving", color: SERIES[1] },
-  pass: { key: "pass", label: "Passing", color: SERIES[2] },
-};
 
 // One example: a glass card with the chart's name. No caption - each chart
 // should read at a glance on its own (what it replaces is noted in a
 // comment at each use).
-function Example({
-  title,
-  header,
-  children,
-}: {
-  title?: string;
-  // Replaces the plain title - a ChartTitle with its info button and stat.
-  header?: ReactNode;
-  children: ReactNode;
-}) {
+function Example({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className={cardClasses.card} style={{ gap: 10, padding: 14 }}>
-      {header ?? (
-        <Text fw={600} size="sm">
-          {title}
-        </Text>
-      )}
+      <Text fw={600} size="sm">
+        {title}
+      </Text>
       {children}
     </div>
   );
@@ -141,16 +118,6 @@ function PlayerExamples() {
     api.rosVor.getRosVorBoard,
     isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
   );
-  const seasonsList: LinkedSeason[] | undefined = useQuery(
-    api.leagues.listLinkedSeasons,
-    isAuthenticated ? {} : "skip",
-  );
-  const league = seasonsList?.find((season) => season._id === leagueId);
-  const scoringConfig = {
-    scoring: league?.scoring ?? "HALF",
-    teScoring: league?.teScoring,
-    sixPointPassTds: league?.sixPointPassTds,
-  };
   const seasonRankByFpid = useMemo(() => seasonPositionRanks(board), [board]);
   const candidates = useMemo(
     () =>
@@ -231,11 +198,11 @@ function PlayerExamples() {
             </Text>
           ) : (
             <>
-              <UsageExample
-                position={player.position}
-                weeks={usageWeeks(log, player.position, scoringConfig)}
-                year={year ?? ""}
-              />
+              {fpid !== null && year !== null && (
+                <Example title="Usage score (as in the player popover)">
+                  <UsageChart fpid={fpid} year={year} />
+                </Example>
+              )}
               <PointsExample weeks={log.weeks} position={player.position} />
             </>
           )}
@@ -265,69 +232,6 @@ function PlayerExamples() {
         </>
       )}
     </Section>
-  );
-}
-
-function UsageExample({
-  position,
-  weeks,
-  year,
-}: {
-  position: UsagePosition;
-  weeks: UsageWeek[];
-  year: string;
-}) {
-  // Rushing and receiving for everyone; passing only for a QB, receiving
-  // for a QB only when he actually caught something.
-  const keys: Array<"rush" | "rec" | "pass"> =
-    position === "QB"
-      ? ["pass", "rush", ...(weeks.some((week) => week.rec > 0) ? (["rec"] as const) : [])]
-      : position === "RB"
-        ? ["rush", "rec"]
-        : ["rec", ...(weeks.some((week) => week.rush > 0) ? (["rush"] as const) : [])];
-  const series = keys.map((key) => USAGE_SERIES[key]);
-  const data: WeeklyBarDatum[] = weeks.map((week) => ({
-    week: week.week,
-    kind: week.kind,
-    values: keys.map((key) => week[key]),
-  }));
-  const average = usageAverage(weeks) ?? undefined;
-
-  // Replaces the game log's Snaps / Rushing / Receiving columns (about 15
-  // numbers a week).
-  return (
-    <Example
-      header={
-        <ChartTitle
-          title="Usage score"
-          info={
-            position === "QB"
-              ? "Pass attempts, carries, and red-zone chances, valued in fantasy points " +
-                "and compared to other QBs each week (0–100)."
-              : "Carries, targets, and red-zone chances, valued in fantasy points and " +
-                "compared to every RB, WR, and TE each week (0–100)."
-          }
-          stat={average !== undefined ? `Avg. ${Math.round(average)}` : undefined}
-        />
-      }
-    >
-      <WeeklyBars
-        data={data}
-        series={series}
-        // Same 0-100 scale for every player, so two players' charts compare.
-        max={100}
-        reference={average !== undefined ? { value: average, label: "Avg." } : undefined}
-        barLabel={(_, total) => String(total)}
-        ariaLabel={
-          `Usage score by week, ${year}` +
-          (average !== undefined ? `, averaging ${Math.round(average)}` : "") +
-          `: ${weeks
-            .filter((week) => week.kind === "played")
-            .map((week) => `week ${week.week} ${week.total}`)
-            .join(", ")}`
-        }
-      />
-    </Example>
   );
 }
 
