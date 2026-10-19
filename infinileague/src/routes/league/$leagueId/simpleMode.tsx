@@ -22,12 +22,12 @@ import cardClasses from "../../../components/cards/GlassMatchupCard.module.css";
 import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import {
   isUsagePosition,
-  usageTrend,
+  usageAverage,
   usageWeeks,
   type UsagePosition,
   type UsageWeek,
 } from "../../../lib/usageScore";
-import type { RosVorRow } from "../../../types/season";
+import type { LinkedSeason, RosVorRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/simpleMode")({
   component: SimpleModePage,
@@ -141,6 +141,16 @@ function PlayerExamples() {
     api.rosVor.getRosVorBoard,
     isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
   );
+  const seasonsList: LinkedSeason[] | undefined = useQuery(
+    api.leagues.listLinkedSeasons,
+    isAuthenticated ? {} : "skip",
+  );
+  const league = seasonsList?.find((season) => season._id === leagueId);
+  const scoringConfig = {
+    scoring: league?.scoring ?? "HALF",
+    teScoring: league?.teScoring,
+    sixPointPassTds: league?.sixPointPassTds,
+  };
   const seasonRankByFpid = useMemo(() => seasonPositionRanks(board), [board]);
   const candidates = useMemo(
     () =>
@@ -223,7 +233,7 @@ function PlayerExamples() {
             <>
               <UsageExample
                 position={player.position}
-                weeks={usageWeeks(log, player.position)}
+                weeks={usageWeeks(log, player.position, scoringConfig)}
                 year={year ?? ""}
               />
               <PointsExample weeks={log.weeks} position={player.position} />
@@ -281,9 +291,7 @@ function UsageExample({
     kind: week.kind,
     values: keys.map((key) => week[key]),
   }));
-  const average = usageTrend(weeks)?.season;
-  // Same 0-100 scale for every player, so two players' charts compare.
-  const max = Math.max(100, ...weeks.map((week) => week.total));
+  const average = usageAverage(weeks) ?? undefined;
 
   // Replaces the game log's Snaps / Rushing / Receiving columns (about 15
   // numbers a week).
@@ -294,8 +302,10 @@ function UsageExample({
           title="Usage score"
           info={
             position === "QB"
-              ? "Pass attempts, carries, and red-zone chances, compiled into a 0–100 score."
-              : "Carries, targets, red-zone chances, and air yards, compiled into a 0–100 score."
+              ? "Pass attempts, carries, and red-zone chances, valued in fantasy points " +
+                "and compared to other QBs each week (0–100)."
+              : "Carries, targets, and red-zone chances, valued in fantasy points and " +
+                "compared to every RB, WR, and TE each week (0–100)."
           }
           stat={average !== undefined ? `Avg. ${Math.round(average)}` : undefined}
         />
@@ -304,7 +314,8 @@ function UsageExample({
       <WeeklyBars
         data={data}
         series={series}
-        max={max}
+        // Same 0-100 scale for every player, so two players' charts compare.
+        max={100}
         reference={average !== undefined ? { value: average, label: "Avg." } : undefined}
         barLabel={(_, total) => String(total)}
         ariaLabel={

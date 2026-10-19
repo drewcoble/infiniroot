@@ -12,6 +12,10 @@ export interface LinkedSeason {
   name: string;
   teamCount: number;
   scoring: "STD" | "HALF" | "PPR";
+  // TE premium and 6-point passing TDs (convex/scoring.ts) - absent on
+  // seasons that predate them, meaning NONE / off.
+  teScoring?: "NONE" | "HALF" | "FULL";
+  sixPointPassTds?: boolean;
   // Absent until the season's first roster sync runs (see
   // api.sleeper.league.syncLeagueRoster) - determines which column the
   // standings table shows (see StandingsRow below).
