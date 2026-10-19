@@ -1,4 +1,9 @@
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useState,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { useElementSize } from "@mantine/hooks";
 import { GRID, TEXT } from "./chartTheme";
 import classes from "./charts.module.css";
@@ -52,16 +57,18 @@ function niceTicks(max: number): number[] {
 }
 
 // Week-by-week column chart - one series, or several stacked (usage's rush
-// + receiving = total). Tap, hover, or arrow-key a week to name it in the
-// readout line above; the rest dim so the picked week stands out. Byes and
-// missed games keep their slot (a gap in the season is information), drawn
-// as a muted stub rather than an empty hole.
+// + receiving = total). `barLabel` prints each week's number over its bar.
+// With a `readout`, a week can also be tapped, hovered, or arrow-keyed to
+// name it in a line above the chart (the rest dim so it stands out). Byes
+// and missed games keep their slot (a gap in the season is information),
+// drawn as a muted stub rather than an empty hole.
 export function WeeklyBars({
   data,
   series,
   max,
   height = 96,
   reference,
+  barLabel,
   readout,
   ariaLabel,
 }: {
@@ -73,9 +80,12 @@ export function WeeklyBars({
   // A horizontal guide (season average) - named in the legend, not on the
   // plot, so it never collides with the bars.
   reference?: { value: number; label: string } | undefined;
+  // Small number over a played week's bar - given the week and its stack
+  // total; null for none.
+  barLabel?: ((datum: WeeklyBarDatum, total: number) => string | null) | undefined;
   // What the line above the chart says for the picked week, or with nothing
-  // picked (null).
-  readout: (datum: WeeklyBarDatum | null) => ReactNode;
+  // picked (null). Absent = no readout, and the bars aren't pickable.
+  readout?: ((datum: WeeklyBarDatum | null) => ReactNode) | undefined;
   ariaLabel: string;
 }) {
   const { ref, width } = useElementSize();
@@ -86,12 +96,14 @@ export function WeeklyBars({
   const ticks = niceTicks(top);
   const domainTop = Math.max(top, ticks[ticks.length - 1] ?? top);
 
+  // Bar labels need headroom over the tallest bar.
+  const marginTop = barLabel ? MARGIN.top + 12 : MARGIN.top;
   const plotWidth = Math.max(0, width - MARGIN.left - MARGIN.right);
-  const plotHeight = height - MARGIN.top - MARGIN.bottom;
+  const plotHeight = height - marginTop - MARGIN.bottom;
   const slot = data.length > 0 ? plotWidth / data.length : 0;
   const barWidth = Math.min(MAX_BAR, slot * BAR_SHARE);
-  const y = (value: number) => MARGIN.top + plotHeight - (value / domainTop) * plotHeight;
-  const baseline = MARGIN.top + plotHeight;
+  const y = (value: number) => marginTop + plotHeight - (value / domainTop) * plotHeight;
+  const baseline = marginTop + plotHeight;
   // Every week number when there's room, otherwise every other one.
   const labelEvery = slot >= 16 ? 1 : 2;
 
@@ -116,9 +128,11 @@ export function WeeklyBars({
 
   return (
     <div className={classes.chart}>
-      <div className={classes.readout} aria-live="polite">
-        {readout(activeDatum)}
-      </div>
+      {readout && (
+        <div className={classes.readout} aria-live="polite">
+          {readout(activeDatum)}
+        </div>
+      )}
       <div ref={ref}>
         {width > 0 && (
           <svg
@@ -127,11 +141,15 @@ export function WeeklyBars({
             height={height}
             role="img"
             aria-label={ariaLabel}
-            tabIndex={0}
-            onKeyDown={onKeyDown}
-            onPointerLeave={(event) => {
-              if (event.pointerType === "mouse") setActive(null);
-            }}
+            {...(readout
+              ? {
+                  tabIndex: 0,
+                  onKeyDown,
+                  onPointerLeave: (event: ReactPointerEvent<SVGSVGElement>) => {
+                    if (event.pointerType === "mouse") setActive(null);
+                  },
+                }
+              : {})}
           >
             {ticks.map((tick) => (
               <g key={tick}>
@@ -154,6 +172,19 @@ export function WeeklyBars({
                 </text>
               </g>
             ))}
+
+            {/* Behind the bars, so it never cuts through a bar or its label. */}
+            {reference && (
+              <line
+                x1={MARGIN.left}
+                x2={width - MARGIN.right}
+                y1={y(reference.value)}
+                y2={y(reference.value)}
+                stroke={TEXT.secondary}
+                strokeWidth={1.5}
+                pointerEvents="none"
+              />
+            )}
 
             {data.map((datum, index) => {
               const cx = MARGIN.left + slot * index + slot / 2;
@@ -194,6 +225,16 @@ export function WeeklyBars({
                         />
                       );
                     })}
+                  {barLabel && datum.kind === "played" && totals[index] !== undefined && (
+                    <text
+                      className={classes.columnLabel}
+                      x={cx}
+                      y={y(totals[index] ?? 0) - 4}
+                      textAnchor="middle"
+                    >
+                      {barLabel(datum, totals[index] ?? 0)}
+                    </text>
+                  )}
                   {datum.kind === "dnp" && (
                     <rect
                       x={x}
@@ -215,39 +256,30 @@ export function WeeklyBars({
                       {datum.kind === "bye" ? "B" : datum.week}
                     </text>
                   )}
-                  {/* The whole slot is the hit target, not just the bar. */}
-                  <rect
-                    x={MARGIN.left + slot * index}
-                    y={MARGIN.top}
-                    width={slot}
-                    height={plotHeight + MARGIN.bottom}
-                    fill="transparent"
-                    onPointerEnter={(event) => {
-                      if (event.pointerType === "mouse") setActive(index);
-                    }}
-                    // A mouse already picked this week on hover, so its click
-                    // keeps it; a tap toggles it on and off.
-                    onClick={(event) => {
-                      const pointerType = (event.nativeEvent as PointerEvent).pointerType;
-                      if (pointerType === "mouse") setActive(index);
-                      else setActive((current) => (current === index ? null : index));
-                    }}
-                  />
+                  {readout && (
+                    // The whole slot is the hit target, not just the bar.
+                    <rect
+                      x={MARGIN.left + slot * index}
+                      y={marginTop}
+                      width={slot}
+                      height={plotHeight + MARGIN.bottom}
+                      fill="transparent"
+                      onPointerEnter={(event) => {
+                        if (event.pointerType === "mouse") setActive(index);
+                      }}
+                      // A mouse already picked this week on hover, so its click
+                      // keeps it; a tap toggles it on and off.
+                      onClick={(event) => {
+                        const pointerType = (event.nativeEvent as PointerEvent).pointerType;
+                        if (pointerType === "mouse") setActive(index);
+                        else setActive((current) => (current === index ? null : index));
+                      }}
+                    />
+                  )}
                 </g>
               );
             })}
 
-            {reference && (
-              <line
-                x1={MARGIN.left}
-                x2={width - MARGIN.right}
-                y1={y(reference.value)}
-                y2={y(reference.value)}
-                stroke={TEXT.secondary}
-                strokeWidth={1.5}
-                pointerEvents="none"
-              />
-            )}
           </svg>
         )}
       </div>

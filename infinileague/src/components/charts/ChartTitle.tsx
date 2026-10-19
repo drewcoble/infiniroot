@@ -1,0 +1,36 @@
+import type { ReactNode } from "react";
+import { Popover } from "@mantine/core";
+import { Info } from "lucide-react";
+import classes from "./charts.module.css";
+
+// A chart's title row: its name, an info button whose popover says in a
+// sentence what the number is (not how it's computed), and the chart's
+// one headline stat on the right ("Avg. 46").
+export function ChartTitle({
+  title,
+  info,
+  stat,
+}: {
+  title: string;
+  info?: ReactNode;
+  stat?: string | undefined;
+}) {
+  return (
+    <div className={classes.titleRow}>
+      <span className={classes.title}>
+        {title}
+        {info && (
+          <Popover position="bottom-start" offset={6}>
+            <Popover.Target>
+              <button type="button" className={classes.infoButton} aria-label={`About ${title}`}>
+                <Info size={15} strokeWidth={2.25} />
+              </button>
+            </Popover.Target>
+            <Popover.Dropdown className={classes.infoPopover!}>{info}</Popover.Dropdown>
+          </Popover>
+        )}
+      </span>
+      {stat && <span className={classes.titleStat}>{stat}</span>}
+    </div>
+  );
+}

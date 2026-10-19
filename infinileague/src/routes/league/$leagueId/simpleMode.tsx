@@ -3,9 +3,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Center, Group, Loader, Select, Stack, Text, Title } from "@mantine/core";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { api } from "@infinidata/api";
 import { DivergingBars, ValueBars } from "../../../components/charts/BarRows";
+import { ChartTitle } from "../../../components/charts/ChartTitle";
 import { NEUTRAL_MARK, SERIES, STATUS } from "../../../components/charts/chartTheme";
 import { RankDumbbell } from "../../../components/charts/RankDumbbell";
 import { SegmentGauge } from "../../../components/charts/SegmentGauge";
@@ -24,7 +24,6 @@ import {
   isUsagePosition,
   usageTrend,
   usageWeeks,
-  type Trend,
   type UsagePosition,
   type UsageWeek,
 } from "../../../lib/usageScore";
@@ -57,22 +56,26 @@ const USAGE_SERIES: Record<"rush" | "rec" | "pass", ChartSeries> = {
   pass: { key: "pass", label: "Passing", color: SERIES[2] },
 };
 
-const TREND_TEXT: Record<Trend, string> = {
-  up: "Usage rising",
-  steady: "Usage steady",
-  down: "Usage falling",
-};
-const TREND_ICON = { up: TrendingUp, steady: Minus, down: TrendingDown } as const;
-
 // One example: a glass card with the chart's name. No caption - each chart
 // should read at a glance on its own (what it replaces is noted in a
 // comment at each use).
-function Example({ title, children }: { title: string; children: ReactNode }) {
+function Example({
+  title,
+  header,
+  children,
+}: {
+  title?: string;
+  // Replaces the plain title - a ChartTitle with its info button and stat.
+  header?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div className={cardClasses.card} style={{ gap: 10, padding: 14 }}>
-      <Text fw={600} size="sm">
-        {title}
-      </Text>
+      {header ?? (
+        <Text fw={600} size="sm">
+          {title}
+        </Text>
+      )}
       {children}
     </div>
   );
@@ -255,23 +258,6 @@ function PlayerExamples() {
   );
 }
 
-function usageSentence(week: UsageWeek, position: UsagePosition): string {
-  const { inputs } = week;
-  const parts: string[] = [];
-  if (position === "QB") {
-    parts.push(`${inputs.passAtt} att (${inputs.passRzAtt} RZ)`);
-  }
-  if (inputs.rushAtt > 0 || position === "RB" || position === "QB") {
-    parts.push(`${inputs.rushAtt} car (${inputs.rushRzAtt} RZ)`);
-  }
-  if (position !== "QB" || inputs.targets > 0) {
-    parts.push(`${inputs.targets} tgt (${inputs.rzTargets} RZ)`);
-    parts.push(`${Math.round(inputs.airYards)} air yds`);
-  }
-  if (inputs.snapPct !== null) parts.push(`${Math.round(inputs.snapPct)}% snaps`);
-  return parts.join(" · ");
-}
-
 function UsageExample({
   position,
   weeks,
@@ -295,69 +281,40 @@ function UsageExample({
     kind: week.kind,
     values: keys.map((key) => week[key]),
   }));
-  const trend = usageTrend(weeks);
-  const TrendIcon = trend ? TREND_ICON[trend.trend] : null;
+  const average = usageTrend(weeks)?.season;
   // Same 0-100 scale for every player, so two players' charts compare.
   const max = Math.max(100, ...weeks.map((week) => week.total));
 
-  // Replaces the game log's Snaps / Rushing / Receiving columns (about 15 numbers a week).
+  // Replaces the game log's Snaps / Rushing / Receiving columns (about 15
+  // numbers a week).
   return (
-    <Example title="Usage by week">
-      {trend && TrendIcon && (
-        <span className={chartClasses.trendChip}>
-          <TrendIcon size={15} strokeWidth={2.5} />
-          {TREND_TEXT[trend.trend]}
-          <Text span size="xs" c="dimmed" fw={400}>
-            {` · last 3 games ${Math.round(trend.recent)} vs. ${Math.round(trend.season)} season`}
-          </Text>
-        </span>
-      )}
+    <Example
+      header={
+        <ChartTitle
+          title="Usage score"
+          info={
+            position === "QB"
+              ? "Pass attempts, carries, and red-zone chances, compiled into a 0–100 score."
+              : "Carries, targets, red-zone chances, and air yards, compiled into a 0–100 score."
+          }
+          stat={average !== undefined ? `Avg. ${Math.round(average)}` : undefined}
+        />
+      }
+    >
       <WeeklyBars
         data={data}
         series={series}
         max={max}
-        reference={
-          trend
-            ? { value: trend.season, label: `Season avg ${Math.round(trend.season)}` }
-            : undefined
-        }
+        reference={average !== undefined ? { value: average, label: "Avg." } : undefined}
+        barLabel={(_, total) => String(total)}
         ariaLabel={
-          `Usage score by week, ${year}. ` +
-          (trend ? `Season average ${Math.round(trend.season)}, ${TREND_TEXT[trend.trend]}.` : "")
+          `Usage score by week, ${year}` +
+          (average !== undefined ? `, averaging ${Math.round(average)}` : "") +
+          `: ${weeks
+            .filter((week) => week.kind === "played")
+            .map((week) => `week ${week.week} ${week.total}`)
+            .join(", ")}`
         }
-        readout={(datum) => {
-          if (datum === null) {
-            return (
-              <>
-                <span className={chartClasses.readoutMain}>
-                  {trend ? `Usage ${Math.round(trend.season)} per game` : "No games yet"}
-                </span>
-                <span className={chartClasses.readoutSub}>Tap a week for the stats behind it</span>
-              </>
-            );
-          }
-          const week = weeks.find((entry) => entry.week === datum.week);
-          if (!week || week.kind !== "played") {
-            return (
-              <span className={chartClasses.readoutMain}>
-                {`Week ${datum.week} · ${datum.kind === "bye" ? "Bye" : "Didn't play"}`}
-              </span>
-            );
-          }
-          const breakdown = keys
-            .filter((key) => week[key] > 0)
-            .map((key) => `${USAGE_SERIES[key].label.toLowerCase()} ${week[key]}`)
-            .join(" + ");
-          return (
-            <>
-              <span className={chartClasses.readoutMain}>
-                {`Week ${week.week} · Usage ${week.total}`}
-                <Text span size="xs" c="dimmed" fw={400}>{` (${breakdown})`}</Text>
-              </span>
-              <span className={chartClasses.readoutSub}>{usageSentence(week, position)}</span>
-            </>
-          );
-        }}
       />
     </Example>
   );
