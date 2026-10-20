@@ -8,12 +8,12 @@ import {
   positionBadge,
   type GlassMatchupCardData,
 } from "./cardShared";
-import { ExpandedMatchupCard } from "./ExpandedMatchupCard";
 import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { PointsHeadline, PointsMeter } from "./PointsMeter";
 import { useExpandableCard } from "./useExpandableCard";
 import { PlayerHeadshot } from "./PlayerHeadshot";
+import { PlayerPopover } from "../player/PlayerPopover";
 import classes from "./GlassMatchupCard.module.css";
 
 export type { GlassMatchupCardData } from "./cardShared";
@@ -23,7 +23,7 @@ export type { GlassMatchupCardData } from "./cardShared";
 // (and live projection mid-game) drawn on a meter under it. A live game
 // shows as the card's green tint plus a pulsing dot in the top-right
 // corner (see GameStatusGlyph for the other states' icons).
-// Long-press (or Enter/Space when focused) opens ExpandedMatchupCard over
+// Long-press (or Enter/Space when focused) opens the PlayerPopover over
 // it; the base card stays in the layout, just hidden, so nothing shifts.
 export function GlassMatchupCard({
   data,
@@ -133,12 +133,11 @@ export function GlassMatchupCard({
         )}
       </div>
       {anchor && (
-        <ExpandedMatchupCard
-          data={data}
-          slot={slot}
+        <PlayerPopover
+          fpid={data.fpid}
           anchor={anchor}
-          scaleMax={scaleMax}
           onClose={close}
+          context={{ game: data, week: data.week, slot, scaleMax }}
         />
       )}
     </>

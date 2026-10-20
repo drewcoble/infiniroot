@@ -1,11 +1,11 @@
 import { v } from "convex/values";
-import { query } from "../../_generated/server";
+import { query, type QueryCtx } from "../../_generated/server";
 import type { Doc } from "../../_generated/dataModel";
 import { requireSeasonOwner } from "../../lib/access";
 import { normalizeNflTeam } from "../../lib/liveGames";
 import { BYE_WEEKS_2026 } from "../../nflSchedule";
 import type { POSITIONS } from "../../positions";
-import { bonusPoints, pointsForScoring, scoringConfigFromSeason } from "../../scoring";
+import { bonusPoints, pointsForScoring, scoringConfigFromSeason, type ScoringConfig } from "../../scoring";
 
 type Position = (typeof POSITIONS)[number];
 type Stats = Record<string, number>;
@@ -156,6 +156,124 @@ export const getGameLogSeasons = query({
   },
 });
 
+// One week of a player's season, before it's shaped for a particular read
+// (the game log's columns, the usage score) - see loadPlayerSeason.
+export interface PlayerSeasonWeek {
+  week: number;
+  kind: GameLogWeek["kind"];
+  injury: GameLogWeek["injury"];
+  // The week's stats row - set only when kind is "played".
+  row: Doc<"playerWeekPoints"> | null;
+  positionRank: number | null;
+}
+
+// Every week of one player's NFL season through the last one played (all
+// 18 for a past season), with byes and missed games as their own weeks -
+// shared by the game log and the usage score (usage.ts) so both agree on
+// which weeks exist. Null when the player isn't in the players table.
+export async function loadPlayerSeason(
+  ctx: QueryCtx,
+  args: { fpid: number; year: string; config: ScoringConfig },
+): Promise<{ position: Position; weeks: PlayerSeasonWeek[] } | null> {
+  const { config } = args;
+  const [player, nflState] = await Promise.all([
+    ctx.db
+      .query("players")
+      .withIndex("by_fpid", (q) => q.eq("fpid", args.fpid))
+      .first(),
+    ctx.db.query("nflState").first(),
+  ]);
+  if (!player) return null;
+  const position = player.position;
+
+  const [pointRows, rankSets, games, snapshots] = await Promise.all([
+    ctx.db
+      .query("playerWeekPoints")
+      .withIndex("by_fpid_season", (q) => q.eq("fpid", args.fpid).eq("season", args.year))
+      .collect(),
+    ctx.db
+      .query("weekPositionRankSets")
+      .withIndex("by_key", (q) =>
+        q
+          .eq("season", args.year)
+          .eq("position", position)
+          .eq("scoring", config.scoring)
+          .eq("teScoring", config.teScoring)
+          .eq("sixPointPassTds", config.sixPointPassTds),
+      )
+      .collect(),
+    ctx.db
+      .query("nflGames")
+      .withIndex("by_season_week", (q) => q.eq("season", args.year))
+      .collect(),
+    ctx.db
+      .query("injurySnapshots")
+      .withIndex("by_fpid_season", (q) => q.eq("fpid", args.fpid).eq("season", args.year))
+      .collect(),
+  ]);
+
+  const rowByWeek = new Map<number, Doc<"playerWeekPoints">>(pointRows.map((row) => [Number(row.week), row]));
+  const rankByWeek = new Map<number, number>();
+  for (const set of rankSets) {
+    const entry = set.ranks.find((rank) => rank.fpid === args.fpid);
+    if (entry) rankByWeek.set(Number(set.week), entry.rank);
+  }
+  // Per week: this player's team's kickoff (absent = bye), and the
+  // week's last kickoff (the cutoff for a bye week's injury status).
+  const team = player.team;
+  const kickoffByWeek = new Map<number, number>();
+  const scheduledWeeks = new Set<number>();
+  for (const game of games) {
+    const week = Number(game.week);
+    scheduledWeeks.add(week);
+    if (team && (normalizeNflTeam(game.homeTeam) === team || normalizeNflTeam(game.awayTeam) === team)) {
+      kickoffByWeek.set(week, game.kickoffAt);
+    }
+  }
+
+  // Every week up to the last one with a game played, or all 18 once
+  // that season is over - never a future week.
+  const isCurrentSeason = nflState?.season === args.year && nflState.seasonType === "regular";
+  const latestWithData = Math.max(0, ...rowByWeek.keys());
+  const lastWeek = isCurrentSeason ? Math.max(Number(nflState.week) - 1, latestWithData) : 18;
+
+  const isBye = (week: number): boolean => {
+    if (rowByWeek.has(week)) return false;
+    if (!team) return false;
+    if (scheduledWeeks.has(week)) return !kickoffByWeek.has(week);
+    return args.year === "2026" && BYE_WEEKS_2026[team] === week;
+  };
+
+  // Status as of that week's kickoff - the latest injurySnapshots change
+  // at or before it ("cleared" = healthy). Same rule weekInjuries.ts uses
+  // for the Matchup tab. Snapshots only exist from 2026 on.
+  const injuryAt = (cutoff: number | undefined): GameLogWeek["injury"] => {
+    if (cutoff === undefined) return null;
+    let latest: (typeof snapshots)[number] | null = null;
+    for (const snap of snapshots) {
+      if (snap.fetchedAt <= cutoff && (latest === null || snap.fetchedAt > latest.fetchedAt)) latest = snap;
+    }
+    if (!latest || latest.kind === "cleared" || !latest.statusShort) return null;
+    return { status: latest.status, statusShort: latest.statusShort };
+  };
+
+  const weeks: PlayerSeasonWeek[] = [];
+  for (let week = 1; week <= lastWeek; week += 1) {
+    if (isBye(week)) {
+      weeks.push({ week, kind: "bye", injury: null, row: null, positionRank: null });
+      continue;
+    }
+    const row = rowByWeek.get(week);
+    const injury = injuryAt(kickoffByWeek.get(week));
+    if (!row || (row.stats.gp ?? 0) <= 0) {
+      weeks.push({ week, kind: "dnp", injury, row: null, positionRank: null });
+      continue;
+    }
+    weeks.push({ week, kind: "played", injury, row, positionRank: rankByWeek.get(week) ?? null });
+  }
+  return { position, weeks };
+}
+
 // One player's week-by-week log for one NFL season, in this league's
 // scoring - every week through the last one played (all 18 for a past
 // season), with byes and missed games as their own rows. Fetched only when
@@ -168,114 +286,27 @@ export const getGameLog = query({
   ): Promise<{ columns: Array<{ key: string; group: string; label: string; decimals: number }>; weeks: GameLogWeek[] } | null> => {
     const { season } = await requireSeasonOwner(ctx, args.seasonId);
     const config = scoringConfigFromSeason(season);
+    const loaded = await loadPlayerSeason(ctx, { fpid: args.fpid, year: args.year, config });
+    if (!loaded) return null;
+    const { position } = loaded;
 
-    const [player, nflState] = await Promise.all([
-      ctx.db
-        .query("players")
-        .withIndex("by_fpid", (q) => q.eq("fpid", args.fpid))
-        .first(),
-      ctx.db.query("nflState").first(),
-    ]);
-    if (!player) return null;
-    const position = player.position;
-
-    const [pointRows, rankSets, games, snapshots] = await Promise.all([
-      ctx.db
-        .query("playerWeekPoints")
-        .withIndex("by_fpid_season", (q) => q.eq("fpid", args.fpid).eq("season", args.year))
-        .collect(),
-      ctx.db
-        .query("weekPositionRankSets")
-        .withIndex("by_key", (q) =>
-          q
-            .eq("season", args.year)
-            .eq("position", position)
-            .eq("scoring", config.scoring)
-            .eq("teScoring", config.teScoring)
-            .eq("sixPointPassTds", config.sixPointPassTds),
-        )
-        .collect(),
-      ctx.db
-        .query("nflGames")
-        .withIndex("by_season_week", (q) => q.eq("season", args.year))
-        .collect(),
-      ctx.db
-        .query("injurySnapshots")
-        .withIndex("by_fpid_season", (q) => q.eq("fpid", args.fpid).eq("season", args.year))
-        .collect(),
-    ]);
-
-    const rowByWeek = new Map<number, Doc<"playerWeekPoints">>(pointRows.map((row) => [Number(row.week), row]));
-    const rankByWeek = new Map<number, number>();
-    for (const set of rankSets) {
-      const entry = set.ranks.find((rank) => rank.fpid === args.fpid);
-      if (entry) rankByWeek.set(Number(set.week), entry.rank);
-    }
-    // Per week: this player's team's kickoff (absent = bye), and the
-    // week's last kickoff (the cutoff for a bye week's injury status).
-    const team = player.team;
-    const kickoffByWeek = new Map<number, number>();
-    const scheduledWeeks = new Set<number>();
-    for (const game of games) {
-      const week = Number(game.week);
-      scheduledWeeks.add(week);
-      if (team && (normalizeNflTeam(game.homeTeam) === team || normalizeNflTeam(game.awayTeam) === team)) {
-        kickoffByWeek.set(week, game.kickoffAt);
-      }
-    }
-
-    // Every week up to the last one with a game played, or all 18 once
-    // that season is over - never a future week.
-    const isCurrentSeason = nflState?.season === args.year && nflState.seasonType === "regular";
-    const latestWithData = Math.max(0, ...rowByWeek.keys());
-    const lastWeek = isCurrentSeason ? Math.max(Number(nflState.week) - 1, latestWithData) : 18;
-
-    const isBye = (week: number): boolean => {
-      if (rowByWeek.has(week)) return false;
-      if (!team) return false;
-      if (scheduledWeeks.has(week)) return !kickoffByWeek.has(week);
-      return args.year === "2026" && BYE_WEEKS_2026[team] === week;
-    };
-
-    // Status as of that week's kickoff - the latest injurySnapshots change
-    // at or before it ("cleared" = healthy). Same rule weekInjuries.ts uses
-    // for the Matchup tab. Snapshots only exist from 2026 on.
-    const injuryAt = (cutoff: number | undefined): GameLogWeek["injury"] => {
-      if (cutoff === undefined) return null;
-      let latest: (typeof snapshots)[number] | null = null;
-      for (const snap of snapshots) {
-        if (snap.fetchedAt <= cutoff && (latest === null || snap.fetchedAt > latest.fetchedAt)) latest = snap;
-      }
-      if (!latest || latest.kind === "cleared" || !latest.statusShort) return null;
-      return { status: latest.status, statusShort: latest.statusShort };
-    };
-
-    const playedStats = [...rowByWeek.values()].filter((row) => (row.stats.gp ?? 0) > 0).map((row) => row.stats);
+    const playedStats = loaded.weeks.flatMap((week) => (week.row ? [week.row.stats] : []));
     const columns = LAYOUT[position]
       .filter((group) => !group.optional || group.columns.some((column) => playedStats.some((stats) => column.value(stats) !== 0)))
       .flatMap((group) => group.columns);
 
-    const weeks: GameLogWeek[] = [];
-    for (let week = 1; week <= lastWeek; week += 1) {
-      if (isBye(week)) {
-        weeks.push({ week, kind: "bye", injury: null, points: null, positionRank: null, values: columns.map(() => null) });
-        continue;
-      }
-      const row = rowByWeek.get(week);
-      const injury = injuryAt(kickoffByWeek.get(week));
-      if (!row || (row.stats.gp ?? 0) <= 0) {
-        weeks.push({ week, kind: "dnp", injury, points: null, positionRank: null, values: columns.map(() => null) });
-        continue;
-      }
-      weeks.push({
-        week,
-        kind: "played",
-        injury,
-        points: pointsForScoring(row, config.scoring) + bonusPoints({ position, stats: row.stats }, config),
-        positionRank: rankByWeek.get(week) ?? null,
-        values: columns.map((column) => column.value(row.stats)),
-      });
-    }
+    const weeks: GameLogWeek[] = loaded.weeks.map((week) =>
+      week.row
+        ? {
+            week: week.week,
+            kind: week.kind,
+            injury: week.injury,
+            points: pointsForScoring(week.row, config.scoring) + bonusPoints({ position, stats: week.row.stats }, config),
+            positionRank: week.positionRank,
+            values: columns.map((column) => column.value(week.row!.stats)),
+          }
+        : { week: week.week, kind: week.kind, injury: week.injury, points: null, positionRank: null, values: columns.map(() => null) },
+    );
 
     return {
       columns: columns.map(({ key, group, label, decimals }) => ({ key, group, label, decimals })),

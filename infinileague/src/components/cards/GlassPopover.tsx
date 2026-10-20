@@ -10,7 +10,7 @@ const EDGE_MARGIN = 12;
 const BOTTOM_RESERVE = BOTTOM_NAV_HEIGHT + BOTTOM_NAV_BOTTOM_OFFSET + EDGE_MARGIN;
 
 // The long-press detail popover's shell, shared by every glass card's
-// detail view (ExpandedMatchupCard, ExpandedTeamCard). Floats over the page
+// detail view (PlayerPopover, GlassTeamCard's). Floats over the page
 // (portaled to body, absolutely positioned in document coordinates so it
 // scrolls with the content) starting at the base card's own top corner -
 // the base card hides underneath while this is open, so it reads as the

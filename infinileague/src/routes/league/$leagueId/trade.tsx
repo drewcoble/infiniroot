@@ -24,6 +24,7 @@ import {
   type GlassSignalCardData,
 } from "../../../components/cards/GlassSignalCard";
 import { tradeTotals } from "../../../lib/tradeValue";
+import { useTradeValues } from "../../../components/player/tradeValues";
 import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
 import {
@@ -35,7 +36,6 @@ import type {
   RosVorRow,
   StandingsRow,
   TeamRosterRow,
-  TradeValueRow,
 } from "../../../types/season";
 
 // How many players each of the Buys / Sells strips shows.
@@ -120,28 +120,9 @@ function TradePage() {
 
   // FantasyCalc-style trade value per player - FantasyCalc's market value
   // blended with our rest-of-season VOR (see convex/infinileague/season/
-  // tradeValues.ts). What the header adds up and the bar compares.
-  const getTradeValues = useAction(api.infinileague.season.tradeValues.getTradeValues);
-  const [tradeValues, setTradeValues] = useState<TradeValueRow[] | undefined>(undefined);
-  const [tradeValuesError, setTradeValuesError] = useState<string | null>(null);
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    let cancelled = false;
-    getTradeValues({ seasonId })
-      .then((rows) => {
-        if (!cancelled) setTradeValues(rows);
-      })
-      .catch((err) => {
-        if (!cancelled) setTradeValuesError(getErrorMessage(err, "Couldn't load trade values."));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [seasonId, isAuthenticated, getTradeValues]);
-  const valueByFpid = useMemo(
-    () => (tradeValues ? new Map(tradeValues.map((row) => [row.fpid, row])) : undefined),
-    [tradeValues],
-  );
+  // tradeValues.ts). What the header adds up and the bar compares. Shared
+  // with every player popover through the league layout's provider.
+  const { byFpid: valueByFpid, error: tradeValuesError } = useTradeValues();
 
   const [selectedA, setSelectedA] = useState<Set<number>>(new Set());
   const [selectedB, setSelectedB] = useState<Set<number>>(new Set());
@@ -334,16 +315,12 @@ function TradePage() {
         position: row.position,
         positionRank: row.positionRank,
         marketPositionRank: value.marketPositionRank,
-        seasonPositionRank: seasonPositionRankByFpid.get(row.fpid),
         team: row.team,
         owner,
         injury: row.injury,
         signal,
         infinivalue: value.projectionValue,
         marketValue: value.marketValue,
-        avgValue: value.value,
-        seasonPpg: row.actualPpg,
-        rosPpg: row.rosPpg,
       },
     ];
   };

@@ -9,7 +9,7 @@ import {
 import { useLongPress } from "./useLongPress";
 
 // Everything a glass card needs to open its long-press detail popover
-// (ExpandedMatchupCard, GlassTeamCard's): long-press always opens it;
+// (PlayerPopover, GlassTeamCard's): long-press always opens it;
 // closing returns focus to the card. Spread `cardProps` onto the card's
 // root element and render the popover while `anchor` is set.
 //

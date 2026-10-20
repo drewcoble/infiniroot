@@ -22,6 +22,7 @@ import { Route as LeagueLeagueIdCardsRouteImport } from './routes/league/$league
 import { Route as LeagueLeagueIdFreeAgentsRouteImport } from './routes/league/$leagueId/freeAgents'
 import { Route as LeagueLeagueIdMatchupRouteImport } from './routes/league/$leagueId/matchup'
 import { Route as LeagueLeagueIdPlayersRouteImport } from './routes/league/$leagueId/players'
+import { Route as LeagueLeagueIdSimpleModeRouteImport } from './routes/league/$leagueId/simpleMode'
 import { Route as LeagueLeagueIdTradeRouteImport } from './routes/league/$leagueId/trade'
 import { Route as LeagueLeagueIdTeamsTeamIdRouteImport } from './routes/league/$leagueId/teams/$teamId'
 
@@ -91,6 +92,12 @@ const LeagueLeagueIdPlayersRoute = LeagueLeagueIdPlayersRouteImport.update({
   path: '/players',
   getParentRoute: () => LeagueLeagueIdRouteRoute,
 } as any)
+const LeagueLeagueIdSimpleModeRoute =
+  LeagueLeagueIdSimpleModeRouteImport.update({
+    id: '/simpleMode',
+    path: '/simpleMode',
+    getParentRoute: () => LeagueLeagueIdRouteRoute,
+  } as any)
 const LeagueLeagueIdTradeRoute = LeagueLeagueIdTradeRouteImport.update({
   id: '/trade',
   path: '/trade',
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
   '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
   '/league/$leagueId/players': typeof LeagueLeagueIdPlayersRoute
+  '/league/$leagueId/simpleMode': typeof LeagueLeagueIdSimpleModeRoute
   '/league/$leagueId/trade': typeof LeagueLeagueIdTradeRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
   '/league/$leagueId/teams/$teamId': typeof LeagueLeagueIdTeamsTeamIdRoute
@@ -132,6 +140,7 @@ export interface FileRoutesByTo {
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
   '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
   '/league/$leagueId/players': typeof LeagueLeagueIdPlayersRoute
+  '/league/$leagueId/simpleMode': typeof LeagueLeagueIdSimpleModeRoute
   '/league/$leagueId/trade': typeof LeagueLeagueIdTradeRoute
   '/league/$leagueId': typeof LeagueLeagueIdIndexRoute
   '/league/$leagueId/teams/$teamId': typeof LeagueLeagueIdTeamsTeamIdRoute
@@ -150,6 +159,7 @@ export interface FileRoutesById {
   '/league/$leagueId/freeAgents': typeof LeagueLeagueIdFreeAgentsRoute
   '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
   '/league/$leagueId/players': typeof LeagueLeagueIdPlayersRoute
+  '/league/$leagueId/simpleMode': typeof LeagueLeagueIdSimpleModeRoute
   '/league/$leagueId/trade': typeof LeagueLeagueIdTradeRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
   '/league/$leagueId/teams/$teamId': typeof LeagueLeagueIdTeamsTeamIdRoute
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId/freeAgents'
     | '/league/$leagueId/matchup'
     | '/league/$leagueId/players'
+    | '/league/$leagueId/simpleMode'
     | '/league/$leagueId/trade'
     | '/league/$leagueId/'
     | '/league/$leagueId/teams/$teamId'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId/freeAgents'
     | '/league/$leagueId/matchup'
     | '/league/$leagueId/players'
+    | '/league/$leagueId/simpleMode'
     | '/league/$leagueId/trade'
     | '/league/$leagueId'
     | '/league/$leagueId/teams/$teamId'
@@ -202,6 +214,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId/freeAgents'
     | '/league/$leagueId/matchup'
     | '/league/$leagueId/players'
+    | '/league/$leagueId/simpleMode'
     | '/league/$leagueId/trade'
     | '/league/$leagueId/'
     | '/league/$leagueId/teams/$teamId'
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeagueLeagueIdPlayersRouteImport
       parentRoute: typeof LeagueLeagueIdRouteRoute
     }
+    '/league/$leagueId/simpleMode': {
+      id: '/league/$leagueId/simpleMode'
+      path: '/simpleMode'
+      fullPath: '/league/$leagueId/simpleMode'
+      preLoaderRoute: typeof LeagueLeagueIdSimpleModeRouteImport
+      parentRoute: typeof LeagueLeagueIdRouteRoute
+    }
     '/league/$leagueId/trade': {
       id: '/league/$leagueId/trade'
       path: '/trade'
@@ -333,6 +353,7 @@ interface LeagueLeagueIdRouteRouteChildren {
   LeagueLeagueIdFreeAgentsRoute: typeof LeagueLeagueIdFreeAgentsRoute
   LeagueLeagueIdMatchupRoute: typeof LeagueLeagueIdMatchupRoute
   LeagueLeagueIdPlayersRoute: typeof LeagueLeagueIdPlayersRoute
+  LeagueLeagueIdSimpleModeRoute: typeof LeagueLeagueIdSimpleModeRoute
   LeagueLeagueIdTradeRoute: typeof LeagueLeagueIdTradeRoute
   LeagueLeagueIdIndexRoute: typeof LeagueLeagueIdIndexRoute
   LeagueLeagueIdTeamsTeamIdRoute: typeof LeagueLeagueIdTeamsTeamIdRoute
@@ -343,6 +364,7 @@ const LeagueLeagueIdRouteRouteChildren: LeagueLeagueIdRouteRouteChildren = {
   LeagueLeagueIdFreeAgentsRoute: LeagueLeagueIdFreeAgentsRoute,
   LeagueLeagueIdMatchupRoute: LeagueLeagueIdMatchupRoute,
   LeagueLeagueIdPlayersRoute: LeagueLeagueIdPlayersRoute,
+  LeagueLeagueIdSimpleModeRoute: LeagueLeagueIdSimpleModeRoute,
   LeagueLeagueIdTradeRoute: LeagueLeagueIdTradeRoute,
   LeagueLeagueIdIndexRoute: LeagueLeagueIdIndexRoute,
   LeagueLeagueIdTeamsTeamIdRoute: LeagueLeagueIdTeamsTeamIdRoute,

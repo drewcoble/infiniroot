@@ -4,7 +4,7 @@ import { InjuryReport } from "@shared/InjuryReport";
 import { MOBILE_HEADER_HEIGHT } from "@shared/constants";
 import { PageContainer } from "@shared/PageContainer";
 import { AppHeader } from "../components/AppHeader";
-import { JevInjuryAssessment } from "../components/JevInjuryAssessment";
+import { InjuryOutlook } from "../components/InjuryOutlook";
 
 export const Route = createFileRoute("/injuries")({
   component: InjuriesRoute,
@@ -25,7 +25,7 @@ function InjuriesRoute() {
           week={SEASON_WEEK}
           seasonId={undefined}
           filterBarTop={MOBILE_HEADER_HEIGHT}
-          renderExpandedExtra={({ injury }) => <JevInjuryAssessment injury={injury} />}
+          renderExpandedExtra={({ injury }) => <InjuryOutlook injury={injury} />}
         />
       </Stack>
     </PageContainer>
