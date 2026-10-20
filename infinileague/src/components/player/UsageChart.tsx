@@ -19,12 +19,8 @@ const USAGE_SERIES: Record<UsagePart, ChartSeries> = {
 };
 
 const INFO = {
-  flex:
-    "Carries, targets, and red-zone chances, valued in fantasy points and compared to every " +
-    "RB, WR, and TE each week (0–100).",
-  qb:
-    "Pass attempts, carries, and red-zone chances, valued in fantasy points and compared to " +
-    "other QBs each week (0–100).",
+  flex: "Carries, targets, and red-zone looks, compiled into a 0–100 score.",
+  qb: "Pass attempts, carries, and red-zone looks, compiled into a 0–100 score.",
 };
 
 // A player's weekly usage score for one NFL season (convex/infinileague/
