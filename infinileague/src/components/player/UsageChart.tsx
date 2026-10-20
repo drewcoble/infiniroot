@@ -65,6 +65,7 @@ export function UsageChart({ fpid, year }: { fpid: number; year: string }) {
         max={100}
         reference={{ value: average, label: "Avg." }}
         barLabel={(_, total) => String(total)}
+        visibleWeeks={6}
         ariaLabel={
           `Usage score by week, ${year}, averaging ${Math.round(average)}: ` +
           weeks
