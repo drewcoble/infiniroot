@@ -2,18 +2,22 @@ import { useParams } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
+import { positionColorVar } from "@shared/positionColors";
 import { ChartTitle } from "../charts/ChartTitle";
-import { SERIES } from "../charts/chartTheme";
 import { WeeklyBars, type ChartSeries, type WeeklyBarDatum } from "../charts/WeeklyBars";
 
 type UsagePart = "pass" | "rush" | "rec";
 
-// Color follows the entity: rush is always slot 1, receiving slot 2,
-// passing slot 3, whichever ones a position shows.
+// Each part wears the app's color for the position it's most associated
+// with - passing QB yellow, rushing RB green, receiving WR blue - the same
+// colors as the position badges, so the chart reads in the app's own
+// language. Shade 6 - a step deeper than the badges' tint so the bars hold
+// their weight as solid fills (colorblind separation and 3:1 contrast
+// against the glass checked).
 const USAGE_SERIES: Record<UsagePart, ChartSeries> = {
-  rush: { key: "rush", label: "Rushing", color: SERIES[0] },
-  rec: { key: "rec", label: "Receiving", color: SERIES[1] },
-  pass: { key: "pass", label: "Passing", color: SERIES[2] },
+  rush: { key: "rush", label: "Rushing", color: positionColorVar("RB", 6) },
+  rec: { key: "rec", label: "Receiving", color: positionColorVar("WR", 6) },
+  pass: { key: "pass", label: "Passing", color: positionColorVar("QB", 6) },
 };
 
 const INFO = {
