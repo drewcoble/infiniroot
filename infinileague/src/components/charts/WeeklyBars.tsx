@@ -2,16 +2,47 @@ import {
   useState,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { useElementSize } from "@mantine/hooks";
-import { GRID, TEXT } from "./chartTheme";
+import { GRID, SURFACE, TEXT } from "./chartTheme";
 import classes from "./charts.module.css";
 
 export interface ChartSeries {
   key: string;
   label: string;
   color: string;
+  // Draw the marks as glass in `color`, the way the app's badges are (see
+  // GlassMatchupCard.module.css's .pill) - a translucent tint with a brighter
+  // edge - instead of a solid fill, so a bar in a position's color reads the
+  // same as that position's badge.
+  glass?: boolean;
+}
+
+// The badge's glass recipe (.pill): a 38% tint, edged at 50% - mixed onto
+// the card's surface rather than left see-through, so the average line
+// behind a bar doesn't show through it.
+function markPaint(series: ChartSeries | undefined): {
+  fill: string;
+  stroke?: string;
+  strokeWidth?: number;
+} {
+  const color = series?.color ?? TEXT.secondary;
+  if (!series?.glass) return { fill: color };
+  return {
+    fill: `color-mix(in srgb, ${color} 38%, ${SURFACE})`,
+    stroke: `color-mix(in srgb, ${color} 50%, rgba(255, 255, 255, 0.15))`,
+    strokeWidth: 1,
+  };
+}
+
+function swatchStyle(series: ChartSeries): CSSProperties {
+  const paint = markPaint(series);
+  return {
+    background: paint.fill,
+    ...(paint.stroke ? { border: `1px solid ${paint.stroke}` } : {}),
+  };
 }
 
 // One week's column. `values` follows the chart's series order and stacks
@@ -207,21 +238,30 @@ export function WeeklyBars({
                       const segmentTop = stackTop - h;
                       const segmentHeight = Math.max(0, h - gap);
                       stackTop = segmentTop;
-                      const color = series[valueIndex]?.color ?? TEXT.secondary;
+                      const paint = markPaint(series[valueIndex]);
+                      // A glass edge is drawn inside the mark, not over the
+                      // 2px gap - inset by half its width.
+                      const inset = paint.strokeWidth ? paint.strokeWidth / 2 : 0;
                       return valueIndex === lastFilled ? (
                         <path
                           key={valueIndex}
-                          d={topRoundedRect(x, segmentTop, barWidth, segmentHeight, END_RADIUS)}
-                          fill={color}
+                          d={topRoundedRect(
+                            x + inset,
+                            segmentTop + inset,
+                            barWidth - inset * 2,
+                            Math.max(0, segmentHeight - inset * 2),
+                            END_RADIUS,
+                          )}
+                          {...paint}
                         />
                       ) : (
                         <rect
                           key={valueIndex}
-                          x={x}
-                          y={segmentTop}
-                          width={barWidth}
-                          height={segmentHeight}
-                          fill={color}
+                          x={x + inset}
+                          y={segmentTop + inset}
+                          width={barWidth - inset * 2}
+                          height={Math.max(0, segmentHeight - inset * 2)}
+                          {...paint}
                         />
                       );
                     })}
@@ -288,7 +328,7 @@ export function WeeklyBars({
           {series.length > 1 &&
             series.map((entry) => (
               <span key={entry.key} className={classes.legendItem}>
-                <span className={classes.swatch} style={{ background: entry.color }} />
+                <span className={classes.swatch} style={swatchStyle(entry)} />
                 {entry.label}
               </span>
             ))}

@@ -9,15 +9,13 @@ import { WeeklyBars, type ChartSeries, type WeeklyBarDatum } from "../charts/Wee
 type UsagePart = "pass" | "rush" | "rec";
 
 // Each part wears the app's color for the position it's most associated
-// with - passing QB yellow, rushing RB green, receiving WR blue - the same
-// colors as the position badges, so the chart reads in the app's own
-// language. Shade 6 - a step deeper than the badges' tint so the bars hold
-// their weight as solid fills (colorblind separation and 3:1 contrast
-// against the glass checked).
+// with - passing QB yellow, rushing RB green, receiving WR blue - drawn as
+// glass in the badges' own tint (shade 4), so a bar reads exactly like that
+// position's badge.
 const USAGE_SERIES: Record<UsagePart, ChartSeries> = {
-  rush: { key: "rush", label: "Rushing", color: positionColorVar("RB", 6) },
-  rec: { key: "rec", label: "Receiving", color: positionColorVar("WR", 6) },
-  pass: { key: "pass", label: "Passing", color: positionColorVar("QB", 6) },
+  rush: { key: "rush", label: "Rushing", color: positionColorVar("RB", 4), glass: true },
+  rec: { key: "rec", label: "Receiving", color: positionColorVar("WR", 4), glass: true },
+  pass: { key: "pass", label: "Passing", color: positionColorVar("QB", 4), glass: true },
 };
 
 const INFO = {
