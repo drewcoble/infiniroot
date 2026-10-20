@@ -20,7 +20,9 @@ export function ChartTitle({
       <span className={classes.title}>
         {title}
         {info && (
-          <Popover position="bottom-start" offset={6}>
+          // Above the player popover (GlassPopover's scrim and card sit at
+          // 1000 / 1001), which the usage chart lives inside.
+          <Popover position="bottom-start" offset={6} zIndex={1002}>
             <Popover.Target>
               <button type="button" className={classes.infoButton} aria-label={`About ${title}`}>
                 <Info size={15} strokeWidth={2.25} />
