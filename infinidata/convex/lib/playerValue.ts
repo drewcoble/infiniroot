@@ -2,6 +2,7 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { POSITIONS } from "../positions";
 import { bonusPoints, pointsForScoring, pointsForScoringConfig, type ScoringConfig } from "../scoring";
+import { isUsagePosition, projectedUsageScore } from "./usageScore";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -83,6 +84,9 @@ export interface PlayerForm {
   // shows for the same player/week - ranking still uses the momentum-
   // adjusted currentWeekProjection via forwardRate below.
   currentWeekProjectionRaw: number;
+  // This week's projected usage score (lib/usageScore.ts) from the
+  // projection's stat line - null for K/DST. Display only (rosVor.ts).
+  currentWeekUsage: number | null;
   previousWeekProjection: number | null;
   weightedActualPPG: number;
   weightedSnapShare: number;
@@ -118,6 +122,7 @@ export async function gatherPlayerForms(
         position: pos,
         currentWeekProjection: pointsForScoringConfig(row, args.scoringConfig),
         currentWeekProjectionRaw: pointsForScoring(row, args.scoringConfig.scoring),
+        currentWeekUsage: isUsagePosition(pos) ? projectedUsageScore(row.stats, pos, args.scoringConfig) : null,
         previousWeekProjection:
           row.previousPointsStd !== undefined
             ? pointsForScoringConfig(

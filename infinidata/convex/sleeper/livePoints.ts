@@ -3,6 +3,7 @@ import { internalAction, internalMutation, internalQuery, query } from "../_gene
 import { internal } from "../_generated/api";
 import { positionValidator } from "../positions";
 import { sameJson } from "../lib/sameJson";
+import { isUsagePosition } from "../lib/usageScore";
 import { fetchSleeper, POSITION_SLUGS } from "./client";
 import { parseSleeperStatsRecords, type SleeperStatsRecord } from "./playerPoints";
 import { fetchEspnWeekGames } from "../espn/scoreboard";
@@ -30,7 +31,25 @@ const liveEntryValidator = v.object({
   // infinileague/season/teamRoster.ts).
   ptsAllow: v.optional(v.number()),
   ydsAllow: v.optional(v.number()),
+  // QB/RB/WR/TE only - NFL team and the USAGE_STATS below, for the
+  // Players tab's actual usage score once the game is final (see
+  // infinileague/season/usage.ts's getWeekUsage).
+  team: v.optional(v.string()),
+  usageStats: v.optional(v.record(v.string(), v.number())),
 });
+
+// The opportunity stats lib/usageScore.ts reads - kept to just these (not
+// the full box score) so the live document stays small.
+const USAGE_STATS = ["gp", "pass_att", "pass_rz_att", "rush_att", "rush_rz_att", "rec_tgt", "rec_rz_tgt"];
+
+function pickUsageStats(stats: Record<string, number>): Record<string, number> {
+  const picked: Record<string, number> = {};
+  for (const key of USAGE_STATS) {
+    const value = stats[key];
+    if (value) picked[key] = value;
+  }
+  return picked;
+}
 
 // Which (season, week)s have a game inside its live window right now.
 // Checks the current week and the one before it: Sleeper's week (which
@@ -78,7 +97,9 @@ function sameEntries(a: LiveEntry[], b: LiveEntry[]): boolean {
         x.rec === y.rec &&
         x.passTd === y.passTd &&
         x.ptsAllow === y.ptsAllow &&
-        x.ydsAllow === y.ydsAllow
+        x.ydsAllow === y.ydsAllow &&
+        x.team === y.team &&
+        sameJson(x.usageStats ?? null, y.usageStats ?? null)
       );
     })
   );
@@ -190,6 +211,9 @@ export const pollLivePointsInternal = internalAction({
           passTd: row.stats.pass_td ?? 0,
           ...(row.position === "DST"
             ? { ptsAllow: row.stats.pts_allow ?? 0, ydsAllow: row.stats.yds_allow ?? 0 }
+            : {}),
+          ...(isUsagePosition(row.position) && row.team
+            ? { team: row.team, usageStats: pickUsageStats(row.stats) }
             : {}),
         }))
         // Stable order so upsertLiveWeekPoints' unchanged check isn't

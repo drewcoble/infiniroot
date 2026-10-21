@@ -10,7 +10,7 @@ import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassFreeAgentRowData {
   fpid: number;
-  // Place in the list (sorted by suggested bid).
+  // Place in the list, in the page's sort order.
   rank: number;
   name: string;
   position: Position;
@@ -23,6 +23,9 @@ export interface GlassFreeAgentRowData {
   bid: string;
   // "Mkt $9" under it.
   market: string;
+  // Shown in place of the bid and market value when the list is sorted by
+  // usage: the actual score (or season average) big, the projection small.
+  usage?: { actual: string; projection: string };
   // Why the bid is what it is, and any injury-replacement boost - dimmed on
   // a third line (truncated), in full in the popover.
   rationale: string | null;
@@ -49,8 +52,9 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
     data.team,
     data.isRookie ? "rookie" : null,
     data.injury?.status,
-    data.bid ? `suggested bid ${data.bid}` : null,
-    data.market,
+    ...(data.usage
+      ? [data.usage.actual ? `usage ${data.usage.actual}` : null, data.usage.projection || null]
+      : [data.bid ? `suggested bid ${data.bid}` : null, data.market]),
     note || null,
   ]
     .filter(Boolean)
@@ -93,7 +97,9 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
             </span>
           )}
         </div>
-        <div className={`${classes.widePoints} ${classes.points}`}>{data.bid}</div>
+        <div className={`${classes.widePoints} ${classes.points}`}>
+          {data.usage ? data.usage.actual : data.bid}
+        </div>
         <div className={classes.wideDetail}>
           <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
             {data.position}
@@ -105,7 +111,7 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
             </span>
           )}
         </div>
-        <div className={classes.wideProj}>{data.market}</div>
+        <div className={classes.wideProj}>{data.usage ? data.usage.projection : data.market}</div>
         {note && (
           <div className={classes.freeAgentNote}>
             <span className={classes.gameLineText}>{note}</span>

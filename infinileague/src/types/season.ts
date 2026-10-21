@@ -184,6 +184,12 @@ export interface RosVorRow {
   // convex/rosVor.ts's board itself; the Players tab merges it in from
   // getWeekPoints (live during games). Absent until the player has played.
   weekPoints?: number;
+  // Usage score (convex/lib/usageScore.ts): season average and this
+  // week's projection - null for K/DST or no data. weekUsageActual is
+  // merged in by the Players tab from getWeekUsage once his game is final.
+  seasonUsage: number | null;
+  weekUsage: number | null;
+  weekUsageActual?: number;
   rosteredByTeamName: string | null;
   // Absent means not currently injured - mirrors TeamRosterRow's injury
   // field below, same convex/injuries.ts source (Sleeper-derived).

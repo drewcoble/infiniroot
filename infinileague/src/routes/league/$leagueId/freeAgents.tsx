@@ -14,7 +14,6 @@ import { compareSortValues } from "../../../lib/tableSort";
 import type {
   FaabSuggestionRow,
   FaabSuggestionsResult,
-  LinkedSeason,
   RosVorRow,
   StandingsRow,
 } from "../../../types/season";
@@ -25,22 +24,18 @@ export const Route = createFileRoute("/league/$leagueId/freeAgents")({
 
 const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 
-// Same Week / Season views and sorts as the Players page, plus Bid (FAAB
-// leagues only - the default there, Rank otherwise): "rank" = the view's
-// rosVOR rank (weekRank / rosRank); "bid" = suggested bid (market value
-// without one); "actual" / "projected" = this week's points / projection
-// in Week view, season PPG / ROS PPG in Season view. Players with no
-// rosVOR board row (or no points yet) sort last. Ties fall back to the
-// rank, then name - and a Bid sort's ties to the market value first: with
-// little or no FAAB left most suggested bids are $0, and market value then
-// rank still order those meaningfully.
+// Same Week / Season views and sorts as the Players page: "rank" = the
+// view's rosVOR rank (weekRank / rosRank); "actual" / "projected" = this
+// week's points / projection in Week view, season PPG / ROS PPG in Season
+// view; "usage" = this week's usage score (actual once his game is final,
+// else projected) / the season's average. Players with no rosVOR board
+// row (or no value yet) sort last. Ties fall back to the rank, then name.
 type View = "week" | "ros";
-type SortKey = "rank" | "bid" | "actual" | "projected";
-type SortValueKey = SortKey | "market";
+type SortKey = "rank" | "actual" | "projected" | "usage";
 
-const SORT_LABELS: Record<View, { actual: string; projected: string }> = {
-  week: { actual: "Actual", projected: "Proj" },
-  ros: { actual: "PPG", projected: "ROS PPG" },
+const SORT_LABELS: Record<View, { actual: string; projected: string; usage: string }> = {
+  week: { actual: "Actual", projected: "Proj", usage: "Usage" },
+  ros: { actual: "PPG", projected: "ROS PPG", usage: "Usage" },
 };
 
 // Migrated from infinidraft's src/pages/Season/FreeAgentsTab.tsx (now
@@ -88,23 +83,7 @@ function FreeAgentsPage() {
   // Same position filter and sort control as the Players page.
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
   const [view, setView] = useState<View>("ros");
-  // Bid only means something with FAAB - a priority-waiver league hides it
-  // and defaults to Rank. Unknown (seasons still loading, or not synced
-  // yet) keeps the FAAB default.
-  const seasonsList: LinkedSeason[] | undefined = useQuery(
-    api.leagues.listLinkedSeasons,
-    isAuthenticated ? {} : "skip",
-  );
-  const usesFaab =
-    seasonsList?.find((season) => season._id === leagueId)?.waiverType !== "priority";
-  // null = no manual pick yet, so the default follows the waiver type.
-  const [pickedSortKey, setSortKey] = useState<SortKey | null>(null);
-  const sortKey: SortKey =
-    pickedSortKey === null || (pickedSortKey === "bid" && !usesFaab)
-      ? usesFaab
-        ? "bid"
-        : "rank"
-      : pickedSortKey;
+  const [sortKey, setSortKey] = useState<SortKey>("rank");
 
   // This week's actual points (live during games) for the Week view's
   // Actual sort - same query the Players page uses.
@@ -113,6 +92,12 @@ function FreeAgentsPage() {
     isAuthenticated && result?.week ? { seasonId, week: result.week } : "skip",
   );
   const weekPointsByFpid = new Map((weekPoints ?? []).map((entry) => [entry.fpid, entry.points]));
+  // This week's actual usage scores, once each game is final.
+  const weekUsage = useQuery(
+    api.infinileague.season.usage.getWeekUsage,
+    isAuthenticated && result?.week ? { seasonId, week: result.week } : "skip",
+  );
+  const weekUsageByFpid = new Map((weekUsage ?? []).map((entry) => [entry.fpid, entry.usage]));
 
   if (result === undefined) {
     return (
@@ -140,24 +125,22 @@ function FreeAgentsPage() {
 
   // Higher-is-better value for a sort key (rank is negated so "desc"
   // still puts #1 first).
-  const sortValue = (row: FaabSuggestionRow, key: SortValueKey): number | undefined => {
+  const sortValue = (row: FaabSuggestionRow, key: SortKey): number | undefined => {
     const board = rosVorByFpid.get(row.fpid);
     const isWeek = view === "week";
-    if (key === "bid") return row.suggestedBid ?? row.marketValue;
-    if (key === "market") return row.marketValue;
     if (key === "rank") {
       const rank = board ? (isWeek ? board.weekRank : board.rosRank) : undefined;
       return rank ? -rank : undefined;
     }
     if (key === "actual") return isWeek ? weekPointsByFpid.get(row.fpid) : board?.actualPpg;
+    if (key === "usage") {
+      return isWeek
+        ? (weekUsageByFpid.get(row.fpid) ?? board?.weekUsage ?? undefined)
+        : (board?.seasonUsage ?? undefined);
+    }
     return isWeek ? board?.weekPpg : board?.rosPpg;
   };
-  const sortChain: SortValueKey[] =
-    sortKey === "bid"
-      ? ["bid", "market", "rank"]
-      : sortKey === "rank"
-        ? ["rank"]
-        : [sortKey, "rank"];
+  const sortChain: SortKey[] = sortKey === "rank" ? ["rank"] : [sortKey, "rank"];
   const rows = result.suggestions
     .filter((row) => selectedPositions.includes(row.position))
     .sort((a, b) => {
@@ -190,9 +173,9 @@ function FreeAgentsPage() {
             onChange={setSortKey}
             options={[
               { label: "Rank", value: "rank" as const },
-              ...(usesFaab ? [{ label: "Bid", value: "bid" as const }] : []),
               { label: SORT_LABELS[view].actual, value: "actual" as const },
               { label: SORT_LABELS[view].projected, value: "projected" as const },
+              { label: SORT_LABELS[view].usage, value: "usage" as const },
             ]}
           />
         </div>
@@ -213,6 +196,21 @@ function FreeAgentsPage() {
           const bidAmount = row.suggestedBid ?? row.marketValue;
           // No bid line for a player nobody's bidding on ($0/$0).
           const hasBid = bidAmount > 0 || row.marketValue > 0;
+          const weekUsageActual = weekUsageByFpid.get(row.fpid);
+          const weekUsageProj = rosVorRow?.weekUsage ?? null;
+          // Sorted by usage, the usage score takes the bid's place - big =
+          // the actual score (season average), small = the projection.
+          const usage =
+            sortKey !== "usage"
+              ? undefined
+              : view === "week"
+                ? {
+                    actual: weekUsageActual !== undefined ? String(weekUsageActual) : "",
+                    projection: weekUsageProj !== null ? `Proj ${weekUsageProj}` : "",
+                  }
+                : typeof rosVorRow?.seasonUsage === "number"
+                  ? { actual: `Avg. ${Math.round(rosVorRow.seasonUsage)}`, projection: "Usage" }
+                  : { actual: "", projection: "" };
           return (
             <GlassFreeAgentRow
               key={row.fpid}
@@ -227,6 +225,7 @@ function FreeAgentsPage() {
                 injury: rosVorRow?.injury,
                 bid: hasBid ? `$${bidAmount}` : "",
                 market: hasBid ? `Mkt $${row.marketValue}` : "",
+                ...(usage ? { usage } : {}),
                 rationale: row.rationale,
                 boostReason: row.boostReason,
               }}

@@ -34,6 +34,7 @@ const WEEKS = Array.from({ length: 18 }, (_, i) => String(i + 1));
 export interface ParsedStatsRow {
   fpid: number;
   position: Position;
+  team: string | null;
   ptsStd: number;
   ptsPpr: number;
   ptsHalf: number;
@@ -105,6 +106,7 @@ export function parseSleeperStatsRecords(records: SleeperStatsRecord[]): ParsedS
     rows.push({
       fpid,
       position,
+      team: record.team ?? null,
       ptsStd: stats.pts_std ?? 0,
       ptsPpr: stats.pts_ppr ?? 0,
       ptsHalf: stats.pts_half_ppr ?? 0,

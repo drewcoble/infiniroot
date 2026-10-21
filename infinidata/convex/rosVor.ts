@@ -55,6 +55,11 @@ export interface RosVorRow {
   weekVor: number;
   weekRank: number;
   weekPpg: number;
+  // Usage score (lib/usageScore.ts): season average so far, and this
+  // week's projected score - null for K/DST or no data yet. This week's
+  // actual score is getWeekUsage (infinileague/season/usage.ts).
+  seasonUsage: number | null;
+  weekUsage: number | null;
   // Position rank derived from weekVor, same "computed at read time" reason
   // positionRank (rosVor-based) is - the week-mode counterpart to
   // positionRank for infinileague's Players tab toggle.
@@ -228,6 +233,8 @@ const rosVorInputValidator = v.object({
   weekPpg: v.number(),
   actualPoints: v.number(),
   actualPpg: v.number(),
+  seasonUsage: v.union(v.number(), v.null()),
+  weekUsage: v.union(v.number(), v.null()),
   boostReason: v.union(v.string(), v.null()),
 });
 type RosVorInput = Infer<typeof rosVorInputValidator>;
@@ -263,7 +270,10 @@ export const computeRosVorInputs = internalQuery({
 
     // gamesPlayed rides along for actualPpg, not used by the replacement-
     // level math itself.
-    const actualStatsByFpid = new Map<number, { totalPoints: number; gamesPlayed: number }>();
+    const actualStatsByFpid = new Map<
+      number,
+      { totalPoints: number; gamesPlayed: number; usageAverage: number | undefined }
+    >();
     for (const pos of activePositions) {
       const rows = await ctx.db
         .query("playerSeasonStats")
@@ -276,7 +286,13 @@ export const computeRosVorInputs = internalQuery({
             .eq("sixPointPassTds", scoringConfig.sixPointPassTds),
         )
         .collect();
-      for (const row of rows) actualStatsByFpid.set(row.fpid, { totalPoints: row.totalPoints, gamesPlayed: row.gamesPlayed });
+      for (const row of rows) {
+        actualStatsByFpid.set(row.fpid, {
+          totalPoints: row.totalPoints,
+          gamesPlayed: row.gamesPlayed,
+          usageAverage: row.usageAverage,
+        });
+      }
     }
 
     return [...forms.values()].map((form) => {
@@ -318,6 +334,8 @@ export const computeRosVorInputs = internalQuery({
         weekPpg: form.currentWeekProjectionRaw,
         actualPoints: actualStats?.totalPoints ?? 0,
         actualPpg: actualStats && actualStats.gamesPlayed > 0 ? actualStats.totalPoints / actualStats.gamesPlayed : 0,
+        seasonUsage: actualStats?.usageAverage ?? null,
+        weekUsage: form.currentWeekUsage,
         boostReason: boost?.reason ?? null,
       };
     });
@@ -416,6 +434,8 @@ export const refreshRosVor = internalMutation({
         weekVor: round2(weekVor),
         weekRank: weekRankByFpid.get(player.fpid) ?? 0,
         weekPpg: round2(player.weekPpg),
+        seasonUsage: player.seasonUsage === null ? null : Math.round(player.seasonUsage * 10) / 10,
+        weekUsage: player.weekUsage,
       };
       const match = existingByFpid.get(player.fpid);
       if (match) {
@@ -525,6 +545,8 @@ export const getRosVorBoard = query({
           weekVor: row.weekVor ?? 0,
           weekRank: row.weekRank ?? 0,
           weekPpg: row.weekPpg ?? 0,
+          seasonUsage: row.seasonUsage ?? null,
+          weekUsage: row.weekUsage ?? null,
           weekPositionRank: weekPositionRankByFpid.get(row.fpid) ?? 0,
           rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
           isOnMyTeam: args.teamId !== undefined && teamIdByFpid.get(row.fpid) === args.teamId,

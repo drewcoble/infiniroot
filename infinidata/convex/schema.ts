@@ -184,6 +184,13 @@ const rosVorBoardFields = {
   // player/week, so the Players tab's "This Week" view and My Team never
   // disagree on what a player's projected for.
   weekPpg: v.optional(v.number()),
+  // Usage score (lib/usageScore.ts) in this shape's scoring: the season's
+  // average so far (playerSeasonStats.usageAverage), and this week's
+  // projected score from the projection's stat line. Null for K/DST or no
+  // data - null rather than absent so a patch clears a stale value (same
+  // reason as boostReason). Optional for rows written before these existed.
+  seasonUsage: v.optional(v.union(v.number(), v.null())),
+  weekUsage: v.optional(v.union(v.number(), v.null())),
   computedAt: v.number(),
 };
 
@@ -553,6 +560,11 @@ export default defineSchema({
     // use this instead of stdDeviation so a player's occasional monster game
     // doesn't inflate their variance the same way a genuine bust week does.
     downsideDeviation: v.number(),
+    // Average weekly usage score (lib/usageScore.ts) over the weeks he
+    // played, in this row's scoring - QB/RB/WR/TE only, absent before his
+    // first game. Recomputed from the season's rows on each write, like
+    // downsideDeviation. Feeds the Players tab's season usage (rosVor.ts).
+    usageAverage: v.optional(v.number()),
     updatedAt: v.number(),
   })
     // Read path: valueGaps.ts pulls every fpid for one
@@ -1142,6 +1154,11 @@ export default defineSchema({
         passTd: v.number(),
         ptsAllow: v.optional(v.number()),
         ydsAllow: v.optional(v.number()),
+        // QB/RB/WR/TE: NFL team and the week's opportunity stats so far
+        // (sleeper/livePoints.ts's USAGE_STATS) - the Players tab's actual
+        // usage score once the game is final.
+        team: v.optional(v.string()),
+        usageStats: v.optional(v.record(v.string(), v.number())),
       }),
     ),
     // Per-team game status from ESPN's scoreboard (see lib/liveGames.ts),

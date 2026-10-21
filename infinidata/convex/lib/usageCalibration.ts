@@ -160,3 +160,19 @@ export const QB_CALIBRATION: Record<UsageScoring, { standard: QbCalibration; six
     },
   },
 };
+
+// Red-zone carries per carry, targets per target, and pass attempts per
+// attempt, by position - fills in the red-zone looks a projected stat
+// line doesn't have (projected usage).
+export interface RedZoneShare {
+  rush: number;
+  rec: number;
+  pass: number;
+}
+
+export const RED_ZONE_SHARE: Record<"QB" | "RB" | "WR" | "TE", RedZoneShare> = {
+  QB: { rush: 0.1865, rec: 0.3750, pass: 0.1250 },
+  RB: { rush: 0.1630, rec: 0.1138, pass: 0.8750 },
+  WR: { rush: 0.1655, rec: 0.1177, pass: 0.2273 },
+  TE: { rush: 0.2943, rec: 0.1412, pass: 0.2500 },
+};
