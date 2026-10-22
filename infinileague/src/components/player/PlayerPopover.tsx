@@ -28,7 +28,6 @@ import { isAnyGameLive, useNow, type WeekGame } from "../../lib/liveGames";
 import { toMatchupCardData } from "../../lib/matchupCardData";
 import { LIVE_REFRESH_MS } from "../../lib/matchupSummary";
 import { seasonPositionRanks } from "../../lib/seasonPositionRanks";
-import { formatTradeValue } from "../../lib/tradeValue";
 import type {
   FaabSuggestionsResult,
   RosVorRow,
@@ -106,7 +105,7 @@ function weekRankStat(
 // it (Matchup, Team, Players, Free Agents, Trade). It shows everything any
 // page's detail card has ever shown, looked up here by fpid: who he is and
 // who rosters him, this week's game (score, meter, pace), this week /
-// season / rest-of-season numbers, trade value, a free agent's bid, his
+// season / rest-of-season numbers, buy / sell call, a free agent's bid, his
 // weekly points and usage (PlayerTrends), and the game log. Pages pass
 // only their own context (PlayerPopoverContext). The popover shell,
 // placement, and dismissal are GlassPopover's. Without an fpid (the Cards
@@ -217,7 +216,6 @@ export function PlayerPopover({
           ? "Your team"
           : owner;
   const trade = fpid !== undefined ? tradeValues.byFpid?.get(fpid) : undefined;
-  const tradeLoading = tradeValues.byFpid === undefined && !tradeValues.error;
 
   const isLive = game?.gameState === "live";
   const isPre = game?.gameState === "pre";
@@ -225,14 +223,6 @@ export function PlayerPopover({
   const pace = game ? paceFor(game) : undefined;
   const PaceIcon = pace ? PACE_ICON[pace] : null;
   const scaleMax = context.scaleMax ?? (game ? meterScaleMax([game]) : 25);
-  const formatValue = (value: number | null | undefined) =>
-    value === undefined
-      ? tradeLoading
-        ? "…"
-        : "—"
-      : value === null
-        ? "n/a"
-        : formatTradeValue(value);
 
   const groups: StatGroup[] = [
     {
@@ -283,27 +273,6 @@ export function PlayerPopover({
           : []),
       ],
     },
-    ...(fpid !== undefined && seasonId
-      ? [
-          {
-            label: "Trade value",
-            items: [
-              { label: "Infinivalue", value: formatValue(trade?.projectionValue) },
-              { label: "Market value", value: formatValue(trade?.marketValue) },
-              { label: "Avg value", value: formatValue(trade?.value) },
-              {
-                label: "Mkt rank",
-                value:
-                  trade === undefined
-                    ? formatValue(undefined)
-                    : trade.marketPositionRank === null
-                      ? "n/a"
-                      : positionRankLabel(position, trade.marketPositionRank),
-              },
-            ],
-          },
-        ]
-      : []),
     ...(bid
       ? [
           {
