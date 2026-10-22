@@ -46,11 +46,13 @@ export function UsageChart({ fpid, year }: { fpid: number; year: string }) {
       : position === "RB"
         ? ["rush", "rec"]
         : ["rec", ...(has("rush") ? (["rush"] as const) : [])];
+  // A projected week has a total but no split - drawn as one bar.
   const data: WeeklyBarDatum[] = weeks.map((week) => ({
     week: week.week,
     kind: week.kind,
-    values: parts.map((part) => week[part]),
+    values: week.kind === "projected" ? [week.total] : parts.map((part) => week[part]),
   }));
+  const projected = weeks.find((week) => week.kind === "projected");
 
   return (
     <div>
@@ -71,7 +73,8 @@ export function UsageChart({ fpid, year }: { fpid: number; year: string }) {
           weeks
             .filter((week) => week.kind === "played")
             .map((week) => `week ${week.week} ${week.total}`)
-            .join(", ")
+            .join(", ") +
+          (projected ? `; week ${projected.week} projected ${projected.total}` : "")
         }
       />
     </div>

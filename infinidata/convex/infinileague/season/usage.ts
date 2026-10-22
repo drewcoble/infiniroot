@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query } from "../../_generated/server";
 import { requireSeasonOwner } from "../../lib/access";
-import { isUsagePosition, usageScore, type UsageScore } from "../../lib/usageScore";
+import { isUsagePosition, projectedUsageScore, usageScore, type UsageScore } from "../../lib/usageScore";
 import { normalizeNflTeam } from "../../lib/liveGames";
 import { scoringConfigFromSeason } from "../../scoring";
 import { loadPlayerSeason } from "./gameLog";
@@ -9,13 +9,16 @@ import { loadPlayerSeason } from "./gameLog";
 export interface UsageWeek extends UsageScore {
   week: number;
   // Same weeks as the game log: "played", "dnp" (his team played, he
-  // didn't), or "bye" - the score parts are 0 for the last two.
-  kind: "played" | "dnp" | "bye";
+  // didn't), or "bye" - the score parts are 0 for the last two. Plus
+  // "projected": the current week before he's played it, `total` only
+  // (the projected score, see lib/usageScore.ts's projectedUsageScore).
+  kind: "played" | "dnp" | "bye" | "projected";
 }
 
 // One player's weekly usage score for one NFL season, in this league's
 // scoring (see lib/usageScore.ts) - the player popover's usage chart.
-// `average` is across the games he played (null before his first). Null
+// `average` is across the games he played (null before his first) - the
+// projected current week never counts toward it. Null
 // for a player who isn't in the players table or plays a position the score
 // doesn't cover (K, DST).
 export const getUsageWeeks = query({
@@ -36,6 +39,26 @@ export const getUsageWeeks = query({
         ? { week: week.week, kind: week.kind, ...usageScore(week.row.stats, position, config) }
         : { week: week.week, kind: week.kind, pass: 0, rush: 0, rec: 0, total: 0, expectedPoints: 0 },
     );
+    // The current week's projection, once - not if he's already played
+    // it (or missed it), and only for the season in progress, since the
+    // projections table only holds the current season.
+    const nflState = await ctx.db.query("nflState").first();
+    if (nflState?.seasonType === "regular" && nflState.season === args.year) {
+      const currentWeek = Number(nflState.week);
+      if (!weeks.some((week) => week.week === currentWeek)) {
+        const projection = await ctx.db
+          .query("projections")
+          .withIndex("by_position_week_fpid", (q) =>
+            q.eq("position", position).eq("week", nflState.week).eq("fpid", args.fpid),
+          )
+          .first();
+        const total = projection ? projectedUsageScore(projection.stats, position, config) : 0;
+        if (total > 0) {
+          weeks.push({ week: currentWeek, kind: "projected", pass: 0, rush: 0, rec: 0, total, expectedPoints: 0 });
+        }
+      }
+    }
+
     const played = weeks.filter((week) => week.kind === "played");
     const average =
       played.length > 0 ? played.reduce((sum, week) => sum + week.total, 0) / played.length : null;

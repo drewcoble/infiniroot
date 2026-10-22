@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useElementSize } from "@mantine/hooks";
-import { GRID, SURFACE, TEXT } from "./chartTheme";
+import { GRID, NEUTRAL_MARK, SURFACE, TEXT } from "./chartTheme";
 import classes from "./charts.module.css";
 
 export interface ChartSeries {
@@ -50,11 +50,22 @@ function swatchStyle(series: ChartSeries): CSSProperties {
 
 // One week's column. `values` follows the chart's series order and stacks
 // bottom-up. "dnp": his team played, he didn't. "bye": no team game.
+// "projected": a week not played yet - one gray dashed outline at the
+// values' total, so it never reads as real data.
 export interface WeeklyBarDatum {
   week: number;
-  kind: "played" | "dnp" | "bye";
+  kind: "played" | "dnp" | "bye" | "projected";
   values: number[];
 }
+
+// A projected column: gray dashed edge over a faint gray fill, mixed onto
+// the surface like the glass marks so the average line doesn't show through.
+const PROJECTED_PAINT = {
+  fill: `color-mix(in srgb, ${NEUTRAL_MARK} 14%, ${SURFACE})`,
+  stroke: NEUTRAL_MARK,
+  strokeWidth: 1,
+  strokeDasharray: "3 2",
+};
 
 const MARGIN = { top: 6, right: 2, bottom: 16, left: 24 };
 // Bars cap at 24px thick and never fill their slot - the leftover is air.
@@ -135,6 +146,7 @@ export function WeeklyBars({
   const [edges, setEdges] = useState({ left: false, right: false });
 
   const totals = data.map((datum) => datum.values.reduce((sum, value) => sum + value, 0));
+  const hasProjected = data.some((datum) => datum.kind === "projected");
   const top = max ?? Math.max(1, ...totals, reference?.value ?? 0);
   const ticks = niceTicks(top);
   const domainTop = Math.max(top, ticks[ticks.length - 1] ?? top);
@@ -297,8 +309,21 @@ export function WeeklyBars({
                     (last, value, valueIndex) => (value > 0 ? valueIndex : last),
                     -1,
                   );
+                  const projectedHeight = ((totals[index] ?? 0) / domainTop) * plotHeight;
                   return (
                     <g key={datum.week} opacity={dimmed ? 0.4 : 1}>
+                      {datum.kind === "projected" && projectedHeight > 0 && (
+                        <path
+                          d={topRoundedRect(
+                            x + 0.5,
+                            baseline - projectedHeight + 0.5,
+                            barWidth - 1,
+                            Math.max(0, projectedHeight - 1),
+                            END_RADIUS,
+                          )}
+                          {...PROJECTED_PAINT}
+                        />
+                      )}
                       {datum.kind === "played" &&
                         datum.values.map((value, valueIndex) => {
                           if (value <= 0) return null;
@@ -336,9 +361,12 @@ export function WeeklyBars({
                             />
                           );
                         })}
-                      {barLabel && datum.kind === "played" && totals[index] !== undefined && (
+                      {barLabel &&
+                        (datum.kind === "played" || datum.kind === "projected") &&
+                        totals[index] !== undefined && (
                         <text
                           className={classes.columnLabel}
+                          style={datum.kind === "projected" ? { fill: TEXT.muted } : undefined}
                           x={cx}
                           y={y(totals[index] ?? 0) - 4}
                           textAnchor="middle"
@@ -395,7 +423,7 @@ export function WeeklyBars({
           </div>
         )}
       </div>
-      {(series.length > 1 || reference) && (
+      {(series.length > 1 || reference || hasProjected) && (
         <div className={classes.legend}>
           {series.length > 1 &&
             series.map((entry) => (
@@ -408,6 +436,15 @@ export function WeeklyBars({
             <span className={classes.legendItem}>
               <span className={classes.swatchLine} style={{ background: TEXT.secondary }} />
               {reference.label}
+            </span>
+          )}
+          {hasProjected && (
+            <span className={classes.legendItem}>
+              <span
+                className={classes.swatch}
+                style={{ background: PROJECTED_PAINT.fill, border: `1px dashed ${NEUTRAL_MARK}` }}
+              />
+              Proj.
             </span>
           )}
         </div>
