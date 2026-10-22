@@ -124,7 +124,6 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
           fpid={data.fpid}
           anchor={anchor}
           onClose={close}
-          context={{ listRank: { rank: data.rank, isMine: false } }}
         />
       )}
     </div>

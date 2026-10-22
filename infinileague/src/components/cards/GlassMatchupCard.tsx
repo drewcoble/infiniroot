@@ -28,12 +28,10 @@ export type { GlassMatchupCardData } from "./cardShared";
 export function GlassMatchupCard({
   data,
   displayName = data.name,
-  slot,
   scaleMax,
 }: {
   data: GlassMatchupCardData;
   displayName?: string;
-  slot: string;
   scaleMax: number;
 }) {
   const isLive = data.gameState === "live";
@@ -137,7 +135,7 @@ export function GlassMatchupCard({
           fpid={data.fpid}
           anchor={anchor}
           onClose={close}
-          context={{ game: data, week: data.week, slot, scaleMax }}
+          context={{ game: data, scaleMax }}
         />
       )}
     </>

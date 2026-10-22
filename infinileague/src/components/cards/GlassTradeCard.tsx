@@ -122,14 +122,12 @@ function metricValues(data: GlassTradeCardData, metric: TradeMetric): MetricValu
 export function GlassTradeCard({
   data,
   displayName = data.name,
-  slot,
   metric,
   selected,
   onToggle,
 }: {
   data: GlassTradeCardData;
   displayName?: string;
-  slot: string;
   metric: TradeMetric;
   selected: boolean;
   onToggle: () => void;
@@ -228,7 +226,7 @@ export function GlassTradeCard({
           fpid={data.fpid}
           anchor={anchor}
           onClose={close}
-          context={{ slot, inTrade: selected }}
+          context={{ inTrade: selected }}
         />
       )}
     </>

@@ -85,7 +85,6 @@ function Cell({
             props.seasonPositionRankByFpid.get(fpid),
           )}
           displayName={props.shortName(row.name ?? "")}
-          slot={slotLabel(row.slot)}
           metric={props.metric}
           selected={selected.has(fpid)}
           onToggle={() => onToggle(fpid)}

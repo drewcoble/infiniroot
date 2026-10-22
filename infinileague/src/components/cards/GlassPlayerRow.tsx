@@ -148,7 +148,6 @@ export function GlassPlayerRow({
           fpid={data.fpid}
           anchor={anchor}
           onClose={close}
-          context={{ listRank: { rank: data.rank, isMine: data.isOnMyTeam } }}
         />
       )}
     </div>

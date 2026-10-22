@@ -131,7 +131,7 @@ export function GlassRosterCard({
           fpid={data.fpid}
           anchor={anchor}
           onClose={close}
-          context={{ game: data, week: data.week, slot, scaleMax }}
+          context={{ game: data, scaleMax }}
         />
       )}
     </div>

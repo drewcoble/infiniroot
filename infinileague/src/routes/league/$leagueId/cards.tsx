@@ -378,7 +378,6 @@ function CardsPage() {
                 <GlassMatchupCard
                   data={row.a}
                   displayName={shortName(row.a.name)}
-                  slot={row.slot}
                   scaleMax={scaleMax}
                 />
               ) : (
@@ -391,7 +390,6 @@ function CardsPage() {
                 <GlassMatchupCard
                   data={row.b}
                   displayName={shortName(row.b.name)}
-                  slot={row.slot}
                   scaleMax={scaleMax}
                 />
               ) : (

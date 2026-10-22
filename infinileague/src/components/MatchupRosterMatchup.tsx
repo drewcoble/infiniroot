@@ -62,7 +62,6 @@ function Cell({
         <GlassMatchupCard
           data={props.toCardData(row)}
           displayName={props.shortName(row.name ?? "")}
-          slot={slotLabel(row.slot)}
           scaleMax={props.scaleMax}
         />
       ) : (

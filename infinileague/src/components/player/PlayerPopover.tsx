@@ -44,19 +44,12 @@ interface NflState {
 // What only the page knows about the player - everything else the popover
 // looks up itself by fpid, so it reads the same on every page.
 export interface PlayerPopoverContext {
-  // His place in the page's list (Players / Free Agents) - the rank chip
-  // before his name, saddlebrown when he's yours.
-  listRank?: { rank: number; isMine: boolean } | undefined;
-  // His roster slot (Matchup / Team / Trade).
-  slot?: string | undefined;
   // He's selected in the Trade analyzer.
   inTrade?: boolean | undefined;
   // The page's own card for the week it's showing (Matchup / Team, which
   // can show past and future weeks) - otherwise the popover builds this
   // week's from the league's live data.
   game?: GlassMatchupCardData | undefined;
-  // That week's number, when `game` is for a week other than the current.
-  week?: string | undefined;
   // The page's shared meter scale, so the popover's meter matches the
   // cards around it.
   scaleMax?: number | undefined;
@@ -81,30 +74,10 @@ function paceSentence(data: GlassMatchupCardData, pace: Pace): string {
 const positionRankLabel = (position: string, rank: number | undefined | null) =>
   rank ? `${position}${rank}` : "—";
 
-// This week's rank, named for which one it is: actual so far while live,
-// actual once final, the projection before kickoff.
-function weekRankStat(
-  game: GlassMatchupCardData | undefined,
-  position: string,
-  projectedRank: number | undefined,
-): { label: string; value: string } {
-  if (game?.gameState === "live") {
-    return { label: "Live rank", value: positionRankLabel(position, game.weekActualPositionRank) };
-  }
-  if (game?.gameState === "final") {
-    return { label: "Week rank", value: positionRankLabel(position, game.weekActualPositionRank) };
-  }
-  return {
-    label: "Proj rank",
-    value: positionRankLabel(position, game?.weekPositionRank ?? projectedRank),
-  };
-}
-
 // THE player popover - one detail card for a player, whichever page opened
-// it (Matchup, Team, Players, Free Agents, Trade). It shows everything any
-// page's detail card has ever shown, looked up here by fpid: who he is and
-// who rosters him, this week's game (score, meter, pace), this week /
-// season / rest-of-season numbers, a free agent's bid, his
+// it (Matchup, Team, Players, Free Agents, Trade), looked up here by fpid:
+// who he is, his rank and bye, who rosters him, this week's game (score,
+// meter, pace), season / rest-of-season numbers, a free agent's bid, his
 // weekly points and usage (PlayerTrends), and the game log. Pages pass
 // only their own context (PlayerPopoverContext). The popover shell,
 // placement, and dismissal are GlassPopover's. Without an fpid (the Cards
@@ -223,24 +196,6 @@ export function PlayerPopover({
 
   const groups: StatGroup[] = [
     {
-      label: `Week ${context.week ?? week ?? ""}`.trim(),
-      items: [
-        {
-          label: "Points",
-          value:
-            game && game.gameState !== "pre" && game.gameState !== "bye"
-              ? formatPoints(game.actualPoints)
-              : actual !== undefined && !context.game
-                ? formatPoints(actual)
-                : "—",
-        },
-        { label: "Proj", value: formatProj(game?.projectedPoints ?? row?.weekPpg) },
-        weekRankStat(game, position, row?.weekPositionRank),
-        ...(context.slot !== undefined ? [{ label: "Slot", value: context.slot || "—" }] : []),
-        { label: "Bye", value: byeWeek ? `Wk ${byeWeek}` : "—" },
-      ],
-    },
-    {
       columns: ["Season", "ROS"],
       rows: [
         {
@@ -299,11 +254,6 @@ export function PlayerPopover({
         <PlayerHeadshot fpid={fpid} position={position} team={team} />
         <div style={{ minWidth: 0 }}>
           <div className={classes.teamCardPopoverTitle}>
-            {context.listRank && (
-              <span className={classes.pill} style={rankPillStyle(context.listRank.isMine)}>
-                #{context.listRank.rank}
-              </span>
-            )}
             <span id={titleId} className={classes.expandedName}>
               {name}
             </span>
@@ -326,6 +276,11 @@ export function PlayerPopover({
           {position}
           {rosRank ? rosRank : ""}
         </span>
+        {byeWeek !== undefined && (
+          <span className={classes.pill} style={rankPillStyle(false)}>
+            Bye {byeWeek}
+          </span>
+        )}
         {injury && (
           <span className={classes.pill} style={pillStyle(injuryColor(injury.status))}>
             {injury.status}
