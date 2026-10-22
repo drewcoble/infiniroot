@@ -7,10 +7,10 @@ import type { TradeValueRow } from "../../types/season";
 import { TradeValuesContext, type TradeValuesState } from "./tradeValues";
 
 // One league's trade values (convex/infinileague/season/tradeValues.ts),
-// shared by everything under the league layout - the Trade tab and every
-// player popover - and fetched once per league visit, only once something
-// asks for them (getTradeValues is an action over the whole league, too
-// heavy to run per popover).
+// held at the league layout so they're fetched once per league visit, only
+// once something asks for them (the Trade tab) - leaving and coming back to
+// the Trade tab doesn't re-run getTradeValues, an action over the whole
+// league.
 export function TradeValuesProvider({
   seasonId,
   children,

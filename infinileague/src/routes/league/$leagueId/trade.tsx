@@ -120,8 +120,8 @@ function TradePage() {
 
   // FantasyCalc-style trade value per player - FantasyCalc's market value
   // blended with our rest-of-season VOR (see convex/infinileague/season/
-  // tradeValues.ts). What the header adds up and the bar compares. Shared
-  // with every player popover through the league layout's provider.
+  // tradeValues.ts). What the header adds up and the bar compares. Held by
+  // the league layout's provider, so a return visit doesn't refetch.
   const { byFpid: valueByFpid, error: tradeValuesError } = useTradeValues();
 
   const [selectedA, setSelectedA] = useState<Set<number>>(new Set());

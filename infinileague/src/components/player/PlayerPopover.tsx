@@ -34,7 +34,6 @@ import type {
   StandingsRow,
   TeamRosterRow,
 } from "../../types/season";
-import { useTradeValues } from "./tradeValues";
 import { PlayerTrends } from "./PlayerTrends";
 
 interface NflState {
@@ -105,7 +104,7 @@ function weekRankStat(
 // it (Matchup, Team, Players, Free Agents, Trade). It shows everything any
 // page's detail card has ever shown, looked up here by fpid: who he is and
 // who rosters him, this week's game (score, meter, pace), this week /
-// season / rest-of-season numbers, buy / sell call, a free agent's bid, his
+// season / rest-of-season numbers, a free agent's bid, his
 // weekly points and usage (PlayerTrends), and the game log. Pages pass
 // only their own context (PlayerPopoverContext). The popover shell,
 // placement, and dismissal are GlassPopover's. Without an fpid (the Cards
@@ -158,7 +157,6 @@ export function PlayerPopover({
     api.nflSchedule.getByeWeeks,
     live ? {} : "skip",
   );
-  const tradeValues = useTradeValues();
 
   const row = board?.find((entry) => entry.fpid === fpid);
   const seasonRank = useMemo(() => seasonPositionRanks(board), [board]).get(fpid ?? -1);
@@ -215,7 +213,6 @@ export function PlayerPopover({
         : owner === selfTeam?.name
           ? "Your team"
           : owner;
-  const trade = fpid !== undefined ? tradeValues.byFpid?.get(fpid) : undefined;
 
   const isLive = game?.gameState === "live";
   const isPre = game?.gameState === "pre";
@@ -337,19 +334,6 @@ export function PlayerPopover({
         {isRookie && (
           <span className={classes.pill} style={pillStyle("grape")}>
             Rookie
-          </span>
-        )}
-        {trade?.signal && (
-          <span
-            className={classes.pill}
-            style={pillStyle(trade.signal === "buy" ? "green" : "red")}
-            title={
-              trade.signal === "buy"
-                ? "Ranked well above the market at his position"
-                : "Ranked well below the market at his position"
-            }
-          >
-            {trade.signal === "buy" ? "BUY" : "SELL"}
           </span>
         )}
         {context.inTrade && <span className={classes.statusLabel}>In trade</span>}
