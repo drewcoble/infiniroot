@@ -46,11 +46,15 @@ export function PlayerTrends({
           { label: "Usage", value: "usage" as const },
         ]}
       />
-      {view === "points" ? (
+      {/* Both stay mounted (and loaded) - the switch only shows one - so
+          switching is instant and doesn't make the popover shrink while
+          the other chart's data loads. */}
+      <div hidden={view !== "points"}>
         <PointsChart fpid={fpid} year={year} current={current} showTitle={false} />
-      ) : (
+      </div>
+      <div hidden={view !== "usage"}>
         <UsageChart fpid={fpid} year={year} showTitle={false} />
-      )}
+      </div>
     </div>
   );
 }

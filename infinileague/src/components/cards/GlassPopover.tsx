@@ -37,9 +37,12 @@ export function GlassPopover({
 
   // Positioned directly on the DOM node (not via state) since it depends
   // on the card's own rendered height - one measure-then-place pass before
-  // paint, no visible jump. Re-run whenever the card's height changes after
-  // that (e.g. a game-log year expanding), so growing content shifts the
-  // card up rather than running off the bottom of the screen.
+  // paint, no visible jump. After that it stays where it is: when its height
+  // changes (a game-log year expanding, a chart switch) it only nudges up
+  // as far as needed to keep its bottom on screen, and never past the top
+  // of the screen - so if you've scrolled down into it, it doesn't move.
+  // (Re-placing from the anchor instead would yank it back to the top of
+  // the screen once the anchor has scrolled away.)
   useLayoutEffect(() => {
     const card = cardRef.current;
     if (!card) return;
@@ -70,7 +73,10 @@ export function GlassPopover({
     const observer = new ResizeObserver(() => {
       if (card.offsetHeight === lastHeight) return;
       lastHeight = card.offsetHeight;
-      place();
+      const rect = card.getBoundingClientRect();
+      const overflow = rect.bottom - (window.innerHeight - BOTTOM_RESERVE);
+      const shift = Math.min(overflow, rect.top - EDGE_MARGIN);
+      if (shift > 0) card.style.top = `${rect.top - shift + window.scrollY}px`;
     });
     observer.observe(card);
     return () => observer.disconnect();
