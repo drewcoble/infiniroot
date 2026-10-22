@@ -3,6 +3,7 @@ import type { Position } from "@shared/positionColors";
 import { GlassSegmented } from "../cards/GlassSegmented";
 import { PointsChart, type CurrentWeekPoints } from "./PointsChart";
 import { UsageChart } from "./UsageChart";
+import classes from "../charts/charts.module.css";
 
 type TrendView = "points" | "usage";
 
@@ -46,14 +47,22 @@ export function PlayerTrends({
           { label: "Usage", value: "usage" as const },
         ]}
       />
-      {/* Both stay mounted (and loaded) - the switch only shows one - so
-          switching is instant and doesn't make the popover shrink while
-          the other chart's data loads. */}
-      <div hidden={view !== "points"}>
-        <PointsChart fpid={fpid} year={year} current={current} showTitle={false} />
-      </div>
-      <div hidden={view !== "usage"}>
-        <UsageChart fpid={fpid} year={year} showTitle={false} />
+      {/* Both charts sit side by side in a strip, always drawn at full
+          width, and the switch slides the strip - nothing re-measures or
+          re-draws on a switch, and the section keeps the taller chart's
+          height so nothing below it moves. The hidden one is inert. */}
+      <div className={classes.trendViewport}>
+        <div
+          className={classes.trendTrack}
+          style={{ transform: view === "points" ? "translateX(0)" : "translateX(-100%)" }}
+        >
+          <div className={classes.trendPane} inert={view !== "points"}>
+            <PointsChart fpid={fpid} year={year} current={current} showTitle={false} />
+          </div>
+          <div className={classes.trendPane} inert={view !== "usage"}>
+            <UsageChart fpid={fpid} year={year} showTitle={false} />
+          </div>
+        </div>
       </div>
     </div>
   );
