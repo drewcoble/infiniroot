@@ -4,6 +4,7 @@ import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
 import type { GameState } from "../cards/cardShared";
 import { ChartTitle } from "../charts/ChartTitle";
+import { ChartLoading } from "./chartLoading";
 import { WeeklyBars, type ChartSeries, type WeeklyBarDatum } from "../charts/WeeklyBars";
 
 // The app's brown - the same saddlebrown your-team rank chip is tinted with
@@ -52,7 +53,8 @@ export function PointsChart({
     api.infinileague.season.gameLog.getGameLog,
     leagueId && isAuthenticated ? { seasonId: leagueId as Id<"seasons">, fpid, year } : "skip",
   );
-  if (!log) return null;
+  if (log === undefined) return <ChartLoading />;
+  if (log === null) return null;
 
   const data: WeeklyBarDatum[] = log.weeks
     .filter((week) => week.week !== current?.week)

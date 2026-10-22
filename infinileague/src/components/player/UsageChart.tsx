@@ -4,6 +4,7 @@ import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
 import { positionColorVar } from "@shared/positionColors";
 import { ChartTitle } from "../charts/ChartTitle";
+import { ChartLoading } from "./chartLoading";
 import { WeeklyBars, type ChartSeries, type WeeklyBarDatum } from "../charts/WeeklyBars";
 
 type UsagePart = "pass" | "rush" | "rec";
@@ -43,7 +44,8 @@ export function UsageChart({
     api.infinileague.season.usage.getUsageWeeks,
     leagueId && isAuthenticated ? { seasonId: leagueId as Id<"seasons">, fpid, year } : "skip",
   );
-  if (!usage || usage.average === null) return null;
+  if (usage === undefined) return <ChartLoading />;
+  if (usage === null || usage.average === null) return null;
 
   const { position, weeks, average } = usage;
   // Rushing and receiving for everyone; passing only for a QB; a QB's

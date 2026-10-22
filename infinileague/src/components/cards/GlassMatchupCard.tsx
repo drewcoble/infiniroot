@@ -14,6 +14,7 @@ import { PointsHeadline, PointsMeter } from "./PointsMeter";
 import { useExpandableCard } from "./useExpandableCard";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerPopover } from "../player/PlayerPopover";
+import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
 import classes from "./GlassMatchupCard.module.css";
 
 export type { GlassMatchupCardData } from "./cardShared";
@@ -39,6 +40,9 @@ export function GlassMatchupCard({
   const positionColor = positionColorOrDefault(data.position);
 
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(ariaSummary(data));
+  // Start the popover's data loading as soon as a press begins, so it
+  // opens fully drawn (see usePlayerPopoverQueries).
+  usePlayerPopoverQueries(data.fpid, pressing || expanded);
 
   return (
     <>

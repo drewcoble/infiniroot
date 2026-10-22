@@ -244,7 +244,7 @@ export function WeeklyBars({
         </div>
       )}
       <div ref={ref}>
-        {width > 0 && (
+        {width > 0 ? (
           <div style={{ display: "flex" }}>
             {/* The y-axis stays put while the weeks scroll. */}
             <svg className={classes.svg} width={MARGIN.left} height={height} aria-hidden>
@@ -440,6 +440,10 @@ export function WeeklyBars({
               </svg>
             </div>
           </div>
+        ) : (
+          // Hold the plot's height until the width's measured, so the first
+          // frame doesn't draw the legend with no bars above it.
+          <div style={{ height }} />
         )}
       </div>
       {(series.length > 1 || reference || hasProjected) && (

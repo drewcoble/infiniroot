@@ -23,7 +23,21 @@ export function PlayerGameLog({ fpid, position }: { fpid: number; position: stri
   );
   const [openYear, setOpenYear] = useState<string | null>(null);
 
-  if (!seasonId || !seasons || seasons.length === 0) return null;
+  if (!seasonId) return null;
+  // While the seasons load, hold the space of the title and one year's row
+  // (an invisible one, for its exact height) - so the popover doesn't grow
+  // under you when they land.
+  if (seasons === undefined) {
+    return (
+      <div className={classes.gameLog} aria-busy>
+        <div className={classes.title}>Game log</div>
+        <div className={classes.seasonHeader} style={{ visibility: "hidden" }} aria-hidden>
+          &nbsp;
+        </div>
+      </div>
+    );
+  }
+  if (seasons.length === 0) return null;
 
   return (
     <div className={classes.gameLog}>

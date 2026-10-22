@@ -143,22 +143,18 @@ function PlayersPage() {
 
   // Own-roster highlight (GlassPlayerRow's saddlebrown rank chip). Same
   // getStandings->isSelf pattern route.tsx/freeAgents.tsx/trade.tsx already
-  // use to find "my team" in this league.
+  // use to find "my team" in this league - matched by team name rather than
+  // passing teamId to the board, so this page reads the exact same board
+  // subscription as every other page and the player popover.
   const standings = useQuery(
     api.infinileague.season.standings.getStandings,
     isAuthenticated ? { seasonId } : "skip",
   );
-  const selfTeamId = standings?.find((row) => row.isSelf)?.teamId;
+  const selfTeamName = standings?.find((row) => row.isSelf)?.name;
 
   const boardRows: RosVorRow[] | undefined = useQuery(
     api.rosVor.getRosVorBoard,
-    isAuthenticated && nflState
-      ? {
-          seasonId,
-          week: nflState.week,
-          ...(selfTeamId ? { teamId: selfTeamId as Id<"seasonTeams"> } : {}),
-        }
-      : "skip",
+    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
   );
 
   // This week's actual points, live during games (see convex/rosVor.ts's
@@ -361,7 +357,8 @@ function PlayersPage() {
                   positionRank,
                   team: row.team,
                   rosteredByTeamName: row.rosteredByTeamName,
-                  isOnMyTeam: row.isOnMyTeam === true,
+                  isOnMyTeam:
+                    selfTeamName !== undefined && row.rosteredByTeamName === selfTeamName,
                   isRookie: rookieFpidSet.has(row.fpid),
                   injury: row.injury,
                   ...rowNumbers(row, isWeekMode, sortKey === "usage"),

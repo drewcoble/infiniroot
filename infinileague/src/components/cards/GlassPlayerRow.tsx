@@ -6,6 +6,7 @@ import { FittedName } from "./FittedName";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { useExpandableCard } from "./useExpandableCard";
 import { PlayerPopover } from "../player/PlayerPopover";
+import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassPlayerRowData {
@@ -60,6 +61,9 @@ export function GlassPlayerRow({
     .join(", ");
 
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label);
+  // Start the popover's data loading as soon as a press begins, so it
+  // opens fully drawn (see usePlayerPopoverQueries).
+  usePlayerPopoverQueries(data.fpid, pressing || expanded);
   useEffect(() => {
     onExpandedChange?.(expanded);
   }, [expanded, onExpandedChange]);

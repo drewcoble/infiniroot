@@ -1,9 +1,5 @@
 import { useId, useMemo } from "react";
-import { useParams } from "@tanstack/react-router";
-import { useConvexAuth, useQuery } from "convex/react";
-import type { GenericId as Id } from "convex/values";
 import { Minus, TrendingDown, TrendingUp, X } from "lucide-react";
-import { api } from "@infinidata/api";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import {
@@ -24,22 +20,13 @@ import { PlayerHeadshot } from "../cards/PlayerHeadshot";
 import { PointsMeter } from "../cards/PointsMeter";
 import { StatGroups, type StatGroup } from "../cards/StatGroups";
 import classes from "../cards/GlassMatchupCard.module.css";
-import { isAnyGameLive, useNow, type WeekGame } from "../../lib/liveGames";
+import { isAnyGameLive, useNow } from "../../lib/liveGames";
 import { toMatchupCardData } from "../../lib/matchupCardData";
 import { LIVE_REFRESH_MS } from "../../lib/matchupSummary";
 import { seasonPositionRanks } from "../../lib/seasonPositionRanks";
-import type {
-  FaabSuggestionsResult,
-  RosVorRow,
-  StandingsRow,
-  TeamRosterRow,
-} from "../../types/season";
+import type { TeamRosterRow } from "../../types/season";
 import { PlayerTrends } from "./PlayerTrends";
-
-interface NflState {
-  season: string;
-  week: string;
-}
+import { usePlayerPopoverQueries } from "./usePlayerPopoverQueries";
 
 // What only the page knows about the player - everything else the popover
 // looks up itself by fpid, so it reads the same on every page.
@@ -94,53 +81,21 @@ export function PlayerPopover({
   context?: PlayerPopoverContext;
 }) {
   const titleId = useId();
-  const { leagueId } = useParams({ strict: false });
-  const seasonId = leagueId as Id<"seasons"> | undefined;
-  const { isAuthenticated } = useConvexAuth();
-  const live = isAuthenticated && seasonId !== undefined && fpid !== undefined;
-
-  const nflState: NflState | null | undefined = useQuery(
-    api.nflState.getNflState,
-    live ? {} : "skip",
-  );
-  const week = nflState?.week;
-  const standings: StandingsRow[] | undefined = useQuery(
-    api.infinileague.season.standings.getStandings,
-    live && seasonId ? { seasonId } : "skip",
-  );
-  // Same board subscription most league pages already hold, so it's shared.
-  const board: RosVorRow[] | undefined = useQuery(
-    api.rosVor.getRosVorBoard,
-    live && seasonId && week ? { seasonId, week } : "skip",
-  );
-  const weekPoints = useQuery(
-    api.rosVor.getWeekPoints,
-    live && seasonId && week ? { seasonId, week } : "skip",
-  );
-  const weekRanks = useQuery(
-    api.infinileague.season.matchup.getWeekPositionRanks,
-    live && seasonId && week ? { seasonId, week } : "skip",
-  );
-  const weekGames: WeekGame[] | undefined = useQuery(
-    api.sleeper.livePoints.getWeekGames,
-    live && nflState && week ? { season: nflState.season, week } : "skip",
-  );
-  const rookieFpids = useQuery(api.players.getRookieFpids, live ? {} : "skip");
-  const byeWeeks: Record<string, number> | undefined = useQuery(
-    api.nflSchedule.getByeWeeks,
-    live ? {} : "skip",
-  );
-
-  const row = board?.find((entry) => entry.fpid === fpid);
+  const {
+    week,
+    nflState,
+    board,
+    row,
+    selfTeam,
+    weekPoints,
+    weekRanks,
+    weekGames,
+    rookieFpids,
+    byeWeeks,
+    faab,
+    ready,
+  } = usePlayerPopoverQueries(fpid, true);
   const seasonRank = useMemo(() => seasonPositionRanks(board), [board]).get(fpid ?? -1);
-  const selfTeam = standings?.find((entry) => entry.isSelf);
-  const isFreeAgent = row !== undefined && row.rosteredByTeamName === null;
-  const faab: FaabSuggestionsResult | undefined = useQuery(
-    api.infinileague.season.faabValues.getFaabSuggestions,
-    live && seasonId && isFreeAgent
-      ? { seasonId, ...(selfTeam ? { teamId: selfTeam.teamId as Id<"seasonTeams"> } : {}) }
-      : "skip",
-  );
   const bid = faab?.suggestions.find((entry) => entry.fpid === fpid);
 
   // This week's game: the page's card when it has one, otherwise built
@@ -242,6 +197,12 @@ export function PlayerPopover({
         ]
       : []),
   ];
+
+  // Nothing until the basics are in - the card the popover opens from
+  // starts these loading during its long-press, so this is normally
+  // instant; drawing early would show an empty card that then fills in
+  // and grows.
+  if (!ready) return null;
 
   return (
     <GlassPopover
