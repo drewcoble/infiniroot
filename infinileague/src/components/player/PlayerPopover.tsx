@@ -36,6 +36,7 @@ import type {
   TeamRosterRow,
 } from "../../types/season";
 import { useTradeValues } from "./tradeValues";
+import { PointsChart } from "./PointsChart";
 import { UsageChart } from "./UsageChart";
 
 interface NflState {
@@ -152,7 +153,7 @@ export function PlayerPopover({
   );
   const weekGames: WeekGame[] | undefined = useQuery(
     api.sleeper.livePoints.getWeekGames,
-    live && nflState && week && !context.game ? { season: nflState.season, week } : "skip",
+    live && nflState && week ? { season: nflState.season, week } : "skip",
   );
   const rookieFpids = useQuery(api.players.getRookieFpids, live ? {} : "skip");
   const byeWeeks: Record<string, number> | undefined = useQuery(
@@ -178,9 +179,9 @@ export function PlayerPopover({
   const now = useNow(isAnyGameLive(weekGames, Date.now()) ? LIVE_REFRESH_MS / 4 : 60 * 1000);
   const actual = weekPoints?.find((entry) => entry.fpid === fpid)?.points;
   const weekRank = weekRanks?.find((entry) => entry.fpid === fpid)?.rank;
-  const game: GlassMatchupCardData | undefined =
-    context.game ??
-    (row && weekGames
+  // The current week's game, always - the points chart's latest bar.
+  const currentGame: GlassMatchupCardData | undefined =
+    row && weekGames
       ? toMatchupCardData(
           {
             fpid: row.fpid,
@@ -197,7 +198,8 @@ export function PlayerPopover({
           weekRank,
           seasonRank,
         )
-      : undefined);
+      : undefined;
+  const game = context.game ?? currentGame;
 
   const name = row?.name ?? game?.name ?? "";
   const position: Position = row?.position ?? game?.position ?? "QB";
@@ -471,6 +473,23 @@ export function PlayerPopover({
           {bid.boostReason && <p>{bid.boostReason}</p>}
           {bid.rationale && <p>{bid.rationale}</p>}
         </div>
+      )}
+
+      {fpid !== undefined && nflState && (
+        <PointsChart
+          fpid={fpid}
+          year={nflState.season}
+          current={
+            week !== undefined
+              ? {
+                  week: Number(week),
+                  state: currentGame?.gameState,
+                  actual,
+                  projection: row?.weekPpg,
+                }
+              : undefined
+          }
+        />
       )}
 
       {fpid !== undefined && nflState && <UsageChart fpid={fpid} year={nflState.season} />}

@@ -51,11 +51,14 @@ function swatchStyle(series: ChartSeries): CSSProperties {
 // One week's column. `values` follows the chart's series order and stacks
 // bottom-up. "dnp": his team played, he didn't. "bye": no team game.
 // "projected": a week not played yet - one gray dashed outline at the
-// values' total, so it never reads as real data.
+// values' total, so it never reads as real data. `projection` on a played
+// week (a game still in progress) draws that same dashed outline behind
+// the real bar, up to where he was projected to finish.
 export interface WeeklyBarDatum {
   week: number;
   kind: "played" | "dnp" | "bye" | "projected";
   values: number[];
+  projection?: number | undefined;
 }
 
 // A projected column: gray dashed edge over a faint gray fill, mixed onto
@@ -146,8 +149,17 @@ export function WeeklyBars({
   const [edges, setEdges] = useState({ left: false, right: false });
 
   const totals = data.map((datum) => datum.values.reduce((sum, value) => sum + value, 0));
-  const hasProjected = data.some((datum) => datum.kind === "projected");
-  const top = max ?? Math.max(1, ...totals, reference?.value ?? 0);
+  const hasProjected = data.some(
+    (datum) => datum.kind === "projected" || datum.projection !== undefined,
+  );
+  const top =
+    max ??
+    Math.max(
+      1,
+      ...totals,
+      ...data.map((datum) => datum.projection ?? 0),
+      reference?.value ?? 0,
+    );
   const ticks = niceTicks(top);
   const domainTop = Math.max(top, ticks[ticks.length - 1] ?? top);
 
@@ -309,10 +321,14 @@ export function WeeklyBars({
                     (last, value, valueIndex) => (value > 0 ? valueIndex : last),
                     -1,
                   );
-                  const projectedHeight = ((totals[index] ?? 0) / domainTop) * plotHeight;
+                  const projectedHeight =
+                    ((datum.kind === "projected" ? (totals[index] ?? 0) : (datum.projection ?? 0)) /
+                      domainTop) *
+                    plotHeight;
                   return (
                     <g key={datum.week} opacity={dimmed ? 0.4 : 1}>
-                      {datum.kind === "projected" && projectedHeight > 0 && (
+                      {(datum.kind === "projected" || datum.projection !== undefined) &&
+                        projectedHeight > 0 && (
                         <path
                           d={topRoundedRect(
                             x + 0.5,
@@ -368,6 +384,9 @@ export function WeeklyBars({
                           className={classes.columnLabel}
                           style={datum.kind === "projected" ? { fill: TEXT.muted } : undefined}
                           x={cx}
+                          // Right over the real bar - inside a live bar's
+                          // dashed projection, so it can't be read as the
+                          // projection's number.
                           y={y(totals[index] ?? 0) - 4}
                           textAnchor="middle"
                         >
