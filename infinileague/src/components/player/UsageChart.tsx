@@ -27,7 +27,16 @@ const INFO = {
 // season/usage.ts), as stacked bars on a fixed 0-100 scale so any two
 // players' charts compare. Needs the league route's season for its scoring
 // - renders nothing outside a league, for K/DST, or before his first game.
-export function UsageChart({ fpid, year }: { fpid: number; year: string }) {
+export function UsageChart({
+  fpid,
+  year,
+  showTitle = true,
+}: {
+  fpid: number;
+  year: string;
+  // False when a switch above already names the chart (PlayerTrends).
+  showTitle?: boolean;
+}) {
   const { leagueId } = useParams({ strict: false });
   const { isAuthenticated } = useConvexAuth();
   const usage = useQuery(
@@ -58,6 +67,7 @@ export function UsageChart({ fpid, year }: { fpid: number; year: string }) {
     <div>
       <ChartTitle
         title="Usage score"
+        showTitle={showTitle}
         info={position === "QB" ? INFO.qb : INFO.flex}
         stat={`Avg. ${Math.round(average)}`}
       />

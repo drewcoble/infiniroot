@@ -38,10 +38,13 @@ export function PointsChart({
   fpid,
   year,
   current,
+  showTitle = true,
 }: {
   fpid: number;
   year: string;
   current: CurrentWeekPoints | undefined;
+  // False when a switch above already names the chart (PlayerTrends).
+  showTitle?: boolean;
 }) {
   const { leagueId } = useParams({ strict: false });
   const { isAuthenticated } = useConvexAuth();
@@ -95,6 +98,7 @@ export function PointsChart({
     <div>
       <ChartTitle
         title="Points"
+        showTitle={showTitle}
         info="Fantasy points each week, in your league's scoring."
         stat={average !== undefined ? `Avg. ${formatPoints(average)}` : undefined}
       />

@@ -36,8 +36,7 @@ import type {
   TeamRosterRow,
 } from "../../types/season";
 import { useTradeValues } from "./tradeValues";
-import { PointsChart } from "./PointsChart";
-import { UsageChart } from "./UsageChart";
+import { PlayerTrends } from "./PlayerTrends";
 
 interface NflState {
   season: string;
@@ -108,10 +107,10 @@ function weekRankStat(
 // page's detail card has ever shown, looked up here by fpid: who he is and
 // who rosters him, this week's game (score, meter, pace), this week /
 // season / rest-of-season numbers, trade value, a free agent's bid, his
-// weekly usage, and the game log. Pages pass only their own context
-// (PlayerPopoverContext). The popover shell, placement, and dismissal are
-// GlassPopover's. Without an fpid (the Cards sandbox's sample players) it
-// shows only what `context.game` carries.
+// weekly points and usage (PlayerTrends), and the game log. Pages pass
+// only their own context (PlayerPopoverContext). The popover shell,
+// placement, and dismissal are GlassPopover's. Without an fpid (the Cards
+// sandbox's sample players) it shows only what `context.game` carries.
 export function PlayerPopover({
   fpid,
   anchor,
@@ -476,9 +475,10 @@ export function PlayerPopover({
       )}
 
       {fpid !== undefined && nflState && (
-        <PointsChart
+        <PlayerTrends
           fpid={fpid}
           year={nflState.season}
+          position={position}
           current={
             week !== undefined
               ? {
@@ -491,8 +491,6 @@ export function PlayerPopover({
           }
         />
       )}
-
-      {fpid !== undefined && nflState && <UsageChart fpid={fpid} year={nflState.season} />}
 
       {fpid !== undefined && <PlayerGameLog fpid={fpid} position={position} />}
     </GlassPopover>
