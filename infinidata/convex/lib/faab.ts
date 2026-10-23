@@ -57,6 +57,10 @@ export interface FaabSuggestionsResult {
   season: string | null;
   remainingWeeks: number;
   suggestions: FaabSuggestionRow[];
+  // The requesting team's starting slots nobody on its roster can fill
+  // (e.g. ["K", "FLEX"]) - a team-level warning for above the list, not a
+  // per-player bid factor. Empty when no teamId was given.
+  openStarterSlots: string[];
 }
 
 // ---- Per-player value: cache-first, live-compute fallback ----
@@ -247,10 +251,12 @@ function demandMultiplier(demandCount: number): number {
 }
 
 // Adjusts league market value to the requesting team's own situation -
-// above market when he'd start for them (they're one of the teams driving
-// the price), below it when he'd be depth, but never to $0 just because
-// they're already covered at the position. Depth gets no rationale - it's
-// the unremarkable case, not worth a line on the free-agent row.
+// above market when he'd beat one of their current starters over the rest
+// of the season (they're one of the teams driving the price), below it when
+// he'd be depth, but never to $0 just because they're already covered at
+// the position. An empty starting slot at his position bids at market - an
+// open slot says nothing about him, so it's surfaced once as
+// openStarterSlots instead. Only the upgrade case gets a rationale line.
 function teamFit(
   pos: Position,
   myUpgrade: number,
@@ -258,12 +264,12 @@ function teamFit(
   aboveFloor: number,
 ): { multiplier: number; rationale: string | null } {
   if (weakestStarter === undefined) {
-    return { multiplier: 1.2, rationale: `No ${pos} in your starting lineup` };
+    return { multiplier: 1, rationale: null };
   }
   if (myUpgrade > 0) {
     return {
       multiplier: 1 + 0.3 * Math.min(myUpgrade / Math.max(aboveFloor, 1), 1),
-      rationale: `Would start for you at ${pos}`,
+      rationale: `Rest-of-season upgrade at ${pos}`,
     };
   }
   return { multiplier: 0.5, rationale: null };
@@ -313,13 +319,14 @@ const BID_CEILING_BY_POSITION: Partial<Record<Position, number>> = {
 // This version: (1) values each player off a recency/volume-aware momentum
 // read on top of their forward projection - normally read straight from
 // convex/rosVor.ts's daily cache rather than recomputed live (see
-// loadCachedPlayerValues) - (2) includes a time-boxed value bump for a free
-// agent plausibly inheriting a just-injured teammate's workload, (3) prices
+// loadCachedPlayerValues) - (2) notes (without valuing) a free agent whose
+// same-position teammate was just ruled Out or placed on IR, (3) prices
 // a league-wide market value from how far he sits above the waiver floor,
 // as a share of a typical team's remaining budget, scaled by how many teams
 // would actually start him and capped at the second-deepest wallet, and (4)
 // adjusts that market value to the requesting team's own fit (starter vs
-// depth) and budget for its suggested bid.
+// depth) and budget for its suggested bid, and (5) lists the requesting
+// team's unfillable starting slots as a team-level warning.
 //
 // Lives here rather than directly in convex/infinileague/season/faabValues.ts
 // (its only consumer, now that infinidraft's own Free Agents tab has moved
@@ -341,7 +348,7 @@ export async function computeFaabSuggestions(
 
   const nflState = await ctx.db.query("nflState").first();
   if (!nflState || nflState.seasonType !== "regular") {
-    return { week: null, season: null, remainingWeeks: 0, suggestions: [] };
+    return { week: null, season: null, remainingWeeks: 0, suggestions: [], openStarterSlots: [] };
   }
   const remainingWeeks = Math.max(18 - Number(nflState.week) + 1, 0);
 
@@ -383,11 +390,14 @@ export async function computeFaabSuggestions(
   // Every team's current starters, valued the same way as free agents -
   // this is what demand gets computed against below.
   const weakestStarterByTeam = new Map<Id<"seasonTeams">, Partial<Record<Position, number>>>();
+  const assignedSlotsByTeam = new Map<Id<"seasonTeams">, Map<string, ValuedPlayer>>();
   for (const team of teams) {
     const roster = [...(rosteredFpidsByTeam.get(team._id) ?? [])]
       .map((fpid) => playerValues.get(fpid))
       .filter((v): v is PlayerValueEntry => v !== undefined);
-    weakestStarterByTeam.set(team._id, weakestStarterByPosition(assignRosterSlots(roster, settings)));
+    const assigned = assignRosterSlots(roster, settings);
+    assignedSlotsByTeam.set(team._id, assigned);
+    weakestStarterByTeam.set(team._id, weakestStarterByPosition(assigned));
   }
 
   const freeAgentsByPosition = new Map<Position, PlayerValueEntry[]>();
@@ -414,6 +424,17 @@ export async function computeFaabSuggestions(
 
   const requestingTeam = args.teamId ? teams.find((team) => team._id === args.teamId) : undefined;
   const remainingFaabForTeam = requestingTeam ? (remainingFaabByTeam.get(requestingTeam._id) ?? 0) : 0;
+
+  // Labels without the instance number ("RB2" -> "RB"), deduped.
+  const openStarterSlots: string[] = [];
+  if (requestingTeam) {
+    const assigned = assignedSlotsByTeam.get(requestingTeam._id);
+    for (const slot of expandRosterSlots(settings.rosterSlots)) {
+      if (slot.key.startsWith("BN") || assigned?.has(slot.key)) continue;
+      const label = slot.label.replace(/\d+$/, "");
+      if (!openStarterSlots.includes(label)) openStarterSlots.push(label);
+    }
+  }
 
   const suggestions: FaabSuggestionRow[] = [];
   for (const pos of activePositions) {
@@ -481,5 +502,6 @@ export async function computeFaabSuggestions(
     season: nflState.season,
     remainingWeeks,
     suggestions,
+    openStarterSlots,
   };
 }

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Group, Stack, Text, Title } from "@mantine/core";
+import { Alert, Group, Stack, Text, Title } from "@mantine/core";
 import type { Position } from "@shared/positionColors";
 import { api } from "@infinidata/api";
 import { GlassFreeAgentRow } from "../../../components/cards/GlassFreeAgentRow";
@@ -154,6 +154,9 @@ function FreeAgentsPage() {
   return (
     <Stack gap="md">
       <Title order={3}>Free Agents</Title>
+      {result.openStarterSlots.length > 0 && (
+        <Alert color="yellow">Empty starting spots: {result.openStarterSlots.join(", ")}</Alert>
+      )}
       <GlassSegmented
         label="Ranking view"
         value={view}

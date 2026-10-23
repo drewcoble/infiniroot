@@ -134,8 +134,8 @@ export interface FaabSuggestionRow {
   myValue: number | null;
   suggestedBid: number | null;
   rationale: string | null;
-  // Set when this player's value includes a time-boxed bump from plausibly
-  // inheriting a just-injured teammate's workload.
+  // Set when a same-position teammate was just ruled Out or placed on IR -
+  // a note only, not reflected in any value.
   boostReason: string | null;
 }
 
@@ -146,6 +146,9 @@ export interface FaabSuggestionsResult {
   season: string | null;
   remainingWeeks: number;
   suggestions: FaabSuggestionRow[];
+  // The viewer's starting slots nobody on their roster can fill - shown as
+  // one warning above the list. Empty without a teamId.
+  openStarterSlots: string[];
 }
 
 // Mirrors convex/rosVor.ts's RosVorRow - already sorted by the backend
