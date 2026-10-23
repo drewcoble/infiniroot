@@ -127,13 +127,10 @@ export interface FaabSuggestionRow {
   topDemandValue: number;
   // League-wide expected winning bid in dollars - the same for every team.
   marketValue: number;
-  // myValue/suggestedBid/rationale are only populated when the query was
-  // called with a teamId - null otherwise (see freeAgents.tsx, which always
-  // passes the viewer's own team once known). suggestedBid is marketValue
-  // adjusted for that team's fit (starter vs depth) and remaining budget.
-  myValue: number | null;
+  // Only populated when the query was called with a teamId - null otherwise
+  // (see freeAgents.tsx, which always passes the viewer's own team once
+  // known). marketValue capped at that team's remaining budget.
   suggestedBid: number | null;
-  rationale: string | null;
   // Set when a same-position teammate was just ruled Out or placed on IR -
   // a note only, not reflected in any value.
   boostReason: string | null;

@@ -229,7 +229,6 @@ function FreeAgentsPage() {
                 bid: hasBid ? `$${bidAmount}` : "",
                 market: hasBid ? `Mkt $${row.marketValue}` : "",
                 ...(usage ? { usage } : {}),
-                rationale: row.rationale,
                 boostReason: row.boostReason,
               }}
             />

@@ -27,9 +27,8 @@ export interface GlassFreeAgentRowData {
   // Shown in place of the bid and market value when the list is sorted by
   // usage: the actual score (or season average) big, the projection small.
   usage?: { actual: string; projection: string };
-  // Why the bid is what it is, and any injury-replacement boost - dimmed on
-  // a third line (truncated), in full in the popover.
-  rationale: string | null;
+  // Injured-teammate note - dimmed on a third line (truncated), in full in
+  // the popover.
   boostReason: string | null;
 }
 
@@ -41,11 +40,11 @@ const RANK_CHIP_STYLE = {
 
 // One Free Agents row in the Players board's glass layout (see
 // GlassPlayerRow): name with injury/rookie badges | suggested bid, then
-// position + NFL team | market value, then the bid rationale. Long-press (or
-// Enter/Space) opens the PlayerPopover (bid tiles and the full rationale
-// included).
+// position + NFL team | market value, then any injured-teammate note.
+// Long-press (or Enter/Space) opens the PlayerPopover (bid tiles and the
+// full note included).
 export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
-  const note = [data.boostReason, data.rationale].filter(Boolean).join(" · ");
+  const note = data.boostReason;
   const label = [
     `${data.rank}`,
     data.name,

@@ -190,7 +190,6 @@ export function PlayerPopover({
                 value: bid.suggestedBid !== null ? `$${bid.suggestedBid}` : "—",
               },
               { label: "Market", value: `$${bid.marketValue}` },
-              { label: "Your value", value: bid.myValue !== null ? `$${bid.myValue}` : "—" },
               { label: "Teams in need", value: String(bid.demandCount) },
             ],
           },
@@ -336,10 +335,9 @@ export function PlayerPopover({
 
       <StatGroups groups={groups} />
 
-      {bid && (bid.boostReason || bid.rationale) && (
+      {bid?.boostReason && (
         <div className={classes.freeAgentPopoverNotes}>
-          {bid.boostReason && <p>{bid.boostReason}</p>}
-          {bid.rationale && <p>{bid.rationale}</p>}
+          <p>{bid.boostReason}</p>
         </div>
       )}
 

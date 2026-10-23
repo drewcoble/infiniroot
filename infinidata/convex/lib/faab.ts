@@ -38,17 +38,14 @@ export interface FaabSuggestionRow {
   // League-wide expected winning bid in dollars - the same for every team.
   // See computeFaabSuggestions' header comment for how it's priced.
   marketValue: number;
-  // myValue/suggestedBid/rationale are only populated when args.teamId is
-  // given. myValue is that team's own starting-lineup upgrade in points (0
-  // when he'd only be depth); suggestedBid is marketValue adjusted for that
-  // team's fit (see teamFit) and capped at its remaining budget.
-  myValue: number | null;
+  // Only populated when args.teamId is given - marketValue capped at that
+  // team's remaining budget. No per-team fit adjustment (an earlier version
+  // scaled this up for a would-be starter and down to half for depth;
+  // removed 2026-10-23, since nearly every free agent is depth).
   suggestedBid: number | null;
-  rationale: string | null;
   // Set when a same-position teammate was just ruled Out or placed on IR (see
   // playerValue.ts's findInjuredTeammateNotes) - a note only, not reflected
-  // in any value. Kept separate from rationale (not appended to it) so the
-  // UI can give it its own line.
+  // in any value.
   boostReason: string | null;
 }
 
@@ -250,31 +247,6 @@ function demandMultiplier(demandCount: number): number {
   return Math.min(1 + (demandCount - 2) * 0.05, 1.2);
 }
 
-// Adjusts league market value to the requesting team's own situation -
-// above market when he'd beat one of their current starters over the rest
-// of the season (they're one of the teams driving the price), below it when
-// he'd be depth, but never to $0 just because they're already covered at
-// the position. An empty starting slot at his position bids at market - an
-// open slot says nothing about him, so it's surfaced once as
-// openStarterSlots instead. Only the upgrade case gets a rationale line.
-function teamFit(
-  pos: Position,
-  myUpgrade: number,
-  weakestStarter: number | undefined,
-  aboveFloor: number,
-): { multiplier: number; rationale: string | null } {
-  if (weakestStarter === undefined) {
-    return { multiplier: 1, rationale: null };
-  }
-  if (myUpgrade > 0) {
-    return {
-      multiplier: 1 + 0.3 * Math.min(myUpgrade / Math.max(aboveFloor, 1), 1),
-      rationale: `Rest-of-season upgrade at ${pos}`,
-    };
-  }
-  return { multiplier: 0.5, rationale: null };
-}
-
 function median(values: number[]): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -289,8 +261,8 @@ function median(values: number[]): number {
 // replacement supply on waivers (no real scarcity to bid up). This is a
 // market-convention fact, not a stats-derived one, so it's applied as an
 // explicit dampener + hard ceiling on the DOLLAR amount only - rosValue/
-// demandCount/myValue upstream stay undamped, since "this DST has a great
-// matchup" is still real, useful signal for the rationale/demand columns,
+// demandCount upstream stay undamped, since "this DST has a great
+// matchup" is still real, useful signal for the demand column,
 // it just shouldn't translate into real budget. Applied to market value, so
 // it carries through to every team's suggested bid. Tuned to roughly: K almost
 // always $0-1, DST streaming $1-2 with a rare standout up around $5-6 -
@@ -324,9 +296,9 @@ const BID_CEILING_BY_POSITION: Partial<Record<Position, number>> = {
 // a league-wide market value from how far he sits above the waiver floor,
 // as a share of a typical team's remaining budget, scaled by how many teams
 // would actually start him and capped at the second-deepest wallet, and (4)
-// adjusts that market value to the requesting team's own fit (starter vs
-// depth) and budget for its suggested bid, and (5) lists the requesting
-// team's unfillable starting slots as a team-level warning.
+// caps that market value at the requesting team's remaining budget for its
+// suggested bid, and (5) lists the requesting team's unfillable starting
+// slots as a team-level warning.
 //
 // Lives here rather than directly in convex/infinileague/season/faabValues.ts
 // (its only consumer, now that infinidraft's own Free Agents tab has moved
@@ -463,20 +435,7 @@ export async function computeFaabSuggestions(
       // bid, however thin the rest of the math makes him.
       if (share > 0 && marketValue === 0 && marketCap >= 1) marketValue = 1;
 
-      let myValue: number | null = null;
-      let suggestedBid: number | null = null;
-      let rationale: string | null = null;
-      if (requestingTeam) {
-        myValue = demandValuesByTeam.find((d) => d.teamId === requestingTeam._id)?.value ?? 0;
-        if (marketValue === 0) {
-          suggestedBid = 0;
-        } else {
-          const weakest = weakestStarterByTeam.get(requestingTeam._id)?.[pos];
-          const fit = teamFit(pos, myValue, weakest, aboveFloor);
-          suggestedBid = Math.min(Math.max(Math.round(marketValue * fit.multiplier), 1), ceiling, remainingFaabForTeam);
-          rationale = fit.rationale;
-        }
-      }
+      const suggestedBid = requestingTeam ? Math.min(marketValue, remainingFaabForTeam) : null;
 
       suggestions.push({
         fpid: row.fpid,
@@ -489,9 +448,7 @@ export async function computeFaabSuggestions(
         demandCount,
         topDemandValue,
         marketValue,
-        myValue,
         suggestedBid,
-        rationale,
         boostReason: row.boostReason,
       });
     });

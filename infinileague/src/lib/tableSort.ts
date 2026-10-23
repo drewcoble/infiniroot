@@ -1,7 +1,7 @@
 export type SortDir = "asc" | "desc";
 
 // Shared comparator for clickable-header player tables - undefined always
-// sorts last regardless of direction (e.g. myValue/suggestedBid before a
+// sorts last regardless of direction (e.g. suggestedBid before a
 // team is known), rather than jumping to the top on an ascending sort. Same
 // as infinidraft's own src/lib/tableSort.ts - duplicated rather than
 // imported, same app-boundary convention convex/lib/rosterSlots.ts's own
