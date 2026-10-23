@@ -65,7 +65,7 @@ export function GlassTeamCard({
   return (
     <div className={classes.rosterRow}>
       <span
-        className={`${classes.pill} ${classes.slotChip}`}
+        className={`${classes.pill} ${classes.slotChip} ${classes.rankChip}`}
         style={rankPillStyle(data.isSelf)}
         aria-hidden
       >

@@ -944,6 +944,11 @@
     border-radius: 16px;
     font-size: 13px;
   }
+
+  /* Rank numbers read a size up from the slot labels. */
+  .rosterRow > .rankChip {
+    font-size: 15px;
+  }
 }
 
 .rosterRow > .card {
