@@ -49,3 +49,18 @@ export function rankLive(
     };
   });
 }
+
+// A team's Elimination Watch standing as a badge. Same red/gold/green
+// three-band convention lib/gradeColor.ts uses (see that file's comment on
+// why those, not raw Mantine "yellow"), keyed off eliminationWatch.ts's own
+// cut/bubble/safe status instead of a continuous score - plus "eliminated"
+// for a team already out (no longer in the watch at all), on the team page.
+export type EliminationStatus = EliminationWatchRow["status"] | "eliminated";
+
+export const ELIMINATION_STATUS_BADGE: Record<EliminationStatus, { label: string; color: string }> =
+  {
+    cut: { label: "Projected Cut", color: "red" },
+    bubble: { label: "Bubble", color: "gold" },
+    safe: { label: "Safe", color: "green" },
+    eliminated: { label: "Eliminated", color: "gray" },
+  };

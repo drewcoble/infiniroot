@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { StandingsRow } from "../../types/season";
-import { rankPillStyle } from "./cardShared";
+import { ELIMINATION_STATUS_BADGE, type EliminationStatus } from "../../lib/eliminationWatch";
+import { pillStyle, rankPillStyle } from "./cardShared";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { TeamLogo } from "./TeamLogo";
 import classes from "./GlassMatchupCard.module.css";
@@ -36,7 +37,8 @@ const TEAM_HEADER_LOGO_SIZE = 46;
 // cards, on two shared rows like the full-width player card, beside the
 // team's logo (TeamLogo, initials without one) spanning both: rank badge and
 // team name | the week's score, then the season line (record, points per
-// game) | the starters' live/to-play counts and the week's projection. The week
+// game - or in a guillotine league, the Elimination Watch badge) | the
+// starters' live/to-play counts and the week's projection. The week
 // itself is picked from the page's title row (see WeekPicker). `team`
 // undefined = standings still loading; `summary` undefined = the week's
 // roster still loading (shimmer placeholders either way). Before any
@@ -45,9 +47,16 @@ const TEAM_HEADER_LOGO_SIZE = 46;
 export function GlassTeamHeader({
   team,
   summary,
+  eliminationStatus,
 }: {
   team: StandingsRow | undefined;
   summary: TeamWeekSummary | undefined;
+  // Guillotine leagues only: the week's Elimination Watch standing, shown as
+  // a badge in place of the record (always 0-0-0 there - no head-to-head
+  // games). "loading" shimmers; "unknown" (the watch failed to load) leaves
+  // the row empty rather than falling back to that record. undefined = not
+  // a guillotine league.
+  eliminationStatus?: EliminationStatus | "loading" | "unknown" | undefined;
 }) {
   const notStarted =
     summary !== undefined &&
@@ -93,10 +102,21 @@ export function GlassTeamHeader({
             </h3>
           </div>
           <div className={classes.teamHeaderSeason}>
-            <span>
-              {team.wins}-{team.losses}-{team.ties}
-              {ppg !== null && ` · ${ppg.toFixed(1)} PPG`}
-            </span>
+            {eliminationStatus === undefined ? (
+              <span>
+                {team.wins}-{team.losses}-{team.ties}
+                {ppg !== null && ` · ${ppg.toFixed(1)} PPG`}
+              </span>
+            ) : eliminationStatus === "loading" ? (
+              <span className={classes.skeletonBar} style={{ width: 64, height: 18 }} />
+            ) : eliminationStatus === "unknown" ? null : (
+              <span
+                className={classes.pill}
+                style={pillStyle(ELIMINATION_STATUS_BADGE[eliminationStatus].color)}
+              >
+                {ELIMINATION_STATUS_BADGE[eliminationStatus].label}
+              </span>
+            )}
           </div>
         </>
       )}

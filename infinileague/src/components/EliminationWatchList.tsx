@@ -3,8 +3,8 @@ import { pillStyle } from "./cards/cardShared";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
 import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
 import classes from "./cards/GlassMatchupCard.module.css";
-import type { LiveEliminationRow } from "../lib/eliminationWatch";
-import type { EliminationWatchRow, TeamPositionRanks } from "../types/season";
+import { ELIMINATION_STATUS_BADGE, type LiveEliminationRow } from "../lib/eliminationWatch";
+import type { TeamPositionRanks } from "../types/season";
 
 interface EliminationWatchListProps {
   leagueId: string;
@@ -12,17 +12,6 @@ interface EliminationWatchListProps {
   // See StandingsList's identical prop.
   positionRanksByTeam: Map<string, TeamPositionRanks> | undefined;
 }
-
-// Same red/gold/green three-band convention lib/gradeColor.ts uses (see
-// that file's comment on why those, not raw Mantine "yellow") - here keyed
-// off eliminationWatch.ts's own cut/bubble/safe status instead of a
-// continuous score. Only cut and bubble teams get a badge on the card -
-// "Safe" just shows in the long-press detail.
-const STATUS_BADGE: Record<EliminationWatchRow["status"], { label: string; color: string }> = {
-  cut: { label: "Projected Cut", color: "red" },
-  bubble: { label: "Bubble", color: "gold" },
-  safe: { label: "Safe", color: "green" },
-};
 
 // This week's guillotine elimination projection: each team's set lineup
 // for just the current NFL week (see convex/infinileague/season/
@@ -49,7 +38,9 @@ export function EliminationWatchList({
   return (
     <Stack gap={8}>
       {rows.map((row) => {
-        const status = STATUS_BADGE[row.status];
+        // Only cut and bubble teams get a badge on the card - "Safe" just
+        // shows in the long-press detail.
+        const status = ELIMINATION_STATUS_BADGE[row.status];
         const isLive = row.actualPoints !== undefined;
         return (
           <GlassTeamCard
