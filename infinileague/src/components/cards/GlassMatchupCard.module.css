@@ -1325,6 +1325,10 @@
   grid-template-areas:
     "logo name name total"
     "logo season proj proj";
+  /* The player cards' padding and corners, not the Matchup header's roomier
+     16px / 20px - it reads as one of the cards below it. */
+  padding: 10px;
+  border-radius: 16px;
   align-items: center;
   column-gap: 10px;
   row-gap: 4px;
