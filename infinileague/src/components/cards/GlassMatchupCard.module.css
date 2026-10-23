@@ -940,6 +940,9 @@
     margin-left: calc(-1 * var(--chip-bleed));
     padding-left: calc(6px + var(--chip-bleed) - var(--mantine-spacing-md));
     height: 42px;
+    /* Same corner radius as the cards beside it. */
+    border-radius: 16px;
+    font-size: 13px;
   }
 }
 
