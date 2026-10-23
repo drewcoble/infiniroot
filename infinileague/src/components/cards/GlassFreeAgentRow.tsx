@@ -63,7 +63,11 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
 
   return (
     <div className={classes.rosterRow}>
-      <span className={`${classes.pill} ${classes.slotChip} ${classes.rankChip}`} style={RANK_CHIP_STYLE} aria-hidden>
+      <span
+        className={`${classes.pill} ${classes.slotChip} ${classes.rankChip}`}
+        style={RANK_CHIP_STYLE}
+        aria-hidden
+      >
         {data.rank}
       </span>
       <div
