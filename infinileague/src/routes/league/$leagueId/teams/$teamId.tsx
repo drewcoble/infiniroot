@@ -133,9 +133,11 @@ function TeamPage() {
 
   // A guillotine league has no head-to-head record (it's always 0-0-0), so
   // the header shows the team's Elimination Watch standing for the week
-  // instead - the same live-ranked watch as the league home and the
-  // guillotine Matchup tab. A team missing from it has already been
-  // eliminated (the watch leaves out teams with empty rosters).
+  // instead. Loaded once per visit and left as-is - no live refresh or
+  // live re-ranking: the watch loads every team's lineup, too heavy to
+  // repeat for a header badge, and re-ranking without fresh points would
+  // drift rather than just go stale. A team missing from it has already
+  // been eliminated (the watch leaves out teams with empty rosters).
   const seasonsList: LinkedSeason[] | undefined = useQuery(
     api.leagues.listLinkedSeasons,
     isAuthenticated ? {} : "skip",
@@ -145,9 +147,8 @@ function TeamPage() {
   const eliminationWatch = useEliminationWatch(
     isGuillotine ? leagueId : null,
     week,
-    weekGames,
+    undefined,
     now,
-    refreshMs,
   );
   const eliminationStatus: EliminationStatus | "loading" | "unknown" | undefined = !isGuillotine
     ? undefined
