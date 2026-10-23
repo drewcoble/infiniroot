@@ -185,11 +185,7 @@ export function PlayerPopover({
           {
             label: "Bidding",
             items: [
-              {
-                label: "Your bid",
-                value: bid.suggestedBid !== null ? `$${bid.suggestedBid}` : "—",
-              },
-              { label: "Market", value: `$${bid.marketValue}` },
+              { label: "Bid", value: `$${bid.marketValue}` },
               { label: "Teams in need", value: String(bid.demandCount) },
             ],
           },

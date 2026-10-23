@@ -35,14 +35,12 @@ export interface FaabSuggestionRow {
   // market value (see demandMultiplier) but doesn't zero it.
   demandCount: number;
   topDemandValue: number;
-  // League-wide expected winning bid in dollars - the same for every team.
+  // League-wide expected winning bid in dollars - the same for every team,
+  // and the only bid shown. (An earlier per-team suggestedBid scaled this
+  // for starter vs. depth fit; removed 2026-10-23, since nearly every free
+  // agent is depth.)
   // See computeFaabSuggestions' header comment for how it's priced.
   marketValue: number;
-  // Only populated when args.teamId is given - marketValue capped at that
-  // team's remaining budget. No per-team fit adjustment (an earlier version
-  // scaled this up for a would-be starter and down to half for depth;
-  // removed 2026-10-23, since nearly every free agent is depth).
-  suggestedBid: number | null;
   // Set when a same-position teammate was just ruled Out or placed on IR (see
   // playerValue.ts's findInjuredTeammateNotes) - a note only, not reflected
   // in any value.
@@ -296,9 +294,8 @@ const BID_CEILING_BY_POSITION: Partial<Record<Position, number>> = {
 // a league-wide market value from how far he sits above the waiver floor,
 // as a share of a typical team's remaining budget, scaled by how many teams
 // would actually start him and capped at the second-deepest wallet, and (4)
-// caps that market value at the requesting team's remaining budget for its
-// suggested bid, and (5) lists the requesting team's unfillable starting
-// slots as a team-level warning.
+// lists the requesting team's unfillable starting slots as a team-level
+// warning.
 //
 // Lives here rather than directly in convex/infinileague/season/faabValues.ts
 // (its only consumer, now that infinidraft's own Free Agents tab has moved
@@ -395,7 +392,6 @@ export async function computeFaabSuggestions(
   const teamCount = teams.length || settings.teamCount;
 
   const requestingTeam = args.teamId ? teams.find((team) => team._id === args.teamId) : undefined;
-  const remainingFaabForTeam = requestingTeam ? (remainingFaabByTeam.get(requestingTeam._id) ?? 0) : 0;
 
   // Labels without the instance number ("RB2" -> "RB"), deduped.
   const openStarterSlots: string[] = [];
@@ -435,7 +431,6 @@ export async function computeFaabSuggestions(
       // bid, however thin the rest of the math makes him.
       if (share > 0 && marketValue === 0 && marketCap >= 1) marketValue = 1;
 
-      const suggestedBid = requestingTeam ? Math.min(marketValue, remainingFaabForTeam) : null;
 
       suggestions.push({
         fpid: row.fpid,
@@ -448,7 +443,6 @@ export async function computeFaabSuggestions(
         demandCount,
         topDemandValue,
         marketValue,
-        suggestedBid,
         boostReason: row.boostReason,
       });
     });

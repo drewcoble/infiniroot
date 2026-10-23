@@ -196,9 +196,6 @@ function FreeAgentsPage() {
         )}
         {rows.map((row, index) => {
           const rosVorRow = rosVorByFpid.get(row.fpid);
-          const bidAmount = row.suggestedBid ?? row.marketValue;
-          // No bid line for a player nobody's bidding on ($0/$0).
-          const hasBid = bidAmount > 0 || row.marketValue > 0;
           const weekUsageActual = weekUsageByFpid.get(row.fpid);
           const weekUsageProj = rosVorRow?.weekUsage ?? null;
           // Sorted by usage, the usage score takes the bid's place - big =
@@ -226,8 +223,7 @@ function FreeAgentsPage() {
                 team: row.team,
                 isRookie: rookieFpidSet.has(row.fpid),
                 injury: rosVorRow?.injury,
-                bid: hasBid ? `$${bidAmount}` : "",
-                market: hasBid ? `Mkt $${row.marketValue}` : "",
+                bid: row.marketValue > 0 ? `$${row.marketValue}` : "",
                 ...(usage ? { usage } : {}),
                 boostReason: row.boostReason,
               }}

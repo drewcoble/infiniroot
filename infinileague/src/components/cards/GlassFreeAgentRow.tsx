@@ -19,12 +19,9 @@ export interface GlassFreeAgentRowData {
   team: string | null;
   isRookie: boolean;
   injury?: { status: string; statusShort: string } | undefined;
-  // "$14" - the suggested bid (or the market value without one); "" when
-  // nobody's bidding on this player.
+  // "$14" - the market bid; "" when nobody's bidding on this player.
   bid: string;
-  // "Mkt $9" under it.
-  market: string;
-  // Shown in place of the bid and market value when the list is sorted by
+  // Shown in place of the bid when the list is sorted by
   // usage: the actual score (or season average) big, the projection small.
   usage?: { actual: string; projection: string };
   // Injured-teammate note - dimmed on a third line (truncated), in full in
@@ -39,8 +36,8 @@ const RANK_CHIP_STYLE = {
 } as CSSProperties;
 
 // One Free Agents row in the Players board's glass layout (see
-// GlassPlayerRow): name with injury/rookie badges | suggested bid, then
-// position + NFL team | market value, then any injured-teammate note.
+// GlassPlayerRow): name with injury/rookie badges | market bid, then
+// position + NFL team, then any injured-teammate note.
 // Long-press (or Enter/Space) opens the PlayerPopover (bid tiles and the
 // full note included).
 export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
@@ -54,7 +51,7 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
     data.injury?.status,
     ...(data.usage
       ? [data.usage.actual ? `usage ${data.usage.actual}` : null, data.usage.projection || null]
-      : [data.bid ? `suggested bid ${data.bid}` : null, data.market]),
+      : [data.bid ? `bid ${data.bid}` : null]),
     note || null,
   ]
     .filter(Boolean)
@@ -114,7 +111,7 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
             </span>
           )}
         </div>
-        <div className={classes.wideProj}>{data.usage ? data.usage.projection : data.market}</div>
+        <div className={classes.wideProj}>{data.usage?.projection}</div>
         {note && (
           <div className={classes.freeAgentNote}>
             <span className={classes.gameLineText}>{note}</span>

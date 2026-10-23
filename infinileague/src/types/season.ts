@@ -125,12 +125,9 @@ export interface FaabSuggestionRow {
   // gap among them. 0/0 means nobody would start this player right now.
   demandCount: number;
   topDemandValue: number;
-  // League-wide expected winning bid in dollars - the same for every team.
+  // League-wide expected winning bid in dollars - the same for every team,
+  // and the only bid shown.
   marketValue: number;
-  // Only populated when the query was called with a teamId - null otherwise
-  // (see freeAgents.tsx, which always passes the viewer's own team once
-  // known). marketValue capped at that team's remaining budget.
-  suggestedBid: number | null;
   // Set when a same-position teammate was just ruled Out or placed on IR -
   // a note only, not reflected in any value.
   boostReason: string | null;
