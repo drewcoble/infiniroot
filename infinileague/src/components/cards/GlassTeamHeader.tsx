@@ -88,7 +88,9 @@ export function GlassTeamHeader({
             <span className={classes.pill} style={RANK_PILL_STYLE} aria-label={`Rank ${team.rank}`}>
               #{team.rank}
             </span>
-            <h3 className={classes.teamHeaderName}>{team.name}</h3>
+            <h3 className={classes.teamHeaderName} title={team.name}>
+              {team.name}
+            </h3>
           </div>
           <div className={classes.teamHeaderSeason}>
             <span>

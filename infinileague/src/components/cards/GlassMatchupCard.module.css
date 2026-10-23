@@ -1340,7 +1340,10 @@
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.015em;
-  overflow-wrap: anywhere;
+  /* One line - a name too long for it ends in an ellipsis. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The team's logo, the height of both rows beside it. */
