@@ -1316,14 +1316,17 @@
 
 /* Two shared rows (name | score, season | projection), each side centered
    on the other - the full-width player card's layout. */
+/* The right side splits in two so the name only gives up the score's width,
+   not the wider counts-and-projection line under it (same as the full-width
+   player cards' .withHeadshot). */
 .teamHeader {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "name total"
-    "season proj";
+    "logo name name total"
+    "logo season proj proj";
   align-items: center;
-  column-gap: 12px;
+  column-gap: 10px;
   row-gap: 4px;
 }
 
@@ -1331,21 +1334,33 @@
   grid-area: name;
   margin: 0;
   min-width: 0;
-  font-size: 20px;
+  /* 18px, not the Matchup header's 20: beside the full-height logo and rank
+     badge, 20 wrapped an average-length name next to a live score. */
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.015em;
   overflow-wrap: anywhere;
 }
 
-/* Logo then name, in the name's grid cell - the logo stays off the season
-   row, which has no width to spare beside the week's counts. */
+/* The team's logo, the height of both rows beside it. */
+.teamHeaderLogo {
+  grid-area: logo;
+  align-self: center;
+}
+
+/* Rank badge then name, in the name's grid cell - the badge moved up here
+   so the season row (beside the week's counts) is just the record. */
 .teamHeaderTitle {
   grid-area: name;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
+}
+
+.teamHeaderTitle .pill {
+  flex-shrink: 0;
 }
 
 .teamHeaderSeason {

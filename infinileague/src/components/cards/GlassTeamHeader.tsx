@@ -29,11 +29,14 @@ function seasonPpg(team: StandingsRow): number | null {
   return games > 0 ? team.pointsFor / games : null;
 }
 
+// The logo spans both of the header's rows (see .teamHeaderLogo).
+const TEAM_HEADER_LOGO_SIZE = 46;
+
 // My Team's header in the same glass as the Matchup header and roster
-// cards, on two shared rows like the full-width player card: the team's
-// logo (TeamLogo, initials without one) and name |
-// the week's score, then the season line (rank, record, points per game) |
-// the starters' live/to-play counts and the week's projection. The week
+// cards, on two shared rows like the full-width player card, beside the
+// team's logo (TeamLogo, initials without one) spanning both: rank badge and
+// team name | the week's score, then the season line (record, points per
+// game) | the starters' live/to-play counts and the week's projection. The week
 // itself is picked from the page's title row (see WeekPicker). `team`
 // undefined = standings still loading; `summary` undefined = the week's
 // roster still loading (shimmer placeholders either way). Before any
@@ -61,6 +64,10 @@ export function GlassTeamHeader({
       {team === undefined ? (
         <>
           <span
+            className={`${classes.skeletonBar} ${classes.teamHeaderLogo}`}
+            style={{ width: TEAM_HEADER_LOGO_SIZE, height: TEAM_HEADER_LOGO_SIZE, borderRadius: 14 }}
+          />
+          <span
             className={`${classes.skeletonBar} ${classes.teamHeaderName}`}
             style={{ width: "55%", height: 18 }}
           />
@@ -71,14 +78,19 @@ export function GlassTeamHeader({
         </>
       ) : (
         <>
+          <TeamLogo
+            name={team.name}
+            logoUrl={team.logoUrl}
+            size={TEAM_HEADER_LOGO_SIZE}
+            className={classes.teamHeaderLogo}
+          />
           <div className={classes.teamHeaderTitle}>
-            <TeamLogo name={team.name} logoUrl={team.logoUrl} size={30} />
-            <h3 className={classes.teamHeaderName}>{team.name}</h3>
-          </div>
-          <div className={classes.teamHeaderSeason}>
             <span className={classes.pill} style={RANK_PILL_STYLE} aria-label={`Rank ${team.rank}`}>
               #{team.rank}
             </span>
+            <h3 className={classes.teamHeaderName}>{team.name}</h3>
+          </div>
+          <div className={classes.teamHeaderSeason}>
             <span>
               {team.wins}-{team.losses}-{team.ties}
               {ppg !== null && ` · ${ppg.toFixed(1)} PPG`}
