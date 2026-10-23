@@ -9,6 +9,15 @@
   }
 }
 
+/* The list cards' rank/slot chips run off the left edge on mobile (see
+   .rosterRow > .slotChip) - clip rather than letting the page scroll
+   sideways. `clip`, not `hidden`, so body doesn't become a scroll container
+   and position: sticky keeps working. */
+html,
+body {
+  overflow-x: clip;
+}
+
 /* Numbers (points, scores, standings, FAAB) are set in Barlow semibold -
    a clean, very legible grotesque that holds up at small sizes. Every
    number style reads these two variables; tabular figures keep live

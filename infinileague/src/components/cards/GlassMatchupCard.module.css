@@ -928,6 +928,20 @@
   padding: 0 6px;
 }
 
+/* Mobile: the chip runs off the screen's left edge (through the page
+   gutter, plus enough to hide its rounded end), keeping 54px visible.
+   Left padding equal to the hidden part centers the label in what shows;
+   index.css clips the overflow. Desktop keeps the full pill - the page
+   there is centered, so there's no screen edge to run into. */
+@media (max-width: 47.99em) {
+  .rosterRow > .slotChip {
+    --chip-bleed: calc(var(--mantine-spacing-md) + 24px);
+    width: calc(54px + var(--chip-bleed) - var(--mantine-spacing-md));
+    margin-left: calc(-1 * var(--chip-bleed));
+    padding-left: calc(6px + var(--chip-bleed) - var(--mantine-spacing-md));
+  }
+}
+
 .rosterRow > .card {
   flex: 1;
   min-width: 0;
