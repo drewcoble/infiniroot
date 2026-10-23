@@ -5,7 +5,7 @@ import { scoringConfigFromSeason } from "../scoring";
 import { expandRosterSlots, isEligibleForSlot } from "./rosterSlots";
 import {
   computeReplacementLevels,
-  findInjuryBoosts,
+  findInjuredTeammateNotes,
   forwardRate,
   gatherPlayerForms,
   type ValuedPlayer,
@@ -45,10 +45,10 @@ export interface FaabSuggestionRow {
   myValue: number | null;
   suggestedBid: number | null;
   rationale: string | null;
-  // Set when this row's value includes an injury-driven backup boost (see
-  // playerValue.ts's findInjuryBoosts) - surfaced so the UI can explain an
-  // otherwise-surprising number rather than just asserting it. Kept separate
-  // from rationale (not appended to it) so the UI can give it its own line.
+  // Set when a same-position teammate was just ruled Out or placed on IR (see
+  // playerValue.ts's findInjuredTeammateNotes) - a note only, not reflected
+  // in any value. Kept separate from rationale (not appended to it) so the
+  // UI can give it its own line.
   boostReason: string | null;
 }
 
@@ -72,9 +72,9 @@ interface PlayerValueEntry {
 }
 
 // Prefers convex/rosVor.ts's daily-cron cache - it computes this exact same
-// momentum/injury-boost value for every rosterable player already, so
+// momentum-adjusted value for every rosterable player already, so
 // reading it here avoids redoing convex/lib/playerValue.ts's live
-// gather-forms/injury-boost work (the expensive O(positions * weeks) reads)
+// gather-forms/injured-teammate work (the expensive O(positions * weeks) reads)
 // on every single FAAB query. Returns null on a genuine cache miss (no
 // board for this season's shape/week - a league with brand-new settings
 // before rosVor.ts's ensureSeasonRosVor or the next cron cycle fills it) so
@@ -107,7 +107,7 @@ async function loadCachedPlayerValues(
 }
 
 // Same computation convex/rosVor.ts's own refresh does for its "forward"
-// side (momentum-adjusted rosValue, injury boost, free-agent-pool
+// side (momentum-adjusted rosValue, injured-teammate note, free-agent-pool
 // replacement level) - kept here rather than imported from that file since
 // rosVor.ts is a cron-triggered mutation, not designed for reuse, and this
 // only needs the "ros" half (not actualVor, which FAAB has no use for).
@@ -128,17 +128,11 @@ async function computeLivePlayerValues(
     season: args.season,
     scoringConfig: args.scoringConfig,
   });
-  const boosts = await findInjuryBoosts(ctx, { forms });
+  const injuryNotes = await findInjuredTeammateNotes(ctx, { forms });
 
   const rosValueByFpid = new Map<number, number>();
   for (const form of forms.values()) {
-    let value = forwardRate(form) * args.remainingWeeks;
-    const boost = boosts.get(form.fpid);
-    if (boost) {
-      const boostedWeeks = Math.min(boost.boostedWeeks, args.remainingWeeks);
-      value += Math.max(boost.boostedRate - forwardRate(form), 0) * boostedWeeks;
-    }
-    rosValueByFpid.set(form.fpid, value);
+    rosValueByFpid.set(form.fpid, forwardRate(form) * args.remainingWeeks);
   }
 
   // Full pool (rostered + free agent), not free-agent-only - see
@@ -165,7 +159,7 @@ async function computeLivePlayerValues(
       position: form.position,
       rosValue,
       valueOverReplacement: rosValue - replacementValues[form.position],
-      boostReason: boosts.get(form.fpid)?.reason ?? null,
+      boostReason: injuryNotes.get(form.fpid) ?? null,
     });
   }
   return values;

@@ -6,7 +6,7 @@ import { POSITIONS, positionValidator } from "./positions";
 import { scoringConfigFromSeason, scoringConfigValidator, type ScoringConfig } from "./scoring";
 import { requireSeasonOwner } from "./lib/access";
 import { loadWeekPoints } from "./lib/weekPoints";
-import { computeReplacementLevels, findInjuryBoosts, forwardRate, gatherPlayerForms, momentumMultiplier, type ValuedPlayer } from "./lib/playerValue";
+import { computeReplacementLevels, findInjuredTeammateNotes, forwardRate, gatherPlayerForms, momentumMultiplier, type ValuedPlayer } from "./lib/playerValue";
 import { gatherRosProjTotals } from "./rosProjTotals";
 import {
   ensureLeagueShapeId,
@@ -101,8 +101,8 @@ export interface RosVorRow {
 // produces each player's shape-independent values, and refreshRosVor then
 // only does the cheap per-shape part (replacement levels off the shape's
 // roster settings, VOR, ranks, upsert). Every input to a player's values is
-// scoped to that player's own position (injury boosts only match same-
-// position teammates), so computing over the union of a group's positions
+// scoped to that player's own position (injured-teammate notes only match
+// same-position teammates), so computing over the union of a group's positions
 // gives each shape exactly what it would have computed alone. Leagues
 // sharing a shape share the one board, so N identical leagues cost one
 // refreshRosVor, not N.
@@ -262,11 +262,8 @@ export const computeRosVorInputs = internalQuery({
     // convex/valueGaps.ts's getAllValueGaps uses.
     const rosProjTotals = await gatherRosProjTotals(ctx, { activePositions, scoringConfig });
 
-    // Applied to EVERY player (rostered or not), unlike FAAB's own
-    // valueOf, which only boosts the free-agent view - a general "how good
-    // is this player right now" ranking should reflect a role bump
-    // whether or not anyone happens to already roster them.
-    const boosts = await findInjuryBoosts(ctx, { forms });
+    // Display-only note (no effect on value) - see findInjuredTeammateNotes.
+    const injuryNotes = await findInjuredTeammateNotes(ctx, { forms });
 
     // gamesPlayed rides along for actualPpg, not used by the replacement-
     // level math itself.
@@ -303,21 +300,11 @@ export const computeRosVorInputs = internalQuery({
       // players with the same rosValue but different bye timing should
       // still show the same per-game rate.
       const rosWeeks = cached ? cached.weeksIncluded : remainingWeeks;
-      const boost = boosts.get(form.fpid);
-      let rosValue = totalRawProjection * momentumMultiplier(form);
-      if (boost) {
-        const boostedWeeks = Math.min(boost.boostedWeeks, remainingWeeks);
-        rosValue += Math.max(boost.boostedRate - forwardRate(form), 0) * boostedWeeks;
-      }
+      const rosValue = totalRawProjection * momentumMultiplier(form);
 
       // Single-week value - same momentum-adjusted rate rosValue is built
-      // from, but for just the current week (no remainingWeeks multiplier),
-      // with an injury boost applied for one week only rather than the full
-      // boostedWeeks span.
-      let weekValue = forwardRate(form);
-      if (boost && remainingWeeks > 0) {
-        weekValue += Math.max(boost.boostedRate - forwardRate(form), 0);
-      }
+      // from, but for just the current week (no remainingWeeks multiplier).
+      const weekValue = forwardRate(form);
 
       const actualStats = actualStatsByFpid.get(form.fpid);
       return {
@@ -336,7 +323,7 @@ export const computeRosVorInputs = internalQuery({
         actualPpg: actualStats && actualStats.gamesPlayed > 0 ? actualStats.totalPoints / actualStats.gamesPlayed : 0,
         seasonUsage: actualStats?.usageAverage ?? null,
         weekUsage: form.currentWeekUsage,
-        boostReason: boost?.reason ?? null,
+        boostReason: injuryNotes.get(form.fpid) ?? null,
       };
     });
   },

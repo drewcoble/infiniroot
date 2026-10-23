@@ -133,22 +133,23 @@ const rosVorBoardFields = {
   rosVor: v.number(),
   rosRank: v.number(),
   // Raw rest-of-season value (same momentum-adjusted number rosVor is
-  // computed from, injury boost included) - stored alongside rosVor so a
+  // computed from) - stored alongside rosVor so a
   // consumer like convex/lib/faab.ts can read a ready-made per-player
   // value straight off this cache instead of recomputing convex/lib/
-  // playerValue.ts's momentum/injury-boost machinery on every live query.
+  // playerValue.ts's momentum machinery on every live query.
   // Optional since rows written before this field existed predate it -
   // convex/lib/faab.ts treats a missing value as a cache miss for that
   // row (see its own comment).
   rosValue: v.optional(v.number()),
-  // Injury-boost narrative, when this row's rosValue includes one (see
-  // playerValue.ts's findInjuryBoosts) - stored so a cache consumer
-  // doesn't have to redo boost detection just to explain a surprising
-  // number. v.null() rather than v.optional(): this row gets patched in
-  // place week to week (see refreshRosVor's upsert), and a boost that
-  // applied last week can legitimately stop applying this week - patch
-  // only touches keys it's given, so an *absent* key would leave a stale
-  // reason in place forever, while an explicit null always overwrites it.
+  // Injured-teammate note, when a same-position teammate was just ruled
+  // Out or placed on IR (see playerValue.ts's findInjuredTeammateNotes) -
+  // display only, not reflected in rosValue. Stored so a cache consumer
+  // doesn't have to redo the detection. v.null() rather than v.optional():
+  // this row gets patched in place week to week (see refreshRosVor's
+  // upsert), and a note that applied last week can legitimately stop
+  // applying this week - patch only touches keys it's given, so an *absent*
+  // key would leave a stale reason in place forever, while an explicit null
+  // always overwrites it.
   boostReason: v.union(v.string(), v.null()),
   // Backward-looking: this season's actual points scored so far
   // (playerSeasonStats.totalPoints for this league's exact scoring
@@ -643,7 +644,7 @@ export default defineSchema({
     // "carryForward": still on the list when a new week began, nothing
     //   changed - gives every injured week its own row, so "status in week
     //   N" is a direct lookup. NOT a new injury event: anything asking
-    //   "when did this start?" (e.g. lib/playerValue.ts's injury-boost
+    //   "when did this start?" (e.g. lib/playerValue.ts's injured-teammate
     //   freshness) must skip these.
     // "cleared": dropped off Sleeper's injured list (recovered) - status is
     //   "Active" and the injury fields are empty.
