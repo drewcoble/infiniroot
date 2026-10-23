@@ -249,13 +249,14 @@ function demandMultiplier(demandCount: number): number {
 // Adjusts league market value to the requesting team's own situation -
 // above market when he'd start for them (they're one of the teams driving
 // the price), below it when he'd be depth, but never to $0 just because
-// they're already covered at the position.
+// they're already covered at the position. Depth gets no rationale - it's
+// the unremarkable case, not worth a line on the free-agent row.
 function teamFit(
   pos: Position,
   myUpgrade: number,
   weakestStarter: number | undefined,
   aboveFloor: number,
-): { multiplier: number; rationale: string } {
+): { multiplier: number; rationale: string | null } {
   if (weakestStarter === undefined) {
     return { multiplier: 1.2, rationale: `No ${pos} in your starting lineup` };
   }
@@ -265,7 +266,7 @@ function teamFit(
       rationale: `Would start for you at ${pos}`,
     };
   }
-  return { multiplier: 0.5, rationale: `Depth for you at ${pos}` };
+  return { multiplier: 0.5, rationale: null };
 }
 
 function median(values: number[]): number {
@@ -448,7 +449,6 @@ export async function computeFaabSuggestions(
         myValue = demandValuesByTeam.find((d) => d.teamId === requestingTeam._id)?.value ?? 0;
         if (marketValue === 0) {
           suggestedBid = 0;
-          rationale = "Waiver-level - no bid needed";
         } else {
           const weakest = weakestStarterByTeam.get(requestingTeam._id)?.[pos];
           const fit = teamFit(pos, myValue, weakest, aboveFloor);
