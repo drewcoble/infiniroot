@@ -269,7 +269,7 @@ function RankHistoryExample({
     isAuthenticated ? { seasonId: leagueId as Id<"seasons">, fpid, year } : "skip",
   );
   return (
-    <Example title="Rank by week">
+    <Example title="Season rank over time">
       {history === undefined ? (
         <Center py="md">
           <Loader size="sm" />
