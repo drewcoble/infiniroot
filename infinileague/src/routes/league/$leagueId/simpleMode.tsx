@@ -7,6 +7,7 @@ import { api } from "@infinidata/api";
 import { DivergingBars, ValueBars } from "../../../components/charts/BarRows";
 import { NEUTRAL_MARK, SERIES, STATUS } from "../../../components/charts/chartTheme";
 import { RankDumbbell } from "../../../components/charts/RankDumbbell";
+import { RankLine } from "../../../components/charts/RankLine";
 import { SegmentGauge } from "../../../components/charts/SegmentGauge";
 import { SlopeChart, type SlopeRow } from "../../../components/charts/SlopeChart";
 import { Sparkline } from "../../../components/charts/Sparkline";
@@ -229,9 +230,83 @@ function PlayerExamples() {
               ]}
             />
           </Example>
+          {fpid !== null && year !== null && (
+            <RankHistoryExample
+              fpid={fpid}
+              year={year}
+              position={player.position}
+              maxRank={RANK_AXIS[player.position]}
+            />
+          )}
         </>
       )}
     </Section>
+  );
+}
+
+// Experiment: the "Where he ranks" read as a timeline - his season-to-date
+// position rank after each week, by points per game (min. half the weeks
+// played) and by total points, for comparing which reads better.
+function RankHistoryExample({
+  fpid,
+  year,
+  position,
+  maxRank,
+}: {
+  fpid: number;
+  year: string;
+  position: UsagePosition;
+  maxRank: number;
+}) {
+  const { leagueId } = Route.useParams();
+  const { isAuthenticated } = useConvexAuth();
+  const history = useQuery(
+    api.infinileague.season.rankHistory.getSeasonRankHistory,
+    isAuthenticated ? { seasonId: leagueId as Id<"seasons">, fpid, year } : "skip",
+  );
+  return (
+    <Example title="Rank by week">
+      {history === undefined ? (
+        <Center py="md">
+          <Loader size="sm" />
+        </Center>
+      ) : history === null || history.weeks.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          No games logged for {year}.
+        </Text>
+      ) : (
+        <RankLine
+          weeks={history.weeks.map((week) => week.week)}
+          position={position}
+          maxRank={maxRank}
+          series={[
+            {
+              key: "ppg",
+              label: "By points per game",
+              color: SERIES[0],
+              ranks: history.weeks.map((week) => week.ppgRank),
+            },
+            {
+              key: "total",
+              label: "By total points",
+              color: SERIES[1],
+              ranks: history.weeks.map((week) => week.totalRank),
+            },
+          ]}
+          ariaLabel={
+            `Season-to-date ${position} rank by week: ` +
+            history.weeks
+              .map(
+                (week) =>
+                  `week ${week.week} ` +
+                  `${week.ppgRank ? `${position}${week.ppgRank}` : "unranked"} per game, ` +
+                  `${week.totalRank ? `${position}${week.totalRank}` : "unranked"} total`,
+              )
+              .join("; ")
+          }
+        />
+      )}
+    </Example>
   );
 }
 
