@@ -1,5 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
-import { GRID, NEUTRAL_MARK, SURFACE } from "./chartTheme";
+import { GRID, SURFACE, TEXT } from "./chartTheme";
 import classes from "./charts.module.css";
 
 export interface RankLineSeries {
@@ -45,7 +45,7 @@ export function RankLine({
   tierSize?: number;
   height?: number;
   pointLabels?: boolean;
-  // A flat dashed line at one rank across the whole chart - e.g. where
+  // A flat line at one rank across the whole chart - e.g. where
   // he's projected to rank the rest of the season - named in the legend.
   reference?: { rank: number; label: string } | undefined;
   ariaLabel: string;
@@ -143,17 +143,15 @@ export function RankLine({
               ) : null,
             )}
 
-            {/* Behind the lines - a projection, so dashed like the bar
-                charts' projected weeks. */}
+            {/* Behind the lines, styled like the bar charts' average line. */}
             {reference && (
               <line
                 x1={MARGIN.left}
                 x2={MARGIN.left + plotWidth}
                 y1={y(reference.rank)}
                 y2={y(reference.rank)}
-                stroke={NEUTRAL_MARK}
+                stroke={TEXT.secondary}
                 strokeWidth={1.5}
-                strokeDasharray="4 3"
               />
             )}
 
@@ -265,16 +263,7 @@ export function RankLine({
             ))}
           {reference && (
             <span className={classes.legendItem}>
-              <span
-                className={classes.swatchLine}
-                style={{
-                  width: 14,
-                  height: 0,
-                  borderRadius: 0,
-                  background: "none",
-                  borderTop: `2px dashed ${NEUTRAL_MARK}`,
-                }}
-              />
+              <span className={classes.swatchLine} style={{ background: TEXT.secondary }} />
               {reference.label}
             </span>
           )}
