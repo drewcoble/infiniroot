@@ -289,7 +289,8 @@ function RankHistoryExample({
             {
               key: "total",
               label: "By total points",
-              color: SERIES[1],
+              // Neutral gray - orange read as "bad" next to the blue.
+              color: NEUTRAL_MARK,
               ranks: history.weeks.map((week) => week.totalRank),
             },
           ]}
