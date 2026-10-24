@@ -1,5 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
-import { GRID, SURFACE } from "./chartTheme";
+import { GRID, NEUTRAL_MARK, SURFACE } from "./chartTheme";
 import classes from "./charts.module.css";
 
 export interface RankLineSeries {
@@ -35,6 +35,7 @@ export function RankLine({
   tierSize = 12,
   height = 170,
   pointLabels = false,
+  reference,
   ariaLabel,
 }: {
   weeks: number[];
@@ -44,6 +45,9 @@ export function RankLine({
   tierSize?: number;
   height?: number;
   pointLabels?: boolean;
+  // A flat dashed line at one rank across the whole chart - e.g. where
+  // he's projected to rank the rest of the season - named in the legend.
+  reference?: { rank: number; label: string } | undefined;
   ariaLabel: string;
 }) {
   const MARGIN = pointLabels ? LABELED_MARGIN : BASE_MARGIN;
@@ -51,6 +55,7 @@ export function RankLine({
   const worst = Math.max(
     1,
     ...series.flatMap((entry) => entry.ranks.filter((rank): rank is number => rank !== null)),
+    reference?.rank ?? 1,
   );
   const axisMax = Math.min(maxRank, Math.max(tierSize * 2, Math.ceil(worst / tierSize) * tierSize));
   const plotWidth = Math.max(0, width - MARGIN.left - MARGIN.right);
@@ -136,6 +141,20 @@ export function RankLine({
                   {week}
                 </text>
               ) : null,
+            )}
+
+            {/* Behind the lines - a projection, so dashed like the bar
+                charts' projected weeks. */}
+            {reference && (
+              <line
+                x1={MARGIN.left}
+                x2={MARGIN.left + plotWidth}
+                y1={y(reference.rank)}
+                y2={y(reference.rank)}
+                stroke={NEUTRAL_MARK}
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+              />
             )}
 
             {series.map((entry) => {
@@ -235,14 +254,30 @@ export function RankLine({
           <div style={{ height }} />
         )}
       </div>
-      {series.length > 1 && (
+      {(series.length > 1 || reference) && (
         <div className={classes.legend}>
-          {series.map((entry) => (
-            <span key={entry.key} className={classes.legendItem}>
-              <span className={classes.swatchLine} style={{ background: entry.color }} />
-              {entry.label}
+          {series.length > 1 &&
+            series.map((entry) => (
+              <span key={entry.key} className={classes.legendItem}>
+                <span className={classes.swatchLine} style={{ background: entry.color }} />
+                {entry.label}
+              </span>
+            ))}
+          {reference && (
+            <span className={classes.legendItem}>
+              <span
+                className={classes.swatchLine}
+                style={{
+                  width: 14,
+                  height: 0,
+                  borderRadius: 0,
+                  background: "none",
+                  borderTop: `2px dashed ${NEUTRAL_MARK}`,
+                }}
+              />
+              {reference.label}
             </span>
-          ))}
+          )}
         </div>
       )}
     </div>

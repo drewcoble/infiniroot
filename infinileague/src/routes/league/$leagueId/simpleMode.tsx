@@ -236,6 +236,7 @@ function PlayerExamples() {
               year={year}
               position={player.position}
               maxRank={RANK_AXIS[player.position]}
+              rosRank={player.positionRank > 0 ? player.positionRank : undefined}
             />
           )}
         </>
@@ -252,11 +253,14 @@ function RankHistoryExample({
   year,
   position,
   maxRank,
+  rosRank,
 }: {
   fpid: number;
   year: string;
   position: UsagePosition;
   maxRank: number;
+  // His rest-of-season projected position rank (the board's positionRank).
+  rosRank: number | undefined;
 }) {
   const { leagueId } = Route.useParams();
   const { isAuthenticated } = useConvexAuth();
@@ -280,6 +284,11 @@ function RankHistoryExample({
           position={position}
           maxRank={maxRank}
           pointLabels
+          reference={
+            rosRank !== undefined
+              ? { rank: rosRank, label: `ROS projection ${position}${rosRank}` }
+              : undefined
+          }
           series={[
             {
               key: "ppg",
