@@ -53,6 +53,25 @@ export interface StandingsRow {
   waiverPosition?: number;
 }
 
+// Mirrors convex/infinileague/season/projectedStandings.ts's
+// ProjectedStandingsRow - already sorted and ranked by the backend.
+export interface ProjectedStandingsRow {
+  teamId: string;
+  name: string;
+  logoUrl?: string;
+  isSelf: boolean;
+  rank: number;
+  // Current standings rank minus projected rank - positive moves up.
+  rankChange: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  pointsFor: number;
+  currentWins: number;
+  currentLosses: number;
+  currentTies: number;
+}
+
 // Mirrors convex/infinileague/season/powerRankings.ts's PowerRankingRow -
 // already ranked descending by the backend (each team's optimal-lineup
 // total, current week through week 18), so this just renders in the order
