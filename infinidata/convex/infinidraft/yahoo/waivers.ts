@@ -4,7 +4,7 @@ import { internal } from "../../_generated/api";
 import type { Doc } from "../../_generated/dataModel";
 import { fetchYahooApi, findNodesByKey } from "./client";
 import { withYahooToken } from "./oauth";
-import { extractRosterPlayers } from "./league";
+import { extractRosterPlayers, yahooPositionRows } from "./league";
 
 /**
  * Yahoo's own API can filter its players resource directly to the current
@@ -56,11 +56,15 @@ export const syncYahooWaiverPlayers = internalAction({
         `/league/${season.yahooLeagueKey}${WAIVER_PLAYERS_PATH_SUFFIX}`,
       );
       const waiverPlayers = extractRosterPlayers(findNodesByKey(json, "player"));
-      const fpids: number[] = await ctx.runQuery(
+      const resolved: Array<{ fpid: number; position: string }> = await ctx.runQuery(
         internal.infinidraft.yahoo.league.resolveFpidsByName,
         { players: waiverPlayers },
       );
-      return fpids.map((fpid) => ({ fpid }));
+      await ctx.runMutation(internal.players.recordPlatformPositions, {
+        platform: "yahoo",
+        rows: yahooPositionRows(resolved),
+      });
+      return resolved.map(({ fpid }) => ({ fpid }));
     });
 
     await ctx.runMutation(

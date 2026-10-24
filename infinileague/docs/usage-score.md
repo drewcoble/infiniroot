@@ -11,6 +11,22 @@ Shown as the usage chart in the player popover (`src/components/player/`).
 Nothing is stored per player-week: the weights and percentile tables are
 fixed constants, so reading a player's season is one small query.
 
+## On the Players / Free Agents boards
+
+Sort by Usage. Season view: the season's average
+(`playerSeasonStats.usageAverage`, kept up by the stats sync, carried onto
+the rosVOR board as `seasonUsage`). Week view: the projected score until
+the player's game is final (`weekUsage` on the board), then the actual
+score (`usage:getWeekUsage`, from the live document's opportunity stats or
+the synced week).
+
+The projected score runs the week's projected stat line through the same
+formula. Projections have carries, targets and pass attempts but no
+red-zone looks, so those are filled in at the position's usual red-zone
+share (`RED_ZONE_SHARE`, from the same calibration run) - without that,
+every projected score reads low next to the actual ones. This is a
+stand-in for the forward-looking model below.
+
 ## Method
 
 1. **Value each opportunity in expected fantasy points (xFP).** Carries,

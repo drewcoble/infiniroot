@@ -75,7 +75,7 @@ export const upsertProjections = mutation({
         // week, most of it identical to what's stored. This also means the
         // previous* lookback below now holds the value from before the
         // last real change, not just yesterday's fetch - so a projection
-        // spike stays detectable (lib/playerValue.ts's findInjuryBoosts)
+        // spike stays detectable (lib/playerValue.ts's findInjuredTeammateNotes)
         // instead of being wiped by a no-op rewrite the next day.
         if (
           match.name === row.name &&

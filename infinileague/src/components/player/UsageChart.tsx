@@ -4,6 +4,7 @@ import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
 import { positionColorVar } from "@shared/positionColors";
 import { ChartTitle } from "../charts/ChartTitle";
+import { ChartLoading } from "./chartLoading";
 import { WeeklyBars, type ChartSeries, type WeeklyBarDatum } from "../charts/WeeklyBars";
 
 type UsagePart = "pass" | "rush" | "rec";
@@ -27,14 +28,24 @@ const INFO = {
 // season/usage.ts), as stacked bars on a fixed 0-100 scale so any two
 // players' charts compare. Needs the league route's season for its scoring
 // - renders nothing outside a league, for K/DST, or before his first game.
-export function UsageChart({ fpid, year }: { fpid: number; year: string }) {
+export function UsageChart({
+  fpid,
+  year,
+  showTitle = true,
+}: {
+  fpid: number;
+  year: string;
+  // False when a switch above already names the chart (PlayerTrends).
+  showTitle?: boolean;
+}) {
   const { leagueId } = useParams({ strict: false });
   const { isAuthenticated } = useConvexAuth();
   const usage = useQuery(
     api.infinileague.season.usage.getUsageWeeks,
     leagueId && isAuthenticated ? { seasonId: leagueId as Id<"seasons">, fpid, year } : "skip",
   );
-  if (!usage || usage.average === null) return null;
+  if (usage === undefined) return <ChartLoading />;
+  if (usage === null || usage.average === null) return null;
 
   const { position, weeks, average } = usage;
   // Rushing and receiving for everyone; passing only for a QB; a QB's
@@ -46,16 +57,19 @@ export function UsageChart({ fpid, year }: { fpid: number; year: string }) {
       : position === "RB"
         ? ["rush", "rec"]
         : ["rec", ...(has("rush") ? (["rush"] as const) : [])];
+  // A projected week has a total but no split - drawn as one bar.
   const data: WeeklyBarDatum[] = weeks.map((week) => ({
     week: week.week,
     kind: week.kind,
-    values: parts.map((part) => week[part]),
+    values: week.kind === "projected" ? [week.total] : parts.map((part) => week[part]),
   }));
+  const projected = weeks.find((week) => week.kind === "projected");
 
   return (
     <div>
       <ChartTitle
         title="Usage score"
+        showTitle={showTitle}
         info={position === "QB" ? INFO.qb : INFO.flex}
         stat={`Avg. ${Math.round(average)}`}
       />
@@ -65,12 +79,14 @@ export function UsageChart({ fpid, year }: { fpid: number; year: string }) {
         max={100}
         reference={{ value: average, label: "Avg." }}
         barLabel={(_, total) => String(total)}
+        visibleWeeks={6}
         ariaLabel={
           `Usage score by week, ${year}, averaging ${Math.round(average)}: ` +
           weeks
             .filter((week) => week.kind === "played")
             .map((week) => `week ${week.week} ${week.total}`)
-            .join(", ")
+            .join(", ") +
+          (projected ? `; week ${projected.week} projected ${projected.total}` : "")
         }
       />
     </div>

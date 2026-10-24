@@ -5,12 +5,13 @@ import { scoringConfigFromSeason } from "../scoring";
 import { expandRosterSlots, isEligibleForSlot } from "./rosterSlots";
 import {
   computeReplacementLevels,
-  findInjuryBoosts,
+  findInjuredTeammateNotes,
   forwardRate,
   gatherPlayerForms,
   type ValuedPlayer,
 } from "./playerValue";
 import { loadSeasonRosVorRows } from "./leagueShape";
+import { loadPlatformPositions } from "./platformPosition";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -35,20 +36,15 @@ export interface FaabSuggestionRow {
   // market value (see demandMultiplier) but doesn't zero it.
   demandCount: number;
   topDemandValue: number;
-  // League-wide expected winning bid in dollars - the same for every team.
+  // League-wide expected winning bid in dollars - the same for every team,
+  // and the only bid shown. (An earlier per-team suggestedBid scaled this
+  // for starter vs. depth fit; removed 2026-10-23, since nearly every free
+  // agent is depth.)
   // See computeFaabSuggestions' header comment for how it's priced.
   marketValue: number;
-  // myValue/suggestedBid/rationale are only populated when args.teamId is
-  // given. myValue is that team's own starting-lineup upgrade in points (0
-  // when he'd only be depth); suggestedBid is marketValue adjusted for that
-  // team's fit (see teamFit) and capped at its remaining budget.
-  myValue: number | null;
-  suggestedBid: number | null;
-  rationale: string | null;
-  // Set when this row's value includes an injury-driven backup boost (see
-  // playerValue.ts's findInjuryBoosts) - surfaced so the UI can explain an
-  // otherwise-surprising number rather than just asserting it. Kept separate
-  // from rationale (not appended to it) so the UI can give it its own line.
+  // Set when a same-position teammate was just ruled Out or placed on IR (see
+  // playerValue.ts's findInjuredTeammateNotes) - a note only, not reflected
+  // in any value.
   boostReason: string | null;
 }
 
@@ -57,6 +53,10 @@ export interface FaabSuggestionsResult {
   season: string | null;
   remainingWeeks: number;
   suggestions: FaabSuggestionRow[];
+  // The requesting team's starting slots nobody on its roster can fill
+  // (e.g. ["K", "FLEX"]) - a team-level warning for above the list, not a
+  // per-player bid factor. Empty when no teamId was given.
+  openStarterSlots: string[];
 }
 
 // ---- Per-player value: cache-first, live-compute fallback ----
@@ -72,9 +72,9 @@ interface PlayerValueEntry {
 }
 
 // Prefers convex/rosVor.ts's daily-cron cache - it computes this exact same
-// momentum/injury-boost value for every rosterable player already, so
+// momentum-adjusted value for every rosterable player already, so
 // reading it here avoids redoing convex/lib/playerValue.ts's live
-// gather-forms/injury-boost work (the expensive O(positions * weeks) reads)
+// gather-forms/injured-teammate work (the expensive O(positions * weeks) reads)
 // on every single FAAB query. Returns null on a genuine cache miss (no
 // board for this season's shape/week - a league with brand-new settings
 // before rosVor.ts's ensureSeasonRosVor or the next cron cycle fills it) so
@@ -107,7 +107,7 @@ async function loadCachedPlayerValues(
 }
 
 // Same computation convex/rosVor.ts's own refresh does for its "forward"
-// side (momentum-adjusted rosValue, injury boost, free-agent-pool
+// side (momentum-adjusted rosValue, injured-teammate note, free-agent-pool
 // replacement level) - kept here rather than imported from that file since
 // rosVor.ts is a cron-triggered mutation, not designed for reuse, and this
 // only needs the "ros" half (not actualVor, which FAAB has no use for).
@@ -128,17 +128,11 @@ async function computeLivePlayerValues(
     season: args.season,
     scoringConfig: args.scoringConfig,
   });
-  const boosts = await findInjuryBoosts(ctx, { forms });
+  const injuryNotes = await findInjuredTeammateNotes(ctx, { forms });
 
   const rosValueByFpid = new Map<number, number>();
   for (const form of forms.values()) {
-    let value = forwardRate(form) * args.remainingWeeks;
-    const boost = boosts.get(form.fpid);
-    if (boost) {
-      const boostedWeeks = Math.min(boost.boostedWeeks, args.remainingWeeks);
-      value += Math.max(boost.boostedRate - forwardRate(form), 0) * boostedWeeks;
-    }
-    rosValueByFpid.set(form.fpid, value);
+    rosValueByFpid.set(form.fpid, forwardRate(form) * args.remainingWeeks);
   }
 
   // Full pool (rostered + free agent), not free-agent-only - see
@@ -165,7 +159,7 @@ async function computeLivePlayerValues(
       position: form.position,
       rosValue,
       valueOverReplacement: rosValue - replacementValues[form.position],
-      boostReason: boosts.get(form.fpid)?.reason ?? null,
+      boostReason: injuryNotes.get(form.fpid) ?? null,
     });
   }
   return values;
@@ -252,28 +246,6 @@ function demandMultiplier(demandCount: number): number {
   return Math.min(1 + (demandCount - 2) * 0.05, 1.2);
 }
 
-// Adjusts league market value to the requesting team's own situation -
-// above market when he'd start for them (they're one of the teams driving
-// the price), below it when he'd be depth, but never to $0 just because
-// they're already covered at the position.
-function teamFit(
-  pos: Position,
-  myUpgrade: number,
-  weakestStarter: number | undefined,
-  aboveFloor: number,
-): { multiplier: number; rationale: string } {
-  if (weakestStarter === undefined) {
-    return { multiplier: 1.2, rationale: `No ${pos} in your starting lineup` };
-  }
-  if (myUpgrade > 0) {
-    return {
-      multiplier: 1 + 0.3 * Math.min(myUpgrade / Math.max(aboveFloor, 1), 1),
-      rationale: `Would start for you at ${pos}`,
-    };
-  }
-  return { multiplier: 0.5, rationale: `Depth for you at ${pos}` };
-}
-
 function median(values: number[]): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -288,8 +260,8 @@ function median(values: number[]): number {
 // replacement supply on waivers (no real scarcity to bid up). This is a
 // market-convention fact, not a stats-derived one, so it's applied as an
 // explicit dampener + hard ceiling on the DOLLAR amount only - rosValue/
-// demandCount/myValue upstream stay undamped, since "this DST has a great
-// matchup" is still real, useful signal for the rationale/demand columns,
+// demandCount upstream stay undamped, since "this DST has a great
+// matchup" is still real, useful signal for the demand column,
 // it just shouldn't translate into real budget. Applied to market value, so
 // it carries through to every team's suggested bid. Tuned to roughly: K almost
 // always $0-1, DST streaming $1-2 with a rare standout up around $5-6 -
@@ -318,13 +290,13 @@ const BID_CEILING_BY_POSITION: Partial<Record<Position, number>> = {
 // This version: (1) values each player off a recency/volume-aware momentum
 // read on top of their forward projection - normally read straight from
 // convex/rosVor.ts's daily cache rather than recomputed live (see
-// loadCachedPlayerValues) - (2) includes a time-boxed value bump for a free
-// agent plausibly inheriting a just-injured teammate's workload, (3) prices
+// loadCachedPlayerValues) - (2) notes (without valuing) a free agent whose
+// same-position teammate was just ruled Out or placed on IR, (3) prices
 // a league-wide market value from how far he sits above the waiver floor,
 // as a share of a typical team's remaining budget, scaled by how many teams
 // would actually start him and capped at the second-deepest wallet, and (4)
-// adjusts that market value to the requesting team's own fit (starter vs
-// depth) and budget for its suggested bid.
+// lists the requesting team's unfillable starting slots as a team-level
+// warning.
 //
 // Lives here rather than directly in convex/infinileague/season/faabValues.ts
 // (its only consumer, now that infinidraft's own Free Agents tab has moved
@@ -346,7 +318,7 @@ export async function computeFaabSuggestions(
 
   const nflState = await ctx.db.query("nflState").first();
   if (!nflState || nflState.seasonType !== "regular") {
-    return { week: null, season: null, remainingWeeks: 0, suggestions: [] };
+    return { week: null, season: null, remainingWeeks: 0, suggestions: [], openStarterSlots: [] };
   }
   const remainingWeeks = Math.max(18 - Number(nflState.week) + 1, 0);
 
@@ -384,15 +356,24 @@ export async function computeFaabSuggestions(
       scoringConfig,
       remainingWeeks,
     }));
+  // Slots, demand and free-agent lists follow the league platform's position
+  // (see schema.ts's platformPositions); the values themselves don't change.
+  for (const [fpid, position] of await loadPlatformPositions(ctx, settings)) {
+    const entry = playerValues.get(fpid);
+    if (entry) playerValues.set(fpid, { ...entry, position });
+  }
 
   // Every team's current starters, valued the same way as free agents -
   // this is what demand gets computed against below.
   const weakestStarterByTeam = new Map<Id<"seasonTeams">, Partial<Record<Position, number>>>();
+  const assignedSlotsByTeam = new Map<Id<"seasonTeams">, Map<string, ValuedPlayer>>();
   for (const team of teams) {
     const roster = [...(rosteredFpidsByTeam.get(team._id) ?? [])]
       .map((fpid) => playerValues.get(fpid))
       .filter((v): v is PlayerValueEntry => v !== undefined);
-    weakestStarterByTeam.set(team._id, weakestStarterByPosition(assignRosterSlots(roster, settings)));
+    const assigned = assignRosterSlots(roster, settings);
+    assignedSlotsByTeam.set(team._id, assigned);
+    weakestStarterByTeam.set(team._id, weakestStarterByPosition(assigned));
   }
 
   const freeAgentsByPosition = new Map<Position, PlayerValueEntry[]>();
@@ -418,7 +399,17 @@ export async function computeFaabSuggestions(
   const teamCount = teams.length || settings.teamCount;
 
   const requestingTeam = args.teamId ? teams.find((team) => team._id === args.teamId) : undefined;
-  const remainingFaabForTeam = requestingTeam ? (remainingFaabByTeam.get(requestingTeam._id) ?? 0) : 0;
+
+  // Labels without the instance number ("RB2" -> "RB"), deduped.
+  const openStarterSlots: string[] = [];
+  if (requestingTeam) {
+    const assigned = assignedSlotsByTeam.get(requestingTeam._id);
+    for (const slot of expandRosterSlots(settings.rosterSlots)) {
+      if (slot.key.startsWith("BN") || assigned?.has(slot.key)) continue;
+      const label = slot.label.replace(/\d+$/, "");
+      if (!openStarterSlots.includes(label)) openStarterSlots.push(label);
+    }
+  }
 
   const suggestions: FaabSuggestionRow[] = [];
   for (const pos of activePositions) {
@@ -447,21 +438,6 @@ export async function computeFaabSuggestions(
       // bid, however thin the rest of the math makes him.
       if (share > 0 && marketValue === 0 && marketCap >= 1) marketValue = 1;
 
-      let myValue: number | null = null;
-      let suggestedBid: number | null = null;
-      let rationale: string | null = null;
-      if (requestingTeam) {
-        myValue = demandValuesByTeam.find((d) => d.teamId === requestingTeam._id)?.value ?? 0;
-        if (marketValue === 0) {
-          suggestedBid = 0;
-          rationale = "Waiver-level - no bid needed";
-        } else {
-          const weakest = weakestStarterByTeam.get(requestingTeam._id)?.[pos];
-          const fit = teamFit(pos, myValue, weakest, aboveFloor);
-          suggestedBid = Math.min(Math.max(Math.round(marketValue * fit.multiplier), 1), ceiling, remainingFaabForTeam);
-          rationale = fit.rationale;
-        }
-      }
 
       suggestions.push({
         fpid: row.fpid,
@@ -474,9 +450,6 @@ export async function computeFaabSuggestions(
         demandCount,
         topDemandValue,
         marketValue,
-        myValue,
-        suggestedBid,
-        rationale,
         boostReason: row.boostReason,
       });
     });
@@ -487,5 +460,6 @@ export async function computeFaabSuggestions(
     season: nflState.season,
     remainingWeeks,
     suggestions,
+    openStarterSlots,
   };
 }

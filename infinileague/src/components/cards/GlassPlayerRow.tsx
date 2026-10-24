@@ -6,6 +6,7 @@ import { FittedName } from "./FittedName";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { useExpandableCard } from "./useExpandableCard";
 import { PlayerPopover } from "../player/PlayerPopover";
+import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassPlayerRowData {
@@ -60,6 +61,9 @@ export function GlassPlayerRow({
     .join(", ");
 
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label);
+  // Start the popover's data loading as soon as a press begins, so it
+  // opens fully drawn (see usePlayerPopoverQueries).
+  usePlayerPopoverQueries(data.fpid, pressing || expanded);
   useEffect(() => {
     onExpandedChange?.(expanded);
   }, [expanded, onExpandedChange]);
@@ -67,7 +71,7 @@ export function GlassPlayerRow({
   return (
     <div className={classes.rosterRow}>
       <span
-        className={`${classes.pill} ${classes.slotChip}`}
+        className={`${classes.pill} ${classes.slotChip} ${classes.rankChip}`}
         style={rankPillStyle(data.isOnMyTeam)}
         aria-hidden
       >
@@ -148,7 +152,6 @@ export function GlassPlayerRow({
           fpid={data.fpid}
           anchor={anchor}
           onClose={close}
-          context={{ listRank: { rank: data.rank, isMine: data.isOnMyTeam } }}
         />
       )}
     </div>

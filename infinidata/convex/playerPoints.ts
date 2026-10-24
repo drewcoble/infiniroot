@@ -8,6 +8,7 @@ import type { Doc } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { positionValidator, POSITIONS } from "./positions";
 import { statsEqual } from "./lib/statsEqual";
+import { isUsagePosition, seasonUsageAverage } from "./lib/usageScore";
 import {
   bonusPoints,
   pointsForScoring,
@@ -145,6 +146,9 @@ async function applySeasonStatsDelta(
       mean: gamesPlayed > 0 ? totalPoints / gamesPlayed : 0,
       gamesPlayed,
     });
+    const usageAverage = isUsagePosition(args.position)
+      ? seasonUsageAverage(args.seasonRows, args.position, config)
+      : null;
 
     const fields = {
       totalPoints,
@@ -153,6 +157,7 @@ async function applySeasonStatsDelta(
       variance,
       stdDeviation,
       downsideDeviation,
+      ...(usageAverage !== null ? { usageAverage } : {}),
       updatedAt: Date.now(),
     };
 
@@ -432,6 +437,61 @@ export const backfillSeasonStats = internalMutation({
         internal.playerPoints.backfillSeasonStats,
         { cursor: result.continueCursor },
       );
+    }
+  },
+});
+
+// One-time fill of playerSeasonStats.usageAverage for rows written before
+// it existed - recomputed from each player's season, so safe to re-run.
+// `npx convex run playerPoints:backfillUsageAverage '{"season":"2026"}'`
+export const backfillUsageAverage = internalMutation({
+  args: { season: v.string(), position: v.optional(positionValidator), cursor: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const positions = POSITIONS.filter(isUsagePosition);
+    const position = args.position ?? positions[0]!;
+    const result = await ctx.db
+      .query("playerSeasonStats")
+      .withIndex("by_position_season_scoring_teScoring_sixPointPassTds", (q) =>
+        q.eq("position", position).eq("season", args.season),
+      )
+      // A page is mostly distinct players (the index orders by scoring
+      // combo before fpid), each a season-long read - kept small enough to
+      // stay under the per-transaction read limit late in the season.
+      .paginate({ cursor: args.cursor ?? null, numItems: 100 });
+
+    const seasonRowsByFpid = new Map<number, Doc<"playerWeekPoints">[]>();
+    for (const row of result.page) {
+      if (!isUsagePosition(row.position)) continue;
+      let seasonRows = seasonRowsByFpid.get(row.fpid);
+      if (!seasonRows) {
+        seasonRows = await ctx.db
+          .query("playerWeekPoints")
+          .withIndex("by_fpid_season", (q) => q.eq("fpid", row.fpid).eq("season", args.season))
+          .collect();
+        seasonRowsByFpid.set(row.fpid, seasonRows);
+      }
+      const usageAverage = seasonUsageAverage(seasonRows, row.position, {
+        scoring: row.scoring,
+        teScoring: row.teScoring,
+        sixPointPassTds: row.sixPointPassTds,
+      });
+      if (usageAverage !== null && usageAverage !== row.usageAverage) {
+        await ctx.db.patch(row._id, { usageAverage });
+      }
+    }
+
+    const next = positions[positions.findIndex((p) => p === position) + 1];
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(0, internal.playerPoints.backfillUsageAverage, {
+        season: args.season,
+        position,
+        cursor: result.continueCursor,
+      });
+    } else if (next) {
+      await ctx.scheduler.runAfter(0, internal.playerPoints.backfillUsageAverage, {
+        season: args.season,
+        position: next,
+      });
     }
   },
 });

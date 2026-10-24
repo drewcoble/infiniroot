@@ -176,7 +176,7 @@ export function BottomNav({
         overflow: "hidden",
         // Glass mode takes its surface from glass.module.css's .bar.
         ...(glass
-          ? { borderRadius: 999, padding: "0 4px" }
+          ? { borderRadius: 23, padding: "0 4px" }
           : {
               borderRadius: "var(--mantine-radius-xl)",
               border: "1px solid var(--mantine-color-default-border)",

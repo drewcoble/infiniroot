@@ -11,6 +11,7 @@ import {
 import { SLOT_CODE_MAP, mapRosterPositions } from "../../sleeper/leagueSettingsMapping";
 import type { POSITIONS } from "../../positions";
 import { withYahooToken } from "../../infinidraft/yahoo/oauth";
+import { seasonPlatform } from "../../lib/platformPosition";
 import { fetchEspnTeamWeekEntries } from "../../espn/league";
 import { ESPN_IR_SLOT_ID, ESPN_SLOT_MAP } from "../../espn/leagueSettingsMapping";
 import { fetchYahooApi, findNodesByKey, mergeYahooFields } from "../../infinidraft/yahoo/client";
@@ -458,14 +459,21 @@ export async function loadTeamRosterForWeek(
   }
 
   const leagueDstScoring = dstScoring && hasAllowedTiers(dstScoring) ? dstScoring : undefined;
-  const [players, byeWeeks, weekProjections, liveDstAllowed] = await Promise.all([
+  const platform = seasonPlatform(season);
+  const [players, byeWeeks, weekProjections, liveDstAllowed, platformPositions] = await Promise.all([
     ctx.runQuery(api.players.getPlayersByFpids, { fpids }),
     ctx.runQuery(api.nflSchedule.getByeWeeks, {}),
     ctx.runQuery(api.projections.getAllProjections, { week: week }),
     leagueDstScoring
       ? ctx.runQuery(internal.sleeper.livePoints.getLiveDstAllowed, { season: season.year, week })
       : Promise.resolve([]),
+    platform
+      ? ctx.runQuery(internal.players.listPlatformPositions, { platform })
+      : Promise.resolve([]),
   ]);
+  // The league's platform's position where it differs from Sleeper's - see
+  // schema.ts's platformPositions. Also what lineupSuggestions.ts slots by.
+  const platformPositionByFpid = new Map(platformPositions.map((row) => [row.fpid, row.position]));
 
   // The designation for the week being viewed - see weekInjuries.ts
   // (status at kickoff for past weeks, live for the current week, only IR
@@ -524,7 +532,7 @@ export async function loadTeamRosterForWeek(
     return {
       fpid,
       name: player.name,
-      position: player.position,
+      position: platformPositionByFpid.get(fpid) ?? player.position,
       team: player.team,
       isRookie: player.yearsExp === 0,
       ...(byeWeek !== undefined ? { byeWeek } : {}),

@@ -175,8 +175,8 @@ function LeagueLayout() {
             </Tabs.List>
           </Tabs>
         </Box>
-        {/* Trade values back both the Trade tab and every player popover -
-            fetched once per league visit, on first use. */}
+        {/* The Trade tab's trade values - fetched once per league visit, on
+            first use. */}
         <TeamLogosProvider teams={standings}>
           <TradeValuesProvider seasonId={leagueId}>
             <Outlet />

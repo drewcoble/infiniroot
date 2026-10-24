@@ -2,13 +2,14 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { POSITIONS } from "../positions";
 import { bonusPoints, pointsForScoring, pointsForScoringConfig, type ScoringConfig } from "../scoring";
+import { isUsagePosition, projectedUsageScore } from "./usageScore";
 
 type Position = (typeof POSITIONS)[number];
 
 // Shared "how good is this player right now" machinery - originally built
 // for convex/lib/faab.ts's FAAB bid suggestions, extracted here once
 // convex/rosVor.ts needed the exact same recency/volume-adjusted momentum
-// read and injury-boost detection for its own (much broader - every
+// read and injured-teammate detection for its own (much broader - every
 // rosterable player, not just free agents) ranking. Both callers still own
 // their own downstream use of this (FAAB's per-team demand pricing vs.
 // rosVor's global replacement-level rank) - only the player-level value
@@ -64,8 +65,8 @@ function snapShareForRow(stats: Record<string, number> | undefined): number | un
 
 // One player's inputs to the value formula - built once per candidate from
 // the batched reads in gatherPlayerForms, then reused for both the
-// momentum multiplier and (for currently-injured teammates) the backup-
-// boost detection below.
+// momentum multiplier and (for currently-injured teammates) the injured-
+// teammate note below.
 export interface PlayerForm {
   fpid: number;
   name: string;
@@ -83,6 +84,9 @@ export interface PlayerForm {
   // shows for the same player/week - ranking still uses the momentum-
   // adjusted currentWeekProjection via forwardRate below.
   currentWeekProjectionRaw: number;
+  // This week's projected usage score (lib/usageScore.ts) from the
+  // projection's stat line - null for K/DST. Display only (rosVor.ts).
+  currentWeekUsage: number | null;
   previousWeekProjection: number | null;
   weightedActualPPG: number;
   weightedSnapShare: number;
@@ -118,6 +122,7 @@ export async function gatherPlayerForms(
         position: pos,
         currentWeekProjection: pointsForScoringConfig(row, args.scoringConfig),
         currentWeekProjectionRaw: pointsForScoring(row, args.scoringConfig.scoring),
+        currentWeekUsage: isUsagePosition(pos) ? projectedUsageScore(row.stats, pos, args.scoringConfig) : null,
         previousWeekProjection:
           row.previousPointsStd !== undefined
             ? pointsForScoringConfig(
@@ -214,95 +219,45 @@ export function forwardRate(form: PlayerForm): number {
   return Math.max(form.currentWeekProjection * momentumMultiplier(form), 0);
 }
 
-// ---- Injury-driven backup boost ----
+// ---- Injured-teammate note ----
 //
-// A backup's own projection/usage may not have caught up to a teammate's
-// injury yet (Sleeper's own injury_status field typically lags the real
-// event by 1-3+ days) - this estimates a temporary elevated rate using the
-// INJURED player's own recent production as a proxy for "what a full
-// workload here is worth", time-boxed to however long the injury is
-// expected to last. irWeeks (schema.ts's injuries table) would be the
-// principled source for that duration but has never actually been
-// populated by any fetch path - this falls back to a status-based default
-// table plus a keyword scan of the injury comment for obvious season-
-// ending language, both flagged as approximations to revisit once/if
-// irWeeks is wired up for real.
-const DEFAULT_BOOST_WEEKS_BY_STATUS: Record<string, number> = {
-  Questionable: 1,
-  Doubtful: 1,
-  Out: 1,
-  IR: 4,
-  PUP: 4,
-  "Non-Football Injury": 4,
-};
-const SEASON_ENDING_KEYWORDS = [
-  "torn acl",
-  "torn achilles",
-  "torn pectoral",
-  "ruptured",
-  "out for the season",
-  "out for season",
-  "season-ending",
-  "season ending",
-];
-const SEASON_ENDING_BOOST_WEEKS = 10;
-
-// How recent an injurySnapshots entry has to be to still count as "fresh" -
-// past this, assume the market (and our own projections) have already
-// priced it in, so the boost stops applying on its own rather than lasting
-// forever.
-const BOOST_FRESHNESS_MS = 9 * 24 * 60 * 60 * 1000;
+// Flags a player whose same-position teammate just went down, so the
+// free-agent list can say why they're worth a look. Note only - an earlier
+// version also added a temporary "backup boost" to rosValue, removed
+// 2026-10-22 pending re-evaluation (see git history for that version).
+// Only Out and IR count - Questionable/Doubtful players usually still
+// play, so their backups shouldn't be flagged.
+const NOTE_STATUSES = new Set(["Out", "IR"]);
+// How recent the injury's last real status change has to be - "placed on
+// IR within the last week," and the same window for Out so a stale Out
+// from an earlier week doesn't keep flagging his backup.
+const NOTE_FRESHNESS_MS = 7 * 24 * 60 * 60 * 1000;
 const USAGE_HISTORY_SNAP_SHARE_FLOOR = 0.15;
 const PROJECTION_SPIKE_RATIO = 1.5;
 const PROJECTION_SPIKE_ABSOLUTE = 4;
-// A backup stepping into a starter's workload rarely matches what the
-// starter was actually producing - this is a blunt discount on the
-// injured player's own recent rate, not a per-player skill estimate.
-const HANDCUFF_PRODUCTION_FACTOR = 0.65;
 
-export interface InjuryBoost {
-  boostedWeeks: number;
-  boostedRate: number;
-  reason: string;
-}
-
-function estimatedBoostWeeks(status: string, comment: string): number {
-  const lowerComment = comment.toLowerCase();
-  if (SEASON_ENDING_KEYWORDS.some((kw) => lowerComment.includes(kw))) {
-    return SEASON_ENDING_BOOST_WEEKS;
-  }
-  return DEFAULT_BOOST_WEEKS_BY_STATUS[status] ?? 0;
-}
-
-// Currently-injured teammates at the SAME position/team become eligible via
-// either: (a) usage-history path - they already have a real trailing snap
-// share, so we trust it's their role now the incumbent is out; or (b)
-// projection-spike path - no usage history (a true zero-usage handcuff/
-// practice-squad promotion), but today's projection just jumped vs.
-// yesterday's (previousPointsX), meaning the projection system itself has
-// caught up. Both require the injury itself to be recent (BOOST_FRESHNESS_MS)
-// so this fades once the news is stale, rather than boosting a handcuff for
-// the rest of the season regardless of what's happened since.
-export async function findInjuryBoosts(
+// Teammates at the SAME position/team as a freshly injured player qualify
+// via either: (a) usage-history path - they already have a real trailing
+// snap share, so they're plausibly next in line; or (b) projection-spike
+// path - no usage history (a true zero-usage handcuff/practice-squad
+// promotion), but today's projection just jumped vs. yesterday's
+// (previousPointsX), meaning the projection system itself has caught up.
+export async function findInjuredTeammateNotes(
   ctx: QueryCtx | MutationCtx,
   args: { forms: Map<number, PlayerForm> },
-): Promise<Map<number, InjuryBoost>> {
-  const boosts = new Map<number, InjuryBoost>();
+): Promise<Map<number, string>> {
+  const notes = new Map<number, string>();
 
-  const activeStatuses = new Set(Object.keys(DEFAULT_BOOST_WEEKS_BY_STATUS));
   const injuredRows = await ctx.db.query("injuries").collect();
   const now = Date.now();
 
   for (const injured of injuredRows) {
-    if (!activeStatuses.has(injured.status)) continue;
-    const injuredForm = args.forms.get(injured.fpid);
-    if (!injuredForm) continue; // no team/position to match teammates against
+    if (!NOTE_STATUSES.has(injured.status)) continue;
 
     // When the injury started, not when it was last seen - a weekly
     // "carryForward" row (see the injurySnapshots schema comment) would
-    // otherwise restart the freshness clock every week and keep a
-    // long-term injury's boost alive all season. Carry-forwards are at most
-    // one per week, so this walk stays short.
+    // otherwise restart the freshness clock every week. Carry-forwards are
+    // at most one per week, so this walk stays short.
     let latestChange: { fetchedAt: number } | null = null;
     for await (const snapshot of ctx.db
       .query("injurySnapshots")
@@ -312,16 +267,23 @@ export async function findInjuryBoosts(
       latestChange = snapshot;
       break;
     }
-    if (!latestChange || now - latestChange.fetchedAt > BOOST_FRESHNESS_MS) continue;
+    if (!latestChange || now - latestChange.fetchedAt > NOTE_FRESHNESS_MS) continue;
 
-    const boostedWeeks = estimatedBoostWeeks(injured.status, injured.comment);
-    if (boostedWeeks <= 0) continue;
-    const boostedRate = Math.max(injuredForm.weightedActualPPG, injuredForm.currentWeekProjection) * HANDCUFF_PRODUCTION_FACTOR;
-    if (boostedRate <= 0) continue;
+    // Long-term IR players often have no projection this week (so no form) -
+    // fall back to the players table for team/position rather than
+    // silently skipping their backups.
+    const injuredForm = args.forms.get(injured.fpid);
+    const injuredPlayer = injuredForm
+      ? { name: injuredForm.name, team: injuredForm.team, position: injuredForm.position }
+      : await ctx.db
+          .query("players")
+          .withIndex("by_fpid", (q) => q.eq("fpid", injured.fpid))
+          .first();
+    if (!injuredPlayer || injuredPlayer.team === null) continue;
 
     for (const candidate of args.forms.values()) {
       if (candidate.fpid === injured.fpid) continue;
-      if (candidate.team !== injuredForm.team || candidate.position !== injuredForm.position) continue;
+      if (candidate.team !== injuredPlayer.team || candidate.position !== injuredPlayer.position) continue;
 
       const hasUsageHistory = candidate.weightedSnapShare >= USAGE_HISTORY_SNAP_SHARE_FLOOR;
       const spiked =
@@ -330,19 +292,13 @@ export async function findInjuryBoosts(
         candidate.currentWeekProjection - candidate.previousWeekProjection > PROJECTION_SPIKE_ABSOLUTE;
       if (!hasUsageHistory && !spiked) continue;
 
-      // Multiple injured teammates at the same spot (rare) - keep whichever
-      // gives the bigger boost rather than stacking them.
-      const existing = boosts.get(candidate.fpid);
-      if (existing && existing.boostedRate >= boostedRate) continue;
-      boosts.set(candidate.fpid, {
-        boostedWeeks,
-        boostedRate,
-        reason: `${injuredForm.name} (${injured.statusShort}) - likely to see expanded role`,
-      });
+      // Multiple injured teammates at the same spot (rare) - first one wins.
+      if (notes.has(candidate.fpid)) continue;
+      notes.set(candidate.fpid, `${injuredPlayer.name} (${injured.statusShort}) - likely to see expanded role`);
     }
   }
 
-  return boosts;
+  return notes;
 }
 
 // ---- Replacement level among currently-available free agents ----

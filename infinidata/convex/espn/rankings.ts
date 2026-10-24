@@ -9,8 +9,14 @@ import {
   currentSeason,
   fetchEspnPlayers,
   EspnPlayer,
+  ESPN_PRO_TEAM_ABBR,
 } from "./client";
-import { normalizePlayerName } from "../playerNameMatch";
+import {
+  createFallbackMatcher,
+  lastNameMatchKey,
+  nameTeamMatchKey,
+  normalizePlayerName,
+} from "../playerNameMatch";
 import { BLENDED_POSITIONS, BlendedPosition } from "../positions";
 
 // ESPN's defaultPositionId, confirmed empirically against players already
@@ -105,6 +111,10 @@ export interface EspnSyncResult {
   statRowsByPosition: Record<string, number>;
 }
 
+function espnTeamAbbr(player: EspnPlayer): string | undefined {
+  return player.proTeamId !== undefined ? ESPN_PRO_TEAM_ABBR[player.proTeamId] : undefined;
+}
+
 async function fetchEspnRankingsHandler(
   ctx: ActionCtx,
   args: { season?: string; week?: string },
@@ -130,6 +140,28 @@ async function fetchEspnRankingsHandler(
     candidates.push(player.fpid);
     byNamePosition.set(key, candidates);
   }
+  // Team-scoped fallbacks (see createFallbackMatcher) for unlinked players,
+  // only where ESPN's own list has a single player with the key too, so a
+  // second same-name teammate can't steal the link.
+  const matchFallback = createFallbackMatcher(ourPlayers, (p) => p.espnId === undefined);
+  const espnKeyCounts = new Map<string, number>();
+  const espnFallbackKeys = (player: EspnPlayer): string[] => {
+    const position = ESPN_POSITION_TO_OURS[player.defaultPositionId ?? -1];
+    const team = espnTeamAbbr(player);
+    if (!position || !team || !player.fullName) return [];
+    return [
+      nameTeamMatchKey(player.fullName, team),
+      lastNameMatchKey(player.fullName, position, team),
+    ];
+  };
+  for (const player of espnPlayers) {
+    for (const key of espnFallbackKeys(player)) {
+      espnKeyCounts.set(key, (espnKeyCounts.get(key) ?? 0) + 1);
+    }
+  }
+  // Stats are filed under our own position for the player, not ESPN's, so a
+  // position-mismatch match blends with that player's other providers.
+  const positionByFpid = new Map(ourPlayers.map((p) => [p.fpid, p.position]));
 
   const valueRowsByFormat: Record<
     EspnFormat,
@@ -140,6 +172,8 @@ async function fetchEspnRankingsHandler(
     Array<{ fpid: number; stats: Record<string, number> }>
   > = { QB: [], RB: [], WR: [], TE: [] };
   const newLinks: Array<{ fpid: number; espnId: number }> = [];
+  // ESPN's own position per matched player, for platformPositions.
+  const espnPositionByFpid = new Map<number, Doc<"players">["position"]>();
   let directMatched = 0;
   let nameMatched = 0;
   let ambiguous = 0;
@@ -170,7 +204,19 @@ async function fetchEspnRankingsHandler(
       const key = ourPosition
         ? `${normalizePlayerName(player.fullName ?? "")}|${ourPosition}`
         : undefined;
-      const candidates = key ? (byNamePosition.get(key) ?? []) : [];
+      let candidates = key ? (byNamePosition.get(key) ?? []) : [];
+      const team = espnTeamAbbr(player);
+      const fallbackKeys = espnFallbackKeys(player);
+      if (
+        candidates.length === 0 &&
+        ourPosition &&
+        team &&
+        fallbackKeys.length > 0 &&
+        fallbackKeys.every((k) => espnKeyCounts.get(k) === 1)
+      ) {
+        const fallbackFpid = matchFallback(player.fullName ?? "", ourPosition, team);
+        if (fallbackFpid !== undefined) candidates = [fallbackFpid];
+      }
       const [onlyCandidate] = candidates;
 
       if (candidates.length === 1 && onlyCandidate !== undefined) {
@@ -191,6 +237,7 @@ async function fetchEspnRankingsHandler(
     }
 
     if (fpid === undefined) continue;
+    if (ourPosition) espnPositionByFpid.set(fpid, ourPosition);
 
     for (const [rankType, format] of Object.entries(ESPN_RANK_TYPE_TO_FORMAT)) {
       const rankInfo = ranks?.[rankType];
@@ -202,10 +249,11 @@ async function fetchEspnRankingsHandler(
       });
     }
 
-    if (ourPosition && isBlendedPosition(ourPosition)) {
+    const statsPosition = positionByFpid.get(fpid);
+    if (statsPosition && isBlendedPosition(statsPosition)) {
       const stats = extractEspnStats(player, season, week);
       if (stats) {
-        statRowsByPosition[ourPosition].push({ fpid, stats });
+        statRowsByPosition[statsPosition].push({ fpid, stats });
       }
     }
   }
@@ -217,6 +265,13 @@ async function fetchEspnRankingsHandler(
   for (let i = 0; i < newLinks.length; i += CHUNK_SIZE) {
     await ctx.runMutation(internal.players.patchExternalIds, {
       rows: newLinks.slice(i, i + CHUNK_SIZE),
+    });
+  }
+  const positionRows = [...espnPositionByFpid].map(([fpid, position]) => ({ fpid, position }));
+  for (let i = 0; i < positionRows.length; i += CHUNK_SIZE) {
+    await ctx.runMutation(internal.players.recordPlatformPositions, {
+      platform: "espn",
+      rows: positionRows.slice(i, i + CHUNK_SIZE),
     });
   }
 

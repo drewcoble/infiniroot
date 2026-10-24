@@ -46,6 +46,17 @@
   border-radius: 6px;
 }
 
+.scrollArea {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
 .axisText {
   font-size: 10px;
   font-family: var(--font-numeric);
@@ -298,4 +309,39 @@
   font-size: 12px;
   line-height: 1.4;
   color: #f8fafc;
+}
+
+/* PlayerTrends' points / usage switch: the two charts side by side in a
+   strip that slides one pane over. */
+.trendViewport {
+  overflow: hidden;
+}
+
+.trendTrack {
+  display: flex;
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.trendPane {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+/* The hidden pane fades as it slides away. */
+.trendPane[inert] {
+  opacity: 0.35;
+  transition: opacity 280ms ease;
+}
+
+.trendPane:not([inert]) {
+  opacity: 1;
+  transition: opacity 280ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trendTrack,
+  .trendPane[inert],
+  .trendPane:not([inert]) {
+    transition: none;
+  }
 }

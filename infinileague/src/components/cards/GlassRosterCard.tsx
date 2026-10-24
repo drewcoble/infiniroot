@@ -14,6 +14,7 @@ import { GameStatusGlyph } from "./GameStatusGlyph";
 import { GlassSlotChip } from "./GlassMatchupCard";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerPopover } from "../player/PlayerPopover";
+import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
 import { PointsMeter } from "./PointsMeter";
 import { useExpandableCard } from "./useExpandableCard";
 import classes from "./GlassMatchupCard.module.css";
@@ -40,6 +41,9 @@ export function GlassRosterCard({
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(
     `${slot}, ${ariaSummary(data)}`,
   );
+  // Start the popover's data loading as soon as a press begins, so it
+  // opens fully drawn (see usePlayerPopoverQueries).
+  usePlayerPopoverQueries(data.fpid, pressing || expanded);
 
   return (
     <div className={classes.rosterRow}>
@@ -131,7 +135,7 @@ export function GlassRosterCard({
           fpid={data.fpid}
           anchor={anchor}
           onClose={close}
-          context={{ game: data, week: data.week, slot, scaleMax }}
+          context={{ game: data, scaleMax }}
         />
       )}
     </div>

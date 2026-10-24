@@ -31,19 +31,31 @@ const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 const PLAYER_ROW_ESTIMATE = 72;
 
 // "rank" is each view's own VOR ranking (weekRank/rosRank) - the default.
-// "actual"/"projected" map to a different raw stat per view (see
-// SORT_FIELDS), so a choice carries over sensibly when switching views.
-type SortKey = "rank" | "actual" | "projected";
-type SortField = "weekPoints" | "weekPpg" | "actualPpg" | "rosPpg";
+// "actual"/"projected"/"usage" map to a different raw stat per view (see
+// SORT_VALUES), so a choice carries over sensibly when switching views.
+// Week usage is the actual score once his game is final, else the
+// projected one.
+type SortKey = "rank" | "actual" | "projected" | "usage";
+type View = "week" | "ros";
 
-const SORT_FIELDS: Record<"week" | "ros", Record<Exclude<SortKey, "rank">, SortField>> = {
-  week: { actual: "weekPoints", projected: "weekPpg" },
-  ros: { actual: "actualPpg", projected: "rosPpg" },
+type SortValue = (row: RosVorRow) => number | undefined;
+
+const SORT_VALUES: Record<View, Record<Exclude<SortKey, "rank">, SortValue>> = {
+  week: {
+    actual: (row) => row.weekPoints,
+    projected: (row) => row.weekPpg,
+    usage: (row) => row.weekUsageActual ?? row.weekUsage ?? undefined,
+  },
+  ros: {
+    actual: (row) => row.actualPpg,
+    projected: (row) => row.rosPpg,
+    usage: (row) => row.seasonUsage ?? undefined,
+  },
 };
 
-const SORT_LABELS: Record<"week" | "ros", Record<Exclude<SortKey, "rank">, string>> = {
-  week: { actual: "Actual", projected: "Proj" },
-  ros: { actual: "PPG", projected: "ROS PPG" },
+const SORT_LABELS: Record<View, Record<Exclude<SortKey, "rank">, string>> = {
+  week: { actual: "Actual", projected: "Proj", usage: "Usage" },
+  ros: { actual: "PPG", projected: "ROS PPG", usage: "Usage" },
 };
 
 // Overall + positional ranks for a stat sort, so the rank chip and the
@@ -52,15 +64,15 @@ const SORT_LABELS: Record<"week" | "ros", Record<Exclude<SortKey, "rank">, strin
 // out of order once the list is sorted by something else. Computed over
 // the full board (not the position-filtered subset), matching how the
 // backend's own ranks are global. Ties break on the view's own rank so the
-// order is stable; a player with no weekPoints yet (game not played) sorts
-// as 0.
+// order is stable; a player with no value (no weekPoints yet, no usage
+// score for K/DST) sorts as 0.
 function rankByMetric(
   rows: RosVorRow[],
-  field: SortField,
+  valueOf: SortValue,
   tieBreak: (row: RosVorRow) => number,
 ): Map<number, { overall: number; position: number }> {
   const sorted = [...rows].sort(
-    (a, b) => (b[field] ?? 0) - (a[field] ?? 0) || tieBreak(a) - tieBreak(b),
+    (a, b) => (valueOf(b) ?? 0) - (valueOf(a) ?? 0) || tieBreak(a) - tieBreak(b),
   );
   const positionCounts = new Map<RosVorRow["position"], number>();
   const ranks = new Map<number, { overall: number; position: number }>();
@@ -70,6 +82,41 @@ function rankByMetric(
     ranks.set(row.fpid, { overall: index + 1, position });
   });
   return ranks;
+}
+
+// What a row shows on the right: big = what's happened, small = the
+// projection. Usage scores use the plain number font - the dot-matrix one
+// is only for points actually scored (and game clocks).
+function rowNumbers(
+  row: RosVorRow,
+  isWeekMode: boolean,
+  showUsage: boolean,
+): { actual: string; actualIsScore: boolean; projection: string } {
+  if (showUsage) {
+    if (isWeekMode) {
+      return {
+        actual: row.weekUsageActual !== undefined ? String(row.weekUsageActual) : "",
+        actualIsScore: false,
+        projection: row.weekUsage !== null ? `Proj ${row.weekUsage}` : "",
+      };
+    }
+    return {
+      actual: row.seasonUsage !== null ? `Avg. ${Math.round(row.seasonUsage)}` : "",
+      actualIsScore: false,
+      projection: row.seasonUsage !== null ? "Usage" : "",
+    };
+  }
+  return {
+    actual: isWeekMode
+      ? row.weekPoints !== undefined
+        ? row.weekPoints.toFixed(2)
+        : ""
+      : `${row.actualPpg.toFixed(1)} PPG`,
+    // Dot-matrix only for points actually scored this week - season PPG is
+    // an average, so it stays plain and labeled.
+    actualIsScore: isWeekMode,
+    projection: isWeekMode ? `Proj ${row.weekPpg.toFixed(1)}` : `ROS ${row.rosPpg.toFixed(1)}`,
+  };
 }
 
 // Every rosterable player in the league (rostered or free agent), ranked by
@@ -96,22 +143,18 @@ function PlayersPage() {
 
   // Own-roster highlight (GlassPlayerRow's saddlebrown rank chip). Same
   // getStandings->isSelf pattern route.tsx/freeAgents.tsx/trade.tsx already
-  // use to find "my team" in this league.
+  // use to find "my team" in this league - matched by team name rather than
+  // passing teamId to the board, so this page reads the exact same board
+  // subscription as every other page and the player popover.
   const standings = useQuery(
     api.infinileague.season.standings.getStandings,
     isAuthenticated ? { seasonId } : "skip",
   );
-  const selfTeamId = standings?.find((row) => row.isSelf)?.teamId;
+  const selfTeamName = standings?.find((row) => row.isSelf)?.name;
 
   const boardRows: RosVorRow[] | undefined = useQuery(
     api.rosVor.getRosVorBoard,
-    isAuthenticated && nflState
-      ? {
-          seasonId,
-          week: nflState.week,
-          ...(selfTeamId ? { teamId: selfTeamId as Id<"seasonTeams"> } : {}),
-        }
-      : "skip",
+    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
   );
 
   // This week's actual points, live during games (see convex/rosVor.ts's
@@ -122,20 +165,33 @@ function PlayersPage() {
     api.rosVor.getWeekPoints,
     isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
   );
+  // This week's actual usage scores, for players whose game is final -
+  // same fetch-in-both-views reasoning as weekPoints.
+  const weekUsage = useQuery(
+    api.infinileague.season.usage.getWeekUsage,
+    isAuthenticated && nflState ? { seasonId, week: nflState.week } : "skip",
+  );
   const rows = useMemo(() => {
     if (!boardRows) return undefined;
     const pointsByFpid = new Map((weekPoints ?? []).map((entry) => [entry.fpid, entry.points]));
+    const usageByFpid = new Map((weekUsage ?? []).map((entry) => [entry.fpid, entry.usage]));
     return boardRows.map((row) => {
       const points = pointsByFpid.get(row.fpid);
-      return points === undefined ? row : { ...row, weekPoints: points };
+      const usage = usageByFpid.get(row.fpid);
+      if (points === undefined && usage === undefined) return row;
+      return {
+        ...row,
+        ...(points !== undefined ? { weekPoints: points } : {}),
+        ...(usage !== undefined ? { weekUsageActual: usage } : {}),
+      };
     });
-  }, [boardRows, weekPoints]);
+  }, [boardRows, weekPoints, weekUsage]);
 
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
   // Defaults to "ros" - matches the board's own default sort
   // (getRosVorBoard orders by rosRank) so switching to this tab shows the
   // same ranking it always has unless the viewer opts into "This Week."
-  const [metric, setMetric] = useState<"week" | "ros">("ros");
+  const [metric, setMetric] = useState<View>("ros");
   const isWeekMode = metric === "week";
   const [sortKey, setSortKey] = useState<SortKey>("rank");
 
@@ -143,7 +199,7 @@ function PlayersPage() {
   // every scroll frame - no need to re-rank 800+ players each time.
   const metricRanks = useMemo(() => {
     if (!rows || sortKey === "rank") return null;
-    return rankByMetric(rows, SORT_FIELDS[metric][sortKey], (row) =>
+    return rankByMetric(rows, SORT_VALUES[metric][sortKey], (row) =>
       isWeekMode ? row.weekRank : row.rosRank,
     );
   }, [rows, sortKey, metric, isWeekMode]);
@@ -246,6 +302,7 @@ function PlayersPage() {
               { label: "Rank", value: "rank" as const },
               { label: SORT_LABELS[metric].actual, value: "actual" as const },
               { label: SORT_LABELS[metric].projected, value: "projected" as const },
+              { label: SORT_LABELS[metric].usage, value: "usage" as const },
             ]}
           />
         </div>
@@ -284,9 +341,10 @@ function PlayersPage() {
                 transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)`,
               }}
             >
-              {/* Big = what's happened (this week's points / season PPG),
-                  small = the projection - same split as the other glass
-                  cards. Nothing big for a week they haven't played yet. */}
+              {/* Big = what's happened (this week's points / season PPG,
+                  or usage when sorted by it), small = the projection -
+                  same split as the other glass cards. Nothing big for a
+                  week they haven't played yet. */}
               <GlassPlayerRow
                 onExpandedChange={(expanded) =>
                   setOpenFpid((current) => (expanded ? row.fpid : current === row.fpid ? null : current))
@@ -299,20 +357,11 @@ function PlayersPage() {
                   positionRank,
                   team: row.team,
                   rosteredByTeamName: row.rosteredByTeamName,
-                  isOnMyTeam: row.isOnMyTeam === true,
+                  isOnMyTeam:
+                    selfTeamName !== undefined && row.rosteredByTeamName === selfTeamName,
                   isRookie: rookieFpidSet.has(row.fpid),
                   injury: row.injury,
-                  actual: isWeekMode
-                    ? row.weekPoints !== undefined
-                      ? row.weekPoints.toFixed(2)
-                      : ""
-                    : `${row.actualPpg.toFixed(1)} PPG`,
-                  // Dot-matrix only for points actually scored this week -
-                  // season PPG is an average, so it stays plain and labeled.
-                  actualIsScore: isWeekMode,
-                  projection: isWeekMode
-                    ? `Proj ${row.weekPpg.toFixed(1)}`
-                    : `ROS ${row.rosPpg.toFixed(1)}`,
+                  ...rowNumbers(row, isWeekMode, sortKey === "usage"),
                 }}
               />
             </div>

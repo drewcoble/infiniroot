@@ -1,9 +1,5 @@
 import { useId, useMemo } from "react";
-import { useParams } from "@tanstack/react-router";
-import { useConvexAuth, useQuery } from "convex/react";
-import type { GenericId as Id } from "convex/values";
 import { Minus, TrendingDown, TrendingUp, X } from "lucide-react";
-import { api } from "@infinidata/api";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import {
@@ -24,41 +20,23 @@ import { PlayerHeadshot } from "../cards/PlayerHeadshot";
 import { PointsMeter } from "../cards/PointsMeter";
 import { StatGroups, type StatGroup } from "../cards/StatGroups";
 import classes from "../cards/GlassMatchupCard.module.css";
-import { isAnyGameLive, useNow, type WeekGame } from "../../lib/liveGames";
+import { isAnyGameLive, useNow } from "../../lib/liveGames";
 import { toMatchupCardData } from "../../lib/matchupCardData";
 import { LIVE_REFRESH_MS } from "../../lib/matchupSummary";
 import { seasonPositionRanks } from "../../lib/seasonPositionRanks";
-import { formatTradeValue } from "../../lib/tradeValue";
-import type {
-  FaabSuggestionsResult,
-  RosVorRow,
-  StandingsRow,
-  TeamRosterRow,
-} from "../../types/season";
-import { useTradeValues } from "./tradeValues";
-import { UsageChart } from "./UsageChart";
-
-interface NflState {
-  season: string;
-  week: string;
-}
+import type { TeamRosterRow } from "../../types/season";
+import { PlayerTrends } from "./PlayerTrends";
+import { usePlayerPopoverQueries } from "./usePlayerPopoverQueries";
 
 // What only the page knows about the player - everything else the popover
 // looks up itself by fpid, so it reads the same on every page.
 export interface PlayerPopoverContext {
-  // His place in the page's list (Players / Free Agents) - the rank chip
-  // before his name, saddlebrown when he's yours.
-  listRank?: { rank: number; isMine: boolean } | undefined;
-  // His roster slot (Matchup / Team / Trade).
-  slot?: string | undefined;
   // He's selected in the Trade analyzer.
   inTrade?: boolean | undefined;
   // The page's own card for the week it's showing (Matchup / Team, which
   // can show past and future weeks) - otherwise the popover builds this
   // week's from the league's live data.
   game?: GlassMatchupCardData | undefined;
-  // That week's number, when `game` is for a week other than the current.
-  week?: string | undefined;
   // The page's shared meter scale, so the popover's meter matches the
   // cards around it.
   scaleMax?: number | undefined;
@@ -83,34 +61,14 @@ function paceSentence(data: GlassMatchupCardData, pace: Pace): string {
 const positionRankLabel = (position: string, rank: number | undefined | null) =>
   rank ? `${position}${rank}` : "—";
 
-// This week's rank, named for which one it is: actual so far while live,
-// actual once final, the projection before kickoff.
-function weekRankStat(
-  game: GlassMatchupCardData | undefined,
-  position: string,
-  projectedRank: number | undefined,
-): { label: string; value: string } {
-  if (game?.gameState === "live") {
-    return { label: "Live rank", value: positionRankLabel(position, game.weekActualPositionRank) };
-  }
-  if (game?.gameState === "final") {
-    return { label: "Week rank", value: positionRankLabel(position, game.weekActualPositionRank) };
-  }
-  return {
-    label: "Proj rank",
-    value: positionRankLabel(position, game?.weekPositionRank ?? projectedRank),
-  };
-}
-
 // THE player popover - one detail card for a player, whichever page opened
-// it (Matchup, Team, Players, Free Agents, Trade). It shows everything any
-// page's detail card has ever shown, looked up here by fpid: who he is and
-// who rosters him, this week's game (score, meter, pace), this week /
-// season / rest-of-season numbers, trade value, a free agent's bid, his
-// weekly usage, and the game log. Pages pass only their own context
-// (PlayerPopoverContext). The popover shell, placement, and dismissal are
-// GlassPopover's. Without an fpid (the Cards sandbox's sample players) it
-// shows only what `context.game` carries.
+// it (Matchup, Team, Players, Free Agents, Trade), looked up here by fpid:
+// who he is, his rank and bye, who rosters him, this week's game (score,
+// meter, pace), season / rest-of-season numbers, a free agent's bid, his
+// weekly points and usage (PlayerTrends), and the game log. Pages pass
+// only their own context (PlayerPopoverContext). The popover shell,
+// placement, and dismissal are GlassPopover's. Without an fpid (the Cards
+// sandbox's sample players) it shows only what `context.game` carries.
 export function PlayerPopover({
   fpid,
   anchor,
@@ -123,54 +81,21 @@ export function PlayerPopover({
   context?: PlayerPopoverContext;
 }) {
   const titleId = useId();
-  const { leagueId } = useParams({ strict: false });
-  const seasonId = leagueId as Id<"seasons"> | undefined;
-  const { isAuthenticated } = useConvexAuth();
-  const live = isAuthenticated && seasonId !== undefined && fpid !== undefined;
-
-  const nflState: NflState | null | undefined = useQuery(
-    api.nflState.getNflState,
-    live ? {} : "skip",
-  );
-  const week = nflState?.week;
-  const standings: StandingsRow[] | undefined = useQuery(
-    api.infinileague.season.standings.getStandings,
-    live && seasonId ? { seasonId } : "skip",
-  );
-  // Same board subscription most league pages already hold, so it's shared.
-  const board: RosVorRow[] | undefined = useQuery(
-    api.rosVor.getRosVorBoard,
-    live && seasonId && week ? { seasonId, week } : "skip",
-  );
-  const weekPoints = useQuery(
-    api.rosVor.getWeekPoints,
-    live && seasonId && week ? { seasonId, week } : "skip",
-  );
-  const weekRanks = useQuery(
-    api.infinileague.season.matchup.getWeekPositionRanks,
-    live && seasonId && week ? { seasonId, week } : "skip",
-  );
-  const weekGames: WeekGame[] | undefined = useQuery(
-    api.sleeper.livePoints.getWeekGames,
-    live && nflState && week && !context.game ? { season: nflState.season, week } : "skip",
-  );
-  const rookieFpids = useQuery(api.players.getRookieFpids, live ? {} : "skip");
-  const byeWeeks: Record<string, number> | undefined = useQuery(
-    api.nflSchedule.getByeWeeks,
-    live ? {} : "skip",
-  );
-  const tradeValues = useTradeValues();
-
-  const row = board?.find((entry) => entry.fpid === fpid);
+  const {
+    week,
+    nflState,
+    board,
+    row,
+    selfTeam,
+    weekPoints,
+    weekRanks,
+    weekGames,
+    rookieFpids,
+    byeWeeks,
+    faab,
+    ready,
+  } = usePlayerPopoverQueries(fpid, true);
   const seasonRank = useMemo(() => seasonPositionRanks(board), [board]).get(fpid ?? -1);
-  const selfTeam = standings?.find((entry) => entry.isSelf);
-  const isFreeAgent = row !== undefined && row.rosteredByTeamName === null;
-  const faab: FaabSuggestionsResult | undefined = useQuery(
-    api.infinileague.season.faabValues.getFaabSuggestions,
-    live && seasonId && isFreeAgent
-      ? { seasonId, ...(selfTeam ? { teamId: selfTeam.teamId as Id<"seasonTeams"> } : {}) }
-      : "skip",
-  );
   const bid = faab?.suggestions.find((entry) => entry.fpid === fpid);
 
   // This week's game: the page's card when it has one, otherwise built
@@ -178,9 +103,9 @@ export function PlayerPopover({
   const now = useNow(isAnyGameLive(weekGames, Date.now()) ? LIVE_REFRESH_MS / 4 : 60 * 1000);
   const actual = weekPoints?.find((entry) => entry.fpid === fpid)?.points;
   const weekRank = weekRanks?.find((entry) => entry.fpid === fpid)?.rank;
-  const game: GlassMatchupCardData | undefined =
-    context.game ??
-    (row && weekGames
+  // The current week's game, always - the points chart's latest bar.
+  const currentGame: GlassMatchupCardData | undefined =
+    row && weekGames
       ? toMatchupCardData(
           {
             fpid: row.fpid,
@@ -197,7 +122,8 @@ export function PlayerPopover({
           weekRank,
           seasonRank,
         )
-      : undefined);
+      : undefined;
+  const game = context.game ?? currentGame;
 
   const name = row?.name ?? game?.name ?? "";
   const position: Position = row?.position ?? game?.position ?? "QB";
@@ -215,8 +141,6 @@ export function PlayerPopover({
         : owner === selfTeam?.name
           ? "Your team"
           : owner;
-  const trade = fpid !== undefined ? tradeValues.byFpid?.get(fpid) : undefined;
-  const tradeLoading = tradeValues.byFpid === undefined && !tradeValues.error;
 
   const isLive = game?.gameState === "live";
   const isPre = game?.gameState === "pre";
@@ -224,34 +148,8 @@ export function PlayerPopover({
   const pace = game ? paceFor(game) : undefined;
   const PaceIcon = pace ? PACE_ICON[pace] : null;
   const scaleMax = context.scaleMax ?? (game ? meterScaleMax([game]) : 25);
-  const formatValue = (value: number | null | undefined) =>
-    value === undefined
-      ? tradeLoading
-        ? "…"
-        : "—"
-      : value === null
-        ? "n/a"
-        : formatTradeValue(value);
 
   const groups: StatGroup[] = [
-    {
-      label: `Week ${context.week ?? week ?? ""}`.trim(),
-      items: [
-        {
-          label: "Points",
-          value:
-            game && game.gameState !== "pre" && game.gameState !== "bye"
-              ? formatPoints(game.actualPoints)
-              : actual !== undefined && !context.game
-                ? formatPoints(actual)
-                : "—",
-        },
-        { label: "Proj", value: formatProj(game?.projectedPoints ?? row?.weekPpg) },
-        weekRankStat(game, position, row?.weekPositionRank),
-        ...(context.slot !== undefined ? [{ label: "Slot", value: context.slot || "—" }] : []),
-        { label: "Bye", value: byeWeek ? `Wk ${byeWeek}` : "—" },
-      ],
-    },
     {
       columns: ["Season", "ROS"],
       rows: [
@@ -282,44 +180,24 @@ export function PlayerPopover({
           : []),
       ],
     },
-    ...(fpid !== undefined && seasonId
-      ? [
-          {
-            label: "Trade value",
-            items: [
-              { label: "Infinivalue", value: formatValue(trade?.projectionValue) },
-              { label: "Market value", value: formatValue(trade?.marketValue) },
-              { label: "Avg value", value: formatValue(trade?.value) },
-              {
-                label: "Mkt rank",
-                value:
-                  trade === undefined
-                    ? formatValue(undefined)
-                    : trade.marketPositionRank === null
-                      ? "n/a"
-                      : positionRankLabel(position, trade.marketPositionRank),
-              },
-            ],
-          },
-        ]
-      : []),
     ...(bid
       ? [
           {
             label: "Bidding",
             items: [
-              {
-                label: "Your bid",
-                value: bid.suggestedBid !== null ? `$${bid.suggestedBid}` : "—",
-              },
-              { label: "Market", value: `$${bid.marketValue}` },
-              { label: "Your value", value: bid.myValue !== null ? `$${bid.myValue}` : "—" },
+              { label: "Bid", value: `$${bid.marketValue}` },
               { label: "Teams in need", value: String(bid.demandCount) },
             ],
           },
         ]
       : []),
   ];
+
+  // Nothing until the basics are in - the card the popover opens from
+  // starts these loading during its long-press, so this is normally
+  // instant; drawing early would show an empty card that then fills in
+  // and grows.
+  if (!ready) return null;
 
   return (
     <GlassPopover
@@ -332,11 +210,6 @@ export function PlayerPopover({
         <PlayerHeadshot fpid={fpid} position={position} team={team} />
         <div style={{ minWidth: 0 }}>
           <div className={classes.teamCardPopoverTitle}>
-            {context.listRank && (
-              <span className={classes.pill} style={rankPillStyle(context.listRank.isMine)}>
-                #{context.listRank.rank}
-              </span>
-            )}
             <span id={titleId} className={classes.expandedName}>
               {name}
             </span>
@@ -359,6 +232,11 @@ export function PlayerPopover({
           {position}
           {rosRank ? rosRank : ""}
         </span>
+        {byeWeek !== undefined && (
+          <span className={classes.pill} style={rankPillStyle(false)}>
+            Bye {byeWeek}
+          </span>
+        )}
         {injury && (
           <span className={classes.pill} style={pillStyle(injuryColor(injury.status))}>
             {injury.status}
@@ -367,19 +245,6 @@ export function PlayerPopover({
         {isRookie && (
           <span className={classes.pill} style={pillStyle("grape")}>
             Rookie
-          </span>
-        )}
-        {trade?.signal && (
-          <span
-            className={classes.pill}
-            style={pillStyle(trade.signal === "buy" ? "green" : "red")}
-            title={
-              trade.signal === "buy"
-                ? "Ranked well above the market at his position"
-                : "Ranked well below the market at his position"
-            }
-          >
-            {trade.signal === "buy" ? "BUY" : "SELL"}
           </span>
         )}
         {context.inTrade && <span className={classes.statusLabel}>In trade</span>}
@@ -466,14 +331,29 @@ export function PlayerPopover({
 
       <StatGroups groups={groups} />
 
-      {bid && (bid.boostReason || bid.rationale) && (
+      {bid?.boostReason && (
         <div className={classes.freeAgentPopoverNotes}>
-          {bid.boostReason && <p>{bid.boostReason}</p>}
-          {bid.rationale && <p>{bid.rationale}</p>}
+          <p>{bid.boostReason}</p>
         </div>
       )}
 
-      {fpid !== undefined && nflState && <UsageChart fpid={fpid} year={nflState.season} />}
+      {fpid !== undefined && nflState && (
+        <PlayerTrends
+          fpid={fpid}
+          year={nflState.season}
+          position={position}
+          current={
+            week !== undefined
+              ? {
+                  week: Number(week),
+                  state: currentGame?.gameState,
+                  actual,
+                  projection: row?.weekPpg,
+                }
+              : undefined
+          }
+        />
+      )}
 
       {fpid !== undefined && <PlayerGameLog fpid={fpid} position={position} />}
     </GlassPopover>

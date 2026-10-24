@@ -6,11 +6,12 @@ import { FittedName } from "./FittedName";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { useExpandableCard } from "./useExpandableCard";
 import { PlayerPopover } from "../player/PlayerPopover";
+import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
 import classes from "./GlassMatchupCard.module.css";
 
 export interface GlassFreeAgentRowData {
   fpid: number;
-  // Place in the list (sorted by suggested bid).
+  // Place in the list, in the page's sort order.
   rank: number;
   name: string;
   position: Position;
@@ -18,14 +19,13 @@ export interface GlassFreeAgentRowData {
   team: string | null;
   isRookie: boolean;
   injury?: { status: string; statusShort: string } | undefined;
-  // "$14" - the suggested bid (or the market value without one); "" when
-  // nobody's bidding on this player.
+  // "$14" - the market bid; "" when nobody's bidding on this player.
   bid: string;
-  // "Mkt $9" under it.
-  market: string;
-  // Why the bid is what it is, and any injury-replacement boost - dimmed on
-  // a third line (truncated), in full in the popover.
-  rationale: string | null;
+  // Shown in place of the bid when the list is sorted by
+  // usage: the actual score (or season average) big, the projection small.
+  usage?: { actual: string; projection: string };
+  // Injured-teammate note - dimmed on a third line (truncated), in full in
+  // the popover.
   boostReason: string | null;
 }
 
@@ -36,12 +36,12 @@ const RANK_CHIP_STYLE = {
 } as CSSProperties;
 
 // One Free Agents row in the Players board's glass layout (see
-// GlassPlayerRow): name with injury/rookie badges | suggested bid, then
-// position + NFL team | market value, then the bid rationale. Long-press (or
-// Enter/Space) opens the PlayerPopover (bid tiles and the full rationale
-// included).
+// GlassPlayerRow): name with injury/rookie badges | market bid, then
+// position + NFL team, then any injured-teammate note.
+// Long-press (or Enter/Space) opens the PlayerPopover (bid tiles and the
+// full note included).
 export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
-  const note = [data.boostReason, data.rationale].filter(Boolean).join(" · ");
+  const note = data.boostReason;
   const label = [
     `${data.rank}`,
     data.name,
@@ -49,17 +49,25 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
     data.team,
     data.isRookie ? "rookie" : null,
     data.injury?.status,
-    data.bid ? `suggested bid ${data.bid}` : null,
-    data.market,
+    ...(data.usage
+      ? [data.usage.actual ? `usage ${data.usage.actual}` : null, data.usage.projection || null]
+      : [data.bid ? `bid ${data.bid}` : null]),
     note || null,
   ]
     .filter(Boolean)
     .join(", ");
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard(label);
+  // Start the popover's data loading as soon as a press begins, so it
+  // opens fully drawn (see usePlayerPopoverQueries).
+  usePlayerPopoverQueries(data.fpid, pressing || expanded);
 
   return (
     <div className={classes.rosterRow}>
-      <span className={`${classes.pill} ${classes.slotChip}`} style={RANK_CHIP_STYLE} aria-hidden>
+      <span
+        className={`${classes.pill} ${classes.slotChip} ${classes.rankChip}`}
+        style={RANK_CHIP_STYLE}
+        aria-hidden
+      >
         {data.rank}
       </span>
       <div
@@ -93,7 +101,9 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
             </span>
           )}
         </div>
-        <div className={`${classes.widePoints} ${classes.points}`}>{data.bid}</div>
+        <div className={`${classes.widePoints} ${classes.points}`}>
+          {data.usage ? data.usage.actual : data.bid}
+        </div>
         <div className={classes.wideDetail}>
           <span className={classes.pill} style={pillStyle(positionColorOrDefault(data.position))}>
             {data.position}
@@ -105,7 +115,7 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
             </span>
           )}
         </div>
-        <div className={classes.wideProj}>{data.market}</div>
+        <div className={classes.wideProj}>{data.usage?.projection}</div>
         {note && (
           <div className={classes.freeAgentNote}>
             <span className={classes.gameLineText}>{note}</span>
@@ -118,7 +128,6 @@ export function GlassFreeAgentRow({ data }: { data: GlassFreeAgentRowData }) {
           fpid={data.fpid}
           anchor={anchor}
           onClose={close}
-          context={{ listRank: { rank: data.rank, isMine: false } }}
         />
       )}
     </div>

@@ -133,22 +133,23 @@ const rosVorBoardFields = {
   rosVor: v.number(),
   rosRank: v.number(),
   // Raw rest-of-season value (same momentum-adjusted number rosVor is
-  // computed from, injury boost included) - stored alongside rosVor so a
+  // computed from) - stored alongside rosVor so a
   // consumer like convex/lib/faab.ts can read a ready-made per-player
   // value straight off this cache instead of recomputing convex/lib/
-  // playerValue.ts's momentum/injury-boost machinery on every live query.
+  // playerValue.ts's momentum machinery on every live query.
   // Optional since rows written before this field existed predate it -
   // convex/lib/faab.ts treats a missing value as a cache miss for that
   // row (see its own comment).
   rosValue: v.optional(v.number()),
-  // Injury-boost narrative, when this row's rosValue includes one (see
-  // playerValue.ts's findInjuryBoosts) - stored so a cache consumer
-  // doesn't have to redo boost detection just to explain a surprising
-  // number. v.null() rather than v.optional(): this row gets patched in
-  // place week to week (see refreshRosVor's upsert), and a boost that
-  // applied last week can legitimately stop applying this week - patch
-  // only touches keys it's given, so an *absent* key would leave a stale
-  // reason in place forever, while an explicit null always overwrites it.
+  // Injured-teammate note, when a same-position teammate was just ruled
+  // Out or placed on IR (see playerValue.ts's findInjuredTeammateNotes) -
+  // display only, not reflected in rosValue. Stored so a cache consumer
+  // doesn't have to redo the detection. v.null() rather than v.optional():
+  // this row gets patched in place week to week (see refreshRosVor's
+  // upsert), and a note that applied last week can legitimately stop
+  // applying this week - patch only touches keys it's given, so an *absent*
+  // key would leave a stale reason in place forever, while an explicit null
+  // always overwrites it.
   boostReason: v.union(v.string(), v.null()),
   // Backward-looking: this season's actual points scored so far
   // (playerSeasonStats.totalPoints for this league's exact scoring
@@ -184,6 +185,13 @@ const rosVorBoardFields = {
   // player/week, so the Players tab's "This Week" view and My Team never
   // disagree on what a player's projected for.
   weekPpg: v.optional(v.number()),
+  // Usage score (lib/usageScore.ts) in this shape's scoring: the season's
+  // average so far (playerSeasonStats.usageAverage), and this week's
+  // projected score from the projection's stat line. Null for K/DST or no
+  // data - null rather than absent so a patch clears a stale value (same
+  // reason as boostReason). Optional for rows written before these existed.
+  seasonUsage: v.optional(v.union(v.number(), v.null())),
+  weekUsage: v.optional(v.union(v.number(), v.null())),
   computedAt: v.number(),
 };
 
@@ -298,6 +306,21 @@ export default defineSchema({
     .index("by_fpid", ["fpid"])
     .index("by_espn_id", ["espnId"])
     .index("by_yahoo_id", ["yahooId"]),
+
+  // A platform's own position for a player, only where it differs from
+  // players.position (Sleeper's) - ESPN lists Velus Jones Jr. at RB, Sleeper
+  // at WR. Recorded by the ESPN rankings sync and the ESPN/Yahoo roster
+  // syncs (see players.ts's recordPlatformPositions); read per league by
+  // lib/platformPosition.ts so that league's rosters, lineup slots and
+  // position labels follow its platform. Valuation (VOR boards, trade
+  // values, power rankings) deliberately stays on players.position - the
+  // boards are shared across every league of a shape.
+  platformPositions: defineTable({
+    fpid: v.number(),
+    platform: v.union(v.literal("espn"), v.literal("yahoo")),
+    position: positionValidator,
+    updatedAt: v.number(),
+  }).index("by_platform_fpid", ["platform", "fpid"]),
 
   // Short-lived cache of Yahoo reads that barely change but were refetched on
   // every page load / live refresh (see convex/infinidraft/yahoo/cache.ts's
@@ -553,6 +576,11 @@ export default defineSchema({
     // use this instead of stdDeviation so a player's occasional monster game
     // doesn't inflate their variance the same way a genuine bust week does.
     downsideDeviation: v.number(),
+    // Average weekly usage score (lib/usageScore.ts) over the weeks he
+    // played, in this row's scoring - QB/RB/WR/TE only, absent before his
+    // first game. Recomputed from the season's rows on each write, like
+    // downsideDeviation. Feeds the Players tab's season usage (rosVor.ts).
+    usageAverage: v.optional(v.number()),
     updatedAt: v.number(),
   })
     // Read path: valueGaps.ts pulls every fpid for one
@@ -631,7 +659,7 @@ export default defineSchema({
     // "carryForward": still on the list when a new week began, nothing
     //   changed - gives every injured week its own row, so "status in week
     //   N" is a direct lookup. NOT a new injury event: anything asking
-    //   "when did this start?" (e.g. lib/playerValue.ts's injury-boost
+    //   "when did this start?" (e.g. lib/playerValue.ts's injured-teammate
     //   freshness) must skip these.
     // "cleared": dropped off Sleeper's injured list (recovered) - status is
     //   "Active" and the injury fields are empty.
@@ -1142,6 +1170,11 @@ export default defineSchema({
         passTd: v.number(),
         ptsAllow: v.optional(v.number()),
         ydsAllow: v.optional(v.number()),
+        // QB/RB/WR/TE: NFL team and the week's opportunity stats so far
+        // (sleeper/livePoints.ts's USAGE_STATS) - the Players tab's actual
+        // usage score once the game is final.
+        team: v.optional(v.string()),
+        usageStats: v.optional(v.record(v.string(), v.number())),
       }),
     ),
     // Per-team game status from ESPN's scoreboard (see lib/liveGames.ts),

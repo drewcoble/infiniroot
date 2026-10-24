@@ -14,6 +14,8 @@ import {
 } from "../../../../components/cards/GlassTeamHeader";
 import { meterScaleMax } from "../../../../components/cards/meterScale";
 import { useTeamRoster } from "../../../../hooks/useTeamRoster";
+import { useEliminationWatch } from "../../../../hooks/useEliminationWatch";
+import type { EliminationStatus } from "../../../../lib/eliminationWatch";
 import {
   isAnyGameLive,
   liveProjection,
@@ -24,7 +26,13 @@ import {
 import { seasonPositionRanks } from "../../../../lib/seasonPositionRanks";
 import { toMatchupCardData } from "../../../../lib/matchupCardData";
 import { LineupSuggestionsCard } from "../../../../components/LineupSuggestionsCard";
-import type { RosVorRow, SlotLabel, StandingsRow, TeamRosterRow } from "../../../../types/season";
+import type {
+  LinkedSeason,
+  RosVorRow,
+  SlotLabel,
+  StandingsRow,
+  TeamRosterRow,
+} from "../../../../types/season";
 
 const REGULAR_SEASON_WEEKS = 18;
 
@@ -123,6 +131,33 @@ function TeamPage() {
   const teamRoster = useTeamRoster(teamId, week, refreshMs);
   const roster = teamRoster.rows;
 
+  // A guillotine league has no head-to-head record (it's always 0-0-0), so
+  // the header shows the team's Elimination Watch standing for the week
+  // instead. Loaded once per visit and left as-is - no live refresh or
+  // live re-ranking: the watch loads every team's lineup, too heavy to
+  // repeat for a header badge, and re-ranking without fresh points would
+  // drift rather than just go stale. A team missing from it has already
+  // been eliminated (the watch leaves out teams with empty rosters).
+  const seasonsList: LinkedSeason[] | undefined = useQuery(
+    api.leagues.listLinkedSeasons,
+    isAuthenticated ? {} : "skip",
+  );
+  const isGuillotine =
+    seasonsList?.find((season) => season._id === leagueId)?.leagueType === "guillotine";
+  const eliminationWatch = useEliminationWatch(
+    isGuillotine ? leagueId : null,
+    week,
+    undefined,
+    now,
+  );
+  const eliminationStatus: EliminationStatus | "loading" | "unknown" | undefined = !isGuillotine
+    ? undefined
+    : eliminationWatch.error !== null
+      ? "unknown"
+      : eliminationWatch.rows === undefined
+        ? "loading"
+        : (eliminationWatch.rows.find((row) => row.teamId === teamId)?.status ?? "eliminated");
+
   // Season/ROS context for the detail cards (current week's board, as on
   // the Matchup tab) and this week's actual position ranks for the badges.
   const vorRows: RosVorRow[] | undefined = useQuery(
@@ -143,17 +178,15 @@ function TeamPage() {
     [weekRanks],
   );
 
-  const toCardData = (row: TeamRosterRow) => ({
-    ...toMatchupCardData(
+  const toCardData = (row: TeamRosterRow) =>
+    toMatchupCardData(
       row,
       weekGames ? gamesByTeam : undefined,
       now,
       row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? seasonPositionRankByFpid.get(row.fpid) : undefined,
-    ),
-    ...(week !== null ? { week } : {}),
-  });
+    );
 
   // The week's starters in header form: score, projection, and how many
   // are live / still to play. Same projection rule as the Matchup header -
@@ -212,7 +245,7 @@ function TeamPage() {
         )}
       </Group>
 
-      <GlassTeamHeader team={team} summary={summary} />
+      <GlassTeamHeader team={team} summary={summary} eliminationStatus={eliminationStatus} />
 
       {/* Start/sit advice is only actionable for your own lineup, and only
           for a week that hasn't already happened. */}

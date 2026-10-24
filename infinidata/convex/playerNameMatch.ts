@@ -25,3 +25,48 @@ export function normalizePlayerName(name: string): string {
 
   return parts.join(" ");
 }
+
+// Fallbacks for when name + position doesn't match, both scoped to the
+// player's NFL team and used only when exactly one candidate has the key:
+// 1. Same name, different position - providers disagree on some players
+//    (ESPN lists Velus Jones Jr. at RB, Sleeper at WR).
+// 2. Same last name + position, for nicknames (Yahoo/ESPN's "Bam Knight" is
+//    Sleeper's "Zonovan Knight"). Skipped for a name we already have under
+//    any team or position - that's a different player who just isn't a
+//    candidate here, not a nickname.
+// `isCandidate` narrows which players can be matched (e.g. not already
+// linked elsewhere) without dropping them from that already-have check.
+export function nameTeamMatchKey(name: string, team: string): string {
+  return `${normalizePlayerName(name)}|${team}`;
+}
+
+export function lastNameMatchKey(name: string, position: string, team: string): string {
+  const normalized = normalizePlayerName(name);
+  const lastName = normalized.slice(normalized.lastIndexOf(" ") + 1);
+  return `${lastName}|${position}|${team}`;
+}
+
+type MatchablePlayer = { fpid: number; name: string; position: string; team: string | null };
+
+export function createFallbackMatcher<P extends MatchablePlayer>(
+  players: P[],
+  isCandidate: (player: P) => boolean = () => true,
+): (name: string, position: string, team: string) => number | undefined {
+  const knownNames = new Set(players.map((player) => normalizePlayerName(player.name)));
+  // null marks a collision - two or more candidates share the key.
+  const byNameTeam = new Map<string, number | null>();
+  const byLastName = new Map<string, number | null>();
+  const add = (index: Map<string, number | null>, key: string, fpid: number) =>
+    index.set(key, index.has(key) ? null : fpid);
+  for (const player of players) {
+    if (!player.team || !isCandidate(player)) continue;
+    add(byNameTeam, nameTeamMatchKey(player.name, player.team), player.fpid);
+    add(byLastName, lastNameMatchKey(player.name, player.position, player.team), player.fpid);
+  }
+  return (name, position, team) => {
+    const sameName = byNameTeam.get(nameTeamMatchKey(name, team));
+    if (sameName !== undefined) return sameName ?? undefined;
+    if (knownNames.has(normalizePlayerName(name))) return undefined;
+    return byLastName.get(lastNameMatchKey(name, position, team)) ?? undefined;
+  };
+}

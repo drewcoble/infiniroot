@@ -4,7 +4,7 @@ import { internal } from "../_generated/api";
 import { Doc, Id } from "../_generated/dataModel";
 import { currentSeason } from "../lib/dataFetch";
 import { DEF_TEAM_FPIDS } from "../sleeper/client";
-import { normalizePlayerName } from "../playerNameMatch";
+import { createFallbackMatcher, normalizePlayerName } from "../playerNameMatch";
 import { espnDstScoring, type DstScoring } from "../lib/dstScoring";
 import {
   mapEspnDraftType,
@@ -16,6 +16,8 @@ import {
   type EspnLeagueSettings,
 } from "./leagueSettingsMapping";
 import type { MappedRosterSlots } from "../sleeper/leagueSettingsMapping";
+import { ESPN_PRO_TEAM_ABBR } from "./client";
+import { recordablePosition } from "../lib/platformPosition";
 import type { Scoring, TeScoring } from "../scoring";
 import type { DraftType } from "../draftType";
 
@@ -165,18 +167,6 @@ function espnMemberName(member: EspnMember | undefined): string | undefined {
   return member.displayName || fullName || undefined;
 }
 
-// ESPN's proTeamId -> this app's (Sleeper's) team abbreviation, for D/ST
-// entries (ESPN's D/ST player id is -16000 - proTeamId; our DST fpids are
-// synthetic and never carry an espnId - see DEF_TEAM_FPIDS). Spot-checked
-// live against a real roster's players' proTeamIds.
-const ESPN_PRO_TEAM_ABBR: Record<number, string> = {
-  1: "ATL", 2: "BUF", 3: "CHI", 4: "CIN", 5: "CLE", 6: "DAL", 7: "DEN",
-  8: "DET", 9: "GB", 10: "TEN", 11: "IND", 12: "KC", 13: "LV", 14: "LAR",
-  15: "MIA", 16: "MIN", 17: "NE", 18: "NO", 19: "NYG", 20: "NYJ", 21: "PHI",
-  22: "ARI", 23: "PIT", 24: "LAC", 25: "SF", 26: "SEA", 27: "TB", 28: "WAS",
-  29: "CAR", 30: "JAX", 33: "BAL", 34: "HOU",
-};
-
 // ESPN defaultPositionId -> ours (same mapping convex/espn/rankings.ts
 // confirmed, plus 16 = D/ST).
 const ESPN_POSITION_TO_OURS: Record<number, Doc<"players">["position"]> = {
@@ -215,7 +205,8 @@ function extractRosterPlayers(team: EspnTeam): EspnRosterPlayer[] {
 // (Sleeper's own espn_id crosswalk - see schema.ts's players.espnId); D/ST
 // goes through proTeamId instead, and anyone the crosswalk misses (rookies
 // before Sleeper backfills their espn_id, mostly) falls back to the same
-// normalized name+position match convex/espn/rankings.ts uses.
+// normalized name+position match convex/espn/rankings.ts uses, then to
+// createFallbackMatcher's team-scoped position-mismatch/nickname matches.
 export const resolveEspnPlayersToFpids = internalQuery({
   args: {
     players: v.array(
@@ -255,18 +246,25 @@ export const resolveEspnPlayersToFpids = internalQuery({
     }
 
     if (misses.length > 0) {
+      const allPlayers = await ctx.db.query("players").collect();
       const byNameAndPosition = new Map<string, number>();
-      for (const player of await ctx.db.query("players").collect()) {
+      for (const player of allPlayers) {
         byNameAndPosition.set(
           `${normalizePlayerName(player.name)}|${player.position}`,
           player.fpid,
         );
       }
+      const matchFallback = createFallbackMatcher(allPlayers);
       for (const player of misses) {
         if (!player.position || !player.name) continue;
-        const fpid = byNameAndPosition.get(
+        let fpid = byNameAndPosition.get(
           `${normalizePlayerName(player.name)}|${player.position}`,
         );
+        const team =
+          player.proTeamId !== undefined ? ESPN_PRO_TEAM_ABBR[player.proTeamId] : undefined;
+        if (fpid === undefined && team) {
+          fpid = matchFallback(player.name, player.position, team);
+        }
         if (fpid !== undefined) matches.push({ espnId: player.espnId, fpid });
       }
     }
@@ -418,11 +416,20 @@ export const syncEspnLeagueRoster = action({
 
     // One resolution pass across every roster, so the name-match fallback's
     // full players scan happens at most once per sync.
+    const rosterPlayers = linked.flatMap(({ espnTeam }) => extractRosterPlayers(espnTeam));
     const resolved: Array<{ espnId: number; fpid: number }> = await ctx.runQuery(
       internal.espn.league.resolveEspnPlayersToFpids,
-      { players: linked.flatMap(({ espnTeam }) => extractRosterPlayers(espnTeam)) },
+      { players: rosterPlayers },
     );
     const fpidByEspnId = new Map(resolved.map((r) => [r.espnId, r.fpid]));
+    await ctx.runMutation(internal.players.recordPlatformPositions, {
+      platform: "espn",
+      rows: rosterPlayers.flatMap((player) => {
+        const fpid = fpidByEspnId.get(player.espnId);
+        const position = recordablePosition(player.position);
+        return fpid !== undefined && position ? [{ fpid, position }] : [];
+      }),
+    });
 
     for (const { team, espnTeam } of linked) {
       const fpids = (espnTeam.roster?.entries ?? [])

@@ -142,7 +142,7 @@
   gap: 5px;
   height: 20px;
   padding: 0 8px;
-  border-radius: 999px;
+  border-radius: 7px;
   font-size: 11px;
   font-family: var(--font-badge);
   font-weight: var(--font-badge-weight);
@@ -431,6 +431,7 @@
   justify-content: center;
   min-width: 48px;
   height: 32px;
+  border-radius: 12px;
   letter-spacing: 0.04em;
 }
 
@@ -928,6 +929,29 @@
   padding: 0 6px;
 }
 
+/* Mobile: the chip runs off the screen's left edge (through the page
+   gutter, plus enough to hide its rounded end), keeping 54px visible.
+   Left padding equal to the hidden part centers the label in what shows;
+   index.css clips the overflow. Desktop keeps the whole chip - the page
+   there is centered, so there's no screen edge to run into. */
+@media (max-width: 47.99em) {
+  .rosterRow > .slotChip {
+    --chip-bleed: calc(var(--mantine-spacing-md) + 24px);
+    width: calc(54px + var(--chip-bleed) - var(--mantine-spacing-md));
+    margin-left: calc(-1 * var(--chip-bleed));
+    padding-left: calc(6px + var(--chip-bleed) - var(--mantine-spacing-md));
+    height: 42px;
+    /* Same corner radius as the cards beside it. */
+    border-radius: 16px;
+    font-size: 13px;
+  }
+
+  /* Rank numbers read a size up from the slot labels. */
+  .rosterRow > .rankChip {
+    font-size: 15px;
+  }
+}
+
 .rosterRow > .card {
   flex: 1;
   min-width: 0;
@@ -1316,14 +1340,21 @@
 
 /* Two shared rows (name | score, season | projection), each side centered
    on the other - the full-width player card's layout. */
+/* The right side splits in two so the name only gives up the score's width,
+   not the wider counts-and-projection line under it (same as the full-width
+   player cards' .withHeadshot). */
 .teamHeader {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "name total"
-    "season proj";
+    "logo name name total"
+    "logo season proj proj";
+  /* The player cards' padding and corners, not the Matchup header's roomier
+     16px / 20px - it reads as one of the cards below it. */
+  padding: 10px;
+  border-radius: 16px;
   align-items: center;
-  column-gap: 12px;
+  column-gap: 10px;
   row-gap: 4px;
 }
 
@@ -1331,21 +1362,36 @@
   grid-area: name;
   margin: 0;
   min-width: 0;
-  font-size: 20px;
+  /* 18px, not the Matchup header's 20: beside the full-height logo and rank
+     badge, 20 wrapped an average-length name next to a live score. */
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.015em;
-  overflow-wrap: anywhere;
+  /* One line - a name too long for it ends in an ellipsis. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Logo then name, in the name's grid cell - the logo stays off the season
-   row, which has no width to spare beside the week's counts. */
+/* The team's logo, the height of both rows beside it. */
+.teamHeaderLogo {
+  grid-area: logo;
+  align-self: center;
+}
+
+/* Rank badge then name, in the name's grid cell - the badge moved up here
+   so the season row (beside the week's counts) is just the record. */
 .teamHeaderTitle {
   grid-area: name;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
+}
+
+.teamHeaderTitle .pill {
+  flex-shrink: 0;
 }
 
 .teamHeaderSeason {
@@ -1466,7 +1512,7 @@
   display: flex;
   gap: 4px;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: 16px;
   background: rgba(0, 0, 0, 0.22);
   border: 1px solid rgba(0, 0, 0, 0.3);
   box-shadow:
@@ -1480,7 +1526,7 @@
   height: 32px;
   padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 12px;
   background: transparent;
   color: rgba(248, 250, 252, 0.62);
   font: inherit;
@@ -1629,7 +1675,7 @@
   flex-shrink: 0;
   height: 32px;
   padding: 0 13px;
-  border-radius: 999px;
+  border-radius: 12px;
   font: inherit;
   font-size: 13px;
   font-family: var(--font-badge);
@@ -2024,7 +2070,7 @@
 /* "Load trade" - a raised glass pane tinted the selection blue. */
 .suggestionLoadButton {
   height: 40px;
-  border-radius: 999px;
+  border-radius: 15px;
   font: inherit;
   font-size: 14px;
   font-weight: 650;

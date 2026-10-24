@@ -125,17 +125,11 @@ export interface FaabSuggestionRow {
   // gap among them. 0/0 means nobody would start this player right now.
   demandCount: number;
   topDemandValue: number;
-  // League-wide expected winning bid in dollars - the same for every team.
+  // League-wide expected winning bid in dollars - the same for every team,
+  // and the only bid shown.
   marketValue: number;
-  // myValue/suggestedBid/rationale are only populated when the query was
-  // called with a teamId - null otherwise (see freeAgents.tsx, which always
-  // passes the viewer's own team once known). suggestedBid is marketValue
-  // adjusted for that team's fit (starter vs depth) and remaining budget.
-  myValue: number | null;
-  suggestedBid: number | null;
-  rationale: string | null;
-  // Set when this player's value includes a time-boxed bump from plausibly
-  // inheriting a just-injured teammate's workload.
+  // Set when a same-position teammate was just ruled Out or placed on IR -
+  // a note only, not reflected in any value.
   boostReason: string | null;
 }
 
@@ -146,6 +140,9 @@ export interface FaabSuggestionsResult {
   season: string | null;
   remainingWeeks: number;
   suggestions: FaabSuggestionRow[];
+  // The viewer's starting slots nobody on their roster can fill - shown as
+  // one warning above the list. Empty without a teamId.
+  openStarterSlots: string[];
 }
 
 // Mirrors convex/rosVor.ts's RosVorRow - already sorted by the backend
@@ -184,6 +181,12 @@ export interface RosVorRow {
   // convex/rosVor.ts's board itself; the Players tab merges it in from
   // getWeekPoints (live during games). Absent until the player has played.
   weekPoints?: number;
+  // Usage score (convex/lib/usageScore.ts): season average and this
+  // week's projection - null for K/DST or no data. weekUsageActual is
+  // merged in by the Players tab from getWeekUsage once his game is final.
+  seasonUsage: number | null;
+  weekUsage: number | null;
+  weekUsageActual?: number;
   rosteredByTeamName: string | null;
   // Absent means not currently injured - mirrors TeamRosterRow's injury
   // field below, same convex/injuries.ts source (Sleeper-derived).

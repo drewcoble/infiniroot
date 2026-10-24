@@ -103,7 +103,7 @@
   gap: 6px;
   height: 36px;
   padding: 0 10px 0 14px;
-  border-radius: 999px;
+  border-radius: 14px;
   font: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -159,12 +159,12 @@
 
 /* Bottom nav tab: every tab gets the same inset so the active one's raised
    glass pill (below) sits evenly inside the bar - 4px from every edge
-   (the bar adds 4px of side padding), and fully rounded so its curve runs
-   concentric with the bar's own pill ends. */
+   (the bar adds 4px of side padding), and rounded 4px less than the bar
+   (BottomNav.tsx) so the two curves run concentric. */
 .navItem {
   margin: 4px 0;
   padding: 7px 0;
-  border-radius: 999px;
+  border-radius: 19px;
   border: 1px solid transparent;
   outline: none;
   transition:

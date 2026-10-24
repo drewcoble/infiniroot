@@ -5,6 +5,8 @@ import { Doc, Id } from "../../_generated/dataModel";
 import { fetchYahooApi, mergeYahooFields, findNodesByKey } from "./client";
 import { withYahooToken } from "./oauth";
 import { DEF_TEAM_FPIDS } from "../../sleeper/client";
+import { createFallbackMatcher } from "../../playerNameMatch";
+import { recordablePosition } from "../../lib/platformPosition";
 import {
   mapYahooRosterPositions,
   mapYahooScoringSettings,
@@ -275,6 +277,7 @@ async function matchPlayersToFpids(
       player.fpid,
     );
   }
+  const matchFallback = createFallbackMatcher(allPlayers);
   const matches: Array<{ index: number; fpid: number }> = [];
   players.forEach((player, index) => {
     if (player.position === "DEF" || player.position === "DST") {
@@ -283,9 +286,12 @@ async function matchPlayersToFpids(
       if (fpid !== undefined) matches.push({ index, fpid });
       return;
     }
-    const fpid = byKey.get(
+    let fpid = byKey.get(
       `${normalizeYahooPlayerName(player.name)}|${player.position}`,
     );
+    if (fpid === undefined && player.teamAbbr) {
+      fpid = matchFallback(player.name, player.position, normalizeYahooTeamAbbr(player.teamAbbr));
+    }
     if (fpid !== undefined) matches.push({ index, fpid });
   });
   return matches;
@@ -301,11 +307,21 @@ export const resolveFpidsByName = internalQuery({
       }),
     ),
   },
-  handler: async (ctx, args): Promise<number[]> => {
+  handler: async (ctx, args): Promise<Array<{ fpid: number; position: string }>> => {
     const matches = await matchPlayersToFpids(ctx, args.players);
-    return matches.map((m) => m.fpid);
+    return matches.map((m) => ({ fpid: m.fpid, position: args.players[m.index]!.position }));
   },
 });
+
+// resolveFpidsByName's matches -> players.recordPlatformPositions rows.
+export function yahooPositionRows(
+  resolved: Array<{ fpid: number; position: string }>,
+): Array<{ fpid: number; position: Doc<"players">["position"] }> {
+  return resolved.flatMap(({ fpid, position }) => {
+    const recordable = recordablePosition(position);
+    return recordable ? [{ fpid, position: recordable }] : [];
+  });
+}
 
 // Keeper-history counterpart to resolveFpidsByName - preserves which
 // player_key each resolved fpid came from, so fetchPreviousYahooSeasonPreview
@@ -511,10 +527,15 @@ export const syncYahooLeagueRoster = action({
             faabBalance: readFaabBalance(mergeYahooFields(rosterTeamNode)),
           };
         }
-        const fpids: number[] = await ctx.runQuery(
+        const resolved: Array<{ fpid: number; position: string }> = await ctx.runQuery(
           internal.infinidraft.yahoo.league.resolveFpidsByName,
           { players: teamRoster.players },
         );
+        const fpids = resolved.map((r) => r.fpid);
+        await ctx.runMutation(internal.players.recordPlatformPositions, {
+          platform: "yahoo",
+          rows: yahooPositionRows(resolved),
+        });
 
         // FAAB field name not confirmed live - see YAHOO.md. Best-effort:
         // a missing/unreachable field just leaves faabSpent at 0 rather

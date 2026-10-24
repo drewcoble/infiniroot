@@ -10,6 +10,7 @@ import { fetchEspnOpponentTeamId } from "../../espn/league";
 import type { SleeperMatchupEntry } from "./teamRoster";
 import { requireSeasonOwner } from "../../lib/access";
 import { loadWeekPoints } from "../../lib/weekPoints";
+import { loadPlatformPositions } from "../../lib/platformPosition";
 
 // How long a Yahoo team's weekly opponent is reused - see
 // infinidraft/yahoo/cache.ts.
@@ -110,14 +111,20 @@ export const getOpponentForWeek = action({
 export const getWeekPositionRanks = query({
   args: { seasonId: v.id("seasons"), week: v.string() },
   handler: async (ctx, args): Promise<Array<{ fpid: number; rank: number }>> => {
-    await requireSeasonOwner(ctx, args.seasonId);
-    const entries = await loadWeekPoints(ctx, args.seasonId, args.week);
+    const { season } = await requireSeasonOwner(ctx, args.seasonId);
+    const [entries, platformPositions] = await Promise.all([
+      loadWeekPoints(ctx, args.seasonId, args.week),
+      loadPlatformPositions(ctx, season),
+    ]);
 
+    // Ranked at the league platform's position (see schema.ts's
+    // platformPositions), matching the roster's position label.
     const byPosition = new Map<string, typeof entries>();
     for (const entry of entries) {
-      const list = byPosition.get(entry.position) ?? [];
+      const position = platformPositions.get(entry.fpid) ?? entry.position;
+      const list = byPosition.get(position) ?? [];
       list.push(entry);
-      byPosition.set(entry.position, list);
+      byPosition.set(position, list);
     }
 
     const ranks: Array<{ fpid: number; rank: number }> = [];

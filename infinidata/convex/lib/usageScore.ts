@@ -11,7 +11,7 @@
 // scoring - never stored per scoring combo.
 
 import type { ScoringConfig } from "../scoring";
-import { FLEX_CALIBRATION, QB_CALIBRATION } from "./usageCalibration";
+import { FLEX_CALIBRATION, QB_CALIBRATION, RED_ZONE_SHARE } from "./usageCalibration";
 
 export type UsagePosition = "QB" | "RB" | "WR" | "TE";
 
@@ -83,4 +83,37 @@ export function usageScore(
   );
   parts[largest] += total - (parts.pass + parts.rush + parts.rec);
   return { ...parts, total, expectedPoints: Math.round(expectedPoints * 10) / 10 };
+}
+
+// A projected stat line's usage score. Projections carry carries, targets
+// and pass attempts but no red-zone looks, so those are filled in at the
+// position's usual red-zone share (usageCalibration.ts) - otherwise every
+// projected score would read low next to the actual ones.
+export function projectedUsageScore(
+  stats: Record<string, number>,
+  position: UsagePosition,
+  config: ScoringConfig,
+): number {
+  const share = RED_ZONE_SHARE[position];
+  const read = (key: string) => stats[key] ?? 0;
+  const filled = {
+    ...stats,
+    rush_rz_att: stats.rush_rz_att ?? read("rush_att") * share.rush,
+    rec_rz_tgt: stats.rec_rz_tgt ?? read("rec_tgt") * share.rec,
+    pass_rz_att: stats.pass_rz_att ?? read("pass_att") * share.pass,
+  };
+  return usageScore(filled, position, config).total;
+}
+
+// Average weekly score over the weeks a player played (stats.gp > 0) -
+// null before his first game. Same average as getUsageWeeks.
+export function seasonUsageAverage(
+  weeks: Array<{ stats: Record<string, number> }>,
+  position: UsagePosition,
+  config: ScoringConfig,
+): number | null {
+  const played = weeks.filter((week) => (week.stats.gp ?? 0) > 0);
+  if (played.length === 0) return null;
+  const sum = played.reduce((total, week) => total + usageScore(week.stats, position, config).total, 0);
+  return sum / played.length;
 }
