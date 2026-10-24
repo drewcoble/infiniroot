@@ -1,6 +1,7 @@
 import { Stack } from "@mantine/core";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
 import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
+import { RankChangeBadge } from "./PowerRankingsList";
 import type { ProjectedStandingsRow, TeamPositionRanks } from "../types/season";
 
 interface ProjectedStandingsListProps {
@@ -11,9 +12,9 @@ interface ProjectedStandingsListProps {
 }
 
 // Projected final regular-season standings (see convex/infinileague/season/
-// projectedStandings.ts) - already sorted and ranked server-side. No
-// up/down badge: on the league home those mean change since last week (see
-// PowerRankingsList), so today's rank sits in the "Now" line instead.
+// projectedStandings.ts) - already sorted and ranked server-side. The badge
+// is the projected finish's move since last week, same as PowerRankingsList;
+// today's rank sits in the "Now" line.
 export function ProjectedStandingsList({
   leagueId,
   rows,
@@ -34,8 +35,7 @@ export function ProjectedStandingsList({
       {rows.map((row) => {
         const record = `${row.wins}-${row.losses}-${row.ties}`;
         const current = `${row.currentWins}-${row.currentLosses}-${row.currentTies}`;
-        const currentRank = row.rank + row.rankChange;
-        const now = `Now ${current}, #${currentRank}`;
+        const now = `Now ${current}, #${row.currentRank}`;
         return (
           <GlassTeamCard
             key={row.teamId}
@@ -45,6 +45,7 @@ export function ProjectedStandingsList({
               name: row.name,
               rank: row.rank,
               isSelf: row.isSelf,
+              nameBadges: <RankChangeBadge rankChange={row.rankChange} />,
               primary: record,
               secondaryLeft: <span className="num">{now}</span>,
               summary: now,
@@ -60,7 +61,7 @@ export function ProjectedStandingsList({
                   label: "Today",
                   items: [
                     { label: "Record", value: current },
-                    { label: "Rank", value: `#${currentRank}` },
+                    { label: "Rank", value: `#${row.currentRank}` },
                   ],
                 },
               ],

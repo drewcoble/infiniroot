@@ -61,8 +61,10 @@ export interface ProjectedStandingsRow {
   logoUrl?: string;
   isSelf: boolean;
   rank: number;
-  // Current standings rank minus projected rank - positive moves up.
-  rankChange: number;
+  currentRank: number;
+  // Projected rank last snapshotted week minus this week's - positive means
+  // the projected finish moved up. Absent with no earlier snapshot.
+  rankChange?: number;
   wins: number;
   losses: number;
   ties: number;

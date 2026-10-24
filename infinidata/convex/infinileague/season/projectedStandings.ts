@@ -1,7 +1,12 @@
 import { v } from "convex/values";
-import { action, type ActionCtx } from "../../_generated/server";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  type ActionCtx,
+} from "../../_generated/server";
 import { internal } from "../../_generated/api";
-import { Id } from "../../_generated/dataModel";
+import { Doc, Id } from "../../_generated/dataModel";
 import { computeTeamWeekTotals, gatherPowerRankingsInputs } from "./powerRankings";
 import { loadLeagueSchedule } from "./schedule";
 import { compareStandings } from "./standings";
@@ -11,10 +16,13 @@ export interface ProjectedStandingsRow {
   name: string;
   logoUrl?: string;
   isSelf: boolean;
-  // Projected final rank, and current standings rank minus it (positive =
-  // projected to move up).
+  // Projected final rank, and today's standings rank.
   rank: number;
-  rankChange: number;
+  currentRank: number;
+  // Projected rank last snapshotted week minus this week's (positive =
+  // projected finish moved up) - absent with no earlier snapshot, same as
+  // PowerRankingRow's rankChange.
+  rankChange?: number;
   // Projected final record and points for - current plus every remaining
   // regular-season week.
   wins: number;
@@ -33,6 +41,52 @@ interface TeamRecord {
   ties: number;
   pointsFor: number;
 }
+
+// Latest snapshot strictly before `beforeWeek` - same as powerRankings.ts's
+// getLatestSnapshotBeforeWeek.
+export const getLatestSnapshotBeforeWeek = internalQuery({
+  args: { seasonId: v.id("seasons"), beforeWeek: v.string() },
+  handler: async (ctx, args): Promise<Doc<"projectedStandingsSnapshots"> | null> => {
+    const rows = await ctx.db
+      .query("projectedStandingsSnapshots")
+      .withIndex("by_season_week", (q) => q.eq("seasonId", args.seasonId))
+      .collect();
+    const before = rows.filter((row) => Number(row.week) < Number(args.beforeWeek));
+    if (before.length === 0) return null;
+    return before.reduce((latest, row) =>
+      Number(row.week) > Number(latest.week) ? row : latest,
+    );
+  },
+});
+
+// Upserted on every run - same-week reruns refresh that week's row, same as
+// powerRankings.ts's saveSnapshot.
+export const saveSnapshot = internalMutation({
+  args: {
+    seasonId: v.id("seasons"),
+    week: v.string(),
+    teamIds: v.array(v.id("seasonTeams")),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("projectedStandingsSnapshots")
+      .withIndex("by_season_week", (q) =>
+        q.eq("seasonId", args.seasonId).eq("week", args.week),
+      )
+      .first();
+    const computedAt = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, { teamIds: args.teamIds, computedAt });
+    } else {
+      await ctx.db.insert("projectedStandingsSnapshots", {
+        seasonId: args.seasonId,
+        week: args.week,
+        teamIds: args.teamIds,
+        computedAt,
+      });
+    }
+  },
+});
 
 // Yahoo-style projected final standings: every remaining regular-season
 // matchup goes to the team with the higher projected optimal lineup (the
@@ -126,20 +180,37 @@ export const getProjectedStandings = action({
       .map((team) => ({ team, record: recordByTeam.get(team._id)! }))
       .sort((a, b) => compareStandings(a.record, b.record));
 
-    return projected.map(({ team, record }, index) => ({
-      teamId: team._id,
-      name: team.name,
-      ...(team.logoUrl ? { logoUrl: team.logoUrl } : {}),
-      isSelf: team.isSelf,
-      rank: index + 1,
-      rankChange: (currentRankByTeam.get(team._id) ?? index + 1) - (index + 1),
-      wins: record.wins,
-      losses: record.losses,
-      ties: record.ties,
-      pointsFor: record.pointsFor,
-      currentWins: team.wins ?? 0,
-      currentLosses: team.losses ?? 0,
-      currentTies: team.ties ?? 0,
-    }));
+    const currentWeekStr = String(currentWeek);
+    const previousSnapshot = await ctx.runQuery(
+      internal.infinileague.season.projectedStandings.getLatestSnapshotBeforeWeek,
+      { seasonId: args.seasonId, beforeWeek: currentWeekStr },
+    );
+    const previousRankByTeam = new Map<Id<"seasonTeams">, number>();
+    previousSnapshot?.teamIds.forEach((teamId, i) => previousRankByTeam.set(teamId, i + 1));
+    await ctx.runMutation(internal.infinileague.season.projectedStandings.saveSnapshot, {
+      seasonId: args.seasonId,
+      week: currentWeekStr,
+      teamIds: projected.map(({ team }) => team._id),
+    });
+
+    return projected.map(({ team, record }, index) => {
+      const previousRank = previousRankByTeam.get(team._id);
+      return {
+        teamId: team._id,
+        name: team.name,
+        ...(team.logoUrl ? { logoUrl: team.logoUrl } : {}),
+        isSelf: team.isSelf,
+        rank: index + 1,
+        currentRank: currentRankByTeam.get(team._id) ?? index + 1,
+        ...(previousRank !== undefined ? { rankChange: previousRank - (index + 1) } : {}),
+        wins: record.wins,
+        losses: record.losses,
+        ties: record.ties,
+        pointsFor: record.pointsFor,
+        currentWins: team.wins ?? 0,
+        currentLosses: team.losses ?? 0,
+        currentTies: team.ties ?? 0,
+      };
+    });
   },
 });

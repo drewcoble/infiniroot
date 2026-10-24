@@ -1372,6 +1372,17 @@ export default defineSchema({
     computedAt: v.number(),
   }).index("by_season_week", ["seasonId", "week"]),
 
+  // Same idea as powerRankingSnapshots above, for projected final standings
+  // (convex/infinileague/season/projectedStandings.ts) - each week's
+  // projected order, so the Projected tab can show how far a team's
+  // projected finish moved since last week.
+  projectedStandingsSnapshots: defineTable({
+    seasonId: v.id("seasons"),
+    week: v.string(),
+    teamIds: v.array(v.id("seasonTeams")),
+    computedAt: v.number(),
+  }).index("by_season_week", ["seasonId", "week"]),
+
   // LEGACY - superseded by rosVorShapeSnapshots below (one board per
   // league shape instead of per season); nothing reads or writes this any
   // more. Kept defined until rosVor.backfillRosVorShapeSnapshots has copied
