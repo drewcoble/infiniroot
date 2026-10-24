@@ -237,6 +237,10 @@ function normalizeYahooPlayerName(name: string): string {
     .trim();
 }
 
+function lastNameOf(normalizedName: string): string {
+  return normalizedName.slice(normalizedName.lastIndexOf(" ") + 1);
+}
+
 // Yahoo's `editorial_team_abbr` field (present on every player, including
 // DEF/DST entries - it's just "which NFL team is this") doesn't always
 // match Sleeper's DEF_TEAM_FPIDS keys byte-for-byte. These two are the
@@ -269,11 +273,17 @@ async function matchPlayersToFpids(
 ): Promise<Array<{ index: number; fpid: number }>> {
   const allPlayers: Doc<"players">[] = await ctx.db.query("players").collect();
   const byKey = new Map<string, number>();
+  // Fallback for nickname mismatches (Yahoo's "Bam Knight" is Sleeper's
+  // "Zonovan Knight"): last name + position + team, used only when exactly
+  // one player has that key - null marks a collision.
+  const byLastNameKey = new Map<string, number | null>();
   for (const player of allPlayers) {
-    byKey.set(
-      `${normalizeYahooPlayerName(player.name)}|${player.position}`,
-      player.fpid,
-    );
+    const name = normalizeYahooPlayerName(player.name);
+    byKey.set(`${name}|${player.position}`, player.fpid);
+    if (player.team) {
+      const lastNameKey = `${lastNameOf(name)}|${player.position}|${player.team}`;
+      byLastNameKey.set(lastNameKey, byLastNameKey.has(lastNameKey) ? null : player.fpid);
+    }
   }
   const matches: Array<{ index: number; fpid: number }> = [];
   players.forEach((player, index) => {
@@ -283,9 +293,12 @@ async function matchPlayersToFpids(
       if (fpid !== undefined) matches.push({ index, fpid });
       return;
     }
-    const fpid = byKey.get(
-      `${normalizeYahooPlayerName(player.name)}|${player.position}`,
-    );
+    const name = normalizeYahooPlayerName(player.name);
+    let fpid = byKey.get(`${name}|${player.position}`);
+    if (fpid === undefined && player.teamAbbr) {
+      const team = normalizeYahooTeamAbbr(player.teamAbbr);
+      fpid = byLastNameKey.get(`${lastNameOf(name)}|${player.position}|${team}`) ?? undefined;
+    }
     if (fpid !== undefined) matches.push({ index, fpid });
   });
   return matches;
