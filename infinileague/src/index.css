@@ -18,6 +18,12 @@ body {
   overflow-x: clip;
 }
 
+/* Badges get the glass pills' rounded-rectangle shape (radius ~38% of
+   height) instead of Mantine's full pill. */
+.mantine-Badge-root {
+  border-radius: calc(var(--badge-height) * 0.38);
+}
+
 /* Numbers (points, scores, standings, FAAB) are set in Barlow semibold -
    a clean, very legible grotesque that holds up at small sizes. Every
    number style reads these two variables; tabular figures keep live

@@ -142,7 +142,7 @@
   gap: 5px;
   height: 20px;
   padding: 0 8px;
-  border-radius: 999px;
+  border-radius: 7px;
   font-size: 11px;
   font-family: var(--font-badge);
   font-weight: var(--font-badge-weight);
@@ -431,6 +431,7 @@
   justify-content: center;
   min-width: 48px;
   height: 32px;
+  border-radius: 12px;
   letter-spacing: 0.04em;
 }
 
@@ -931,7 +932,7 @@
 /* Mobile: the chip runs off the screen's left edge (through the page
    gutter, plus enough to hide its rounded end), keeping 54px visible.
    Left padding equal to the hidden part centers the label in what shows;
-   index.css clips the overflow. Desktop keeps the full pill - the page
+   index.css clips the overflow. Desktop keeps the whole chip - the page
    there is centered, so there's no screen edge to run into. */
 @media (max-width: 47.99em) {
   .rosterRow > .slotChip {
@@ -1511,7 +1512,7 @@
   display: flex;
   gap: 4px;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: 16px;
   background: rgba(0, 0, 0, 0.22);
   border: 1px solid rgba(0, 0, 0, 0.3);
   box-shadow:
@@ -1525,7 +1526,7 @@
   height: 32px;
   padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 12px;
   background: transparent;
   color: rgba(248, 250, 252, 0.62);
   font: inherit;
@@ -1674,7 +1675,7 @@
   flex-shrink: 0;
   height: 32px;
   padding: 0 13px;
-  border-radius: 999px;
+  border-radius: 12px;
   font: inherit;
   font-size: 13px;
   font-family: var(--font-badge);
@@ -2069,7 +2070,7 @@
 /* "Load trade" - a raised glass pane tinted the selection blue. */
 .suggestionLoadButton {
   height: 40px;
-  border-radius: 999px;
+  border-radius: 15px;
   font: inherit;
   font-size: 14px;
   font-weight: 650;
