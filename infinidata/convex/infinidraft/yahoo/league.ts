@@ -5,7 +5,7 @@ import { Doc, Id } from "../../_generated/dataModel";
 import { fetchYahooApi, mergeYahooFields, findNodesByKey } from "./client";
 import { withYahooToken } from "./oauth";
 import { DEF_TEAM_FPIDS } from "../../sleeper/client";
-import { createLastNameMatcher } from "../../playerNameMatch";
+import { createFallbackMatcher } from "../../playerNameMatch";
 import {
   mapYahooRosterPositions,
   mapYahooScoringSettings,
@@ -276,7 +276,7 @@ async function matchPlayersToFpids(
       player.fpid,
     );
   }
-  const matchByLastName = createLastNameMatcher(allPlayers);
+  const matchFallback = createFallbackMatcher(allPlayers);
   const matches: Array<{ index: number; fpid: number }> = [];
   players.forEach((player, index) => {
     if (player.position === "DEF" || player.position === "DST") {
@@ -289,7 +289,7 @@ async function matchPlayersToFpids(
       `${normalizeYahooPlayerName(player.name)}|${player.position}`,
     );
     if (fpid === undefined && player.teamAbbr) {
-      fpid = matchByLastName(player.name, player.position, normalizeYahooTeamAbbr(player.teamAbbr));
+      fpid = matchFallback(player.name, player.position, normalizeYahooTeamAbbr(player.teamAbbr));
     }
     if (fpid !== undefined) matches.push({ index, fpid });
   });

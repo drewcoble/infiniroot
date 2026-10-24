@@ -11,7 +11,12 @@ import {
   EspnPlayer,
   ESPN_PRO_TEAM_ABBR,
 } from "./client";
-import { createLastNameMatcher, lastNameMatchKey, normalizePlayerName } from "../playerNameMatch";
+import {
+  createFallbackMatcher,
+  lastNameMatchKey,
+  nameTeamMatchKey,
+  normalizePlayerName,
+} from "../playerNameMatch";
 import { BLENDED_POSITIONS, BlendedPosition } from "../positions";
 
 // ESPN's defaultPositionId, confirmed empirically against players already
@@ -106,11 +111,8 @@ export interface EspnSyncResult {
   statRowsByPosition: Record<string, number>;
 }
 
-function espnLastNameKey(player: EspnPlayer): string | undefined {
-  const position = ESPN_POSITION_TO_OURS[player.defaultPositionId ?? -1];
-  const team = player.proTeamId !== undefined ? ESPN_PRO_TEAM_ABBR[player.proTeamId] : undefined;
-  if (!position || !team || !player.fullName) return undefined;
-  return lastNameMatchKey(player.fullName, position, team);
+function espnTeamAbbr(player: EspnPlayer): string | undefined {
+  return player.proTeamId !== undefined ? ESPN_PRO_TEAM_ABBR[player.proTeamId] : undefined;
 }
 
 async function fetchEspnRankingsHandler(
@@ -138,19 +140,28 @@ async function fetchEspnRankingsHandler(
     candidates.push(player.fpid);
     byNamePosition.set(key, candidates);
   }
-  // Nickname fallback (see createLastNameMatcher), over the same unlinked
-  // pool for keys, but every known name for the already-known-name check.
-  const unlinkedMatcher = createLastNameMatcher(
-    ourPlayers.filter((p) => p.espnId === undefined),
-  );
-  const knownNames = new Set(ourPlayers.map((p) => normalizePlayerName(p.name)));
-  // ...and only where ESPN's own list has a single player with that key, so
-  // a second same-last-name teammate can't steal the link.
-  const espnLastNameCounts = new Map<string, number>();
+  // Team-scoped fallbacks (see createFallbackMatcher) for unlinked players,
+  // only where ESPN's own list has a single player with the key too, so a
+  // second same-name teammate can't steal the link.
+  const matchFallback = createFallbackMatcher(ourPlayers, (p) => p.espnId === undefined);
+  const espnKeyCounts = new Map<string, number>();
+  const espnFallbackKeys = (player: EspnPlayer): string[] => {
+    const position = ESPN_POSITION_TO_OURS[player.defaultPositionId ?? -1];
+    const team = espnTeamAbbr(player);
+    if (!position || !team || !player.fullName) return [];
+    return [
+      nameTeamMatchKey(player.fullName, team),
+      lastNameMatchKey(player.fullName, position, team),
+    ];
+  };
   for (const player of espnPlayers) {
-    const key = espnLastNameKey(player);
-    if (key) espnLastNameCounts.set(key, (espnLastNameCounts.get(key) ?? 0) + 1);
+    for (const key of espnFallbackKeys(player)) {
+      espnKeyCounts.set(key, (espnKeyCounts.get(key) ?? 0) + 1);
+    }
   }
+  // Stats are filed under our own position for the player, not ESPN's, so a
+  // position-mismatch match blends with that player's other providers.
+  const positionByFpid = new Map(ourPlayers.map((p) => [p.fpid, p.position]));
 
   const valueRowsByFormat: Record<
     EspnFormat,
@@ -192,19 +203,17 @@ async function fetchEspnRankingsHandler(
         ? `${normalizePlayerName(player.fullName ?? "")}|${ourPosition}`
         : undefined;
       let candidates = key ? (byNamePosition.get(key) ?? []) : [];
-      const lastNameKey = espnLastNameKey(player);
-      const espnTeam =
-        player.proTeamId !== undefined ? ESPN_PRO_TEAM_ABBR[player.proTeamId] : undefined;
+      const team = espnTeamAbbr(player);
+      const fallbackKeys = espnFallbackKeys(player);
       if (
         candidates.length === 0 &&
         ourPosition &&
-        espnTeam &&
-        lastNameKey &&
-        espnLastNameCounts.get(lastNameKey) === 1 &&
-        !knownNames.has(normalizePlayerName(player.fullName ?? ""))
+        team &&
+        fallbackKeys.length > 0 &&
+        fallbackKeys.every((k) => espnKeyCounts.get(k) === 1)
       ) {
-        const lastNameFpid = unlinkedMatcher(player.fullName ?? "", ourPosition, espnTeam);
-        if (lastNameFpid !== undefined) candidates = [lastNameFpid];
+        const fallbackFpid = matchFallback(player.fullName ?? "", ourPosition, team);
+        if (fallbackFpid !== undefined) candidates = [fallbackFpid];
       }
       const [onlyCandidate] = candidates;
 
@@ -237,10 +246,11 @@ async function fetchEspnRankingsHandler(
       });
     }
 
-    if (ourPosition && isBlendedPosition(ourPosition)) {
+    const statsPosition = positionByFpid.get(fpid);
+    if (statsPosition && isBlendedPosition(statsPosition)) {
       const stats = extractEspnStats(player, season, week);
       if (stats) {
-        statRowsByPosition[ourPosition].push({ fpid, stats });
+        statRowsByPosition[statsPosition].push({ fpid, stats });
       }
     }
   }

@@ -4,7 +4,7 @@ import { internal } from "../_generated/api";
 import { Doc, Id } from "../_generated/dataModel";
 import { currentSeason } from "../lib/dataFetch";
 import { DEF_TEAM_FPIDS } from "../sleeper/client";
-import { createLastNameMatcher, normalizePlayerName } from "../playerNameMatch";
+import { createFallbackMatcher, normalizePlayerName } from "../playerNameMatch";
 import { espnDstScoring, type DstScoring } from "../lib/dstScoring";
 import {
   mapEspnDraftType,
@@ -205,7 +205,7 @@ function extractRosterPlayers(team: EspnTeam): EspnRosterPlayer[] {
 // goes through proTeamId instead, and anyone the crosswalk misses (rookies
 // before Sleeper backfills their espn_id, mostly) falls back to the same
 // normalized name+position match convex/espn/rankings.ts uses, then to
-// last name + position + team for nicknames.
+// createFallbackMatcher's team-scoped position-mismatch/nickname matches.
 export const resolveEspnPlayersToFpids = internalQuery({
   args: {
     players: v.array(
@@ -253,7 +253,7 @@ export const resolveEspnPlayersToFpids = internalQuery({
           player.fpid,
         );
       }
-      const matchByLastName = createLastNameMatcher(allPlayers);
+      const matchFallback = createFallbackMatcher(allPlayers);
       for (const player of misses) {
         if (!player.position || !player.name) continue;
         let fpid = byNameAndPosition.get(
@@ -262,7 +262,7 @@ export const resolveEspnPlayersToFpids = internalQuery({
         const team =
           player.proTeamId !== undefined ? ESPN_PRO_TEAM_ABBR[player.proTeamId] : undefined;
         if (fpid === undefined && team) {
-          fpid = matchByLastName(player.name, player.position, team);
+          fpid = matchFallback(player.name, player.position, team);
         }
         if (fpid !== undefined) matches.push({ espnId: player.espnId, fpid });
       }
