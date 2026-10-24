@@ -9,8 +9,9 @@ import {
   currentSeason,
   fetchEspnPlayers,
   EspnPlayer,
+  ESPN_PRO_TEAM_ABBR,
 } from "./client";
-import { normalizePlayerName } from "../playerNameMatch";
+import { createLastNameMatcher, lastNameMatchKey, normalizePlayerName } from "../playerNameMatch";
 import { BLENDED_POSITIONS, BlendedPosition } from "../positions";
 
 // ESPN's defaultPositionId, confirmed empirically against players already
@@ -105,6 +106,13 @@ export interface EspnSyncResult {
   statRowsByPosition: Record<string, number>;
 }
 
+function espnLastNameKey(player: EspnPlayer): string | undefined {
+  const position = ESPN_POSITION_TO_OURS[player.defaultPositionId ?? -1];
+  const team = player.proTeamId !== undefined ? ESPN_PRO_TEAM_ABBR[player.proTeamId] : undefined;
+  if (!position || !team || !player.fullName) return undefined;
+  return lastNameMatchKey(player.fullName, position, team);
+}
+
 async function fetchEspnRankingsHandler(
   ctx: ActionCtx,
   args: { season?: string; week?: string },
@@ -129,6 +137,19 @@ async function fetchEspnRankingsHandler(
     const candidates = byNamePosition.get(key) ?? [];
     candidates.push(player.fpid);
     byNamePosition.set(key, candidates);
+  }
+  // Nickname fallback (see createLastNameMatcher), over the same unlinked
+  // pool for keys, but every known name for the already-known-name check.
+  const unlinkedMatcher = createLastNameMatcher(
+    ourPlayers.filter((p) => p.espnId === undefined),
+  );
+  const knownNames = new Set(ourPlayers.map((p) => normalizePlayerName(p.name)));
+  // ...and only where ESPN's own list has a single player with that key, so
+  // a second same-last-name teammate can't steal the link.
+  const espnLastNameCounts = new Map<string, number>();
+  for (const player of espnPlayers) {
+    const key = espnLastNameKey(player);
+    if (key) espnLastNameCounts.set(key, (espnLastNameCounts.get(key) ?? 0) + 1);
   }
 
   const valueRowsByFormat: Record<
@@ -170,7 +191,21 @@ async function fetchEspnRankingsHandler(
       const key = ourPosition
         ? `${normalizePlayerName(player.fullName ?? "")}|${ourPosition}`
         : undefined;
-      const candidates = key ? (byNamePosition.get(key) ?? []) : [];
+      let candidates = key ? (byNamePosition.get(key) ?? []) : [];
+      const lastNameKey = espnLastNameKey(player);
+      const espnTeam =
+        player.proTeamId !== undefined ? ESPN_PRO_TEAM_ABBR[player.proTeamId] : undefined;
+      if (
+        candidates.length === 0 &&
+        ourPosition &&
+        espnTeam &&
+        lastNameKey &&
+        espnLastNameCounts.get(lastNameKey) === 1 &&
+        !knownNames.has(normalizePlayerName(player.fullName ?? ""))
+      ) {
+        const lastNameFpid = unlinkedMatcher(player.fullName ?? "", ourPosition, espnTeam);
+        if (lastNameFpid !== undefined) candidates = [lastNameFpid];
+      }
       const [onlyCandidate] = candidates;
 
       if (candidates.length === 1 && onlyCandidate !== undefined) {

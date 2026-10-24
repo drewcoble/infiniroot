@@ -25,3 +25,32 @@ export function normalizePlayerName(name: string): string {
 
   return parts.join(" ");
 }
+
+// Fallback for when full names disagree because one side uses a nickname
+// (Yahoo/ESPN's "Bam Knight" is Sleeper's "Zonovan Knight"): last name +
+// position + NFL team. Matches only when exactly one of `players` has that
+// key, and never for a name we already know at some other position (ESPN
+// lists Velus Jones Jr. at RB, Sleeper at WR - he'd otherwise land on
+// teammate Justin Jones).
+export function lastNameMatchKey(name: string, position: string, team: string): string {
+  const normalized = normalizePlayerName(name);
+  const lastName = normalized.slice(normalized.lastIndexOf(" ") + 1);
+  return `${lastName}|${position}|${team}`;
+}
+
+export function createLastNameMatcher(
+  players: Array<{ fpid: number; name: string; position: string; team: string | null }>,
+): (name: string, position: string, team: string) => number | undefined {
+  const knownNames = new Set(players.map((player) => normalizePlayerName(player.name)));
+  // null marks a collision - two or more players share the key.
+  const byKey = new Map<string, number | null>();
+  for (const player of players) {
+    if (!player.team) continue;
+    const key = lastNameMatchKey(player.name, player.position, player.team);
+    byKey.set(key, byKey.has(key) ? null : player.fpid);
+  }
+  return (name, position, team) => {
+    if (knownNames.has(normalizePlayerName(name))) return undefined;
+    return byKey.get(lastNameMatchKey(name, position, team)) ?? undefined;
+  };
+}

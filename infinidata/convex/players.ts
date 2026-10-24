@@ -157,6 +157,7 @@ export const listForNameMatch = internalQuery({
       fpid: player.fpid,
       name: player.name,
       position: player.position,
+      team: player.team,
       espnId: player.espnId,
     }));
   },
