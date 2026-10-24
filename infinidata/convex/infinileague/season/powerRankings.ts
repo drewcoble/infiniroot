@@ -252,23 +252,26 @@ export function buildWeekPicks(
   return picks;
 }
 
-// One team's optimal-lineup total, summed across every week in
-// projectionMapsByWeek - the same per-week optimizeLineup call
-// getPowerRankings always ran, just factored out so a hypothetical
+// One team's optimal-lineup total for each week in projectionMapsByWeek
+// (index 0 = currentWeek) - projectedStandings.ts decides each remaining
+// matchup off these.
+export function computeTeamWeekTotals(fpids: number[], inputs: PowerRankingsInputs): number[] {
+  return inputs.projectionMapsByWeek.map(
+    (projectionByFpid) =>
+      optimizeLineup(
+        buildWeekPicks(fpids, projectionByFpid, inputs),
+        inputs.season.rosterSlots,
+        inputs.season.flexPositions,
+        inputs.season.superflexPositions,
+      ).optimalPoints,
+  );
+}
+
+// computeTeamWeekTotals summed - factored out so a hypothetical
 // (post-trade) fpid list can be scored the exact same way as every real
 // team's current roster.
 function computeTeamTotal(fpids: number[], inputs: PowerRankingsInputs): number {
-  let total = 0;
-  for (const projectionByFpid of inputs.projectionMapsByWeek) {
-    const picks = buildWeekPicks(fpids, projectionByFpid, inputs);
-    total += optimizeLineup(
-      picks,
-      inputs.season.rosterSlots,
-      inputs.season.flexPositions,
-      inputs.season.superflexPositions,
-    ).optimalPoints;
-  }
-  return total;
+  return computeTeamWeekTotals(fpids, inputs).reduce((sum, points) => sum + points, 0);
 }
 
 // Same total as computeTeamTotal, broken down by StarterCategory instead of

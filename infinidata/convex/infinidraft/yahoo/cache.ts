@@ -4,7 +4,8 @@ import { internal } from "../../_generated/api";
 
 // Short-lived cache for Yahoo reads that barely change but were refetched on
 // every page load and live refresh - a league's DST scoring (from its
-// settings) and each team's weekly opponent (from the scoreboard). Yahoo
+// settings), each team's weekly opponent (from the scoreboard), and every
+// provider's league schedule (infinileague/season/schedule.ts). Yahoo
 // throttles with HTTP 999 (see client.ts's fetchYahooApi), so cutting
 // repeat requests matters more here than for Sleeper/ESPN. See schema.ts's
 // yahooCache.
