@@ -4,9 +4,13 @@ import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
 import { RankChangeBadge } from "./PowerRankingsList";
 import type { ProjectedStandingsRow, TeamPositionRanks } from "../types/season";
 
-// Expected record to one decimal ("9.4-4.6"), ties only when there are any.
+// Expected record in whole games ("9-5"), ties only when there are any.
+// Losses are what's left of the season after rounded wins, so the record
+// always adds up to the full schedule (9.5-4.5 reads 10-4, not 10-5).
 function expectedRecord(row: ProjectedStandingsRow): string {
-  const record = `${row.wins.toFixed(1)}-${row.losses.toFixed(1)}`;
+  const games = Math.round(row.wins + row.losses);
+  const wins = Math.round(row.wins);
+  const record = `${wins}-${games - wins}`;
   return row.ties > 0 ? `${record}-${row.ties}` : record;
 }
 
