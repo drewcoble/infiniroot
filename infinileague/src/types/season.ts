@@ -65,6 +65,8 @@ export interface ProjectedStandingsRow {
   // Projected rank last snapshotted week minus this week's - positive means
   // the projected finish moved up. Absent with no earlier snapshot.
   rankChange?: number;
+  // Expected final record - fractional, from each remaining game's win
+  // probability.
   wins: number;
   losses: number;
   ties: number;

@@ -24,7 +24,8 @@ export interface ProjectedStandingsRow {
   // PowerRankingRow's rankChange.
   rankChange?: number;
   // Projected final record and points for - current plus every remaining
-  // regular-season week.
+  // regular-season week. Wins/losses are expected values (fractional): each
+  // remaining game adds its win probability to wins and the rest to losses.
   wins: number;
   losses: number;
   ties: number;
@@ -88,11 +89,42 @@ export const saveSnapshot = internalMutation({
   },
 });
 
-// Yahoo-style projected final standings: every remaining regular-season
-// matchup goes to the team with the higher projected optimal lineup (the
-// same per-week totals power rankings sums), added onto each team's current
-// record, then sorted the same way as getStandings. A league that plays the
-// median too gets a win or loss each week for finishing above or below it.
+// A team's weekly score spread (standard deviation) as a share of its
+// projected total. Measured 2026-10-24 across four Sleeper leagues' weeks
+// 1-6: actual scores swung ~18% around each team's own average; a little
+// wider here since a projection also misses the average itself.
+const SCORE_SD_SHARE = 0.2;
+
+// Standard normal CDF (Abramowitz & Stegun 7.1.26 erf, error < 1.5e-7).
+function normalCdf(z: number): number {
+  const x = Math.abs(z) / Math.SQRT2;
+  const t = 1 / (1 + 0.3275911 * x);
+  const poly =
+    t *
+    (0.254829592 +
+      t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+  const erf = 1 - poly * Math.exp(-x * x);
+  return z >= 0 ? (1 + erf) / 2 : (1 - erf) / 2;
+}
+
+// Chance a score projected at `margin` points ahead (with this combined
+// variance) finishes ahead - 0.5 when there's no spread at all to go on.
+function winProbability(margin: number, variance: number): number {
+  if (variance <= 0) return margin > 0 ? 1 : margin < 0 ? 0 : 0.5;
+  return normalCdf(margin / Math.sqrt(variance));
+}
+
+function scoreVariance(projected: number): number {
+  return (SCORE_SD_SHARE * projected) ** 2;
+}
+
+// Yahoo-style projected final standings, with win probabilities instead of
+// all-or-nothing picks: each remaining regular-season matchup's projected
+// margin (the same per-week optimal-lineup totals power rankings sums) and
+// both teams' score spread give a win probability, added onto each team's
+// current record as expected wins/losses, then sorted the same way as
+// getStandings. A league that plays the median too gets a weekly game
+// against the median projected score.
 export const getProjectedStandings = action({
   args: { seasonId: v.id("seasons") },
   handler: async (ctx: ActionCtx, args): Promise<ProjectedStandingsRow[]> => {
@@ -138,12 +170,11 @@ export const getProjectedStandings = action({
         },
       ]),
     );
-    const award = (teamId: Id<"seasonTeams">, margin: number) => {
+    const award = (teamId: Id<"seasonTeams">, winProb: number) => {
       const record = recordByTeam.get(teamId);
       if (!record) return;
-      if (margin > 0) record.wins += 1;
-      else if (margin < 0) record.losses += 1;
-      else record.ties += 1;
+      record.wins += winProb;
+      record.losses += 1 - winProb;
     };
 
     for (let week = startWeek; week <= endWeek; week++) {
@@ -158,7 +189,10 @@ export const getProjectedStandings = action({
           totals.length % 2 === 0
             ? ((totals[mid - 1] ?? 0) + (totals[mid] ?? 0)) / 2
             : (totals[mid] ?? 0);
-        for (const team of teams) award(team._id, weekTotal(team._id, week) - median);
+        for (const team of teams) {
+          const total = weekTotal(team._id, week);
+          award(team._id, winProbability(total - median, scoreVariance(total)));
+        }
       }
     }
 
@@ -168,9 +202,15 @@ export const getProjectedStandings = action({
       const weeks = matchup.weeks.filter((week) => week >= startWeek && week <= endWeek);
       if (weeks.length === 0) continue;
       const [a, b] = matchup.teamIds;
-      const margin = weeks.reduce((sum, week) => sum + weekTotal(a, week) - weekTotal(b, week), 0);
-      award(a, margin);
-      award(b, -margin);
+      let margin = 0;
+      let variance = 0;
+      for (const week of weeks) {
+        margin += weekTotal(a, week) - weekTotal(b, week);
+        variance += scoreVariance(weekTotal(a, week)) + scoreVariance(weekTotal(b, week));
+      }
+      const winProb = winProbability(margin, variance);
+      award(a, winProb);
+      award(b, 1 - winProb);
     }
 
     const currentRankByTeam = new Map(

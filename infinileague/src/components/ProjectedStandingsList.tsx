@@ -4,6 +4,12 @@ import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
 import { RankChangeBadge } from "./PowerRankingsList";
 import type { ProjectedStandingsRow, TeamPositionRanks } from "../types/season";
 
+// Expected record to one decimal ("9.4-4.6"), ties only when there are any.
+function expectedRecord(row: ProjectedStandingsRow): string {
+  const record = `${row.wins.toFixed(1)}-${row.losses.toFixed(1)}`;
+  return row.ties > 0 ? `${record}-${row.ties}` : record;
+}
+
 interface ProjectedStandingsListProps {
   leagueId: string;
   rows: ProjectedStandingsRow[] | undefined;
@@ -33,7 +39,7 @@ export function ProjectedStandingsList({
   return (
     <Stack gap={8}>
       {rows.map((row) => {
-        const record = `${row.wins}-${row.losses}-${row.ties}`;
+        const record = expectedRecord(row);
         const current = `${row.currentWins}-${row.currentLosses}-${row.currentTies}`;
         const now = `Now ${current}, #${row.currentRank}`;
         return (
