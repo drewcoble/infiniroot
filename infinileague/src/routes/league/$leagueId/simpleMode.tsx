@@ -245,8 +245,8 @@ function PlayerExamples() {
 }
 
 // Experiment: the "Where he ranks" read as a timeline - his season-to-date
-// position rank after each week, by points per game (min. half the weeks
-// played) and by total points, for comparing which reads better.
+// position rank by points per game (min. half the weeks played) after each
+// week, every week's rank labeled.
 function RankHistoryExample({
   fpid,
   year,
@@ -279,6 +279,7 @@ function RankHistoryExample({
           weeks={history.weeks.map((week) => week.week)}
           position={position}
           maxRank={maxRank}
+          pointLabels
           series={[
             {
               key: "ppg",
@@ -286,22 +287,14 @@ function RankHistoryExample({
               color: SERIES[0],
               ranks: history.weeks.map((week) => week.ppgRank),
             },
-            {
-              key: "total",
-              label: "By total points",
-              // Neutral gray - orange read as "bad" next to the blue.
-              color: NEUTRAL_MARK,
-              ranks: history.weeks.map((week) => week.totalRank),
-            },
           ]}
           ariaLabel={
-            `Season-to-date ${position} rank by week: ` +
+            `Season-to-date ${position} rank per game by week: ` +
             history.weeks
               .map(
                 (week) =>
                   `week ${week.week} ` +
-                  `${week.ppgRank ? `${position}${week.ppgRank}` : "unranked"} per game, ` +
-                  `${week.totalRank ? `${position}${week.totalRank}` : "unranked"} total`,
+                  (week.ppgRank ? `${position}${week.ppgRank}` : "unranked"),
               )
               .join("; ")
           }

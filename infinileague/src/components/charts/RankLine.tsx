@@ -11,8 +11,12 @@ export interface RankLineSeries {
   ranks: Array<number | null>;
 }
 
-const MARGIN = { top: 8, right: 40, bottom: 18, left: 34 };
+const BASE_MARGIN = { top: 8, right: 40, bottom: 18, left: 34 };
+// With a label on every point: room above the top point for its label, and
+// only half a label's width at the right (no end label there).
+const LABELED_MARGIN = { ...BASE_MARGIN, top: 20, right: 18 };
 const END_DOT = 4;
+const POINT_DOT = 3;
 
 // Rank over the season as lines - week across, rank down (1 at the top),
 // on the same tier bands as RankDumbbell ("WR1" = ranks 1-12, ...), so a
@@ -21,7 +25,8 @@ const END_DOT = 4;
 // (at least two, never past `maxRank`), so a WR who's lived in WR1-WR2 all
 // season shows his movement instead of a flat line at the top of a 72-deep
 // axis. Ranks past the axis pin to the bottom edge (their label still says
-// the real number).
+// the real number). `pointLabels` labels every week's point ("RB16")
+// instead of just the end.
 export function RankLine({
   weeks,
   series,
@@ -29,6 +34,7 @@ export function RankLine({
   maxRank,
   tierSize = 12,
   height = 170,
+  pointLabels = false,
   ariaLabel,
 }: {
   weeks: number[];
@@ -37,8 +43,10 @@ export function RankLine({
   maxRank: number;
   tierSize?: number;
   height?: number;
+  pointLabels?: boolean;
   ariaLabel: string;
 }) {
+  const MARGIN = pointLabels ? LABELED_MARGIN : BASE_MARGIN;
   const { ref, width } = useElementSize();
   const worst = Math.max(
     1,
@@ -160,6 +168,42 @@ export function RankLine({
               );
             })}
 
+            {pointLabels &&
+              series.map((entry, seriesIndex) =>
+                entry.ranks.map((rank, index) =>
+                  rank === null || index === ends[seriesIndex]?.index ? null : (
+                    <circle
+                      key={`${entry.key}-${index}`}
+                      cx={x(index)}
+                      cy={y(rank)}
+                      r={POINT_DOT}
+                      fill={entry.color}
+                      stroke={SURFACE}
+                      strokeWidth={1.5}
+                    />
+                  ),
+                ),
+              )}
+            {pointLabels &&
+              series.map((entry) =>
+                entry.ranks.map((rank, index) =>
+                  rank === null ? null : (
+                    <text
+                      key={`${entry.key}-label-${index}`}
+                      className={classes.columnLabel}
+                      x={x(index)}
+                      y={y(rank) - 8}
+                      textAnchor="middle"
+                      // A surface-colored halo so the line passing behind
+                      // never cuts through the label.
+                      style={{ paintOrder: "stroke", stroke: SURFACE, strokeWidth: 3 }}
+                    >
+                      {`${position}${rank}`}
+                    </text>
+                  ),
+                ),
+              )}
+
             {series.map((entry, seriesIndex) => {
               const end = ends[seriesIndex];
               if (!end) return null;
@@ -173,14 +217,16 @@ export function RankLine({
                     stroke={SURFACE}
                     strokeWidth={2}
                   />
-                  <text
-                    className={classes.markLabel}
-                    x={x(end.index) + 9}
-                    y={labelY[seriesIndex]}
-                    dominantBaseline="middle"
-                  >
-                    {`${position}${end.rank}`}
-                  </text>
+                  {!pointLabels && (
+                    <text
+                      className={classes.markLabel}
+                      x={x(end.index) + 9}
+                      y={labelY[seriesIndex]}
+                      dominantBaseline="middle"
+                    >
+                      {`${position}${end.rank}`}
+                    </text>
+                  )}
                 </g>
               );
             })}
