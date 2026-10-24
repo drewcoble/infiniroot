@@ -101,6 +101,7 @@ import type * as lib_env from "../lib/env.js";
 import type * as lib_faab from "../lib/faab.js";
 import type * as lib_leagueShape from "../lib/leagueShape.js";
 import type * as lib_liveGames from "../lib/liveGames.js";
+import type * as lib_platformPosition from "../lib/platformPosition.js";
 import type * as lib_playerValue from "../lib/playerValue.js";
 import type * as lib_rosterSlots from "../lib/rosterSlots.js";
 import type * as lib_sameJson from "../lib/sameJson.js";
@@ -246,6 +247,7 @@ declare const fullApi: ApiFromModules<{
   "lib/faab": typeof lib_faab;
   "lib/leagueShape": typeof lib_leagueShape;
   "lib/liveGames": typeof lib_liveGames;
+  "lib/platformPosition": typeof lib_platformPosition;
   "lib/playerValue": typeof lib_playerValue;
   "lib/rosterSlots": typeof lib_rosterSlots;
   "lib/sameJson": typeof lib_sameJson;

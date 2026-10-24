@@ -5,6 +5,7 @@ import type { Id } from "../../_generated/dataModel";
 import { requireSeasonOwner, requireSeasonParticipant } from "../../lib/access";
 import { getEligibleFpidSet, type CycleType } from "./eligibility";
 import { loadSeasonRosVorRows } from "../../lib/leagueShape";
+import { loadPlatformPositions } from "../../lib/platformPosition";
 
 export type Position = (typeof POSITIONS)[number];
 
@@ -50,6 +51,11 @@ export async function getPlayerDisplayInfoByFpid(
     ctx.db.get(seasonId),
   ]);
   const injuryByFpid = new Map(injuries.map((row) => [row.fpid, row]));
+  // Labeled and ranked at the league platform's position (see schema.ts's
+  // platformPositions); the board's own values stay on Sleeper's.
+  const platformPositions = season
+    ? await loadPlatformPositions(ctx, season)
+    : new Map<number, Position>();
 
   const snapshotRows =
     nflState && season ? await loadSeasonRosVorRows(ctx, season, String(nflState.week)) : [];
@@ -57,9 +63,10 @@ export async function getPlayerDisplayInfoByFpid(
 
   const byPosition = new Map<Position, typeof snapshotRows>();
   for (const row of snapshotRows) {
-    const list = byPosition.get(row.position) ?? [];
+    const position = platformPositions.get(row.fpid) ?? row.position;
+    const list = byPosition.get(position) ?? [];
     list.push(row);
-    byPosition.set(row.position, list);
+    byPosition.set(position, list);
   }
   const positionRankByFpid = new Map<number, number>();
   for (const list of byPosition.values()) {
@@ -76,7 +83,7 @@ export async function getPlayerDisplayInfoByFpid(
     result.set(player.fpid, {
       name: player.name,
       team: player.team,
-      position: player.position,
+      position: platformPositions.get(player.fpid) ?? player.position,
       rosRank: snapshot?.rosRank ?? 0,
       positionRank: positionRankByFpid.get(player.fpid) ?? 0,
       rosPpg: snapshot?.rosPpg ?? 0,

@@ -11,6 +11,7 @@ import {
   type ValuedPlayer,
 } from "./playerValue";
 import { loadSeasonRosVorRows } from "./leagueShape";
+import { loadPlatformPositions } from "./platformPosition";
 
 type Position = (typeof POSITIONS)[number];
 
@@ -355,6 +356,12 @@ export async function computeFaabSuggestions(
       scoringConfig,
       remainingWeeks,
     }));
+  // Slots, demand and free-agent lists follow the league platform's position
+  // (see schema.ts's platformPositions); the values themselves don't change.
+  for (const [fpid, position] of await loadPlatformPositions(ctx, settings)) {
+    const entry = playerValues.get(fpid);
+    if (entry) playerValues.set(fpid, { ...entry, position });
+  }
 
   // Every team's current starters, valued the same way as free agents -
   // this is what demand gets computed against below.

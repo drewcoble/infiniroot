@@ -143,6 +143,60 @@ export const patchExternalIds = internalMutation({
   },
 });
 
+// Records each player's position on a platform (see schema.ts's
+// platformPositions): kept only where it differs from players.position,
+// deleted once it matches again (Sleeper caught up, or the platform moved
+// him back). Unknown fpids are skipped.
+export const recordPlatformPositions = internalMutation({
+  args: {
+    platform: v.union(v.literal("espn"), v.literal("yahoo")),
+    rows: v.array(v.object({ fpid: v.number(), position: positionValidator })),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    for (const row of args.rows) {
+      const [player, existing] = await Promise.all([
+        ctx.db
+          .query("players")
+          .withIndex("by_fpid", (q) => q.eq("fpid", row.fpid))
+          .first(),
+        ctx.db
+          .query("platformPositions")
+          .withIndex("by_platform_fpid", (q) =>
+            q.eq("platform", args.platform).eq("fpid", row.fpid),
+          )
+          .first(),
+      ]);
+      if (!player) continue;
+      if (player.position === row.position) {
+        if (existing) await ctx.db.delete(existing._id);
+      } else if (!existing) {
+        await ctx.db.insert("platformPositions", {
+          fpid: row.fpid,
+          platform: args.platform,
+          position: row.position,
+          updatedAt: now,
+        });
+      } else if (existing.position !== row.position) {
+        await ctx.db.patch(existing._id, { position: row.position, updatedAt: now });
+      }
+    }
+  },
+});
+
+// Action-side counterpart to lib/platformPosition.ts's
+// loadPlatformPositions, which takes a QueryCtx.
+export const listPlatformPositions = internalQuery({
+  args: { platform: v.union(v.literal("espn"), v.literal("yahoo")) },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("platformPositions")
+      .withIndex("by_platform_fpid", (q) => q.eq("platform", args.platform))
+      .collect();
+    return rows.map((row) => ({ fpid: row.fpid, position: row.position }));
+  },
+});
+
 // Full name/position/espnId for every tracked player - the candidate pool
 // convex/espn/rankings.ts loads once and matches an external source's
 // players against in memory (name+position, for rows that don't already

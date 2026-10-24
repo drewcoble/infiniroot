@@ -17,6 +17,7 @@ import {
 } from "./leagueSettingsMapping";
 import type { MappedRosterSlots } from "../sleeper/leagueSettingsMapping";
 import { ESPN_PRO_TEAM_ABBR } from "./client";
+import { recordablePosition } from "../lib/platformPosition";
 import type { Scoring, TeScoring } from "../scoring";
 import type { DraftType } from "../draftType";
 
@@ -415,11 +416,20 @@ export const syncEspnLeagueRoster = action({
 
     // One resolution pass across every roster, so the name-match fallback's
     // full players scan happens at most once per sync.
+    const rosterPlayers = linked.flatMap(({ espnTeam }) => extractRosterPlayers(espnTeam));
     const resolved: Array<{ espnId: number; fpid: number }> = await ctx.runQuery(
       internal.espn.league.resolveEspnPlayersToFpids,
-      { players: linked.flatMap(({ espnTeam }) => extractRosterPlayers(espnTeam)) },
+      { players: rosterPlayers },
     );
     const fpidByEspnId = new Map(resolved.map((r) => [r.espnId, r.fpid]));
+    await ctx.runMutation(internal.players.recordPlatformPositions, {
+      platform: "espn",
+      rows: rosterPlayers.flatMap((player) => {
+        const fpid = fpidByEspnId.get(player.espnId);
+        const position = recordablePosition(player.position);
+        return fpid !== undefined && position ? [{ fpid, position }] : [];
+      }),
+    });
 
     for (const { team, espnTeam } of linked) {
       const fpids = (espnTeam.roster?.entries ?? [])

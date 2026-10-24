@@ -172,6 +172,8 @@ async function fetchEspnRankingsHandler(
     Array<{ fpid: number; stats: Record<string, number> }>
   > = { QB: [], RB: [], WR: [], TE: [] };
   const newLinks: Array<{ fpid: number; espnId: number }> = [];
+  // ESPN's own position per matched player, for platformPositions.
+  const espnPositionByFpid = new Map<number, Doc<"players">["position"]>();
   let directMatched = 0;
   let nameMatched = 0;
   let ambiguous = 0;
@@ -235,6 +237,7 @@ async function fetchEspnRankingsHandler(
     }
 
     if (fpid === undefined) continue;
+    if (ourPosition) espnPositionByFpid.set(fpid, ourPosition);
 
     for (const [rankType, format] of Object.entries(ESPN_RANK_TYPE_TO_FORMAT)) {
       const rankInfo = ranks?.[rankType];
@@ -262,6 +265,13 @@ async function fetchEspnRankingsHandler(
   for (let i = 0; i < newLinks.length; i += CHUNK_SIZE) {
     await ctx.runMutation(internal.players.patchExternalIds, {
       rows: newLinks.slice(i, i + CHUNK_SIZE),
+    });
+  }
+  const positionRows = [...espnPositionByFpid].map(([fpid, position]) => ({ fpid, position }));
+  for (let i = 0; i < positionRows.length; i += CHUNK_SIZE) {
+    await ctx.runMutation(internal.players.recordPlatformPositions, {
+      platform: "espn",
+      rows: positionRows.slice(i, i + CHUNK_SIZE),
     });
   }
 

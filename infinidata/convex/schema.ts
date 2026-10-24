@@ -307,6 +307,21 @@ export default defineSchema({
     .index("by_espn_id", ["espnId"])
     .index("by_yahoo_id", ["yahooId"]),
 
+  // A platform's own position for a player, only where it differs from
+  // players.position (Sleeper's) - ESPN lists Velus Jones Jr. at RB, Sleeper
+  // at WR. Recorded by the ESPN rankings sync and the ESPN/Yahoo roster
+  // syncs (see players.ts's recordPlatformPositions); read per league by
+  // lib/platformPosition.ts so that league's rosters, lineup slots and
+  // position labels follow its platform. Valuation (VOR boards, trade
+  // values, power rankings) deliberately stays on players.position - the
+  // boards are shared across every league of a shape.
+  platformPositions: defineTable({
+    fpid: v.number(),
+    platform: v.union(v.literal("espn"), v.literal("yahoo")),
+    position: positionValidator,
+    updatedAt: v.number(),
+  }).index("by_platform_fpid", ["platform", "fpid"]),
+
   // Short-lived cache of Yahoo reads that barely change but were refetched on
   // every page load / live refresh (see convex/infinidraft/yahoo/cache.ts's
   // cachedYahoo): "dst:<leagueKey>" - the league's DST scoring, mapped from

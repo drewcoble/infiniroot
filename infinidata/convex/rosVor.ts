@@ -8,6 +8,7 @@ import { requireSeasonOwner } from "./lib/access";
 import { loadWeekPoints } from "./lib/weekPoints";
 import { computeReplacementLevels, findInjuredTeammateNotes, forwardRate, gatherPlayerForms, momentumMultiplier, type ValuedPlayer } from "./lib/playerValue";
 import { gatherRosProjTotals } from "./rosProjTotals";
+import { loadPlatformPositions } from "./lib/platformPosition";
 import {
   ensureLeagueShapeId,
   findLeagueShapeId,
@@ -470,7 +471,7 @@ export const getRosVorBoard = query({
   handler: async (ctx, args): Promise<RosVorRow[]> => {
     const { season } = await requireSeasonOwner(ctx, args.seasonId);
 
-    const [rows, rosteredRows, teams, injuries] = await Promise.all([
+    const [boardRows, rosteredRows, teams, injuries, platformPositions] = await Promise.all([
       loadSeasonRosVorRows(ctx, season, args.week),
       ctx.db
         .query("rosterPlayers")
@@ -481,7 +482,15 @@ export const getRosVorBoard = query({
         .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
         .collect(),
       ctx.db.query("injuries").collect(),
+      loadPlatformPositions(ctx, season),
     ]);
+    // Labeled, filtered and position-ranked at this league platform's
+    // position (see schema.ts's platformPositions) - the shared board's
+    // values stay on Sleeper's.
+    const rows = boardRows.map((row) => {
+      const position = platformPositions.get(row.fpid);
+      return position ? { ...row, position } : row;
+    });
     const teamNameById = new Map(teams.map((team) => [team._id, team.name]));
     const teamNameByFpid = new Map(rosteredRows.map((row) => [row.fpid, teamNameById.get(row.teamId) ?? null]));
     const teamIdByFpid = new Map(rosteredRows.map((row) => [row.fpid, row.teamId]));
