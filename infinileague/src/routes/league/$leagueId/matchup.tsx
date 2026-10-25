@@ -8,6 +8,8 @@ import { getErrorMessage } from "@shared/errors";
 import { useGuillotineOpponent } from "../../../hooks/useGuillotineOpponent";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
 import { WeekPicker } from "../../../components/WeekPicker";
+import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import { LeagueMatchupsList } from "../../../components/LeagueMatchupsList";
 import { LiveOnlyToggle } from "../../../components/cards/LiveOnlyToggle";
 import {
   MatchupRosterMatchup,
@@ -47,12 +49,25 @@ import type {
 // Regular-season weeks the week picker steps through.
 const REGULAR_SEASON_WEEKS = 18;
 
+interface MatchupSearch {
+  week?: number;
+  team?: string;
+  view?: "league";
+}
+
 // ?week=N views another week's matchup (past, or upcoming); absent = the
-// current NFL week. Anything out of range is dropped rather than erroring.
+// current NFL week. ?team= puts another team on the left (a matchup opened
+// from the League view); absent = your own. ?view=league lists every
+// matchup in the league instead. Anything invalid is dropped rather than
+// erroring.
 export const Route = createFileRoute("/league/$leagueId/matchup")({
-  validateSearch: (search: Record<string, unknown>): { week?: number } => {
+  validateSearch: (search: Record<string, unknown>): MatchupSearch => {
     const week = Number(search.week);
-    return Number.isInteger(week) && week >= 1 && week <= REGULAR_SEASON_WEEKS ? { week } : {};
+    return {
+      ...(Number.isInteger(week) && week >= 1 && week <= REGULAR_SEASON_WEEKS ? { week } : {}),
+      ...(typeof search.team === "string" && search.team ? { team: search.team } : {}),
+      ...(search.view === "league" ? { view: "league" as const } : {}),
+    };
   },
   component: MatchupPage,
 });
@@ -94,27 +109,48 @@ function MatchupPage() {
     api.leagues.listLinkedSeasons,
     isAuthenticated ? {} : "skip",
   );
-  const isGuillotine =
-    seasonsList?.find((season) => season._id === leagueId)?.leagueType === "guillotine";
+  const leagueSeason = seasonsList?.find((season) => season._id === leagueId);
+  const isGuillotine = leagueSeason?.leagueType === "guillotine";
   // The opponent lookup waits on this - a guillotine league's opponent
   // comes from useGuillotineOpponent instead of the provider.
   const leagueTypeKnown = seasonsList !== undefined;
 
-  const [teamAId, setTeamAId] = useState<string | null>(null);
-  useEffect(() => {
-    if (teamAId !== null || !standings) return;
-    const self = standings.find((row) => row.isSelf);
-    if (self) setTeamAId(self.teamId);
-  }, [standings, teamAId]);
-
-  // The week being viewed - ?week= when set, otherwise the current one.
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  // League view (every matchup) vs. one matchup - a guillotine league has
+  // no pairings, so it only ever gets the one.
+  const leagueView = search.view === "league" && !isGuillotine;
+  const selfTeamId = standings?.find((row) => row.isSelf)?.teamId ?? null;
+  // The left-hand team: ?team= when a matchup was opened from the League
+  // view, otherwise your own. Null in the League view, so the single
+  // matchup's lookups below stay idle.
+  const teamAId = leagueView ? null : (search.team ?? selfTeamId);
+
+  // The week being viewed - ?week= when set, otherwise the current one.
+  // Changing weeks keeps the view and team.
   const currentWeek = nflState?.week ?? null;
   const week = search.week !== undefined ? String(search.week) : currentWeek;
   const isCurrentWeek = week === currentWeek;
   const goToWeek = (next: number) =>
-    void navigate({ search: String(next) === currentWeek ? {} : { week: next } });
+    void navigate({
+      search: (prev) => ({
+        ...(prev.team !== undefined ? { team: prev.team } : {}),
+        ...(prev.view !== undefined ? { view: prev.view } : {}),
+        ...(String(next) === currentWeek ? {} : { week: next }),
+      }),
+    });
+  const viewValue = leagueView
+    ? "league"
+    : search.team === undefined || search.team === selfTeamId
+      ? "mine"
+      : "other";
+  const setView = (next: "mine" | "league" | "other") =>
+    void navigate({
+      search: (prev) => ({
+        ...(prev.week !== undefined ? { week: prev.week } : {}),
+        ...(next === "league" ? { view: "league" as const } : {}),
+      }),
+    });
 
   // The viewed week's slate - opponent/kickoff per NFL team, plus live
   // game status from the 2-minute poll (see convex/sleeper/livePoints.ts).
@@ -341,69 +377,101 @@ function MatchupPage() {
         )}
       </Group>
 
-      {opponentError && (
-        <Alert color="red" withCloseButton onClose={() => setOpponentError(null)}>
-          {opponentError}
-        </Alert>
-      )}
-      {guillotine.error && <Alert color="red">{guillotine.error}</Alert>}
-      {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
-      {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
-
-      {autoOpponentId === null && (
-        <Select
-          label="Opponent this week"
-          placeholder="Select a team"
-          data={teamBOptions}
-          value={manualOpponentId}
-          onChange={setManualOpponentId}
-          clearable
-          w={{ base: "100%", sm: 220 }}
+      {!isGuillotine && (
+        <GlassSegmented
+          label="Matchups to show"
+          value={viewValue}
+          onChange={setView}
+          compact
+          options={[
+            { label: "Mine", value: "mine" },
+            { label: "League", value: "league" },
+          ]}
         />
       )}
 
-      <GlassMatchupHeader
-        teamA={
-          teamARoster.rows === undefined
-            ? "loading"
-            : headerTeam(teamAId, selfTeamName, teamARoster.rows, actualA, projA)
-        }
-        teamB={
-          opponentPending || (teamBId !== null && teamBRoster.rows === undefined)
-            ? "loading"
-            : teamBId !== null
-              ? headerTeam(teamBId, opponentName, teamBRoster.rows, actualB, projB)
-              : null
-        }
-        winProbA={matchupReady ? winProbA : null}
-        result={
-          weekComplete && matchupReady
-            ? matchupResult(selfTeamName, actualA, opponentName, actualB)
-            : undefined
-        }
-      />
-
-      {anyStarterLive && (
-        <Group justify="flex-end">
-          <LiveOnlyToggle on={liveOnly} onChange={setLiveOnly} />
-        </Group>
-      )}
-
-      <Stack gap={10}>
-        {teamARoster.rows === undefined ? (
-          <MatchupRosterSkeleton />
-        ) : (
-          <MatchupRosterMatchup
-            liveOnly={showLiveOnly}
-            teamARows={teamARoster.rows}
-            teamBRows={teamBRoster.rows}
-            teamBLoading={opponentPending || teamBId !== null}
-            toCardData={toCardData}
-            shortName={shortName}
-            scaleMax={scaleMax}
+      {leagueView ? (
+        week !== null && (
+          <LeagueMatchupsList
+            leagueId={leagueId}
+            leagueName={leagueSeason?.name ?? "League"}
+            week={week}
+            currentWeek={currentWeek}
+            standings={standings}
+            gamesByTeam={weekGames ? gamesByTeam : undefined}
+            now={now}
+            weekComplete={weekComplete}
+            weekRankByFpid={weekRankByFpid}
+            refreshMs={refreshMs}
           />
-        )}
-      </Stack>
+        )
+      ) : (
+        <>
+          {opponentError && (
+            <Alert color="red" withCloseButton onClose={() => setOpponentError(null)}>
+              {opponentError}
+            </Alert>
+          )}
+          {guillotine.error && <Alert color="red">{guillotine.error}</Alert>}
+          {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
+          {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
+
+          {autoOpponentId === null && (
+            <Select
+              label="Opponent this week"
+              placeholder="Select a team"
+              data={teamBOptions}
+              value={manualOpponentId}
+              onChange={setManualOpponentId}
+              clearable
+              w={{ base: "100%", sm: 220 }}
+            />
+          )}
+
+          <GlassMatchupHeader
+            teamA={
+              teamARoster.rows === undefined
+                ? "loading"
+                : headerTeam(teamAId, selfTeamName, teamARoster.rows, actualA, projA)
+            }
+            teamB={
+              opponentPending || (teamBId !== null && teamBRoster.rows === undefined)
+                ? "loading"
+                : teamBId !== null
+                  ? headerTeam(teamBId, opponentName, teamBRoster.rows, actualB, projB)
+                  : null
+            }
+            winProbA={matchupReady ? winProbA : null}
+            result={
+              weekComplete && matchupReady
+                ? matchupResult(selfTeamName, actualA, opponentName, actualB)
+                : undefined
+            }
+          />
+
+          {anyStarterLive && (
+            <Group justify="flex-end">
+              <LiveOnlyToggle on={liveOnly} onChange={setLiveOnly} />
+            </Group>
+          )}
+
+          <Stack gap={10}>
+            {teamARoster.rows === undefined ? (
+              <MatchupRosterSkeleton />
+            ) : (
+              <MatchupRosterMatchup
+                liveOnly={showLiveOnly}
+                teamARows={teamARoster.rows}
+                teamBRows={teamBRoster.rows}
+                teamBLoading={opponentPending || teamBId !== null}
+                toCardData={toCardData}
+                shortName={shortName}
+                scaleMax={scaleMax}
+              />
+            )}
+          </Stack>
+        </>
+      )}
     </Stack>
   );
 }

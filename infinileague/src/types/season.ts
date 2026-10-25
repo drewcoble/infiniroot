@@ -94,6 +94,14 @@ export interface PowerRankingRow {
   rankChange?: number;
 }
 
+// Mirrors convex/infinileague/season/matchup.ts's LeagueWeekMatchups - one
+// week's pairings plus each paired team's starters.
+export interface LeagueWeekMatchups {
+  isPlayoffWeek: boolean;
+  matchups: { teamAId: string; teamBId: string }[];
+  startersByTeam: { teamId: string; rows: TeamRosterRow[] }[];
+}
+
 // Mirrors convex/infinileague/season/eliminationWatch.ts's
 // EliminationWatchRow - this week's set-lineup projection only (not
 // rest-of-season, unlike PowerRankingRow above), already ranked descending
