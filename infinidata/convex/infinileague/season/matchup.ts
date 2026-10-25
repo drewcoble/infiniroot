@@ -1,13 +1,19 @@
 import { v } from "convex/values";
 import { action, ActionCtx, query } from "../../_generated/server";
-import { internal } from "../../_generated/api";
+import { api, internal } from "../../_generated/api";
 import { Id } from "../../_generated/dataModel";
 import { fetchSleeperJson } from "../../sleeper/league";
 import { fetchYahooOpponentTeamKey } from "../../infinidraft/yahoo/league";
 import { withYahooToken } from "../../infinidraft/yahoo/oauth";
 import { cachedYahoo } from "../../infinidraft/yahoo/cache";
 import { fetchEspnOpponentTeamId } from "../../espn/league";
-import type { SleeperMatchupEntry } from "./teamRoster";
+import {
+  loadTeamRosterForWeek,
+  type SleeperMatchupEntry,
+  type SlotLabel,
+  type TeamRosterRow,
+} from "./teamRoster";
+import { loadWeekPairs } from "./schedule";
 import { requireSeasonOwner } from "../../lib/access";
 import { loadWeekPoints } from "../../lib/weekPoints";
 import { loadPlatformPositions } from "../../lib/platformPosition";
@@ -99,6 +105,64 @@ export const getOpponentForWeek = action({
     }
 
     return { opponentTeamId: null };
+  },
+});
+
+// Starting slots - same list as eliminationWatch.ts's.
+const STARTER_SLOTS = new Set<SlotLabel>(["QB", "SUPERFLEX", "RB", "WR", "FLEX", "TE", "DST", "K"]);
+
+export interface LeagueWeekMatchups {
+  // A playoff week has no trusted pairings (see schedule.ts's
+  // loadWeekPairs), so matchups comes back empty.
+  isPlayoffWeek: boolean;
+  matchups: { teamAId: Id<"seasonTeams">; teamBId: Id<"seasonTeams"> }[];
+  // Each paired team's starters for the week - what the score cards need.
+  startersByTeam: { teamId: Id<"seasonTeams">; rows: TeamRosterRow[] }[];
+}
+
+// Every matchup in a league for one week (past, current or future), for
+// the Matchup tab's league view: the week's pairings from the provider plus
+// each team's starting lineup, loaded per team the same way
+// eliminationWatch.ts loads a whole league.
+export const getLeagueWeekMatchups = action({
+  args: { seasonId: v.id("seasons"), week: v.string() },
+  handler: async (ctx: ActionCtx, args): Promise<LeagueWeekMatchups> => {
+    const { season, league } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
+      seasonId: args.seasonId,
+    });
+    if (season.leagueType === "guillotine") {
+      throw new Error("Guillotine leagues don't have head-to-head matchups.");
+    }
+    const [teams, nflState] = await Promise.all([
+      ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, { seasonId: args.seasonId }),
+      ctx.runQuery(api.nflState.getNflState, {}),
+    ]);
+    const currentWeek = nflState ? Math.max(Number(nflState.week), 1) : 1;
+    const { isPlayoffWeek, pairs } = await loadWeekPairs(
+      ctx,
+      season,
+      league,
+      teams,
+      Number(args.week),
+      currentWeek,
+    );
+
+    const pairedIds = new Set(pairs.flat());
+    const startersByTeam = await Promise.all(
+      teams
+        .filter((team) => pairedIds.has(team._id))
+        .map(async (team) => ({
+          teamId: team._id,
+          rows: (await loadTeamRosterForWeek(ctx, { team, season, league }, args.week)).filter(
+            (row) => row.slot !== undefined && STARTER_SLOTS.has(row.slot),
+          ),
+        })),
+    );
+    return {
+      isPlayoffWeek,
+      matchups: pairs.map(([teamAId, teamBId]) => ({ teamAId, teamBId })),
+      startersByTeam,
+    };
   },
 });
 
