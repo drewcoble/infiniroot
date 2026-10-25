@@ -66,6 +66,9 @@ export function matchupHeaderTeam(
   // Separate from standing, which guillotine leagues leave out (no rank)
   // but still have logos.
   logoUrl?: string | undefined,
+  // A future week's optimal projection (see lineupSuggestions.ts's
+  // optimalProjectedPoints) - absent hides it.
+  optimalPoints?: number | null | undefined,
 ): MatchupHeaderTeam {
   const states = (rows ?? [])
     .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
@@ -85,6 +88,7 @@ export function matchupHeaderTeam(
     toPlayCount,
     ...(standing ? { rank: { value: standing.rank } } : {}),
     ...(logoUrl ? { logoUrl } : {}),
+    ...(optimalPoints !== null && optimalPoints !== undefined ? { optimalPoints } : {}),
   };
 }
 

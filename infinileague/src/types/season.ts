@@ -95,11 +95,11 @@ export interface PowerRankingRow {
 }
 
 // Mirrors convex/infinileague/season/matchup.ts's LeagueWeekMatchups - one
-// week's pairings plus each paired team's starters.
+// week's pairings plus each paired team's starters and bench.
 export interface LeagueWeekMatchups {
   isPlayoffWeek: boolean;
   matchups: { teamAId: string; teamBId: string }[];
-  startersByTeam: { teamId: string; rows: TeamRosterRow[] }[];
+  lineupsByTeam: { teamId: string; rows: TeamRosterRow[] }[];
 }
 
 // Mirrors convex/infinileague/season/eliminationWatch.ts's

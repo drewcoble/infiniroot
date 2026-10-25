@@ -84,6 +84,29 @@ export function extractSlotCounts(rows: TeamRosterRow[]): Map<SlotLabel, number>
   return slotCounts;
 }
 
+// The best projected total this roster could start - starters and bench
+// filled by fillOptimalLineup into the lineup's own slots. Null when there's
+// no slot data to fill (see extractSlotCounts).
+export function optimalProjectedPoints(rows: TeamRosterRow[]): number | null {
+  const slotCounts = extractSlotCounts(rows);
+  if (slotCounts.size === 0) return null;
+  const pool: LineupPoolEntry[] = [];
+  const pointsByFpid = new Map<number, number>();
+  for (const row of rows) {
+    const startable =
+      row.slot !== undefined && (STARTING_SLOTS.includes(row.slot) || row.slot === "BENCH");
+    if (!startable || row.fpid === undefined || row.position === undefined) continue;
+    const points = row.projectedPoints ?? 0;
+    pool.push({ fpid: row.fpid, position: row.position, value: points });
+    pointsByFpid.set(row.fpid, points);
+  }
+  let total = 0;
+  for (const fpid of fillOptimalLineup(pool, slotCounts).keys()) {
+    total += pointsByFpid.get(fpid) ?? 0;
+  }
+  return total;
+}
+
 interface Candidate {
   fpid: number;
   name: string;

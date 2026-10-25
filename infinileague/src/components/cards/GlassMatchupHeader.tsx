@@ -9,6 +9,9 @@ export interface MatchupHeaderTeam {
   // Live projection - actual so far plus the unplayed share of each
   // starter's projection, same total the current Matchup tab shows as "Proj".
   projectedPoints: number;
+  // A future week's best possible projection from the same roster - shown
+  // next to Proj when set.
+  optimalPoints?: number | undefined;
   // Starters whose games are underway / not yet started.
   liveCount: number;
   toPlayCount: number;
@@ -85,6 +88,7 @@ function TeamSide({
           card's aria-label spells them out). */}
       <div className={classes.headerProj}>
         <span>Proj {team.projectedPoints.toFixed(1)}</span>
+        {team.optimalPoints !== undefined && <span>Opt {team.optimalPoints.toFixed(1)}</span>}
         {team.liveCount > 0 && (
           <span className={classes.headerCount}>
             <GameStatusGlyph state="live" />
@@ -150,7 +154,10 @@ export function GlassMatchupHeader({
   const pctA = Math.round((winProbA ?? 0.5) * 100);
   const pctB = 100 - pctA;
   const teamText = (team: MatchupHeaderTeam) =>
-    `${team.rank ? `rank ${team.rank.value}, ` : ""}${team.name} ${team.actualPoints.toFixed(2)}, projected ${team.projectedPoints.toFixed(1)}, ${countsText(team)}`;
+    `${team.rank ? `rank ${team.rank.value}, ` : ""}${team.name} ${team.actualPoints.toFixed(2)}, ` +
+    `projected ${team.projectedPoints.toFixed(1)}, ` +
+    (team.optimalPoints !== undefined ? `optimal ${team.optimalPoints.toFixed(1)}, ` : "") +
+    countsText(team);
   const loaded = teamA !== "loading" && teamB !== "loading" && teamB !== null;
   const ariaLabel =
     teamA === "loading"

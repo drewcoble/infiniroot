@@ -108,21 +108,22 @@ export const getOpponentForWeek = action({
   },
 });
 
-// Starting slots - same list as eliminationWatch.ts's.
-const STARTER_SLOTS = new Set<SlotLabel>(["QB", "SUPERFLEX", "RB", "WR", "FLEX", "TE", "DST", "K"]);
+// Slots that can't be started - left out of the league view's lineups.
+const UNSTARTABLE_SLOTS = new Set<SlotLabel>(["IR", "TAXI"]);
 
 export interface LeagueWeekMatchups {
   // A playoff week has no trusted pairings (see schedule.ts's
   // loadWeekPairs), so matchups comes back empty.
   isPlayoffWeek: boolean;
   matchups: { teamAId: Id<"seasonTeams">; teamBId: Id<"seasonTeams"> }[];
-  // Each paired team's starters for the week - what the score cards need.
-  startersByTeam: { teamId: Id<"seasonTeams">; rows: TeamRosterRow[] }[];
+  // Each paired team's starters and bench for the week - starters for the
+  // score cards, the bench too for a future week's optimal projection.
+  lineupsByTeam: { teamId: Id<"seasonTeams">; rows: TeamRosterRow[] }[];
 }
 
 // Every matchup in a league for one week (past, current or future), for
 // the Matchup tab's league view: the week's pairings from the provider plus
-// each team's starting lineup, loaded per team the same way
+// each team's lineup (starters and bench), loaded per team the same way
 // eliminationWatch.ts loads a whole league.
 export const getLeagueWeekMatchups = action({
   args: { seasonId: v.id("seasons"), week: v.string() },
@@ -148,20 +149,24 @@ export const getLeagueWeekMatchups = action({
     );
 
     const pairedIds = new Set(pairs.flat());
-    const startersByTeam = await Promise.all(
+    const lineupsByTeam = await Promise.all(
       teams
         .filter((team) => pairedIds.has(team._id))
         .map(async (team) => ({
           teamId: team._id,
+          // Empty starter slots stay - they're how the client counts the
+          // lineup's slots for the optimal projection.
           rows: (await loadTeamRosterForWeek(ctx, { team, season, league }, args.week)).filter(
-            (row) => row.slot !== undefined && STARTER_SLOTS.has(row.slot),
+            (row) =>
+              !(row.slot && UNSTARTABLE_SLOTS.has(row.slot)) &&
+              !(row.fpid === undefined && row.slot === "BENCH"),
           ),
         })),
     );
     return {
       isPlayoffWeek,
       matchups: pairs.map(([teamAId, teamBId]) => ({ teamAId, teamBId })),
-      startersByTeam,
+      lineupsByTeam,
     };
   },
 });

@@ -16,6 +16,7 @@ import {
 } from "../lib/matchupSummary";
 import { liveProjection, remainingFraction, type WeekGame } from "../lib/liveGames";
 import { buildShortNames } from "../lib/shortPlayerName";
+import { optimalProjectedPoints } from "../lib/lineupSuggestions";
 import type { StandingsRow, TeamRosterRow } from "../types/season";
 
 export interface MatchupScoreSide {
@@ -46,6 +47,7 @@ export function MatchupScoreCard({
   weekComplete,
   weekRankByFpid,
   headToHead,
+  showOptimal = false,
   onOpen,
 }: {
   leagueId: string;
@@ -66,6 +68,8 @@ export function MatchupScoreCard({
   // performers show it on their badges ("QB4").
   weekRankByFpid: Map<number, number>;
   headToHead: boolean;
+  // Adds each side's optimal projection - for a future week.
+  showOptimal?: boolean;
   onOpen?: () => void;
 }) {
   const liveProjFor = (row: TeamRosterRow) =>
@@ -103,6 +107,7 @@ export function MatchupScoreCard({
       gameStateFor,
       headToHead ? side.standing : undefined,
       side.logoUrl,
+      showOptimal && side.rows ? optimalProjectedPoints(side.rows) : undefined,
     );
   const starters = (rows: TeamRosterRow[] | undefined) =>
     (rows ?? [])

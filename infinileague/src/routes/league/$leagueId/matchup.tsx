@@ -31,6 +31,7 @@ import {
 } from "../../../components/cards/GlassMatchupHeader";
 import { meterScaleMax } from "../../../components/cards/meterScale";
 import { buildShortNames } from "../../../lib/shortPlayerName";
+import { optimalProjectedPoints } from "../../../lib/lineupSuggestions";
 import {
   isAnyGameLive,
   isGameFinal,
@@ -131,6 +132,7 @@ function MatchupPage() {
   const currentWeek = nflState?.week ?? null;
   const week = search.week !== undefined ? String(search.week) : currentWeek;
   const isCurrentWeek = week === currentWeek;
+  const isFutureWeek = week !== null && currentWeek !== null && Number(week) > Number(currentWeek);
   const goToWeek = (next: number) =>
     void navigate({
       search: (prev) => ({
@@ -329,6 +331,7 @@ function MatchupPage() {
       (row) => toCardData(row).gameState,
       isGuillotine ? undefined : standings?.find((row) => row.teamId === teamId),
       standings?.find((row) => row.teamId === teamId)?.logoUrl,
+      isFutureWeek && rows ? optimalProjectedPoints(rows) : undefined,
     );
 
   // Header and rows hold their shape with glass skeletons while loading,

@@ -97,7 +97,8 @@ export function LeagueMatchupsList({
   }
 
   const standingByTeam = new Map(standings.map((row) => [row.teamId, row]));
-  const startersByTeam = new Map(data.startersByTeam.map((entry) => [entry.teamId, entry.rows]));
+  const lineupByTeam = new Map(data.lineupsByTeam.map((entry) => [entry.teamId, entry.rows]));
+  const isFutureWeek = currentWeek !== null && Number(week) > Number(currentWeek);
   const isSelf = (teamId: string) => standingByTeam.get(teamId)?.isSelf ?? false;
   // Your own matchup first, with your team on the left like the Matchup tab.
   const matchups = data.matchups
@@ -109,7 +110,7 @@ export function LeagueMatchupsList({
     const standing = standingByTeam.get(teamId);
     return {
       name: standing?.name ?? "Team",
-      rows: startersByTeam.get(teamId) ?? [],
+      rows: lineupByTeam.get(teamId) ?? [],
       standing,
       logoUrl: standing?.logoUrl,
     };
@@ -138,6 +139,7 @@ export function LeagueMatchupsList({
             weekComplete={weekComplete}
             weekRankByFpid={weekRankByFpid}
             headToHead
+            showOptimal={isFutureWeek}
           />
         );
       })}
