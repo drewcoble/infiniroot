@@ -192,10 +192,7 @@ export async function fetchYahooOpponentTeamKey(
     accessToken,
     `/league/${leagueKey}/scoreboard;week=${week}`,
   );
-  for (const matchupNode of findNodesByKey(json, "matchup")) {
-    const teamKeys = findNodesByKey(matchupNode, "team")
-      .map((node) => mergeYahooFields(node).team_key)
-      .filter((key): key is string => typeof key === "string");
+  for (const teamKeys of parseYahooScoreboardPairs(json)) {
     if (!teamKeys.includes(selfTeamKey)) continue;
     return teamKeys.find((key) => key !== selfTeamKey) ?? null;
   }
@@ -206,6 +203,45 @@ export async function fetchYahooOpponentTeamKey(
     JSON.stringify(json),
   );
   return null;
+}
+
+// Each matchup's team keys from a scoreboard response - see
+// fetchYahooOpponentTeamKey above for the expected shape.
+function parseYahooScoreboardPairs(json: unknown): string[][] {
+  return findNodesByKey(json, "matchup").map((matchupNode) =>
+    findNodesByKey(matchupNode, "team")
+      .map((node) => mergeYahooFields(node).team_key)
+      .filter((key): key is string => typeof key === "string"),
+  );
+}
+
+// Every pairing in one week's scoreboard, for infinileague's projected
+// standings.
+export async function fetchYahooWeekPairs(
+  accessToken: string,
+  leagueKey: string,
+  week: number,
+): Promise<[string, string][]> {
+  const json = await fetchYahooApi<unknown>(
+    accessToken,
+    `/league/${leagueKey}/scoreboard;week=${week}`,
+  );
+  return parseYahooScoreboardPairs(json)
+    .filter((keys) => keys.length === 2)
+    .map((keys) => [keys[0]!, keys[1]!]);
+}
+
+// The last regular-season week, from the league settings' playoff_start_week
+// (or end_week for a league with no playoffs) - documented Yahoo fields, NOT
+// confirmed against a live response (see YAHOO.md). Searched for at any
+// depth, same as fetchYahooLeagueSettings' other fields.
+export function yahooRegularSeasonEndWeek(settingsRaw: unknown): number | null {
+  const field = (key: string): unknown => findNodesByKey(settingsRaw, key)[0];
+  const endWeek = Number(field("end_week"));
+  if (String(field("uses_playoff")) === "0") return endWeek > 0 ? endWeek : null;
+  const playoffStart = Number(field("playoff_start_week"));
+  if (playoffStart > 1) return playoffStart - 1;
+  return endWeek > 0 ? endWeek : null;
 }
 
 export const fetchYahooLeagueTeams = action({

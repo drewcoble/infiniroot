@@ -24,12 +24,22 @@ export interface StandingsRow {
   waiverPosition?: number;
 }
 
-function winPct(team: Doc<"seasonTeams">): number {
+type RecordFields = Pick<Doc<"seasonTeams">, "wins" | "losses" | "ties" | "pointsFor">;
+
+function winPct(team: RecordFields): number {
   const wins = team.wins ?? 0;
   const losses = team.losses ?? 0;
   const ties = team.ties ?? 0;
   const games = wins + losses + ties;
   return games === 0 ? 0 : (wins + 0.5 * ties) / games;
+}
+
+// Standings order - win percentage, points scored as tiebreaker. Shared
+// with projectedStandings.ts so a projected final table sorts the same way.
+export function compareStandings(a: RecordFields, b: RecordFields): number {
+  const pctDiff = winPct(b) - winPct(a);
+  if (pctDiff !== 0) return pctDiff;
+  return (b.pointsFor ?? 0) - (a.pointsFor ?? 0);
 }
 
 // Current season-to-date standings for infinileague's league page - ranked
@@ -47,11 +57,7 @@ export const getStandings = query({
       .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
       .collect();
 
-    const sorted = [...teams].sort((a, b) => {
-      const pctDiff = winPct(b) - winPct(a);
-      if (pctDiff !== 0) return pctDiff;
-      return (b.pointsFor ?? 0) - (a.pointsFor ?? 0);
-    });
+    const sorted = [...teams].sort(compareStandings);
 
     return sorted.map((team, index) => ({
       teamId: team._id,

@@ -446,6 +446,14 @@ interface SleeperLeagueSettings {
     // five real leagues), 3 guillotine (Brotha Man Guillotine, whose weekly
     // matchups also give every roster its own matchup_id - no opponent).
     type?: number;
+    // First playoff week - verified live (15 across four real leagues, 0 for
+    // the guillotine one). Sleeper pre-fills placeholder matchup_ids for
+    // playoff weeks too, so this, not the matchups endpoint, marks where the
+    // regular season ends.
+    playoff_week_start?: number;
+    // 1 when every team also plays the league median each week (an extra
+    // win or loss) - verified present (0) across five real leagues.
+    league_average_match?: number;
   };
 }
 

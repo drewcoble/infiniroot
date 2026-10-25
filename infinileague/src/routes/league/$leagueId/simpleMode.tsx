@@ -7,6 +7,7 @@ import { api } from "@infinidata/api";
 import { DivergingBars, ValueBars } from "../../../components/charts/BarRows";
 import { NEUTRAL_MARK, SERIES, STATUS } from "../../../components/charts/chartTheme";
 import { RankDumbbell } from "../../../components/charts/RankDumbbell";
+import { RankLine } from "../../../components/charts/RankLine";
 import { SegmentGauge } from "../../../components/charts/SegmentGauge";
 import { SlopeChart, type SlopeRow } from "../../../components/charts/SlopeChart";
 import { Sparkline } from "../../../components/charts/Sparkline";
@@ -229,9 +230,86 @@ function PlayerExamples() {
               ]}
             />
           </Example>
+          {fpid !== null && year !== null && (
+            <RankHistoryExample
+              fpid={fpid}
+              year={year}
+              position={player.position}
+              maxRank={RANK_AXIS[player.position]}
+              rosRank={player.positionRank > 0 ? player.positionRank : undefined}
+            />
+          )}
         </>
       )}
     </Section>
+  );
+}
+
+// Experiment: the "Where he ranks" read as a timeline - his season-to-date
+// position rank by points per game (min. half the weeks played) after each
+// week, every week's rank labeled.
+function RankHistoryExample({
+  fpid,
+  year,
+  position,
+  maxRank,
+  rosRank,
+}: {
+  fpid: number;
+  year: string;
+  position: UsagePosition;
+  maxRank: number;
+  // His rest-of-season projected position rank (the board's positionRank).
+  rosRank: number | undefined;
+}) {
+  const { leagueId } = Route.useParams();
+  const { isAuthenticated } = useConvexAuth();
+  const history = useQuery(
+    api.infinileague.season.rankHistory.getSeasonRankHistory,
+    isAuthenticated ? { seasonId: leagueId as Id<"seasons">, fpid, year } : "skip",
+  );
+  return (
+    <Example title="Season rank over time">
+      {history === undefined ? (
+        <Center py="md">
+          <Loader size="sm" />
+        </Center>
+      ) : history === null || history.weeks.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          No games logged for {year}.
+        </Text>
+      ) : (
+        <RankLine
+          weeks={history.weeks.map((week) => week.week)}
+          position={position}
+          maxRank={maxRank}
+          pointLabels
+          reference={
+            rosRank !== undefined
+              ? { rank: rosRank, label: `ROS projection ${position}${rosRank}` }
+              : undefined
+          }
+          series={[
+            {
+              key: "ppg",
+              label: "By points per game",
+              color: SERIES[0],
+              ranks: history.weeks.map((week) => week.ppgRank),
+            },
+          ]}
+          ariaLabel={
+            `Season-to-date ${position} rank per game by week: ` +
+            history.weeks
+              .map(
+                (week) =>
+                  `week ${week.week} ` +
+                  (week.ppgRank ? `${position}${week.ppgRank}` : "unranked"),
+              )
+              .join("; ")
+          }
+        />
+      )}
+    </Example>
   );
 }
 

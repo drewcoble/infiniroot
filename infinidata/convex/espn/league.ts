@@ -95,15 +95,25 @@ interface EspnScheduleEntry {
   matchupPeriodId: number;
   home?: { teamId: number };
   away?: { teamId: number };
+  // "NONE" for a regular-season game, a bracket name (WINNERS_BRACKET etc.)
+  // for playoffs/consolation - confirmed live against league 164483.
+  playoffTierType?: string;
 }
 
 interface EspnLeague {
   id: number;
   seasonId: number;
-  settings?: EspnLeagueSettings;
+  settings?: EspnLeagueSettings & { scheduleSettings?: EspnScheduleSettings };
   teams?: EspnTeam[];
   members?: EspnMember[];
   schedule?: EspnScheduleEntry[];
+}
+
+// mSettings' schedule block - matchupPeriods maps each matchup period id
+// to the NFL weeks (scoring periods) it covers, e.g. { "1": [1], ... }.
+// Confirmed live against league 164483.
+interface EspnScheduleSettings {
+  matchupPeriods?: Record<string, number[]>;
 }
 
 async function fetchEspnLeague(
@@ -484,6 +494,28 @@ export async function fetchEspnOpponentTeamId(
     if (away === selfId) return home !== undefined ? String(home) : null;
   }
   return null;
+}
+
+// Every regular-season ESPN pairing, for infinileague's projected
+// standings - the whole season comes back in one request. Each matchup
+// carries the NFL weeks its matchup period covers (one, except in a league
+// with multi-week periods).
+export async function fetchEspnRegularSeasonMatchups(
+  espnLeagueId: string,
+  season: string,
+): Promise<{ weeks: number[]; teams: [string, string] }[]> {
+  const league = await fetchEspnLeague(espnLeagueId, season, ["mMatchupScore", "mSettings"]);
+  const matchupPeriods = league.settings?.scheduleSettings?.matchupPeriods ?? {};
+  const matchups: { weeks: number[]; teams: [string, string] }[] = [];
+  for (const entry of league.schedule ?? []) {
+    if (entry.playoffTierType !== undefined && entry.playoffTierType !== "NONE") continue;
+    const home = entry.home?.teamId;
+    const away = entry.away?.teamId;
+    if (home === undefined || away === undefined) continue;
+    const weeks = matchupPeriods[String(entry.matchupPeriodId)] ?? [entry.matchupPeriodId];
+    matchups.push({ weeks, teams: [String(home), String(away)] });
+  }
+  return matchups;
 }
 
 export interface EspnWeekEntry {

@@ -7,6 +7,7 @@ import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
 import { StandingsList } from "../../../components/StandingsList";
 import { PowerRankingsList } from "../../../components/PowerRankingsList";
+import { ProjectedStandingsList } from "../../../components/ProjectedStandingsList";
 import { EliminationWatchList } from "../../../components/EliminationWatchList";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
 import { GlassSegmented } from "../../../components/cards/GlassSegmented";
@@ -20,6 +21,7 @@ import type {
   EliminationWatchRow,
   LinkedSeason,
   PowerRankingRow,
+  ProjectedStandingsRow,
   StandingsRow,
   TeamPositionRanks,
 } from "../../../types/season";
@@ -62,7 +64,7 @@ function LeaguePage() {
   // below. Once the viewer picks a tab themselves, that choice sticks
   // regardless of which league format this turns out to be.
   const [manualTableView, setManualTableView] = useState<
-    "standings" | "power" | "elimination" | null
+    "standings" | "projected" | "power" | "elimination" | null
   >(null);
 
   const seasonsList: LinkedSeason[] | undefined = useQuery(
@@ -114,6 +116,37 @@ function LeaguePage() {
     // same convention as the auto-sync effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, isAuthenticated]);
+
+  // Projected final standings - fetched the first time its tab opens for a
+  // league (it gathers every team's rest-of-season lineups plus the
+  // provider's schedule), then kept for the rest of the visit.
+  const getProjectedStandings = useAction(
+    api.infinileague.season.projectedStandings.getProjectedStandings,
+  );
+  const [projectedStandings, setProjectedStandings] = useState<
+    ProjectedStandingsRow[] | undefined
+  >(undefined);
+  const [projectedStandingsError, setProjectedStandingsError] = useState<
+    string | null
+  >(null);
+  const projectedLoadedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || tableView !== "projected") return;
+    if (projectedLoadedRef.current === leagueId) return;
+    projectedLoadedRef.current = leagueId;
+    setProjectedStandings(undefined);
+    setProjectedStandingsError(null);
+    getProjectedStandings({ seasonId })
+      .then(setProjectedStandings)
+      .catch((err) =>
+        setProjectedStandingsError(
+          getErrorMessage(err, "Failed to load projected standings."),
+        ),
+      );
+    // Same dep convention as the getPowerRankings effect above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated, tableView]);
 
   const getEliminationWatch = useAction(
     api.infinileague.season.eliminationWatch.getEliminationWatch,
@@ -316,13 +349,16 @@ function LeaguePage() {
         value={tableView}
         onChange={setManualTableView}
         options={[
-          // Standings' win/loss record doesn't mean anything in a
-          // guillotine league (no head-to-head games) - swapped for
-          // Elimination Watch instead, same tab slot. Power rankings is
+          // Standings' win/loss record (current or projected) doesn't mean
+          // anything in a guillotine league (no head-to-head games) -
+          // swapped for Elimination Watch instead. Power rankings is
           // unaffected either way.
-          isGuillotine
-            ? { label: "Elimination Watch", value: "elimination" as const }
-            : { label: "Standings", value: "standings" as const },
+          ...(isGuillotine
+            ? [{ label: "Elimination Watch", value: "elimination" as const }]
+            : [
+                { label: "Standings", value: "standings" as const },
+                { label: "Projected", value: "projected" as const },
+              ]),
           { label: "Power rankings", value: "power" as const },
         ]}
       />
@@ -342,6 +378,25 @@ function LeaguePage() {
             rows={liveEliminationWatch}
             positionRanksByTeam={positionRanksByTeam}
           />
+        </>
+      ) : tableView === "projected" ? (
+        <>
+          {projectedStandingsError && (
+            <Alert
+              color="red"
+              withCloseButton
+              onClose={() => setProjectedStandingsError(null)}
+            >
+              {projectedStandingsError}
+            </Alert>
+          )}
+          {!projectedStandingsError && (
+            <ProjectedStandingsList
+              leagueId={leagueId}
+              rows={projectedStandings}
+              positionRanksByTeam={positionRanksByTeam}
+            />
+          )}
         </>
       ) : tableView === "standings" ? (
         standings === undefined ? (

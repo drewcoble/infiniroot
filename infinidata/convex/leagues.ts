@@ -1037,6 +1037,12 @@ async function deleteOneSeason(ctx: MutationCtx, seasonId: Id<"seasons">) {
     .collect()) {
     await ctx.db.delete(row._id);
   }
+  for (const row of await ctx.db
+    .query("projectedStandingsSnapshots")
+    .withIndex("by_season_week", (q) => q.eq("seasonId", seasonId))
+    .collect()) {
+    await ctx.db.delete(row._id);
+  }
 
   await ctx.db.delete(seasonId);
   // The big per-season history tables (rosVorSnapshots alone is a row per
