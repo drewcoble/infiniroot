@@ -104,6 +104,13 @@ function niceTicks(max: number): number[] {
   return ticks;
 }
 
+// Ticks every `step` from 0, through the first one at or over `max` - and
+// always at least one, so the axis never shrinks below `step`.
+function stepTicks(max: number, step: number): number[] {
+  const count = Math.max(1, Math.ceil(max / step - 1e-9));
+  return Array.from({ length: count + 1 }, (_, index) => index * step);
+}
+
 // Week-by-week column chart - one series, or several stacked (usage's rush
 // + receiving = total). `barLabel` prints each week's number over its bar.
 // With a `readout`, a week can also be tapped, hovered, or arrow-keyed to
@@ -116,6 +123,7 @@ export function WeeklyBars({
   data,
   series,
   max,
+  tickStep,
   height = 96,
   reference,
   barLabel,
@@ -127,6 +135,10 @@ export function WeeklyBars({
   series: ChartSeries[];
   // Top of the y-axis - defaults to the tallest stack.
   max?: number | undefined;
+  // Fixed tick spacing - the axis tops out at the first tick over the
+  // tallest bar, never lower than one step. Keeps charts comparable from
+  // player to player (a 6-point week looks small, not full-height).
+  tickStep?: number | undefined;
   height?: number;
   // A horizontal guide (season average) - named in the legend, not on the
   // plot, so it never collides with the bars.
@@ -160,7 +172,7 @@ export function WeeklyBars({
       ...data.map((datum) => datum.projection ?? 0),
       reference?.value ?? 0,
     );
-  const ticks = niceTicks(top);
+  const ticks = tickStep !== undefined ? stepTicks(top, tickStep) : niceTicks(top);
   const domainTop = Math.max(top, ticks[ticks.length - 1] ?? top);
 
   // Bar labels need headroom over the tallest bar.

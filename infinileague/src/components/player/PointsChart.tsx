@@ -26,6 +26,11 @@ export interface CurrentWeekPoints {
   projection: number | undefined;
 }
 
+// Every player's chart ticks at 15 points (a solid starter's week), up to
+// the first 15 over his best week - so a low scorer's bars look low
+// instead of stretching to fill the chart.
+const POINTS_TICK = 15;
+
 const formatPoints = (points: number) => points.toFixed(1);
 
 // A player's fantasy points by week for one NFL season, in this league's
@@ -107,6 +112,7 @@ export function PointsChart({
       <WeeklyBars
         data={data}
         series={[POINTS_SERIES]}
+        tickStep={POINTS_TICK}
         reference={average !== undefined ? { value: average, label: "Avg." } : undefined}
         barLabel={(_, total) => formatPoints(total)}
         visibleWeeks={6}
