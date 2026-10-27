@@ -124,6 +124,7 @@ export function WeeklyBars({
   series,
   max,
   tickStep,
+  minTop = 1,
   height = 96,
   reference,
   barLabel,
@@ -139,6 +140,9 @@ export function WeeklyBars({
   // tallest bar, never lower than one step. Keeps charts comparable from
   // player to player (a 6-point week looks small, not full-height).
   tickStep?: number | undefined;
+  // The axis never tops out below this, however low the bars - so every
+  // player's chart shares one scale unless his weeks run past it.
+  minTop?: number;
   height?: number;
   // A horizontal guide (season average) - named in the legend, not on the
   // plot, so it never collides with the bars.
@@ -167,7 +171,7 @@ export function WeeklyBars({
   const top =
     max ??
     Math.max(
-      1,
+      minTop,
       ...totals,
       ...data.map((datum) => datum.projection ?? 0),
       reference?.value ?? 0,

@@ -26,10 +26,12 @@ export interface CurrentWeekPoints {
   projection: number | undefined;
 }
 
-// Every player's chart ticks at 15 points (a solid starter's week), up to
-// the first 15 over his best week - so a low scorer's bars look low
-// instead of stretching to fill the chart.
+// Every player's chart ticks at 15 points (a solid starter's week) on one
+// shared 0-30 scale, so bar heights compare from player to player - a
+// 13-point week is the same height on anyone's chart. Only a week past 30
+// stretches the axis (to the next 15).
 const POINTS_TICK = 15;
+const POINTS_AXIS = 30;
 
 const formatPoints = (points: number) => points.toFixed(1);
 
@@ -113,6 +115,7 @@ export function PointsChart({
         data={data}
         series={[POINTS_SERIES]}
         tickStep={POINTS_TICK}
+        minTop={POINTS_AXIS}
         reference={average !== undefined ? { value: average, label: "Avg." } : undefined}
         barLabel={(_, total) => formatPoints(total)}
         visibleWeeks={6}
