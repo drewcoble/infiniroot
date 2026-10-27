@@ -7,12 +7,12 @@ import { ChartTitle } from "../charts/ChartTitle";
 import { ChartLoading } from "./chartLoading";
 import { WeeklyBars, type ChartSeries, type WeeklyBarDatum } from "../charts/WeeklyBars";
 
-// The app's brown - the same saddlebrown your-team rank chip is tinted with
-// (cardShared's rankPillStyle), as glass like every other chart mark.
+// The app's lighter brown - the burlywood of the bottom nav's active tab -
+// as glass like every other chart mark.
 const POINTS_SERIES: ChartSeries = {
   key: "points",
   label: "Points",
-  color: "#8b4513",
+  color: "var(--mantine-color-burlywood-text)",
   glass: true,
 };
 
