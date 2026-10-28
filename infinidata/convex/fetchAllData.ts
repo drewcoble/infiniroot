@@ -281,15 +281,11 @@ export const fetchAllInternal = internalAction({
 // On a deployment with the SCHEDULED_FETCH_WEEKLY_ONLY env var set to
 // "true" (dev - this daily fetch and the cache refreshes it drives are the
 // bulk of dev's DB I/O, and dev doesn't need daily numbers), the cron only
-// does real work on Thursday's run (it fires at 12:00 UTC, so Wed night/Thu
-// morning US time) - or when Sleeper's week/season has moved on from the
-// stored nflState, so a rollover never leaves the new week's projections
-// and caches missing until Thursday. Manual fetchAll/refreshCaches runs
-// always go through.
-const WEEKLY_FETCH_UTC_DAY = 4; // Thursday
+// does real work once Sleeper's week/season has moved on from the stored
+// nflState - i.e. once per week, on the first run after Sleeper's rollover.
+// Manual fetchAll/refreshCaches runs always go through.
 async function skipScheduledFetch(ctx: ActionCtx): Promise<boolean> {
   if (process.env.SCHEDULED_FETCH_WEEKLY_ONLY !== "true") return false;
-  if (new Date().getUTCDay() === WEEKLY_FETCH_UTC_DAY) return false;
   const [stored, live] = await Promise.all([
     ctx.runQuery(api.nflState.getNflState, {}),
     fetchNflSeasonState(),
