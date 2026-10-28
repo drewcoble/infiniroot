@@ -24,7 +24,7 @@ export const MATCHUP_FIRST_WEEK = 5;
 // damping: share of a defense's raw multiplier that actually shows up in
 // a player's points. hard/easy: the factor (minus 1) past which the
 // matchup is colored - the outer fifths. colored: false grades the
-// position but leaves it neutral (no measurable signal).
+// position but leaves it neutral.
 export interface MatchupCalibration {
   damping: number;
   hard: number;
@@ -35,6 +35,6 @@ export interface MatchupCalibration {
 export const MATCHUP_CALIBRATION: Record<MatchupPosition, MatchupCalibration> = {
   QB: { damping: 0.2804, hard: -0.0377, easy: 0.0392, colored: true },
   RB: { damping: 0.2173, hard: -0.0310, easy: 0.0298, colored: true },
-  WR: { damping: 0.1467, hard: -0.0147, easy: 0.0149, colored: false },
+  WR: { damping: 0.1467, hard: -0.0147, easy: 0.0149, colored: true },
   TE: { damping: 0.2482, hard: -0.0415, easy: 0.0433, colored: true },
 };

@@ -69,9 +69,12 @@ EARLY_WEEKS = range(3, 7)
 # The app shows no rating before this week - section 3: weeks 3-6 make
 # predictions worse for WR/TE, and last season's table doesn't rescue them.
 FIRST_RATED_WEEK = 5
-# Positions whose rating gets a color. WR is graded but left neutral: its
-# gain is ~0 and its quintiles aren't monotonic (results.md sections 1, 5).
-COLORED_POSITIONS = ("QB", "RB", "TE")
+# Positions with a measurable signal - the shrinkage K is tuned on these.
+# WR's gain is ~0 and its quintiles aren't monotonic (results.md sections
+# 1, 5), so it's left out of the tuning...
+SIGNAL_POSITIONS = ("QB", "RB", "TE")
+# ...but still colored, by product choice, so every position reads the same.
+COLORED_POSITIONS = ("QB", "RB", "WR", "TE")
 
 
 # ---------------------------------------------------------------- data
@@ -451,7 +454,7 @@ def production(games, proj, report_log):
     for K in (20, 40, 80, 160, 320, 640):
         rows = run(games, proj, {**DEFAULT, "K": K})
         result = cv_score(rows, "total")
-        mean_gain = statistics.mean(result[p][0] for p in COLORED_POSITIONS)
+        mean_gain = statistics.mean(result[p][0] for p in SIGNAL_POSITIONS)
         if best is None or mean_gain > best[0]:
             best = (mean_gain, K, rows)
     _, K, rows = best
@@ -507,7 +510,7 @@ def write_ts(K, calibration):
         "// damping: share of a defense's raw multiplier that actually shows up in",
         "// a player's points. hard/easy: the factor (minus 1) past which the",
         "// matchup is colored - the outer fifths. colored: false grades the",
-        "// position but leaves it neutral (no measurable signal).",
+        "// position but leaves it neutral.",
         "export interface MatchupCalibration {",
         "  damping: number;",
         "  hard: number;",

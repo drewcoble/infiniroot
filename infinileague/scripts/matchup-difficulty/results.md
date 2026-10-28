@@ -109,5 +109,5 @@ K = 20. Written to infinidata/convex/lib/matchupCalibration.ts.
 |---|---|---|---|---|
 | QB | 0.280 | -3.8% | +3.9% | yes |
 | RB | 0.217 | -3.1% | +3.0% | yes |
-| WR | 0.147 | -1.5% | +1.5% | no |
+| WR | 0.147 | -1.5% | +1.5% | yes |
 | TE | 0.248 | -4.2% | +4.3% | yes |

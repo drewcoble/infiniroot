@@ -6,8 +6,7 @@ import { api } from "@infinidata/api";
 
 // One defense's matchup grade at one position, in the league's scoring -
 // see convex/lib/matchupDifficulty.ts. rank 1 = the easiest of `of`
-// defenses at the position; tier is the color (WR is always "neutral" -
-// graded, but no measurable signal to color).
+// defenses at the position; tier is the color.
 export type MatchupGrade = NonNullable<
   FunctionReturnType<typeof api.infinileague.season.matchupDifficulty.getMatchupDifficulty>
 >[number];
