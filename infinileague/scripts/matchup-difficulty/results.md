@@ -100,3 +100,14 @@ Reference split, damped, every season out-of-sample. Factor = predicted % change
 | 3 | -1.3% to +1.0% | -0.94 | -0.51 | 287 |
 | 4 | +1.0% to +4.3% | +0.82 | +1.07 | 287 |
 | 5 | +4.3% to +27.4% | +1.42 | +1.38 | 287 |
+
+## 6. Production constants (total multiplier)
+
+K = 20. Written to infinidata/convex/lib/matchupCalibration.ts.
+
+| | Damping | Hard below | Easy above | Colored |
+|---|---|---|---|---|
+| QB | 0.280 | -3.8% | +3.9% | yes |
+| RB | 0.217 | -3.1% | +3.0% | yes |
+| WR | 0.147 | -1.5% | +1.5% | no |
+| TE | 0.248 | -4.2% | +4.3% | yes |
