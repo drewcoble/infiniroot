@@ -228,7 +228,7 @@
 }
 
 /* Matchup difficulty (lib/matchupDifficulty.ts) - the opponent and its
-   number in the pace colors. The number says the same thing as the color. */
+   rank in the pace colors. The rank says the same thing as the color. */
 .matchup_easy {
   color: #4ade80;
   font-weight: 600;
