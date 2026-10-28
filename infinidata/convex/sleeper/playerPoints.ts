@@ -16,6 +16,9 @@ type Position = (typeof POSITIONS)[number];
 export interface SleeperStatsRecord {
   player_id: string;
   team: string | null;
+  // The NFL team he played that week - absent on records for a week he
+  // didn't play.
+  opponent?: string | null;
   stats?: Record<string, number | undefined>;
   player?: { position?: string };
 }
@@ -35,6 +38,7 @@ export interface ParsedStatsRow {
   fpid: number;
   position: Position;
   team: string | null;
+  opponent: string | null;
   ptsStd: number;
   ptsPpr: number;
   ptsHalf: number;
@@ -107,6 +111,7 @@ export function parseSleeperStatsRecords(records: SleeperStatsRecord[]): ParsedS
       fpid,
       position,
       team: record.team ?? null,
+      opponent: record.opponent ?? null,
       ptsStd: stats.pts_std ?? 0,
       ptsPpr: stats.pts_ppr ?? 0,
       ptsHalf: stats.pts_half_ppr ?? 0,
@@ -181,6 +186,8 @@ async function fetchAllPlayerPointsHandler(
         pointsHalf: row.ptsHalf,
         pointsPpr: row.ptsPpr,
         stats: row.stats,
+        ...(row.team ? { team: row.team } : {}),
+        ...(row.opponent ? { opponent: row.opponent } : {}),
       }));
       const result = await ctx.runMutation(internal.playerPoints.upsertPlayerPoints, {
         season: year,

@@ -493,6 +493,13 @@ export default defineSchema({
     // Per-category box score for that week (pass_yd, rush_td, rec, etc.) -
     // same shape as projections.stats.
     stats: v.record(v.string(), v.number()),
+    // The NFL team he played for and against that week, from the same
+    // Sleeper record - not players.team, which is only his current team and
+    // goes wrong for anyone traded or signed mid-season. Read by
+    // convex/defenseMatchups.ts. Absent on rows synced before these existed
+    // until the next full-season sync, and on weeks he didn't play.
+    team: v.optional(v.string()),
+    opponent: v.optional(v.string()),
     fetchedAt: v.number(),
   })
     // The sync's upsert key, and convex/lib/weekPoints.ts's one-week read.
