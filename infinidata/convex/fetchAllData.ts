@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { action, internalAction, ActionCtx } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { requireSuperAdmin, currentSeason } from "./lib/dataFetch";
 import { fetchCurrentNflWeek, fetchNflSeasonState } from "./sleeper/state";
 import { ALL_SCORING_CONFIGS, scoringConfigFromSeason } from "./scoring";
@@ -49,7 +49,7 @@ function weeksToFetch(week: string): string[] {
 // data already exists in the database.
 async function refreshCachedComputations(
   ctx: ActionCtx,
-  args: { week: string; season: string; scheduled?: boolean | undefined },
+  args: { week: string; season: string },
 ): Promise<void> {
   const lastSeason = String(Number(args.season) - 1);
   for (const scoringConfig of ALL_SCORING_CONFIGS) {
@@ -79,10 +79,8 @@ async function refreshCachedComputations(
   // No draftId dependency (unlike draftValues below) - rosVor only needs
   // each season's own roster/scoring settings, and no-ops on its own if
   // it's not currently an NFL regular season week. Heavy reads run once
-  // per scoring setup, not per season; `scheduled` lets it apply its
-  // weekly-only throttle on dev (see both in rosVor.ts's refreshAllRosVor)
-  // - manual runs always refresh.
-  await refreshAllRosVor(ctx, { seasons, scheduled: args.scheduled });
+  // per scoring setup, not per season (see rosVor.ts's refreshAllRosVor).
+  await refreshAllRosVor(ctx, { seasons });
 
   for (const season of seasons) {
     const draft = await ctx.runQuery(internal.infinidraft.draft.fetchHelpers.getRealDraftInternal, {
@@ -109,7 +107,7 @@ async function refreshCachedComputations(
 // would break it - see fetchAllInternal.
 async function fetchAllHandler(
   ctx: ActionCtx,
-  args: { week?: string; season?: string; scheduled?: boolean | undefined },
+  args: { week?: string; season?: string },
 ): Promise<void> {
   const week = args.week ?? (await fetchCurrentNflWeek());
   const season = args.season ?? currentSeason();
@@ -218,7 +216,7 @@ async function fetchAllHandler(
   // convex/valueGaps.ts and convex/draftValues.ts's cache comments. Live
   // week only - see isLiveTarget above.
   if (isLiveTarget) {
-    await refreshCachedComputations(ctx, { week, season, scheduled: args.scheduled });
+    await refreshCachedComputations(ctx, { week, season });
   }
 }
 
@@ -274,8 +272,35 @@ export const fetchAllInternal = internalAction({
     week: v.optional(v.string()),
     season: v.optional(v.string()),
   },
-  handler: (ctx, args) => fetchAllHandler(ctx, { ...args, scheduled: true }),
+  handler: async (ctx, args): Promise<void> => {
+    if (await skipScheduledFetch(ctx)) return;
+    await fetchAllHandler(ctx, args);
+  },
 });
+
+// On a deployment with the SCHEDULED_FETCH_WEEKLY_ONLY env var set to
+// "true" (dev - this daily fetch and the cache refreshes it drives are the
+// bulk of dev's DB I/O, and dev doesn't need daily numbers), the cron only
+// does real work on Thursday's run (it fires at 12:00 UTC, so Wed night/Thu
+// morning US time) - or when Sleeper's week/season has moved on from the
+// stored nflState, so a rollover never leaves the new week's projections
+// and caches missing until Thursday. Manual fetchAll/refreshCaches runs
+// always go through.
+const WEEKLY_FETCH_UTC_DAY = 4; // Thursday
+async function skipScheduledFetch(ctx: ActionCtx): Promise<boolean> {
+  if (process.env.SCHEDULED_FETCH_WEEKLY_ONLY !== "true") return false;
+  if (new Date().getUTCDay() === WEEKLY_FETCH_UTC_DAY) return false;
+  const [stored, live] = await Promise.all([
+    ctx.runQuery(api.nflState.getNflState, {}),
+    fetchNflSeasonState(),
+  ]);
+  return (
+    stored !== null &&
+    stored.season === live.season &&
+    stored.week === String(live.week) &&
+    stored.seasonType === live.seasonType
+  );
+}
 
 // Cache-only counterpart to fetchAll - recomputes the shared caches
 // (valueGapSets, rosProjTotalSets, every league's rosVor, draftValueSets)

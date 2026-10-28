@@ -107,19 +107,9 @@ export interface RosVorRow {
 // gives each shape exactly what it would have computed alone. Leagues
 // sharing a shape share the one board, so N identical leagues cost one
 // refreshRosVor, not N.
-//
-// `scheduled` marks a daily-cron run. On a deployment with the
-// ROS_VOR_WEEKLY_ONLY env var set to "true" (dev - this refresh is one of
-// the biggest DB I/O costs there, and dev doesn't need daily numbers), a
-// scheduled run only does real work on Thursday's run (the cron fires at
-// 12:00 UTC, so Wed night/Thu morning US time) - or for any season whose
-// shape has no board for the current week yet, so a rollover never leaves the
-// Players/Trade tabs empty until Thursday. Manual runs (fetchAll/
-// refreshCaches) always refresh.
-const WEEKLY_REFRESH_UTC_DAY = 4; // Thursday
 export async function refreshAllRosVor(
   ctx: ActionCtx,
-  args: { seasons: Doc<"seasons">[]; scheduled?: boolean | undefined },
+  args: { seasons: Doc<"seasons">[] },
 ): Promise<void> {
   // Same "not currently in an NFL regular season week" guard as
   // convex/lib/faab.ts's computeFaabSuggestions - rosVor is an in-season
@@ -128,13 +118,9 @@ export async function refreshAllRosVor(
   const week = await ctx.runQuery(internal.rosVor.getRosVorWeek, {});
   if (week === null) return;
 
-  const throttled =
-    args.scheduled === true && process.env.ROS_VOR_WEEKLY_ONLY === "true" && new Date().getUTCDay() !== WEEKLY_REFRESH_UTC_DAY;
-
   const groups = new Map<string, { scoringConfig: ScoringConfig; positions: Set<Position>; shapes: Map<string, LeagueShapeFields> }>();
   for (const season of args.seasons) {
     const shape = leagueShapeOf(season);
-    if (throttled && (await ctx.runQuery(internal.rosVor.hasRosVorBoard, { shapeKey: shape.key, week }))) continue;
     const scoringConfig = scoringConfigFromSeason(season);
     const key = `${scoringConfig.scoring}|${scoringConfig.teScoring}|${scoringConfig.sixPointPassTds}`;
     const group = groups.get(key) ?? { scoringConfig, positions: new Set<Position>(), shapes: new Map() };
@@ -214,11 +200,6 @@ export const getRosVorWeek = internalQuery({
     const nflState = await ctx.db.query("nflState").first();
     return nflState && nflState.seasonType === "regular" ? nflState.week : null;
   },
-});
-
-export const hasRosVorBoard = internalQuery({
-  args: { shapeKey: v.string(), week: v.string() },
-  handler: async (ctx, args): Promise<boolean> => shapeHasBoard(ctx, args.shapeKey, args.week),
 });
 
 // One player's league-independent values for one scoring setup - see
