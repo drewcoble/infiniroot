@@ -25,7 +25,7 @@ export async function getSeasonLineage(
 ): Promise<Doc<"seasons">[]> {
   const seasons = await ctx.db
     .query("seasons")
-    .withIndex("by_league", (q) => q.eq("leagueId", current.leagueId))
+    .withIndex("by_league_year", (q) => q.eq("leagueId", current.leagueId))
     .collect();
   seasons.sort(
     (a, b) => a.year.localeCompare(b.year) || a.createdAt - b.createdAt,
@@ -106,7 +106,7 @@ export const getPlayerPriceHistory = query({
       if (!draft) continue;
       const picks = await ctx.db
         .query("draftPicks")
-        .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+        .withIndex("by_draft_sequence", (q) => q.eq("draftId", draft._id))
         .collect();
       // Only fetched (and only once per season, not per pick) when at least
       // one pick actually needs a confirmed team name resolved below.

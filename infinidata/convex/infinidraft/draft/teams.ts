@@ -191,7 +191,7 @@ export const removeSeasonTeam = mutation({
 
     const picks = await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", draft._id))
       .filter((q) => q.eq(q.field("teamId"), args.teamId))
       .collect();
     if (picks.length > 0) {

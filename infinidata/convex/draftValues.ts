@@ -101,7 +101,7 @@ async function computeDraftValuesForSettings(
   for (const pos of activePositions) {
     const rows = await ctx.db
       .query("projections")
-      .withIndex("by_position_week", (q) =>
+      .withIndex("by_position_week_fpid", (q) =>
         q.eq("position", pos).eq("week", week),
       )
       .collect();

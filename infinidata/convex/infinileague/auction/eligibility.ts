@@ -103,7 +103,7 @@ async function getLockedFpidCycles(
 ): Promise<Map<number, EligibleCycleRef>> {
   const lockRows = await ctx.db
     .query("faAuctionFpidCycles")
-    .withIndex("by_season", (q) => q.eq("seasonId", season._id))
+    .withIndex("by_season_fpid", (q) => q.eq("seasonId", season._id))
     .collect();
 
   const result = new Map<number, EligibleCycleRef>();
@@ -173,7 +173,7 @@ export async function getEligibleFpidSet(
   const [waiverRows, weeklyCycle] = await Promise.all([
     ctx.db
       .query("waiverPlayers")
-      .withIndex("by_season", (q) => q.eq("seasonId", season._id))
+      .withIndex("by_season_fpid", (q) => q.eq("seasonId", season._id))
       .collect(),
     getOpenWeeklyCycle(ctx, season._id),
   ]);

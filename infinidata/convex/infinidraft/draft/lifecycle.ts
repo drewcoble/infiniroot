@@ -41,7 +41,7 @@ export const reopenPreDraft = mutation({
     }
     const picks = await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", draft._id))
       .collect();
     if (picks.some((pick) => !pick.isKeeper)) {
       throw new Error(

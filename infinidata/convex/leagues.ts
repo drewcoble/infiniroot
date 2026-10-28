@@ -120,7 +120,7 @@ export const listSeasons = query({
     for (const league of ownedLeagues) {
       const seasons = await ctx.db
         .query("seasons")
-        .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+        .withIndex("by_league_year", (q) => q.eq("leagueId", league._id))
         .collect();
       for (const season of seasons) {
         seenSeasonIds.add(season._id);
@@ -140,7 +140,7 @@ export const listSeasons = query({
       if (!league) continue;
       const seasons = await ctx.db
         .query("seasons")
-        .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+        .withIndex("by_league_year", (q) => q.eq("leagueId", league._id))
         .collect();
       for (const season of seasons) {
         if (seenSeasonIds.has(season._id)) continue;
@@ -180,7 +180,7 @@ export const listLinkedSeasons = query({
     for (const league of leagues) {
       const seasons = await ctx.db
         .query("seasons")
-        .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+        .withIndex("by_league_year", (q) => q.eq("leagueId", league._id))
         .collect();
       for (const season of seasons) {
         if (
@@ -299,7 +299,7 @@ export const listMyAuctionSeasons = query({
     for (const league of ownedLeagues) {
       const seasons = await ctx.db
         .query("seasons")
-        .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+        .withIndex("by_league_year", (q) => q.eq("leagueId", league._id))
         .collect();
       for (const season of seasons) {
         if (
@@ -815,7 +815,7 @@ export const setDraftType = mutation({
     }
     const existingPick = await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", draft._id))
       .first();
     if (existingPick) {
       throw new Error(
@@ -932,12 +932,12 @@ async function deleteOneSeason(ctx: MutationCtx, seasonId: Id<"seasons">) {
 
   const drafts = await ctx.db
     .query("drafts")
-    .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+    .withIndex("by_season_kind", (q) => q.eq("seasonId", seasonId))
     .collect();
   for (const draft of drafts) {
     for (const row of await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", draft._id))
       .collect()) {
       await ctx.db.delete(row._id);
     }
@@ -961,7 +961,7 @@ async function deleteOneSeason(ctx: MutationCtx, seasonId: Id<"seasons">) {
     }
     for (const row of await ctx.db
       .query("draftPlayerTags")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .withIndex("by_draft_fpid", (q) => q.eq("draftId", draft._id))
       .collect()) {
       await ctx.db.delete(row._id);
     }
@@ -981,7 +981,7 @@ async function deleteOneSeason(ctx: MutationCtx, seasonId: Id<"seasons">) {
     }
     for (const row of await ctx.db
       .query("draftPickSlots")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .withIndex("by_draft_round", (q) => q.eq("draftId", draft._id))
       .collect()) {
       await ctx.db.delete(row._id);
     }
@@ -1072,7 +1072,7 @@ export const purgeSeasonData = internalMutation({
       () =>
         ctx.db
           .query("waiverPlayers")
-          .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+          .withIndex("by_season_fpid", (q) => q.eq("seasonId", seasonId))
           .take(PURGE_BATCH_SIZE),
       () =>
         ctx.db
@@ -1087,7 +1087,7 @@ export const purgeSeasonData = internalMutation({
       () =>
         ctx.db
           .query("faAuctionFpidCycles")
-          .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+          .withIndex("by_season_fpid", (q) => q.eq("seasonId", seasonId))
           .take(PURGE_BATCH_SIZE),
       () =>
         ctx.db
@@ -1111,12 +1111,12 @@ export const purgeSeasonData = internalMutation({
     // cycle per run.
     const cycle = await ctx.db
       .query("faAuctionCycles")
-      .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+      .withIndex("by_season_status", (q) => q.eq("seasonId", seasonId))
       .first();
     if (cycle) {
       const stateRows = await ctx.db
         .query("faAuctionState")
-        .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
+        .withIndex("by_cycle_fpid", (q) => q.eq("cycleId", cycle._id))
         .take(PURGE_BATCH_SIZE);
       for (const row of stateRows) {
         await ctx.db.delete(row._id);
@@ -1147,7 +1147,7 @@ export const deleteLeague = mutation({
     const { league } = await requireSeasonOwner(ctx, args.id);
     const seasons = await ctx.db
       .query("seasons")
-      .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+      .withIndex("by_league_year", (q) => q.eq("leagueId", league._id))
       .collect();
     for (const season of seasons) {
       await deleteOneSeason(ctx, season._id);
@@ -1160,7 +1160,7 @@ export const deleteLeague = mutation({
     }
     for (const row of await ctx.db
       .query("leagueCollaborators")
-      .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+      .withIndex("by_league_user", (q) => q.eq("leagueId", league._id))
       .collect()) {
       await ctx.db.delete(row._id);
     }

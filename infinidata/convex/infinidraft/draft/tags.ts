@@ -8,7 +8,7 @@ export const listPlayerTags = query({
     const { draft } = await requireDraftOwner(ctx, args.seasonId);
     return await ctx.db
       .query("draftPlayerTags")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .withIndex("by_draft_fpid", (q) => q.eq("draftId", draft._id))
       .collect();
   },
 });
@@ -33,7 +33,7 @@ export const cyclePlayerTag = mutation({
       // already does) just to find the current max order among targets.
       const allTags = await ctx.db
         .query("draftPlayerTags")
-        .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+        .withIndex("by_draft_fpid", (q) => q.eq("draftId", draft._id))
         .collect();
       const maxOrder = allTags
         .filter((tag) => tag.tag === "target")
@@ -90,7 +90,7 @@ export const setPlayerTag = mutation({
     if (args.tag === "target") {
       const allTags = await ctx.db
         .query("draftPlayerTags")
-        .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+        .withIndex("by_draft_fpid", (q) => q.eq("draftId", draft._id))
         .collect();
       order =
         allTags

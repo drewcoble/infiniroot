@@ -42,7 +42,7 @@ import { expandRosterSlots } from "../../lib/rosterSlots";
 async function listTouchedSlots(ctx: QueryCtx, draftId: Id<"drafts">) {
   return await ctx.db
     .query("draftPickSlots")
-    .withIndex("by_draft", (q) => q.eq("draftId", draftId))
+    .withIndex("by_draft_round", (q) => q.eq("draftId", draftId))
     .collect();
 }
 
@@ -270,7 +270,7 @@ export const getSnakeBoardPublic = query({
 
     const picks = await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", draft._id))
       .collect();
     const pickByPositionKey = new Map<string, Doc<"draftPicks">>();
     for (const pick of picks) {

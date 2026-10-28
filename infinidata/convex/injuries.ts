@@ -197,7 +197,7 @@ export const applyInjuryFetch = internalMutation({
       for (const [fpid, row] of listed) {
         const latest = await ctx.db
           .query("injurySnapshots")
-          .withIndex("by_fpid", (q) => q.eq("fpid", fpid))
+          .withIndex("by_fpid_season", (q) => q.eq("fpid", fpid))
           .order("desc")
           .first();
         // Already has this week's row - e.g. a "change" appended above.

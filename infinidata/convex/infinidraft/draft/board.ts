@@ -75,7 +75,7 @@ export const getDraftBoard = query({
     for (const position of positions) {
       const rankings = await ctx.db
         .query("rankings")
-        .withIndex("by_position_week", (q) =>
+        .withIndex("by_position_week_fpid", (q) =>
           q.eq("position", position).eq("week", args.week),
         )
         .collect();

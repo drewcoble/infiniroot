@@ -288,7 +288,7 @@ export const applyYahooSettingsResync = internalMutation({
     const newTotalRounds = expandRosterSlots(args.rosterSlots).length;
     const picks = await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", args.draftId))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", args.draftId))
       .collect();
     const picksPerTeam = new Map<Id<"seasonTeams">, number>();
     for (const pick of picks) {

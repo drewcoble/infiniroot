@@ -9,7 +9,7 @@ export const getProjections = query({
   handler: async (ctx, args) => {
     const rows = await ctx.db
       .query("projections")
-      .withIndex("by_position_week", (q) =>
+      .withIndex("by_position_week_fpid", (q) =>
         q.eq("position", args.position).eq("week", args.week),
       )
       .collect();
@@ -27,7 +27,7 @@ export const getAllProjections = query({
     for (const position of POSITIONS) {
       const rows = await ctx.db
         .query("projections")
-        .withIndex("by_position_week", (q) =>
+        .withIndex("by_position_week_fpid", (q) =>
           q.eq("position", position).eq("week", args.week),
         )
         .collect();
@@ -57,7 +57,7 @@ export const upsertProjections = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("projections")
-      .withIndex("by_position_week", (q) =>
+      .withIndex("by_position_week_fpid", (q) =>
         q.eq("position", args.position).eq("week", args.week),
       )
       .collect();

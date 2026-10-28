@@ -112,7 +112,7 @@ export async function gatherPlayerForms(
   for (const pos of args.activePositions) {
     const projectionRows = await ctx.db
       .query("projections")
-      .withIndex("by_position_week", (q) => q.eq("position", pos).eq("week", args.week))
+      .withIndex("by_position_week_fpid", (q) => q.eq("position", pos).eq("week", args.week))
       .collect();
     for (const row of projectionRows) {
       forms.set(row.fpid, {
@@ -261,7 +261,7 @@ export async function findInjuredTeammateNotes(
     let latestChange: { fetchedAt: number } | null = null;
     for await (const snapshot of ctx.db
       .query("injurySnapshots")
-      .withIndex("by_fpid", (q) => q.eq("fpid", injured.fpid))
+      .withIndex("by_fpid_season", (q) => q.eq("fpid", injured.fpid))
       .order("desc")) {
       if (snapshot.kind === "carryForward") continue;
       latestChange = snapshot;

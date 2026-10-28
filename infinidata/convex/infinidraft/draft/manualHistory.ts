@@ -71,7 +71,7 @@ export const getManualPreviousSeasonEntry = query({
       .collect();
     const picks = await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", historyDraft._id))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", historyDraft._id))
       .collect();
     const picksByTeamId = new Map<Id<"seasonTeams">, typeof picks>();
     for (const pick of picks) {
@@ -162,7 +162,7 @@ export const setManualPreviousSeasonResults = mutation({
       }
       const oldPicks = await ctx.db
         .query("draftPicks")
-        .withIndex("by_draft", (q) => q.eq("draftId", historyDraftId))
+        .withIndex("by_draft_sequence", (q) => q.eq("draftId", historyDraftId))
         .collect();
       for (const pick of oldPicks) {
         await ctx.db.delete(pick._id);

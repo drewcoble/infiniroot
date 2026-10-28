@@ -115,7 +115,7 @@ export const placeBid = mutation({
 
     const allBids = await ctx.db
       .query("faAuctionBids")
-      .withIndex("by_cycle_fpid", (q) =>
+      .withIndex("by_cycle_fpid_team", (q) =>
         q.eq("cycleId", cycle._id).eq("fpid", args.fpid),
       )
       .collect();
@@ -272,7 +272,7 @@ export const getAuctionBoardState = query({
       openCycles.map((cycle) =>
         ctx.db
           .query("faAuctionState")
-          .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
+          .withIndex("by_cycle_fpid", (q) => q.eq("cycleId", cycle._id))
           .collect(),
       ),
     );
@@ -399,7 +399,7 @@ export const getAuctionDashboard = query({
     for (const cycle of openCycles) {
       const stateRows = await ctx.db
         .query("faAuctionState")
-        .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
+        .withIndex("by_cycle_fpid", (q) => q.eq("cycleId", cycle._id))
         .collect();
       for (const state of stateRows) {
         if (state.leadingTeamId === undefined) continue;
@@ -483,7 +483,7 @@ export const getBidsBoard = query({
         cycle,
         states: await ctx.db
           .query("faAuctionState")
-          .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
+          .withIndex("by_cycle_fpid", (q) => q.eq("cycleId", cycle._id))
           .collect(),
       })),
     );

@@ -410,7 +410,6 @@ export default defineSchema({
     stats: v.record(v.string(), v.number()),
     fetchedAt: v.number(),
   })
-    .index("by_position_week", ["position", "week"])
     .index("by_position_week_fpid", ["position", "week", "fpid"]),
 
   // Each external provider's own raw per-category projected stats, kept
@@ -454,7 +453,6 @@ export default defineSchema({
     adpHalf: v.number(),
     fetchedAt: v.number(),
   })
-    .index("by_position_week", ["position", "week"])
     .index("by_position_week_fpid", ["position", "week", "fpid"]),
 
   // LEGACY - superseded by playerWeekPoints below (one row per player-week
@@ -671,11 +669,11 @@ export default defineSchema({
       ),
     ),
   })
-    // "This player's most-recently-stored snapshot(s)", newest first.
-    .index("by_fpid", ["fpid"])
     // "Every change this player had during one season" - the game log's
     // read (src/components/PlayerSeasonGameLog.tsx), grouped by week
-    // client-side since a week can have more than one row.
+    // client-side since a week can have more than one row. Also "this
+    // player's most-recently-stored snapshot(s)" via an fpid-only prefix
+    // read, newest first (seasons sort ascending as strings).
     .index("by_fpid_season", ["fpid", "season"]),
 
   // Tank01's daily-updated depth chart (see convex/tank01/depthCharts.ts) -
@@ -704,12 +702,11 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     // "This team's current WR order" - the sync's own per-(team, position)
-    // upsert-with-prune (see convex/tank01/depthChartsData.ts).
+    // upsert-with-prune (see convex/tank01/depthChartsData.ts). Also
+    // "every fantasy-relevant position for this team, one query" via a
+    // team-only prefix read - the Depth Charts tab's team-select read
+    // (getTeamDepthChart), which wants QB/RB/WR/TE/K together.
     .index("by_team_position", ["team", "position"])
-    // "Every fantasy-relevant position for this team, one query" - the
-    // Depth Charts tab's team-select read (getTeamDepthChart), which wants
-    // QB/RB/WR/TE/K together rather than one query per position.
-    .index("by_team", ["team"])
     // "Where does this fpid currently sit" - a player detail modal lookup.
     .index("by_fpid", ["fpid"]),
 
@@ -837,7 +834,6 @@ export default defineSchema({
     keeperRules: v.optional(keeperRulesValidator),
     createdAt: v.number(),
   })
-    .index("by_league", ["leagueId"])
     .index("by_league_year", ["leagueId", "year"]),
 
   // A draft within a season - a season can have many (mock drafts) but at
@@ -951,7 +947,6 @@ export default defineSchema({
     yahooSyncGeneration: v.optional(v.number()),
     createdAt: v.number(),
   })
-    .index("by_season", ["seasonId"])
     .index("by_season_kind", ["seasonId", "kind"])
     .index("by_season_status", ["seasonId", "status"]),
 
@@ -1119,8 +1114,7 @@ export default defineSchema({
     joinedAt: v.number(),
   })
     .index("by_league_user", ["leagueId", "userId"])
-    .index("by_user", ["userId"])
-    .index("by_league", ["leagueId"]),
+    .index("by_user", ["userId"]),
 
   // One row per real-world NFL game per week, synced from Tank01's weekly
   // schedule (convex/tank01/schedule.ts) - the one piece of "when does this
@@ -1207,7 +1201,6 @@ export default defineSchema({
     clearsAt: v.optional(v.number()),
     syncedAt: v.number(),
   })
-    .index("by_season", ["seasonId"])
     .index("by_season_fpid", ["seasonId", "fpid"]),
 
   // Per-season auction configuration, set by the commissioner in
@@ -1265,7 +1258,6 @@ export default defineSchema({
     status: v.union(v.literal("open"), v.literal("closed")),
     closeJobId: v.optional(v.id("_scheduled_functions")),
   })
-    .index("by_season", ["seasonId"])
     .index("by_season_status", ["seasonId", "status"])
     .index("by_season_type_status", ["seasonId", "type", "status"]),
 
@@ -1287,8 +1279,7 @@ export default defineSchema({
     cycleId: v.id("faAuctionCycles"),
   })
     .index("by_season_fpid", ["seasonId", "fpid"])
-    .index("by_cycle", ["cycleId"])
-    .index("by_season", ["seasonId"]),
+    .index("by_cycle", ["cycleId"]),
 
   // Idempotency log for sleeper/transactions.ts's detectSleeperDrops (runs
   // every 20 min, re-fetching overlapping rounds of Sleeper transactions
@@ -1331,7 +1322,6 @@ export default defineSchema({
   })
     .index("by_cycle_fpid_team", ["cycleId", "fpid", "teamId"])
     .index("by_cycle_team", ["cycleId", "teamId"])
-    .index("by_cycle_fpid", ["cycleId", "fpid"])
     .index("by_season_team", ["seasonId", "teamId"]),
 
   // The public board for one player in one cycle - recomputed transactionally
@@ -1353,7 +1343,6 @@ export default defineSchema({
     resolvedPrice: v.optional(v.number()),
     resolvedAt: v.optional(v.number()),
   })
-    .index("by_cycle", ["cycleId"])
     .index("by_cycle_fpid", ["cycleId", "fpid"]),
 
   // One row per (season, NFL week) a power-rankings computation has been
@@ -1613,7 +1602,6 @@ export default defineSchema({
     teamAssignmentConfirmed: v.optional(v.boolean()),
     createdAt: v.number(),
   })
-    .index("by_draft", ["draftId"])
     .index("by_draft_sequence", ["draftId", "sequence"])
     .index("by_draft_fpid", ["draftId", "fpid"])
     // Scoped to isKeeper===true so draftValues.ts can read "just the
@@ -1654,7 +1642,6 @@ export default defineSchema({
     note: v.optional(v.string()),
     updatedAt: v.number(),
   })
-    .index("by_draft", ["draftId"])
     .index("by_draft_round", ["draftId", "round"])
     .index("by_draft_original_team", ["draftId", "originalTeamId"]),
 
@@ -1726,7 +1713,6 @@ export default defineSchema({
     order: v.optional(v.number()),
     updatedAt: v.number(),
   })
-    .index("by_draft", ["draftId"])
     .index("by_draft_fpid", ["draftId", "fpid"]),
 
   // Live "whose turn is it" pointer - only meaningful when the draft's

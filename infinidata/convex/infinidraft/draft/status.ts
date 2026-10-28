@@ -40,7 +40,7 @@ export async function syncDraftStatus(
   } else {
     const picks = await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", draftId))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", draftId))
       .collect();
     // Forfeited slots (SNAKE_DRAFT.md §9) reduce the total this draft
     // needs to reach "complete" - a no-op sum (0) for every league with no
