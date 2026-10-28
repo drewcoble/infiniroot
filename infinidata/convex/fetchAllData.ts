@@ -235,6 +235,7 @@ export const fetchWeekProjectionsInternal = internalAction({
     await ctx.runAction(internal.espn.rankings.fetchEspnRankingsInternal, {
       season: args.season,
       week: args.week,
+      skipSeasonLevel: true,
     });
     for (const position of BLENDED_POSITIONS) {
       await ctx.runMutation(internal.projectionBlending.blendProjections, {

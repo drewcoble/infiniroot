@@ -117,7 +117,7 @@ function espnTeamAbbr(player: EspnPlayer): string | undefined {
 
 async function fetchEspnRankingsHandler(
   ctx: ActionCtx,
-  args: { season?: string; week?: string },
+  args: { season?: string; week?: string; skipSeasonLevel?: boolean },
 ): Promise<EspnSyncResult> {
   const season = args.season ?? currentSeason();
   const week = args.week ?? "0";
@@ -262,13 +262,20 @@ async function fetchEspnRankingsHandler(
   // costs at least a read plus a possible write, and the full lists are well
   // past Convex's 4096-reads-per-transaction limit.
   const CHUNK_SIZE = 500;
-  for (let i = 0; i < newLinks.length; i += CHUNK_SIZE) {
+  // espnId links, platform positions and auction values are all season-
+  // level (fetchEspnPlayers isn't week-scoped) - only the per-week stat rows
+  // below differ between weeks. The nightly sync's future-week runs (see
+  // fetchAllData.ts's fetchWeekProjectionsInternal) pass skipSeasonLevel so
+  // these get written once per night, by the current week's run, instead of
+  // once per remaining week.
+  const writeSeasonLevel = args.skipSeasonLevel !== true;
+  for (let i = 0; writeSeasonLevel && i < newLinks.length; i += CHUNK_SIZE) {
     await ctx.runMutation(internal.players.patchExternalIds, {
       rows: newLinks.slice(i, i + CHUNK_SIZE),
     });
   }
   const positionRows = [...espnPositionByFpid].map(([fpid, position]) => ({ fpid, position }));
-  for (let i = 0; i < positionRows.length; i += CHUNK_SIZE) {
+  for (let i = 0; writeSeasonLevel && i < positionRows.length; i += CHUNK_SIZE) {
     await ctx.runMutation(internal.players.recordPlatformPositions, {
       platform: "espn",
       rows: positionRows.slice(i, i + CHUNK_SIZE),
@@ -283,7 +290,7 @@ async function fetchEspnRankingsHandler(
   for (const format of Object.keys(valueRowsByFormat) as EspnFormat[]) {
     const rows = valueRowsByFormat[format];
     rowsByFormat[format] = rows.length;
-    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    for (let i = 0; writeSeasonLevel && i < rows.length; i += CHUNK_SIZE) {
       await ctx.runMutation(internal.standardValues.upsertEspnValues, {
         format,
         season,
@@ -334,6 +341,10 @@ export const fetchEspnRankings = action({
 // Cron-safe counterpart with no human-auth check - see fetchAllData.ts's
 // fetchAllInternal for why this split exists.
 export const fetchEspnRankingsInternal = internalAction({
-  args: { season: v.optional(v.string()), week: v.optional(v.string()) },
+  args: {
+    season: v.optional(v.string()),
+    week: v.optional(v.string()),
+    skipSeasonLevel: v.optional(v.boolean()),
+  },
   handler: fetchEspnRankingsHandler,
 });
