@@ -14,6 +14,7 @@ import {
   type TeamRosterRow,
 } from "./teamRoster";
 import { loadWeekPairs } from "./schedule";
+import { currentWeekFor, loadPlayoffs } from "./playoffs";
 import { requireSeasonOwner } from "../../lib/access";
 import { loadWeekPoints } from "../../lib/weekPoints";
 import { loadPlatformPositions } from "../../lib/platformPosition";
@@ -112,10 +113,16 @@ export const getOpponentForWeek = action({
 const UNSTARTABLE_SLOTS = new Set<SlotLabel>(["IR", "TAXI"]);
 
 export interface LeagueWeekMatchups {
-  // A playoff week has no trusted pairings (see schedule.ts's
-  // loadWeekPairs), so matchups comes back empty.
+  // A playoff week's matchups are its bracket games with both teams set
+  // (see playoffs.ts) - the provider's own pairings aren't trusted then
+  // (see schedule.ts's loadWeekPairs).
   isPlayoffWeek: boolean;
-  matchups: { teamAId: Id<"seasonTeams">; teamBId: Id<"seasonTeams"> }[];
+  matchups: {
+    teamAId: Id<"seasonTeams">;
+    teamBId: Id<"seasonTeams">;
+    // The bracket round, e.g. "Semifinals" - playoff weeks only.
+    roundName?: string;
+  }[];
   // Each paired team's starters and bench for the week - starters for the
   // score cards, the bench too for a future week's optimal projection.
   lineupsByTeam: { teamId: Id<"seasonTeams">; rows: TeamRosterRow[] }[];
@@ -148,7 +155,32 @@ export const getLeagueWeekMatchups = action({
       currentWeek,
     );
 
-    const pairedIds = new Set(pairs.flat());
+    const matchups: LeagueWeekMatchups["matchups"] = pairs.map(([teamAId, teamBId]) => ({
+      teamAId,
+      teamBId,
+    }));
+    if (isPlayoffWeek) {
+      const { tournaments } = await loadPlayoffs(
+        ctx,
+        season,
+        league,
+        teams,
+        currentWeekFor(season, nflState),
+      );
+      for (const tournament of tournaments) {
+        for (const round of tournament.rounds) {
+          if (!round.weeks.includes(Number(args.week))) continue;
+          for (const game of round.games) {
+            const [a, b] = game.entrants;
+            if (a.teamId && b.teamId) {
+              matchups.push({ teamAId: a.teamId, teamBId: b.teamId, roundName: round.name });
+            }
+          }
+        }
+      }
+    }
+
+    const pairedIds = new Set(matchups.flatMap((matchup) => [matchup.teamAId, matchup.teamBId]));
     const lineupsByTeam = await Promise.all(
       teams
         .filter((team) => pairedIds.has(team._id))
@@ -165,7 +197,7 @@ export const getLeagueWeekMatchups = action({
     );
     return {
       isPlayoffWeek,
-      matchups: pairs.map(([teamAId, teamBId]) => ({ teamAId, teamBId })),
+      matchups,
       lineupsByTeam,
     };
   },

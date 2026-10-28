@@ -98,8 +98,48 @@ export interface PowerRankingRow {
 // week's pairings plus each paired team's starters and bench.
 export interface LeagueWeekMatchups {
   isPlayoffWeek: boolean;
-  matchups: { teamAId: string; teamBId: string }[];
+  matchups: { teamAId: string; teamBId: string; roundName?: string }[];
   lineupsByTeam: { teamId: string; rows: TeamRosterRow[] }[];
+}
+
+// Mirrors convex/infinileague/season/tournaments.ts and playoffs.ts - the
+// league's playoff tournaments (just the championship for now).
+export interface TournamentEntrant {
+  teamId: string | null;
+  seed: number | null;
+  points: number | null;
+  fromGameId: string | null;
+}
+
+export interface TournamentGame {
+  id: string;
+  entrants: [TournamentEntrant, TournamentEntrant];
+  winnerTeamId: string | null;
+}
+
+export interface TournamentRound {
+  round: number;
+  name: string;
+  weeks: number[];
+  games: TournamentGame[];
+}
+
+export interface Tournament {
+  kind: "championship";
+  name: string;
+  rounds: TournamentRound[];
+  championTeamId: string | null;
+}
+
+export type SeasonPhase = "regular" | "playoffs" | "complete";
+
+export interface LeaguePlayoffs {
+  hasPlayoffs: boolean;
+  regularSeasonEndWeek: number;
+  playoffTeamCount: number;
+  currentWeek: number;
+  phase: SeasonPhase;
+  tournaments: Tournament[];
 }
 
 // Mirrors convex/infinileague/season/eliminationWatch.ts's

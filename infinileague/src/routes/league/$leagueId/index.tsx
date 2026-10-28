@@ -9,6 +9,7 @@ import { StandingsList } from "../../../components/StandingsList";
 import { PowerRankingsList } from "../../../components/PowerRankingsList";
 import { ProjectedStandingsList } from "../../../components/ProjectedStandingsList";
 import { EliminationWatchList } from "../../../components/EliminationWatchList";
+import { PlayoffBracket } from "../../../components/PlayoffBracket";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
 import { GlassSegmented } from "../../../components/cards/GlassSegmented";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
@@ -19,6 +20,7 @@ import { LIVE_REFRESH_MS } from "../../../lib/matchupSummary";
 import { rankLive } from "../../../lib/eliminationWatch";
 import type {
   EliminationWatchRow,
+  LeaguePlayoffs,
   LinkedSeason,
   PowerRankingRow,
   ProjectedStandingsRow,
@@ -60,11 +62,11 @@ function LeaguePage() {
 
   // null = no manual pick yet, so the tab defaults to Elimination Watch for
   // a guillotine league (win/loss doesn't mean anything without head-to-
-  // head games) or Standings otherwise - see the tableView derivation
-  // below. Once the viewer picks a tab themselves, that choice sticks
+  // head games), Playoffs once they've started, or Standings otherwise -
+  // see the tableView derivation below. Once the viewer picks a tab themselves, that choice sticks
   // regardless of which league format this turns out to be.
   const [manualTableView, setManualTableView] = useState<
-    "standings" | "projected" | "power" | "elimination" | null
+    "standings" | "projected" | "playoffs" | "power" | "elimination" | null
   >(null);
 
   const seasonsList: LinkedSeason[] | undefined = useQuery(
@@ -73,8 +75,31 @@ function LeaguePage() {
   );
   const season = seasonsList?.find((s) => s._id === leagueId);
   const isGuillotine = season?.leagueType === "guillotine";
+
+  // The league's playoff picture - fetched once per league visit, since
+  // whether the playoffs have started picks the default view.
+  const getPlayoffs = useAction(api.infinileague.season.playoffs.getPlayoffs);
+  const [playoffs, setPlayoffs] = useState<LeaguePlayoffs | undefined>(undefined);
+  const [playoffsError, setPlayoffsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || season === undefined || isGuillotine) return;
+    setPlayoffs(undefined);
+    setPlayoffsError(null);
+    getPlayoffs({ seasonId })
+      .then(setPlayoffs)
+      .catch((err) => setPlayoffsError(getErrorMessage(err, "Failed to load playoffs.")));
+    // Same dep convention as the getPowerRankings effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated, season === undefined, isGuillotine]);
+
   const tableView =
-    manualTableView ?? (isGuillotine ? "elimination" : "standings");
+    manualTableView ??
+    (isGuillotine
+      ? "elimination"
+      : playoffs && playoffs.phase !== "regular"
+        ? "playoffs"
+        : "standings");
 
   const syncStatus: RosterSyncStatusRow[] | undefined = useQuery(
     api.infinileague.season.rosterPlayers.getRosterSyncStatus,
@@ -358,6 +383,9 @@ function LeaguePage() {
             : [
                 { label: "Standings", value: "standings" as const },
                 { label: "Projected", value: "projected" as const },
+                ...(playoffs?.hasPlayoffs === false
+                  ? []
+                  : [{ label: "Playoffs", value: "playoffs" as const }]),
               ]),
           { label: "Power rankings", value: "power" as const },
         ]}
@@ -398,6 +426,18 @@ function LeaguePage() {
             />
           )}
         </>
+      ) : tableView === "playoffs" ? (
+        playoffsError ? (
+          <Alert color="red">{playoffsError}</Alert>
+        ) : playoffs === undefined || standings === undefined ? (
+          <Stack gap={8}>
+            {Array.from({ length: 6 }, (_, index) => (
+              <GlassRosterSkeletonCard key={index} />
+            ))}
+          </Stack>
+        ) : (
+          <PlayoffBracket playoffs={playoffs} standings={standings} />
+        )
       ) : tableView === "standings" ? (
         standings === undefined ? (
           <Stack gap={8}>

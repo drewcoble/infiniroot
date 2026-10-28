@@ -77,6 +77,7 @@ import type * as infinileague_season_eliminationWatch from "../infinileague/seas
 import type * as infinileague_season_faabValues from "../infinileague/season/faabValues.js";
 import type * as infinileague_season_gameLog from "../infinileague/season/gameLog.js";
 import type * as infinileague_season_matchup from "../infinileague/season/matchup.js";
+import type * as infinileague_season_playoffs from "../infinileague/season/playoffs.js";
 import type * as infinileague_season_powerRankings from "../infinileague/season/powerRankings.js";
 import type * as infinileague_season_projectedStandings from "../infinileague/season/projectedStandings.js";
 import type * as infinileague_season_rankHistory from "../infinileague/season/rankHistory.js";
@@ -85,6 +86,7 @@ import type * as infinileague_season_schedule from "../infinileague/season/sched
 import type * as infinileague_season_standings from "../infinileague/season/standings.js";
 import type * as infinileague_season_teamRoster from "../infinileague/season/teamRoster.js";
 import type * as infinileague_season_teams from "../infinileague/season/teams.js";
+import type * as infinileague_season_tournaments from "../infinileague/season/tournaments.js";
 import type * as infinileague_season_tradeSuggestions from "../infinileague/season/tradeSuggestions.js";
 import type * as infinileague_season_tradeValues from "../infinileague/season/tradeValues.js";
 import type * as infinileague_season_usage from "../infinileague/season/usage.js";
@@ -226,6 +228,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/faabValues": typeof infinileague_season_faabValues;
   "infinileague/season/gameLog": typeof infinileague_season_gameLog;
   "infinileague/season/matchup": typeof infinileague_season_matchup;
+  "infinileague/season/playoffs": typeof infinileague_season_playoffs;
   "infinileague/season/powerRankings": typeof infinileague_season_powerRankings;
   "infinileague/season/projectedStandings": typeof infinileague_season_projectedStandings;
   "infinileague/season/rankHistory": typeof infinileague_season_rankHistory;
@@ -234,6 +237,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/standings": typeof infinileague_season_standings;
   "infinileague/season/teamRoster": typeof infinileague_season_teamRoster;
   "infinileague/season/teams": typeof infinileague_season_teams;
+  "infinileague/season/tournaments": typeof infinileague_season_tournaments;
   "infinileague/season/tradeSuggestions": typeof infinileague_season_tradeSuggestions;
   "infinileague/season/tradeValues": typeof infinileague_season_tradeValues;
   "infinileague/season/usage": typeof infinileague_season_usage;

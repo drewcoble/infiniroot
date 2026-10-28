@@ -81,17 +81,10 @@ export function LeagueMatchupsList({
   }
 
   const { data } = current;
-  if (data.isPlayoffWeek) {
-    return (
-      <Text c="dimmed" ta="center" py="xl">
-        Playoff matchups aren&apos;t shown yet.
-      </Text>
-    );
-  }
   if (data.matchups.length === 0) {
     return (
       <Text c="dimmed" ta="center" py="xl">
-        No matchups this week.
+        {data.isPlayoffWeek ? "No playoff matchups set this week." : "No matchups this week."}
       </Text>
     );
   }
@@ -102,8 +95,10 @@ export function LeagueMatchupsList({
   const isSelf = (teamId: string) => standingByTeam.get(teamId)?.isSelf ?? false;
   // Your own matchup first, with your team on the left like the Matchup tab.
   const matchups = data.matchups
-    .map(({ teamAId, teamBId }) =>
-      isSelf(teamBId) ? { teamAId: teamBId, teamBId: teamAId } : { teamAId, teamBId },
+    .map(({ teamAId, teamBId, roundName }) =>
+      isSelf(teamBId)
+        ? { teamAId: teamBId, teamBId: teamAId, roundName }
+        : { teamAId, teamBId, roundName },
     )
     .sort((a, b) => Number(isSelf(b.teamAId)) - Number(isSelf(a.teamAId)));
   const side = (teamId: string) => {
@@ -118,7 +113,7 @@ export function LeagueMatchupsList({
 
   return (
     <Stack gap="sm">
-      {matchups.map(({ teamAId, teamBId }) => {
+      {matchups.map(({ teamAId, teamBId, roundName }) => {
         const teamA = side(teamAId);
         const teamB = side(teamBId);
         return (
@@ -129,7 +124,7 @@ export function LeagueMatchupsList({
               ...(isSelf(teamAId) ? {} : { team: teamAId }),
               ...(week !== currentWeek ? { week: Number(week) } : {}),
             }}
-            title={leagueName}
+            title={roundName ? `${leagueName} · ${roundName}` : leagueName}
             ariaLabel={`${teamA.name} vs. ${teamB.name}`}
             week={week}
             teamA={teamA}

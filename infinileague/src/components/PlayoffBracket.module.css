@@ -1,0 +1,86 @@
+/* Playoff bracket (PlayoffBracket) - each round a labeled stack of game
+   cards, on the shared glass .card from GlassMatchupCard.module.css. */
+
+.round {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.game {
+  gap: 0;
+  padding: 4px 12px;
+}
+
+.entrant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.entrant + .entrant {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.seed {
+  flex-shrink: 0;
+  min-width: 26px;
+  justify-content: center;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.points {
+  flex-shrink: 0;
+  font-family: var(--font-numeric);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Decided game: the winner stays bright, the loser recedes. */
+.winner .name,
+.winner .points {
+  font-weight: 750;
+}
+
+.loser {
+  opacity: 0.45;
+}
+
+.tbd .name {
+  color: rgba(248, 250, 252, 0.45);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.champion {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(
+    150deg,
+    rgba(250, 204, 21, 0.18) 0%,
+    rgba(250, 204, 21, 0.05) 100%
+  );
+}
+
+.championName {
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.note {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.6);
+}
