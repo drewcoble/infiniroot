@@ -5,3 +5,4 @@ dist
 *.tsbuildinfo
 .tanstack
 scripts/usage-calibration/cache
+scripts/matchup-difficulty/cache
