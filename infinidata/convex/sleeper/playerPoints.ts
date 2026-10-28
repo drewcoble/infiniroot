@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { action, internalAction, ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { POSITIONS } from "../positions";
+import { refreshDefenseMatchups } from "../defenseMatchups";
 import { refreshWeekPositionRanks } from "../weekPositionRanks";
 import {
   currentSeason,
@@ -202,6 +203,9 @@ async function fetchAllPlayerPointsHandler(
   // Game logs' weekly position ranks (see weekPositionRankSets' schema
   // comment) - rebuilt for exactly the weeks just synced.
   await refreshWeekPositionRanks(ctx, { season: year, weeks: syncedWeeks });
+  // The matchup difficulty rating's defense-vs-position sets (see
+  // defenseMatchupSets' schema comment).
+  if (syncedWeeks.length > 0) await refreshDefenseMatchups(ctx, { season: year });
 
   return totals;
 }

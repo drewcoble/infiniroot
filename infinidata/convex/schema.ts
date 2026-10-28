@@ -532,6 +532,30 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_key", ["season", "position", "scoring", "teScoring", "sixPointPassTds", "week"]),
 
+  // Each defense's record against each position (QB/RB/WR/TE) for the
+  // matchup difficulty rating - the raw stats it allowed and what the same
+  // players' own baselines expected, summed game by game (see
+  // lib/matchupDifficulty.ts's buildDefenseMatchups). One doc per (season,
+  // throughWeek): week W's matchups read the set through W - 1, so a
+  // past week is graded on what was known before it. Raw stats rather than
+  // points so each league's scoring is applied at read time. Rebuilt by
+  // convex/defenseMatchups.ts after each playerWeekPoints sync, rewritten
+  // only when a set changes; starts at MATCHUP_FIRST_WEEK - 1.
+  defenseMatchupSets: defineTable({
+    season: v.string(),
+    throughWeek: v.number(),
+    rows: v.array(
+      v.object({
+        defense: v.string(),
+        position: positionValidator,
+        games: v.number(),
+        allowed: v.record(v.string(), v.number()),
+        baseline: v.record(v.string(), v.number()),
+      }),
+    ),
+    updatedAt: v.number(),
+  }).index("by_season_week", ["season", "throughWeek"]),
+
   // Season-long digest of playerWeekPoints, maintained incrementally by
   // upsertPlayerPoints (see convex/playerPoints.ts) rather than recomputed at
   // read time. Exists solely so convex/valueGaps.ts can read one row per

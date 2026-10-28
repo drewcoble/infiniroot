@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as authPasswordReset from "../authPasswordReset.js";
 import type * as crons from "../crons.js";
+import type * as defenseMatchups from "../defenseMatchups.js";
 import type * as draftType from "../draftType.js";
 import type * as draftValues from "../draftValues.js";
 import type * as espn_client from "../espn/client.js";
@@ -106,6 +107,8 @@ import type * as lib_env from "../lib/env.js";
 import type * as lib_faab from "../lib/faab.js";
 import type * as lib_leagueShape from "../lib/leagueShape.js";
 import type * as lib_liveGames from "../lib/liveGames.js";
+import type * as lib_matchupCalibration from "../lib/matchupCalibration.js";
+import type * as lib_matchupDifficulty from "../lib/matchupDifficulty.js";
 import type * as lib_platformPosition from "../lib/platformPosition.js";
 import type * as lib_playerValue from "../lib/playerValue.js";
 import type * as lib_rosterSlots from "../lib/rosterSlots.js";
@@ -162,6 +165,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authPasswordReset: typeof authPasswordReset;
   crons: typeof crons;
+  defenseMatchups: typeof defenseMatchups;
   draftType: typeof draftType;
   draftValues: typeof draftValues;
   "espn/client": typeof espn_client;
@@ -257,6 +261,8 @@ declare const fullApi: ApiFromModules<{
   "lib/faab": typeof lib_faab;
   "lib/leagueShape": typeof lib_leagueShape;
   "lib/liveGames": typeof lib_liveGames;
+  "lib/matchupCalibration": typeof lib_matchupCalibration;
+  "lib/matchupDifficulty": typeof lib_matchupDifficulty;
   "lib/platformPosition": typeof lib_platformPosition;
   "lib/playerValue": typeof lib_playerValue;
   "lib/rosterSlots": typeof lib_rosterSlots;
