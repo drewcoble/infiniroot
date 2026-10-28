@@ -101,7 +101,7 @@ async function computeDraftValuesForSettings(
   for (const pos of activePositions) {
     const rows = await ctx.db
       .query("projections")
-      .withIndex("by_position_week", (q) =>
+      .withIndex("by_position_week_fpid", (q) =>
         q.eq("position", pos).eq("week", week),
       )
       .collect();
@@ -832,6 +832,37 @@ export const clearDraftValues = internalMutation({
     if (!result.isDone) {
       await ctx.scheduler.runAfter(0, internal.draftValues.clearDraftValues, {
         cursor: result.continueCursor,
+      });
+    }
+  },
+});
+
+// One-off cleanup: deletes every draftValueSets board for a week other than
+// the pre-season "0" - the only week any reader asks for (see
+// fetchAllData.ts's refreshCachedComputations). The nightly sync used to
+// also write a board per in-season week, which nothing ever read. Small
+// pages since each doc is a whole draft's board; self-reschedules until done,
+// and is safe to run more than once.
+export const clearInSeasonDraftValueSets = internalMutation({
+  args: { cursor: v.optional(v.string()), deleted: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const result = await ctx.db
+      .query("draftValueSets")
+      .paginate({ cursor: args.cursor ?? null, numItems: 25 });
+
+    let deleted = args.deleted ?? 0;
+    for (const doc of result.page) {
+      if (doc.week === "0") continue;
+      await ctx.db.delete(doc._id);
+      deleted += 1;
+    }
+
+    if (result.isDone) {
+      console.log(`clearInSeasonDraftValueSets: deleted ${deleted} boards`);
+    } else {
+      await ctx.scheduler.runAfter(0, internal.draftValues.clearInSeasonDraftValueSets, {
+        cursor: result.continueCursor,
+        deleted,
       });
     }
   },

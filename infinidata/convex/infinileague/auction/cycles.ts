@@ -32,7 +32,7 @@ async function closeCycleHandler(
   const now = Date.now();
   const stateRows = await ctx.db
     .query("faAuctionState")
-    .withIndex("by_cycle", (q) => q.eq("cycleId", cycleId))
+    .withIndex("by_cycle_fpid", (q) => q.eq("cycleId", cycleId))
     .collect();
 
   for (const state of stateRows) {
@@ -374,7 +374,7 @@ export const listResults = query({
     for (const cycle of closedCycles) {
       const stateRows = await ctx.db
         .query("faAuctionState")
-        .withIndex("by_cycle", (q) => q.eq("cycleId", cycle._id))
+        .withIndex("by_cycle_fpid", (q) => q.eq("cycleId", cycle._id))
         .collect();
       for (const state of stateRows) {
         if (state.resolvedAt === undefined) continue;

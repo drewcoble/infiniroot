@@ -16,6 +16,9 @@ import type { SleeperMatchupEntry } from "./teamRoster";
 // infinidraft/yahoo/cache.ts).
 const SCHEDULE_CACHE_MS = 60 * 60 * 1000;
 
+// A finished week's pairings can't change any more.
+const PAST_WEEK_PAIRS_CACHE_MS = 7 * 24 * 60 * 60 * 1000;
+
 // Last NFL regular-season week - the fallback end for a league with no
 // playoffs.
 const LAST_NFL_WEEK = 18;
@@ -47,30 +50,38 @@ function weekRange(fromWeek: number, toWeek: number): number[] {
   return Array.from({ length: Math.max(toWeek - fromWeek + 1, 0) }, (_, i) => fromWeek + i);
 }
 
+// Sleeper groups each matchup's two roster_ids under one matchup_id.
+function sleeperPairs(entries: SleeperMatchupEntry[]): [string, string][] {
+  const rosterIdsByMatchup = new Map<number, string[]>();
+  for (const entry of entries) {
+    if (entry.matchup_id === null || entry.matchup_id === undefined) continue;
+    const rosterIds = rosterIdsByMatchup.get(entry.matchup_id) ?? [];
+    rosterIds.push(String(entry.roster_id));
+    rosterIdsByMatchup.set(entry.matchup_id, rosterIds);
+  }
+  return [...rosterIdsByMatchup.values()]
+    .filter((rosterIds) => rosterIds.length === 2)
+    .map((rosterIds) => [rosterIds[0]!, rosterIds[1]!]);
+}
+
+function sleeperRegularSeasonEndWeek(playoffWeekStart: number | undefined): number {
+  return playoffWeekStart !== undefined && playoffWeekStart > 1
+    ? playoffWeekStart - 1
+    : LAST_NFL_WEEK;
+}
+
 async function fetchSleeperSchedule(leagueId: string, fromWeek: number): Promise<ProviderSchedule> {
   const settings = await fetchSleeperLeagueSettings(leagueId);
-  const playoffStart = settings.settings?.playoff_week_start ?? 0;
-  const regularSeasonEndWeek = playoffStart > 1 ? playoffStart - 1 : LAST_NFL_WEEK;
+  const regularSeasonEndWeek = sleeperRegularSeasonEndWeek(settings.settings?.playoff_week_start);
   const weeks = weekRange(fromWeek, regularSeasonEndWeek);
   const entriesByWeek = await Promise.all(
     weeks.map((week) =>
       fetchSleeperJson<SleeperMatchupEntry[]>(`/league/${leagueId}/matchups/${week}`),
     ),
   );
-  const matchups: ProviderSchedule["matchups"] = [];
-  entriesByWeek.forEach((entries, i) => {
-    const rosterIdsByMatchup = new Map<number, string[]>();
-    for (const entry of entries) {
-      if (entry.matchup_id === null || entry.matchup_id === undefined) continue;
-      const rosterIds = rosterIdsByMatchup.get(entry.matchup_id) ?? [];
-      rosterIds.push(String(entry.roster_id));
-      rosterIdsByMatchup.set(entry.matchup_id, rosterIds);
-    }
-    for (const rosterIds of rosterIdsByMatchup.values()) {
-      if (rosterIds.length !== 2) continue;
-      matchups.push({ weeks: [weeks[i]!], teams: [rosterIds[0]!, rosterIds[1]!] });
-    }
-  });
+  const matchups = entriesByWeek.flatMap((entries, i) =>
+    sleeperPairs(entries).map((teams) => ({ weeks: [weeks[i]!], teams })),
+  );
   return {
     regularSeasonEndWeek,
     medianGame: settings.settings?.league_average_match === 1,
@@ -169,4 +180,92 @@ export async function loadLeagueSchedule(
     medianGame: schedule.medianGame,
     matchups,
   };
+}
+
+// One week's provider-native pairings, plus where the regular season ends.
+interface ProviderWeekPairs {
+  regularSeasonEndWeek: number;
+  pairs: [string, string][];
+}
+
+// One regular-season week's pairings, any week past or future - for the
+// Matchup tab's league view. Empty for a playoff week: Sleeper pre-fills
+// placeholder playoff pairings (see sleeper/league.ts's playoff_week_start),
+// so playoff weeks aren't trusted on any provider. ESPN reads the same
+// cached season schedule loadLeagueSchedule does; Sleeper/Yahoo cache each
+// week on its own - a past week for a week, otherwise an hour.
+export async function loadWeekPairs(
+  ctx: ActionCtx,
+  season: Doc<"seasons">,
+  league: Doc<"leagues">,
+  teams: Doc<"seasonTeams">[],
+  week: number,
+  currentWeek: number,
+): Promise<{ isPlayoffWeek: boolean; pairs: [Id<"seasonTeams">, Id<"seasonTeams">][] }> {
+  const maxAgeMs = week < currentWeek ? PAST_WEEK_PAIRS_CACHE_MS : SCHEDULE_CACHE_MS;
+  let weekPairs: ProviderWeekPairs;
+  let teamIdByProviderId: Map<string, Id<"seasonTeams">>;
+
+  if (season.sleeperLeagueId) {
+    const leagueId = season.sleeperLeagueId;
+    weekPairs = await cachedYahoo(ctx, `pairs:sleeper:${leagueId}:${week}`, maxAgeMs, async () => {
+      const [settings, entries] = await Promise.all([
+        fetchSleeperLeagueSettings(leagueId),
+        fetchSleeperJson<SleeperMatchupEntry[]>(`/league/${leagueId}/matchups/${week}`),
+      ]);
+      return {
+        regularSeasonEndWeek: sleeperRegularSeasonEndWeek(settings.settings?.playoff_week_start),
+        pairs: sleeperPairs(entries),
+      };
+    });
+    teamIdByProviderId = new Map(
+      teams.flatMap((team) => (team.sleeperRosterId ? [[team.sleeperRosterId, team._id]] : [])),
+    );
+  } else if (season.yahooLeagueKey) {
+    const leagueKey = season.yahooLeagueKey;
+    weekPairs = await cachedYahoo(ctx, `pairs:yahoo:${leagueKey}:${week}`, maxAgeMs, () =>
+      withYahooToken(ctx, league.ownerId, async (accessToken) => {
+        const [settings, pairs] = await Promise.all([
+          fetchYahooLeagueSettings(accessToken, leagueKey),
+          fetchYahooWeekPairs(accessToken, leagueKey, week),
+        ]);
+        const regularSeasonEndWeek = yahooRegularSeasonEndWeek(settings.raw);
+        if (regularSeasonEndWeek === null) {
+          throw new Error("Couldn't find this league's playoff start week on Yahoo.");
+        }
+        return { regularSeasonEndWeek, pairs };
+      }),
+    );
+    teamIdByProviderId = new Map(
+      teams.flatMap((team) => (team.yahooTeamKey ? [[team.yahooTeamKey, team._id]] : [])),
+    );
+  } else if (season.espnLeagueId) {
+    const espnLeagueId = season.espnLeagueId;
+    const schedule = await cachedYahoo(
+      ctx,
+      `schedule:espn:${espnLeagueId}:${season.year}`,
+      SCHEDULE_CACHE_MS,
+      () => fetchEspnSchedule(espnLeagueId, season.year),
+    );
+    weekPairs = {
+      regularSeasonEndWeek: schedule.regularSeasonEndWeek,
+      pairs: schedule.matchups
+        .filter((matchup) => matchup.weeks.includes(week))
+        .map((matchup) => matchup.teams),
+    };
+    teamIdByProviderId = new Map(
+      teams.flatMap((team) => (team.espnTeamId ? [[team.espnTeamId, team._id]] : [])),
+    );
+  } else {
+    throw new Error("This league isn't linked to Sleeper, Yahoo, or ESPN yet.");
+  }
+
+  if (week > weekPairs.regularSeasonEndWeek) return { isPlayoffWeek: true, pairs: [] };
+  const pairs: [Id<"seasonTeams">, Id<"seasonTeams">][] = [];
+  for (const [aKey, bKey] of weekPairs.pairs) {
+    const a = teamIdByProviderId.get(aKey);
+    const b = teamIdByProviderId.get(bKey);
+    if (a && b) pairs.push([a, b]);
+  }
+  return { isPlayoffWeek: false, pairs };
 }

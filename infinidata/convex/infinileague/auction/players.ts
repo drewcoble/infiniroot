@@ -170,7 +170,7 @@ export const listManualCycleCandidates = query({
         .collect(),
       ctx.db
         .query("faAuctionFpidCycles")
-        .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+        .withIndex("by_season_fpid", (q) => q.eq("seasonId", args.seasonId))
         .collect(),
     ]);
     const unavailable = new Set([

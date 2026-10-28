@@ -30,7 +30,7 @@ export const getLeagueSharing = query({
 
     const collaborators = await ctx.db
       .query("leagueCollaborators")
-      .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+      .withIndex("by_league_user", (q) => q.eq("leagueId", league._id))
       .collect();
     const collaboratorRows = await Promise.all(
       collaborators.map(async (collaborator) => {
@@ -171,7 +171,7 @@ export const redeemLeagueInvite = mutation({
 
     const seasons = await ctx.db
       .query("seasons")
-      .withIndex("by_league", (q) => q.eq("leagueId", league._id))
+      .withIndex("by_league_year", (q) => q.eq("leagueId", league._id))
       .collect();
     const latestSeason = seasons.reduce<
       (typeof seasons)[number] | null

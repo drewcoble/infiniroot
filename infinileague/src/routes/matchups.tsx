@@ -1,5 +1,5 @@
-import { useEffect, useId, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 // useConvexAuth from convex/react, not @convex-dev/auth/react's - see
 // __root.tsx's comment on the same import.
 import { useAction, useConvexAuth, useQuery } from "convex/react";
@@ -10,37 +10,13 @@ import { getErrorMessage } from "@shared/errors";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { PageContainer } from "@shared/PageContainer";
 import { AppHeader } from "../components/AppHeader";
-import { GlassMatchupHeader } from "../components/cards/GlassMatchupHeader";
-import { GlassPopover } from "../components/cards/GlassPopover";
-import {
-  MatchupSummaryDetail,
-  type MatchupDetailTeam,
-} from "../components/cards/MatchupSummaryDetail";
-import { useExpandableCard } from "../components/cards/useExpandableCard";
-import cardClasses from "../components/cards/GlassMatchupCard.module.css";
-import detailClasses from "../components/cards/MatchupSummaryDetail.module.css";
+import { MatchupScoreCard } from "../components/MatchupScoreCard";
 import { useGuillotineOpponent } from "../hooks/useGuillotineOpponent";
 import { useTeamRoster } from "../hooks/useTeamRoster";
 import { setStoredLeagueId } from "../lib/leagueStorage";
-import { toMatchupCardData } from "../lib/matchupCardData";
-import {
-  LIVE_REFRESH_MS,
-  STARTER_SLOTS,
-  matchupHeaderTeam,
-  matchupResult,
-  sumStarterPoints,
-  winProbability,
-} from "../lib/matchupSummary";
-import {
-  isAnyGameLive,
-  isGameFinal,
-  liveProjection,
-  remainingFraction,
-  useNow,
-  type WeekGame,
-} from "../lib/liveGames";
-import { buildShortNames } from "../lib/shortPlayerName";
-import type { LinkedSeason, StandingsRow, TeamRosterRow } from "../types/season";
+import { LIVE_REFRESH_MS } from "../lib/matchupSummary";
+import { isAnyGameLive, isGameFinal, useNow, type WeekGame } from "../lib/liveGames";
+import type { LinkedSeason, StandingsRow } from "../types/season";
 
 export const Route = createFileRoute("/matchups")({
   component: MatchupsPage,
@@ -160,13 +136,11 @@ function MatchupsPage() {
   );
 }
 
-// One league's score header - the same opponent lookup and starter totals
-// as the Matchup tab (routes/league/$leagueId/matchup.tsx), minus the
-// per-player cards. No manual opponent picker for a bye week here: the
-// right side just stays "Opponent —", and tapping through to the league's
-// Matchup tab offers the picker. Long-press (or Space) opens
-// MatchupSummaryDetail: both teams' standing, starters playing right now,
-// top performers, and upcoming players.
+// One league's score card (MatchupScoreCard) - the same opponent lookup and
+// starter totals as the Matchup tab (routes/league/$leagueId/matchup.tsx),
+// minus the per-player cards. No manual opponent picker for a bye week
+// here: the right side just stays "Opponent —", and tapping through to the
+// league's Matchup tab offers the picker.
 function LeagueMatchup({
   season,
   context,
@@ -237,9 +211,6 @@ function LeagueMatchup({
   const teamARoster = useTeamRoster(teamAId, week, refreshMs);
   const teamBRoster = useTeamRoster(teamBId, week, refreshMs);
 
-  const liveProjFor = (row: TeamRosterRow) =>
-    liveProjection(row, remainingFraction(row.team ? gamesByTeam?.get(row.team) : undefined, now));
-  const actualFor = (row: TeamRosterRow) => row.actualPoints ?? 0;
   // This week's actual position rank per player - the detail's top
   // performers show it on their badges ("QB4"), same as the Matchup tab's
   // cards.
@@ -251,57 +222,11 @@ function LeagueMatchup({
     () => new Map((weekRanks ?? []).map((entry) => [entry.fpid, entry.rank])),
     [weekRanks],
   );
-  const toCardData = (row: TeamRosterRow) =>
-    toMatchupCardData(
-      row,
-      gamesByTeam,
-      now,
-      undefined,
-      row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
-    );
-  const gameStateFor = (row: TeamRosterRow) => toCardData(row).gameState;
 
   const nameA = self?.name ?? "Your team";
-  const nameB = standings?.find((row) => row.teamId === teamBId)?.name ?? "Opponent";
-  const projA = sumStarterPoints(teamARoster.rows, liveProjFor);
-  const actualA = sumStarterPoints(teamARoster.rows, actualFor);
-  const projB = sumStarterPoints(teamBRoster.rows, liveProjFor);
-  const actualB = sumStarterPoints(teamBRoster.rows, actualFor);
-  const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
-
+  const opponentRow = standings?.find((row) => row.teamId === teamBId);
+  const nameB = opponentRow?.name ?? "Opponent";
   const error = current?.error ?? teamARoster.error ?? teamBRoster.error;
-
-  const { cardProps, anchor, expanded, pressing, close } = useExpandableCard<HTMLAnchorElement>(
-    `${season.name} matchup: ${nameA} vs. ${teamBId !== null ? nameB : "no opponent"}`,
-    { asLink: true },
-  );
-  const titleId = useId();
-  // A guillotine league has no head-to-head games, so no meaningful rank
-  // or record - the header and detail leave both out.
-  const headToHead = !isGuillotine;
-  const standingFor = (teamId: string | null) =>
-    headToHead ? standings?.find((row) => row.teamId === teamId) : undefined;
-  const starters = (rows: TeamRosterRow[] | undefined) =>
-    (rows ?? [])
-      .filter((row) => row.fpid !== undefined && row.slot && STARTER_SLOTS.has(row.slot))
-      .map(toCardData);
-  const detailTeams: MatchupDetailTeam[] = [
-    { name: nameA, standing: self, starters: starters(teamARoster.rows) },
-    ...(teamBId !== null
-      ? [
-          {
-            name: nameB,
-            standing: standings?.find((row) => row.teamId === teamBId),
-            starters: starters(teamBRoster.rows),
-          },
-        ]
-      : []),
-  ];
-  const shortName = buildShortNames(
-    [...(teamARoster.rows ?? []), ...(teamBRoster.rows ?? [])].flatMap((row) =>
-      row.name ? [row.name] : [],
-    ),
-  );
 
   return (
     <Stack gap={6}>
@@ -313,74 +238,36 @@ function LeagueMatchup({
           Your team in this league isn&apos;t linked yet.
         </Text>
       ) : (
-        <Link
-          to="/league/$leagueId/matchup"
-          params={{ leagueId: season._id }}
-          {...cardProps}
-          onClick={(event) => {
-            cardProps.onClick(event);
-            if (!event.defaultPrevented) onOpen();
-          }}
-          className={[
-            detailClasses.cardLink,
-            cardClasses.pressable,
-            pressing && cardClasses.pressing,
-            expanded && cardClasses.hidden,
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          style={{ display: "block", color: "inherit", textDecoration: "none" }}
-        >
-          <GlassMatchupHeader
-            teamA={
-              teamARoster.rows === undefined
-                ? "loading"
-                : matchupHeaderTeam(
-                    nameA,
-                    teamARoster.rows,
-                    actualA,
-                    projA,
-                    gameStateFor,
-                    headToHead ? self : undefined,
-                    self?.logoUrl,
-                  )
-            }
-            teamB={
-              current === undefined || (teamBId !== null && teamBRoster.rows === undefined)
-                ? "loading"
-                : teamBId !== null
-                  ? matchupHeaderTeam(
-                      nameB,
-                      teamBRoster.rows,
-                      actualB,
-                      projB,
-                      gameStateFor,
-                      standingFor(teamBId),
-                      standings?.find((row) => row.teamId === teamBId)?.logoUrl,
-                    )
-                  : null
-            }
-            winProbA={matchupReady ? winProbability(projA, projB) : null}
-            result={
-              weekComplete && matchupReady
-                ? matchupResult(nameA, actualA, nameB, actualB)
-                : undefined
-            }
-          />
-        </Link>
-      )}
-      {anchor && (
-        <GlassPopover anchor={anchor} onClose={close} labelledBy={titleId}>
-          <MatchupSummaryDetail
-            title={season.name}
-            titleId={titleId}
-            subtitle={`Week ${week}`}
-            teams={detailTeams}
-            headToHead={headToHead}
-            shortName={shortName}
-            onClose={close}
-          />
-        </GlassPopover>
+        <MatchupScoreCard
+          leagueId={season._id}
+          search={{}}
+          title={season.name}
+          ariaLabel={`${season.name} matchup: ${nameA} vs. ${
+            teamBId !== null ? nameB : "no opponent"
+          }`}
+          week={week}
+          teamA={{ name: nameA, rows: teamARoster.rows, standing: self, logoUrl: self?.logoUrl }}
+          teamB={
+            current === undefined
+              ? "loading"
+              : teamBId !== null
+                ? {
+                    name: nameB,
+                    rows: teamBRoster.rows,
+                    standing: opponentRow,
+                    logoUrl: opponentRow?.logoUrl,
+                  }
+                : null
+          }
+          gamesByTeam={gamesByTeam}
+          now={now}
+          weekComplete={weekComplete}
+          weekRankByFpid={weekRankByFpid}
+          // A guillotine league has no head-to-head games, so no meaningful
+          // rank or record - the header and detail leave both out.
+          headToHead={!isGuillotine}
+          onOpen={onOpen}
+        />
       )}
       {error && (
         <Text size="xs" c="red">

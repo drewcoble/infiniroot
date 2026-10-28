@@ -115,7 +115,7 @@ export const getTeamDepthChart = query({
   handler: async (ctx, args): Promise<DepthChartPlayerRow[]> => {
     const rows = await ctx.db
       .query("depthCharts")
-      .withIndex("by_team", (q) => q.eq("team", args.team))
+      .withIndex("by_team_position", (q) => q.eq("team", args.team))
       .collect();
 
     const players = await Promise.all(

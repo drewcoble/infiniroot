@@ -224,7 +224,23 @@ export async function gatherPowerRankingsInputs(
     (rows) => new Map(rows.map((row) => [row.fpid, row])),
   );
 
-  return { season, currentWeek, teams, eligibleFpidsByTeam, positionByFpid, projectionMapsByWeek };
+  // A guillotine league's cut teams have empty rosters (their players hit
+  // waivers) - the same signal eliminationWatch.ts uses - so they're left
+  // out of every ranking built from these inputs rather than sitting at the
+  // bottom on 0 points.
+  const activeTeams =
+    season.leagueType === "guillotine"
+      ? teams.filter((team) => (eligibleFpidsByTeam.get(team._id)?.length ?? 0) > 0)
+      : teams;
+
+  return {
+    season,
+    currentWeek,
+    teams: activeTeams,
+    eligibleFpidsByTeam,
+    positionByFpid,
+    projectionMapsByWeek,
+  };
 }
 
 // One week's LineupPick list for a given fpid list - shared by

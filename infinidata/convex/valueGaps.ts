@@ -211,14 +211,14 @@ async function computeValueGaps(
   for (const position of VALUE_GAP_POSITIONS) {
     const projections = await ctx.db
       .query("projections")
-      .withIndex("by_position_week", (q) =>
+      .withIndex("by_position_week_fpid", (q) =>
         q.eq("position", position).eq("week", args.week),
       )
       .collect();
 
     const rankings = await ctx.db
       .query("rankings")
-      .withIndex("by_position_week", (q) =>
+      .withIndex("by_position_week_fpid", (q) =>
         q.eq("position", position).eq("week", args.week),
       )
       .collect();

@@ -568,7 +568,7 @@ export const addKeeper = mutation({
     if (keeperRules?.maxKeepersPerTeam !== undefined) {
       const teamPicks = await ctx.db
         .query("draftPicks")
-        .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+        .withIndex("by_draft_sequence", (q) => q.eq("draftId", draft._id))
         .collect();
       const teamKeeperCount = teamPicks.filter(
         (p) => p.isKeeper && p.teamId === args.teamId,
@@ -603,7 +603,7 @@ export const addKeeper = mutation({
       const reversalRounds = draft.reversalRounds ?? [];
       const allPicks = await ctx.db
         .query("draftPicks")
-        .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+        .withIndex("by_draft_sequence", (q) => q.eq("draftId", draft._id))
         .collect();
       const forfeited = await forfeitedPositions(
         ctx,
@@ -800,7 +800,7 @@ export const setKeeperRound = mutation({
     const reversalRounds = draft.reversalRounds ?? [];
     const otherPicks = await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", draft._id))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", draft._id))
       .collect();
     const forfeited = await forfeitedPositions(
       ctx,
@@ -878,7 +878,7 @@ export const setKeeperTeam = mutation({
     }
     const teamPicks = await ctx.db
       .query("draftPicks")
-      .withIndex("by_draft", (q) => q.eq("draftId", pick.draftId))
+      .withIndex("by_draft_sequence", (q) => q.eq("draftId", pick.draftId))
       .collect();
     if (season.keeperRules?.maxKeepersPerTeam !== undefined) {
       const teamKeeperCount = teamPicks.filter(

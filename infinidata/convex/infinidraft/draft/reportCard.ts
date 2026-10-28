@@ -439,7 +439,7 @@ async function computeReportCardData(
     for (const position of CALLOUT_POSITIONS) {
       const rankings = await ctx.db
         .query("rankings")
-        .withIndex("by_position_week", (q) =>
+        .withIndex("by_position_week_fpid", (q) =>
           q.eq("position", position).eq("week", args.week),
         )
         .collect();

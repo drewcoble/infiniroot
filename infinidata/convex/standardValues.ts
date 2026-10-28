@@ -76,6 +76,11 @@ export const upsertEspnValues = internalMutation({
         .first();
 
       if (existing) {
+        // Skip unchanged rows - ESPN's values barely move day to day, and a
+        // fetchedAt-only patch would still cost a full document write.
+        if (existing.rank === row.rank && existing.auctionValue === row.auctionValue) {
+          continue;
+        }
         await ctx.db.patch(existing._id, {
           rank: row.rank,
           auctionValue: row.auctionValue,

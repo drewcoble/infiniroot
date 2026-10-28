@@ -17,7 +17,7 @@ export const replaceWaiverPlayersForSeason = internalMutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("waiverPlayers")
-      .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+      .withIndex("by_season_fpid", (q) => q.eq("seasonId", args.seasonId))
       .collect();
     for (const row of existing) {
       await ctx.db.delete(row._id);
