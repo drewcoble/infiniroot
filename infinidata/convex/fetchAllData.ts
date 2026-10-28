@@ -82,11 +82,19 @@ async function refreshCachedComputations(
   // per scoring setup, not per season (see rosVor.ts's refreshAllRosVor).
   await refreshAllRosVor(ctx, { seasons });
 
+  // Every draftValues reader asks for the pre-season "0" board (infinidraft's
+  // WEEK, the report card's REPORT_CARD_WEEK, pre-draft insights), so an
+  // in-season week's board would never be read - skip the refresh outside
+  // the pre/off-season. A completed draft's board is skipped too: it's only
+  // looked at after the fact, so it doesn't need to track daily projection
+  // moves (a keeper/settings edit still invalidates it, and the next read
+  // recomputes - see draftValues.ts's invalidateDraftValues).
+  if (args.week !== "0") return;
   for (const season of seasons) {
     const draft = await ctx.runQuery(internal.infinidraft.draft.fetchHelpers.getRealDraftInternal, {
       seasonId: season._id,
     });
-    if (!draft) continue;
+    if (!draft || draft.status === "complete") continue;
     await ctx.runMutation(internal.draftValues.refreshDraftValues, {
       draftId: draft._id,
       week: args.week,
