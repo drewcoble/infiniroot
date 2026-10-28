@@ -227,6 +227,18 @@
   text-overflow: ellipsis;
 }
 
+/* Matchup difficulty (lib/matchupDifficulty.ts) - the opponent and its
+   number in the pace colors. The number says the same thing as the color. */
+.matchup_easy {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.matchup_hard {
+  color: #f87171;
+  font-weight: 600;
+}
+
 /* A live game's clock in the game line ("Q3 2:58") - the dot-matrix
    scoreboard font, at the line's own size, pushed to the row's right
    edge (see GameLineText). */

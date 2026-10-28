@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Position } from "@shared/positionColors";
+import { formatMatchupFactor, type MatchupGrade } from "../../lib/matchupDifficulty";
 
 // Shared by the base Matchup card (GlassMatchupCard.tsx) and its long-press
 // detail card (components/player/PlayerPopover.tsx).
@@ -45,6 +46,10 @@ export interface GlassMatchupCardData {
   // the position - recomputed from each live scoring poll, so it moves
   // during games. Only shown once their game has started (see badgeRank).
   weekActualPositionRank?: number;
+  // This week's opponent's matchup grade at his position (lib/
+  // matchupDifficulty.ts) - absent before week 5, on a bye, or while
+  // loading. Colors the game line when its tier isn't neutral.
+  matchupGrade?: MatchupGrade;
 }
 
 // The rank on the position badge: this week's actual rank once their game
@@ -141,6 +146,9 @@ export function ariaSummary(data: GlassMatchupCardData): string {
     `${data.team} ${gameLine(data)}`,
   ];
   if (data.gameState === "live") parts.push("game in progress");
+  if (data.matchupGrade && data.matchupGrade.tier !== "neutral") {
+    parts.push(`${data.matchupGrade.tier} matchup, ${formatMatchupFactor(data.matchupGrade.factor)}`);
+  }
   if (data.injury) parts.push(data.injury.status);
   parts.push(`${formatPoints(data.actualPoints)} points`);
   parts.push(`projected ${formatProj(data.projectedPoints)}`);

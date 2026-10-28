@@ -78,6 +78,7 @@ import type * as infinileague_season_eliminationWatch from "../infinileague/seas
 import type * as infinileague_season_faabValues from "../infinileague/season/faabValues.js";
 import type * as infinileague_season_gameLog from "../infinileague/season/gameLog.js";
 import type * as infinileague_season_matchup from "../infinileague/season/matchup.js";
+import type * as infinileague_season_matchupDifficulty from "../infinileague/season/matchupDifficulty.js";
 import type * as infinileague_season_playoffs from "../infinileague/season/playoffs.js";
 import type * as infinileague_season_powerRankings from "../infinileague/season/powerRankings.js";
 import type * as infinileague_season_projectedStandings from "../infinileague/season/projectedStandings.js";
@@ -232,6 +233,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/faabValues": typeof infinileague_season_faabValues;
   "infinileague/season/gameLog": typeof infinileague_season_gameLog;
   "infinileague/season/matchup": typeof infinileague_season_matchup;
+  "infinileague/season/matchupDifficulty": typeof infinileague_season_matchupDifficulty;
   "infinileague/season/playoffs": typeof infinileague_season_playoffs;
   "infinileague/season/powerRankings": typeof infinileague_season_powerRankings;
   "infinileague/season/projectedStandings": typeof infinileague_season_projectedStandings;

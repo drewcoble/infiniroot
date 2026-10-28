@@ -25,6 +25,7 @@ import {
 } from "../../../../lib/liveGames";
 import { seasonPositionRanks } from "../../../../lib/seasonPositionRanks";
 import { toMatchupCardData } from "../../../../lib/matchupCardData";
+import { useMatchupGrades } from "../../../../lib/matchupDifficulty";
 import { LineupSuggestionsCard } from "../../../../components/LineupSuggestionsCard";
 import type {
   LinkedSeason,
@@ -178,6 +179,9 @@ function TeamPage() {
     [weekRanks],
   );
 
+  // Each player's opponent's matchup grade (from week 5 on).
+  const matchupGrades = useMatchupGrades(seasonId, week);
+
   const toCardData = (row: TeamRosterRow) =>
     toMatchupCardData(
       row,
@@ -186,6 +190,7 @@ function TeamPage() {
       row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? seasonPositionRankByFpid.get(row.fpid) : undefined,
+      matchupGrades,
     );
 
   // The week's starters in header form: score, projection, and how many

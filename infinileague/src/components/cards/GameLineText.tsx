@@ -1,3 +1,4 @@
+import { formatMatchupFactor } from "../../lib/matchupDifficulty";
 import type { GlassMatchupCardData } from "./cardShared";
 import classes from "./GlassMatchupCard.module.css";
 
@@ -8,6 +9,8 @@ import classes from "./GlassMatchupCard.module.css";
 // for the "·". `prefix` (the detail card's NFL team) leads the matchup.
 // `statusInTopRow`: the card shows a live clock / "FINAL" in its top row
 // instead, so a live or finished game's line is just the matchup.
+// An easy/hard matchup grade colors the opponent green/red and adds its
+// number ("vs. KC +5%"); a neutral one leaves the line as-is.
 export function GameLineText({
   data,
   prefix,
@@ -17,7 +20,19 @@ export function GameLineText({
   prefix?: string;
   statusInTopRow?: boolean;
 }) {
-  const matchup = prefix ? `${prefix} ${data.matchup}` : data.matchup;
+  const grade = data.matchupGrade?.tier !== "neutral" ? data.matchupGrade : undefined;
+  const matchup = (
+    <>
+      {prefix ? `${prefix} ` : ""}
+      {grade ? (
+        <span className={classes[`matchup_${grade.tier}`]}>
+          {data.matchup} {formatMatchupFactor(grade.factor)}
+        </span>
+      ) : (
+        data.matchup
+      )}
+    </>
+  );
   if (statusInTopRow && (data.gameState === "live" || data.gameState === "final")) {
     return <span className={classes.gameLineText}>{matchup}</span>;
   }
@@ -31,7 +46,8 @@ export function GameLineText({
   }
   return (
     <span className={classes.gameLineText}>
-      {data.status ? `${matchup} · ${data.status}` : matchup}
+      {matchup}
+      {data.status ? ` · ${data.status}` : ""}
     </span>
   );
 }

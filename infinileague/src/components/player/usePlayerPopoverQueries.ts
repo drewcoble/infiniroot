@@ -3,6 +3,7 @@ import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
 import type { WeekGame } from "../../lib/liveGames";
+import { useMatchupGrades } from "../../lib/matchupDifficulty";
 import type { FaabSuggestionsResult, RosVorRow, StandingsRow } from "../../types/season";
 
 interface NflState {
@@ -50,6 +51,8 @@ export function usePlayerPopoverQueries(fpid: number | undefined, enabled: boole
     api.sleeper.livePoints.getWeekGames,
     live && nflState && week ? { season: nflState.season, week } : "skip",
   );
+  // Same args as the Matchup/team pages', so it's usually already loaded.
+  const matchupGrades = useMatchupGrades(live ? seasonId : undefined, week);
   const rookieFpids = useQuery(api.players.getRookieFpids, live ? {} : "skip");
   const byeWeeks: Record<string, number> | undefined = useQuery(
     api.nflSchedule.getByeWeeks,
@@ -90,6 +93,7 @@ export function usePlayerPopoverQueries(fpid: number | undefined, enabled: boole
     weekPoints,
     weekRanks,
     weekGames,
+    matchupGrades,
     rookieFpids,
     byeWeeks,
     faab,
