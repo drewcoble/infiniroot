@@ -10,7 +10,7 @@ import classes from "./GlassMatchupCard.module.css";
 // `statusInTopRow`: the card shows a live clock / "FINAL" in its top row
 // instead, so a live or finished game's line is just the matchup.
 // A matchup grade adds the defense's rank against his position, 1st =
-// easiest ("vs. KC 2nd"), and an easy/hard one colors it green/red.
+// easiest ("@ MIA (9th)"), and an easy/hard one colors it green/red.
 export function GameLineText({
   data,
   prefix,
@@ -26,7 +26,7 @@ export function GameLineText({
       {prefix ? `${prefix} ` : ""}
       {grade ? (
         <span className={classes[`matchup_${grade.tier}`]}>
-          {data.matchup} {ordinal(grade.rank)}
+          {data.matchup} ({ordinal(grade.rank)})
         </span>
       ) : (
         data.matchup
