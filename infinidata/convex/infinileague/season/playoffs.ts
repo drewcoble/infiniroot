@@ -247,6 +247,31 @@ async function fetchYahooPlayoffs(
   };
 }
 
+// Seeds for a bracket whose provider doesn't give them (Sleeper, Yahoo):
+// the bracket's teams in getStandings' order. On Sleeper that matched the
+// real seeding in all five brackets checked (four leagues, one with
+// divisions, plus a finished season) - its records are regular-season
+// only, so this holds through the playoffs. Unchecked on Yahoo.
+function withStandingsSeeds(tournament: Tournament, teams: Doc<"seasonTeams">[]): Tournament {
+  const entrants = tournament.rounds.flatMap((round) =>
+    round.games.flatMap((game) => game.entrants),
+  );
+  if (entrants.some((entrant) => entrant.seed !== null)) return tournament;
+  const inBracket = new Set(
+    entrants.flatMap((entrant) => (entrant.teamId ? [entrant.teamId] : [])),
+  );
+  const seedByTeam = new Map(
+    teams
+      .filter((team) => inBracket.has(team._id))
+      .sort(compareStandings)
+      .map((team, index) => [team._id, index + 1]),
+  );
+  for (const entrant of entrants) {
+    if (entrant.teamId) entrant.seed = seedByTeam.get(entrant.teamId) ?? null;
+  }
+  return tournament;
+}
+
 // The league's playoff picture - where the regular season ends, and each
 // tournament's bracket - read live from the provider and reused for a few
 // minutes (an hour on Yahoo). Shared with matchup.ts's playoff weeks.
@@ -349,7 +374,12 @@ export async function loadPlayoffs(
     }
   }
   const tournaments = championshipBracket
-    ? [buildTournament("championship", "Championship", championshipBracket, idMap, currentWeek)]
+    ? [
+        withStandingsSeeds(
+          buildTournament("championship", "Championship", championshipBracket, idMap, currentWeek),
+          teams,
+        ),
+      ]
     : [];
   const championship = tournaments[0];
   const phase: SeasonPhase =
