@@ -139,6 +139,9 @@ export interface LeaguePlayoffs {
   playoffTeamCount: number;
   currentWeek: number;
   phase: SeasonPhase;
+  // provider = the provider's bracket (set, or Sleeper's projection);
+  // current/projected = seeded from today's / projected final standings.
+  seeding: "provider" | "current" | "projected";
   tournaments: Tournament[];
 }
 

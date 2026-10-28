@@ -45,7 +45,11 @@ function EntrantRow({
     );
   }
   const outcome =
-    game.winnerTeamId === null ? "" : game.winnerTeamId === entrant.teamId ? classes.winner : classes.loser;
+    game.winnerTeamId === null
+      ? ""
+      : game.winnerTeamId === entrant.teamId
+        ? classes.winner
+        : classes.loser;
   return (
     <div className={`${classes.entrant} ${outcome}`}>
       {entrant.seed !== null && (
@@ -55,7 +59,9 @@ function EntrantRow({
       )}
       <TeamLogo name={standing.name} logoUrl={standing.logoUrl} size={22} />
       <span className={classes.name}>{standing.name}</span>
-      {entrant.points !== null && <span className={classes.points}>{entrant.points.toFixed(2)}</span>}
+      {entrant.points !== null && (
+        <span className={classes.points}>{entrant.points.toFixed(2)}</span>
+      )}
     </div>
   );
 }
@@ -110,8 +116,8 @@ function TournamentBracket({
 }
 
 // The league's playoff tournaments, one bracket each (just the championship
-// for now). Before the bracket is set it's either Sleeper's projection from
-// today's standings, or a note on when it will be.
+// for now). Before the bracket is set it's seeded from today's standings
+// (or projected final ones) - see playoffs.ts's loadPlayoffs.
 export function PlayoffBracket({
   playoffs,
   standings,
@@ -138,7 +144,10 @@ export function PlayoffBracket({
             )}
             {playoffs.phase === "regular" && (
               <div className={classes.note}>
-                Projected from today&apos;s standings · starts week {playoffStartWeek}
+                {playoffs.seeding === "projected"
+                  ? "Seeded by projected final standings"
+                  : "If the season ended today"}{" "}
+                · starts week {playoffStartWeek}
               </div>
             )}
             <TournamentBracket tournament={tournament} standingByTeam={standingByTeam} />

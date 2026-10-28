@@ -160,3 +160,55 @@ export function buildTournament(
 export function bracketRoundCount(teamCount: number): number {
   return teamCount > 1 ? Math.ceil(Math.log2(teamCount)) : 0;
 }
+
+// Bracket slot order for a power-of-two bracket - 1 v 8, 4 v 5, 2 v 7,
+// 3 v 6 for eight - so the top seeds can only meet in the final.
+function seedSlotOrder(size: number): number[] {
+  let order = [1];
+  while (order.length < size) {
+    const next = order.length * 2 + 1;
+    order = order.flatMap((seed) => [seed, next - seed]);
+  }
+  return order;
+}
+
+// A standard single-elimination bracket (no reseeding) from teams in seed
+// order, top seeds getting the byes - for a bracket the provider hasn't
+// set yet, seeded from current or projected standings.
+export function seededBracket(seedOrder: string[], roundWeeks: number[][]): ProviderBracket {
+  const roundCount = roundWeeks.length;
+  const teamCount = Math.min(seedOrder.length, 2 ** roundCount);
+  const games: ProviderBracketGame[] = [];
+  // Each slot is a team (a bye) or the game it's fed by.
+  let slots: { team: string | null; from: string | null }[] = seedSlotOrder(2 ** roundCount).map(
+    (seed) => ({ team: seed <= teamCount ? seedOrder[seed - 1]! : null, from: null }),
+  );
+  for (let round = 1; round <= roundCount; round++) {
+    const next: typeof slots = [];
+    for (let i = 0; i < slots.length; i += 2) {
+      const a = slots[i]!;
+      const b = slots[i + 1]!;
+      // Round 1 against an empty slot is a bye straight to round 2.
+      if (round === 1 && (a.team === null || b.team === null)) {
+        next.push({ team: a.team ?? b.team, from: null });
+        continue;
+      }
+      const id = `r${round}g${games.filter((game) => game.round === round).length + 1}`;
+      games.push({
+        id,
+        round,
+        teams: [a.team, b.team],
+        points: [null, null],
+        winner: null,
+        from: [a.from, b.from],
+      });
+      next.push({ team: null, from: id });
+    }
+    slots = next;
+  }
+  return {
+    roundWeeks,
+    games,
+    seeds: Object.fromEntries(seedOrder.slice(0, teamCount).map((team, i) => [team, i + 1])),
+  };
+}

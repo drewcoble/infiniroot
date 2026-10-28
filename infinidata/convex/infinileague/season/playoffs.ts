@@ -12,9 +12,11 @@ import {
 } from "../../infinidraft/yahoo/league";
 import { withYahooToken } from "../../infinidraft/yahoo/oauth";
 import { cachedYahoo } from "../../infinidraft/yahoo/cache";
+import { compareStandings } from "./standings";
 import {
   bracketRoundCount,
   buildTournament,
+  seededBracket,
   type ProviderBracket,
   type ProviderBracketGame,
   type Tournament,
@@ -28,6 +30,11 @@ const YAHOO_PLAYOFFS_CACHE_MS = 60 * 60 * 1000;
 
 export type SeasonPhase = "regular" | "playoffs" | "complete";
 
+// Where the bracket's teams come from: the provider's own bracket (set,
+// or Sleeper's all-season projection), today's standings, or projected
+// final standings.
+export type BracketSeeding = "provider" | "current" | "projected";
+
 export interface LeaguePlayoffs {
   // False for a league with no playoffs (guillotine, or turned off).
   hasPlayoffs: boolean;
@@ -35,9 +42,11 @@ export interface LeaguePlayoffs {
   playoffTeamCount: number;
   currentWeek: number;
   phase: SeasonPhase;
-  // Championship first. Empty rounds until the provider sets the bracket -
-  // except Sleeper, whose bracket is filled in from current standings all
-  // season (phase "regular" then means "if the season ended today").
+  seeding: BracketSeeding;
+  // Championship first. Before the provider sets the bracket it's seeded
+  // from current standings - Sleeper's own, which it fills in all season,
+  // else the provider's current seeds or getStandings' order - or from
+  // projected final standings when asked.
   tournaments: Tournament[];
 }
 
@@ -47,6 +56,9 @@ interface ProviderPlayoffs {
   playoffTeamCount: number;
   // Null when the league has no playoffs.
   championship: ProviderBracket | null;
+  // Every team's current seed, where the provider has one before the
+  // bracket is set (ESPN).
+  currentSeeds?: Record<string, number>;
 }
 
 // Sleeper's bracket endpoints - verified live (Shadynasty's 2025 and 2026):
@@ -80,7 +92,10 @@ function sleeperRoundWeeks(startWeek: number, roundCount: number, roundType: num
   });
 }
 
-async function fetchSleeperPlayoffs(leagueId: string, currentWeek: number): Promise<ProviderPlayoffs> {
+async function fetchSleeperPlayoffs(
+  leagueId: string,
+  currentWeek: number,
+): Promise<ProviderPlayoffs> {
   const settings = await fetchSleeperLeagueSettings(leagueId);
   const startWeek = settings.settings?.playoff_week_start ?? 0;
   const teamCount = settings.settings?.playoff_teams ?? 0;
@@ -93,7 +108,11 @@ async function fetchSleeperPlayoffs(leagueId: string, currentWeek: number): Prom
   // Title path only - placement games carry a p other than 1.
   const titleEntries = (entries ?? []).filter((entry) => entry.p === undefined || entry.p === 1);
   const roundCount = Math.max(bracketRoundCount(teamCount), ...titleEntries.map((e) => e.r));
-  const roundWeeks = sleeperRoundWeeks(startWeek, roundCount, settings.settings?.playoff_round_type ?? 0);
+  const roundWeeks = sleeperRoundWeeks(
+    startWeek,
+    roundCount,
+    settings.settings?.playoff_round_type ?? 0,
+  );
 
   // Each roster's points per started playoff week, summed over a round's
   // weeks below.
@@ -143,7 +162,11 @@ async function fetchEspnPlayoffs(espnLeagueId: string, year: string): Promise<Pr
     ...(schedule.matchupPeriods[String(schedule.regularSeasonPeriodCount)] ?? []),
   );
   if (schedule.playoffTeamCount < 2 || regularSeasonEndWeek === 0) {
-    return { regularSeasonEndWeek: regularSeasonEndWeek || 18, playoffTeamCount: 0, championship: null };
+    return {
+      regularSeasonEndWeek: regularSeasonEndWeek || 18,
+      playoffTeamCount: 0,
+      championship: null,
+    };
   }
   const roundCount = bracketRoundCount(schedule.playoffTeamCount);
   // Playoff matchup periods follow the regular season's, each round its own
@@ -179,6 +202,9 @@ async function fetchEspnPlayoffs(espnLeagueId: string, year: string): Promise<Pr
     regularSeasonEndWeek,
     playoffTeamCount: schedule.playoffTeamCount,
     championship: { roundWeeks, games, seeds },
+    // ESPN's playoffSeed tracks the standings all season - confirmed live
+    // mid-season on league 164483.
+    currentSeeds: schedule.seeds,
   };
 }
 
@@ -230,6 +256,9 @@ export async function loadPlayoffs(
   league: Doc<"leagues">,
   teams: Doc<"seasonTeams">[],
   currentWeek: number,
+  // Teams in projected final standings order - seeds the bracket instead
+  // of today's standings while it isn't set.
+  projectedOrder?: Id<"seasonTeams">[] | undefined,
 ): Promise<LeaguePlayoffs> {
   let playoffs: ProviderPlayoffs;
   let teamIdByProviderId: Map<string, Id<"seasonTeams">>;
@@ -241,6 +270,7 @@ export async function loadPlayoffs(
       playoffTeamCount: 0,
       currentWeek,
       phase: "regular",
+      seeding: "provider",
       tournaments: [],
     };
   }
@@ -284,16 +314,42 @@ export async function loadPlayoffs(
     throw new Error("This league isn't linked to Sleeper, Yahoo, or ESPN yet.");
   }
 
-  const tournaments = playoffs.championship
-    ? [
-        buildTournament(
-          "championship",
-          "Championship",
-          playoffs.championship,
-          teamIdByProviderId,
-          currentWeek,
-        ),
-      ]
+  // Not set yet: seeded here, in seasonTeams ids (so an identity map).
+  // Sleeper's all-season projection stands in for today's standings.
+  let championshipBracket = playoffs.championship;
+  let idMap = teamIdByProviderId;
+  let seeding: BracketSeeding = "provider";
+  const bracketSet =
+    championshipBracket !== null &&
+    (currentWeek > playoffs.regularSeasonEndWeek ||
+      (championshipBracket.games.length > 0 && !season.sleeperLeagueId));
+  if (championshipBracket && !bracketSet) {
+    const providerIdByTeamId = new Map([...teamIdByProviderId].map(([key, id]) => [id, key]));
+    const providerSeed = (team: Doc<"seasonTeams">) => {
+      const key = providerIdByTeamId.get(team._id);
+      return key !== undefined ? playoffs.currentSeeds?.[key] : undefined;
+    };
+    let order: Id<"seasonTeams">[] | null = null;
+    if (projectedOrder) {
+      order = projectedOrder;
+      seeding = "projected";
+    } else if (championshipBracket.games.length === 0) {
+      const sorted = teams.every((team) => providerSeed(team) !== undefined)
+        ? [...teams].sort((a, b) => providerSeed(a)! - providerSeed(b)!)
+        : [...teams].sort(compareStandings);
+      order = sorted.map((team) => team._id);
+      seeding = "current";
+    }
+    if (order) {
+      championshipBracket = seededBracket(
+        order.slice(0, playoffs.playoffTeamCount),
+        championshipBracket.roundWeeks,
+      );
+      idMap = new Map(teams.map((team) => [team._id as string, team._id]));
+    }
+  }
+  const tournaments = championshipBracket
+    ? [buildTournament("championship", "Championship", championshipBracket, idMap, currentWeek)]
     : [];
   const championship = tournaments[0];
   const phase: SeasonPhase =
@@ -306,13 +362,19 @@ export async function loadPlayoffs(
     playoffTeamCount: playoffs.playoffTeamCount,
     currentWeek,
     phase,
+    seeding,
     tournaments,
   };
 }
 
 // The league's playoffs for the Standings tab - see loadPlayoffs.
+// projectedOrder is getProjectedStandings' order, which the client already
+// has, rather than recomputing it here.
 export const getPlayoffs = action({
-  args: { seasonId: v.id("seasons") },
+  args: {
+    seasonId: v.id("seasons"),
+    projectedOrder: v.optional(v.array(v.id("seasonTeams"))),
+  },
   handler: async (ctx: ActionCtx, args): Promise<LeaguePlayoffs> => {
     const { season, league } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
       seasonId: args.seasonId,
@@ -321,7 +383,14 @@ export const getPlayoffs = action({
       ctx.runQuery(internal.seasonTeams.listSeasonTeamsInternal, { seasonId: args.seasonId }),
       ctx.runQuery(api.nflState.getNflState, {}),
     ]);
-    return await loadPlayoffs(ctx, season, league, teams, currentWeekFor(season, nflState));
+    return await loadPlayoffs(
+      ctx,
+      season,
+      league,
+      teams,
+      currentWeekFor(season, nflState),
+      args.projectedOrder,
+    );
   },
 });
 

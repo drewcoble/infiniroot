@@ -93,6 +93,13 @@ function LeaguePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, isAuthenticated, season === undefined, isGuillotine]);
 
+  // Before the bracket is set: seed it from today's standings or the
+  // projected final ones.
+  const [bracketSeeding, setBracketSeeding] = useState<"current" | "projected">("current");
+  const [projectedPlayoffs, setProjectedPlayoffs] = useState<
+    { leagueId: string; data?: LeaguePlayoffs; error?: string } | undefined
+  >(undefined);
+
   const tableView =
     manualTableView ??
     (isGuillotine
@@ -156,8 +163,12 @@ function LeaguePage() {
   >(null);
   const projectedLoadedRef = useRef<string | null>(null);
 
+  // Also wanted by the playoff bracket's projected seeding.
+  const wantsProjected =
+    tableView === "projected" || (tableView === "playoffs" && bracketSeeding === "projected");
+
   useEffect(() => {
-    if (!isAuthenticated || tableView !== "projected") return;
+    if (!isAuthenticated || !wantsProjected) return;
     if (projectedLoadedRef.current === leagueId) return;
     projectedLoadedRef.current = leagueId;
     setProjectedStandings(undefined);
@@ -171,7 +182,21 @@ function LeaguePage() {
       );
     // Same dep convention as the getPowerRankings effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueId, isAuthenticated, tableView]);
+  }, [leagueId, isAuthenticated, wantsProjected]);
+
+  // The bracket seeded by projected final standings, once they're in.
+  useEffect(() => {
+    if (!isAuthenticated || !wantsProjected || tableView !== "playoffs") return;
+    if (!projectedStandings || projectedPlayoffs?.leagueId === leagueId) return;
+    setProjectedPlayoffs({ leagueId });
+    const projectedOrder = projectedStandings.map((row) => row.teamId as Id<"seasonTeams">);
+    getPlayoffs({ seasonId, projectedOrder })
+      .then((data) => setProjectedPlayoffs({ leagueId, data }))
+      .catch((err) =>
+        setProjectedPlayoffs({ leagueId, error: getErrorMessage(err, "Failed to load playoffs.") }),
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated, wantsProjected, tableView, projectedStandings]);
 
   const getEliminationWatch = useAction(
     api.infinileague.season.eliminationWatch.getEliminationWatch,
@@ -427,17 +452,44 @@ function LeaguePage() {
           )}
         </>
       ) : tableView === "playoffs" ? (
-        playoffsError ? (
-          <Alert color="red">{playoffsError}</Alert>
-        ) : playoffs === undefined || standings === undefined ? (
-          <Stack gap={8}>
-            {Array.from({ length: 6 }, (_, index) => (
-              <GlassRosterSkeletonCard key={index} />
-            ))}
-          </Stack>
-        ) : (
-          <PlayoffBracket playoffs={playoffs} standings={standings} />
-        )
+        (() => {
+          // Seeding only means anything before the bracket is set.
+          const seedable = playoffs?.hasPlayoffs === true && playoffs.phase === "regular";
+          const projected = seedable && bracketSeeding === "projected";
+          const projectedForLeague =
+            projectedPlayoffs?.leagueId === leagueId ? projectedPlayoffs : undefined;
+          const shown = projected ? projectedForLeague?.data : playoffs;
+          const error = projected
+            ? (projectedStandingsError ?? projectedForLeague?.error)
+            : playoffsError;
+          return (
+            <>
+              {seedable && (
+                <GlassSegmented
+                  compact
+                  label="Bracket seeding"
+                  value={bracketSeeding}
+                  onChange={setBracketSeeding}
+                  options={[
+                    { label: "Today", value: "current" },
+                    { label: "Projected", value: "projected" },
+                  ]}
+                />
+              )}
+              {error ? (
+                <Alert color="red">{error}</Alert>
+              ) : shown === undefined || standings === undefined ? (
+                <Stack gap={8}>
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <GlassRosterSkeletonCard key={index} />
+                  ))}
+                </Stack>
+              ) : (
+                <PlayoffBracket playoffs={shown} standings={standings} />
+              )}
+            </>
+          );
+        })()
       ) : tableView === "standings" ? (
         standings === undefined ? (
           <Stack gap={8}>
