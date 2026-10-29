@@ -2,8 +2,9 @@ import { v } from "convex/values";
 import { action, internalAction, ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { POSITIONS } from "../positions";
-import { refreshDefenseMatchups } from "../defenseMatchups";
-import { refreshWeekPositionRanks } from "../weekPositionRanks";
+import { refreshDefenseMatchups, toMatchupGameRows } from "../defenseMatchups";
+import { hashJson } from "../lib/syncHash";
+import { refreshWeekPositionRanks, scoringConfigsInUse } from "../weekPositionRanks";
 import {
   currentSeason,
   DEF_TEAM_FPIDS,
@@ -132,12 +133,19 @@ export function parseSleeperStatsRecords(records: SleeperStatsRecord[]): ParsedS
  */
 async function fetchAllPlayerPointsHandler(
   ctx: ActionCtx,
-  args: { year?: string; weeks?: string[] },
-): Promise<Record<string, { inserted: number; updated: number }>> {
+  args: { year?: string; weeks?: string[]; force?: boolean },
+): Promise<Record<string, { inserted: number; updated: number } | "unchanged">> {
   const year = args.year ?? currentSeason();
   const weeks = args.weeks ?? WEEKS;
-  const totals: Record<string, { inserted: number; updated: number }> = {};
-  const syncedWeeks: string[] = [];
+  const totals: Record<string, { inserted: number; updated: number } | "unchanged"> = {};
+  // Weeks whose weekPositionRankSets need rebuilding, and the earliest
+  // week whose matchup games changed (defenseMatchupSets from there on).
+  const rankWeeks: string[] = [];
+  const rankHashes: Array<{ key: string; hash: string }> = [];
+  let firstMatchupWeek: number | null = null;
+  // The ranks hash covers the scoring setups too - a new league's setup
+  // needs ranks for every week, not just the ones whose rows changed.
+  const configs = await scoringConfigsInUse(ctx);
 
   // Sleeper's weekly stats payload includes plenty of players we've never
   // stored a `players` row for (e.g. filtered out of projections as
@@ -161,10 +169,30 @@ async function fetchAllPlayerPointsHandler(
       continue;
     }
 
-    const rows = parseSleeperStatsRecords(records).filter((row) =>
-      knownFpids.has(row.fpid),
-    );
-    syncedWeeks.push(week);
+    const rows = parseSleeperStatsRecords(records)
+      .filter((row) => knownFpids.has(row.fpid))
+      .sort((a, b) => a.fpid - b.fpid);
+
+    // The nightly run re-sends recent weeks that are nearly always
+    // unchanged. Hashing what would be written (see syncHashes' schema
+    // comment) skips such a week without reading a single row of it:
+    // upsertPlayerPoints' per-row compare, the ranks rebuild, and the
+    // matchup games all only run for a week whose hash moved.
+    const pointsKey = `playerWeekPoints|${year}|${week}`;
+    const ranksKey = `weekPositionRanks|${year}|${week}`;
+    const rowsHash = await hashJson(rows);
+    const ranksHash = await hashJson({ rowsHash, configs });
+    const stored = args.force
+      ? {}
+      : await ctx.runQuery(internal.syncHashes.getHashes, { keys: [pointsKey, ranksKey] });
+    if (stored[ranksKey] !== ranksHash) {
+      rankWeeks.push(week);
+      rankHashes.push({ key: ranksKey, hash: ranksHash });
+    }
+    if (stored[pointsKey] === rowsHash) {
+      totals[`week${week}`] = "unchanged";
+      continue;
+    }
 
     // Chunked rather than one runMutation call for the whole week - each row
     // costs upsertPlayerPoints's own read+write plus (once real games land
@@ -198,14 +226,34 @@ async function fetchAllPlayerPointsHandler(
       updated += result.updated;
     }
     totals[`week${week}`] = { inserted, updated };
+
+    // The matchup difficulty rating's trimmed copy of this week (see
+    // matchupGameWeeks' schema comment), from the rows already in hand.
+    const matchupChanged = await ctx.runMutation(internal.defenseMatchups.saveWeekGames, {
+      season: year,
+      week: Number(week),
+      games: toMatchupGameRows(rows),
+    });
+    if (matchupChanged && (firstMatchupWeek === null || Number(week) < firstMatchupWeek)) {
+      firstMatchupWeek = Number(week);
+    }
+    // Last, once every write above has landed - a run that fails partway
+    // leaves the old hash, so the next run retries this week.
+    await ctx.runMutation(internal.syncHashes.setHash, { key: pointsKey, hash: rowsHash });
   }
 
   // Game logs' weekly position ranks (see weekPositionRankSets' schema
-  // comment) - rebuilt for exactly the weeks just synced.
-  await refreshWeekPositionRanks(ctx, { season: year, weeks: syncedWeeks });
+  // comment), for the weeks whose rows or scoring setups changed. Each
+  // week's ranks hash is saved once its ranks are rebuilt.
+  await refreshWeekPositionRanks(ctx, { season: year, weeks: rankWeeks, configs });
+  for (const entry of rankHashes) {
+    await ctx.runMutation(internal.syncHashes.setHash, entry);
+  }
   // The matchup difficulty rating's defense-vs-position sets (see
-  // defenseMatchupSets' schema comment).
-  if (syncedWeeks.length > 0) await refreshDefenseMatchups(ctx, { season: year });
+  // defenseMatchupSets' schema comment), from the earliest changed week on.
+  if (firstMatchupWeek !== null) {
+    await refreshDefenseMatchups(ctx, { season: year, fromWeek: firstMatchupWeek });
+  }
 
   return totals;
 }
@@ -225,10 +273,13 @@ export const fetchAllPlayerPoints = action({
 // is needed. Only fetchAllData.fetchAllInternal calls this.
 // `weeks` narrows the fetch (fetchAllData's daily run passes only the
 // last few weeks - see recentPointsWeeks there); omitted means all 18.
+// `force` ignores syncHashes and re-checks every row - for after a write
+// to playerWeekPoints that didn't come through this sync.
 export const fetchAllPlayerPointsInternal = internalAction({
   args: {
     year: v.optional(v.string()),
     weeks: v.optional(v.array(v.string())),
+    force: v.optional(v.boolean()),
   },
   handler: fetchAllPlayerPointsHandler,
 });

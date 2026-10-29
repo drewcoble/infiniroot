@@ -10,25 +10,69 @@ import {
   type MatchupGame,
 } from "./lib/matchupDifficulty";
 import { sameJson } from "./lib/sameJson";
-import { positionValidator } from "./positions";
+import { POSITIONS, positionValidator } from "./positions";
 
-const MATCHUP_POSITIONS = ["QB", "RB", "WR", "TE"] as const;
-const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
+type Position = (typeof POSITIONS)[number];
 
-// Rebuilds one season's defenseMatchupSets (see its schema comment) - every
-// throughWeek from MATCHUP_FIRST_WEEK - 1 to the last week with games.
-// Called by the playerWeekPoints sync (convex/sleeper/playerPoints.ts)
-// right after it writes. Every set is rebuilt, not just the synced weeks:
-// a late stat correction in week 3 shifts that player's baseline in every
-// later set too. Reads one week per query (a whole season of QB/RB/WR/TE
-// rows is too many for one transaction).
-export async function refreshDefenseMatchups(ctx: ActionCtx, args: { season: string }): Promise<void> {
-  const games: MatchupGame[] = [];
-  for (const week of WEEKS) {
-    games.push(...(await ctx.runQuery(internal.defenseMatchups.listWeekGames, { season: args.season, week })));
+const gameValidator = v.object({
+  fpid: v.number(),
+  position: positionValidator,
+  opponent: v.string(),
+  stats: v.record(v.string(), v.number()),
+});
+
+// One week's parsed stats rows (sleeper/playerPoints.ts's
+// parseSleeperStatsRecords) as matchupGameWeeks games: played QB/RB/WR/TE
+// games with an opponent, stats trimmed to the matchup keys, zeros
+// dropped. Sorted so an unchanged week compares equal to the stored doc.
+export function toMatchupGameRows(
+  rows: Array<{ fpid: number; position: Position; opponent: string | null; stats: Record<string, number> }>,
+): Array<{ fpid: number; position: Position; opponent: string; stats: Record<string, number> }> {
+  const games = [];
+  for (const row of rows) {
+    if (!row.opponent || (row.stats.gp ?? 0) <= 0 || !isMatchupPosition(row.position)) continue;
+    const stats: Record<string, number> = {};
+    for (const key of positionStatKeys(row.position)) {
+      const value = row.stats[key];
+      if (value) stats[key] = value;
+    }
+    games.push({ fpid: row.fpid, position: row.position, opponent: normalizeNflTeam(row.opponent), stats });
   }
+  return games.sort((a, b) => a.fpid - b.fpid);
+}
+
+// Writes one week's games, only if they changed. Returns whether they did -
+// the sync rebuilds defenseMatchupSets only then.
+export const saveWeekGames = internalMutation({
+  args: { season: v.string(), week: v.number(), games: v.array(gameValidator) },
+  handler: async (ctx, args): Promise<boolean> => {
+    const existing = await ctx.db
+      .query("matchupGameWeeks")
+      .withIndex("by_season_week", (q) => q.eq("season", args.season).eq("week", args.week))
+      .unique();
+    if (existing) {
+      if (sameJson(existing.games, args.games)) return false;
+      await ctx.db.patch(existing._id, { games: args.games, updatedAt: Date.now() });
+    } else {
+      await ctx.db.insert("matchupGameWeeks", { ...args, updatedAt: Date.now() });
+    }
+    return true;
+  },
+});
+
+// Rebuilds one season's defenseMatchupSets (see its schema comment) from
+// matchupGameWeeks - every throughWeek from `fromWeek` (the earliest week
+// whose games changed; a set only covers weeks up to its own) to the last
+// week with games. Called by the Sleeper stats sync (convex/sleeper/
+// playerPoints.ts) after saveWeekGames reports a change.
+export async function refreshDefenseMatchups(
+  ctx: ActionCtx,
+  args: { season: string; fromWeek: number },
+): Promise<void> {
+  const games = await ctx.runQuery(internal.defenseMatchups.listSeasonGames, { season: args.season });
   const lastWeek = Math.max(0, ...games.map((game) => game.week));
-  for (let throughWeek = MATCHUP_FIRST_WEEK - 1; throughWeek <= lastWeek; throughWeek += 1) {
+  const firstWeek = Math.max(MATCHUP_FIRST_WEEK - 1, args.fromWeek);
+  for (let throughWeek = firstWeek; throughWeek <= lastWeek; throughWeek += 1) {
     await ctx.runMutation(internal.defenseMatchups.saveSet, {
       season: args.season,
       throughWeek,
@@ -37,36 +81,18 @@ export async function refreshDefenseMatchups(ctx: ActionCtx, args: { season: str
   }
 }
 
-// One week's played QB/RB/WR/TE games, trimmed to the matchup stats. Rows
-// synced before team/opponent were stored have no opponent and are left out.
-export const listWeekGames = internalQuery({
-  args: { season: v.string(), week: v.number() },
+export const listSeasonGames = internalQuery({
+  args: { season: v.string() },
   handler: async (ctx, args): Promise<MatchupGame[]> => {
-    const games: MatchupGame[] = [];
-    for (const position of MATCHUP_POSITIONS) {
-      const rows = await ctx.db
-        .query("playerWeekPoints")
-        .withIndex("by_position_week_season", (q) =>
-          q.eq("position", position).eq("week", String(args.week)).eq("season", args.season),
-        )
-        .collect();
-      for (const row of rows) {
-        if (!row.opponent || (row.stats.gp ?? 0) <= 0 || !isMatchupPosition(row.position)) continue;
-        const stats: Record<string, number> = {};
-        for (const key of positionStatKeys(row.position)) {
-          const value = row.stats[key];
-          if (value) stats[key] = value;
-        }
-        games.push({
-          fpid: row.fpid,
-          position: row.position,
-          week: args.week,
-          opponent: normalizeNflTeam(row.opponent),
-          stats,
-        });
-      }
-    }
-    return games;
+    const weeks = await ctx.db
+      .query("matchupGameWeeks")
+      .withIndex("by_season_week", (q) => q.eq("season", args.season))
+      .collect();
+    return weeks.flatMap((week) =>
+      week.games.flatMap((game) =>
+        isMatchupPosition(game.position) ? [{ ...game, position: game.position, week: week.week }] : [],
+      ),
+    );
   },
 });
 
