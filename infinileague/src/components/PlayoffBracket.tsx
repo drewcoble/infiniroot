@@ -151,12 +151,12 @@ function TournamentBracket({
   }, []);
 
   // Re-laid out only once a swipe settles - resizing rounds mid-swipe
-  // fights the scroll snap and stutters. scrollend where the browser has
-  // it, else a short pause in scroll events.
+  // fights the scroll snap and stutters. Settled = a round snapped flush
+  // to the left edge, else scrollend, else a short pause in scroll events.
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
-    const settle = () => {
+    const nearestColumn = () => {
       const left = scroller.scrollLeft + scroller.offsetLeft;
       let nearest = 0;
       const distance = (column: HTMLDivElement) => Math.abs(column.offsetLeft - left);
@@ -164,12 +164,16 @@ function TournamentBracket({
         const best = columnRefs.current[nearest];
         if (column && best && distance(column) < distance(best)) nearest = index;
       });
-      setFocused(nearest);
+      const column = columnRefs.current[nearest];
+      return { index: nearest, flush: column ? distance(column) < 1 : false };
     };
+    const settle = () => setFocused(nearestColumn().index);
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onScroll = () => {
       clearTimeout(timer);
-      timer = setTimeout(settle, 150);
+      const { index, flush } = nearestColumn();
+      if (flush) setFocused(index);
+      else timer = setTimeout(settle, 80);
     };
     const onScrollEnd = () => {
       clearTimeout(timer);

@@ -17,7 +17,7 @@
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
-  transition: height 220ms ease;
+  transition: height 160ms ease;
 }
 
 .scroller::-webkit-scrollbar {
@@ -46,7 +46,7 @@
   display: flex;
   align-items: center;
   height: calc(var(--slot-height) * var(--span));
-  transition: height 220ms ease;
+  transition: height 160ms ease;
 }
 
 /* Connector lines in the gap between rounds: out of each game to the gap's
