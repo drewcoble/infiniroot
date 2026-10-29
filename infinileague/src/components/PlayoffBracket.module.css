@@ -1,22 +1,115 @@
-/* Playoff bracket (PlayoffBracket) - each round a labeled stack of game
-   cards, on the shared glass .card from GlassMatchupCard.module.css. */
+/* Playoff bracket (PlayoffBracket) - one column per round in a swipeable,
+   snapping row with no visible scrollbar, the next round peeking in. Game
+   cards are the shared glass .card from GlassMatchupCard.module.css. */
 
-.round {
+.scroller {
+  --slot-height: 100px;
+  --label-height: 28px;
+  --column-gap: 24px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: flex-start;
+  gap: var(--column-gap);
+  /* Follows the focused round - earlier rounds, off to the left, are just
+     clipped. */
+  height: calc(var(--label-height) + var(--focused-slots) * var(--slot-height));
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  transition: height 220ms ease;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* Lets the last round snap to the left edge like the rest. */
+.scroller::after {
+  content: "";
+  flex: 0 0 calc(48px - var(--column-gap));
+  height: 1px;
+}
+
+.column {
+  flex: 0 0 calc(100% - 48px);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.columnLabel {
+  height: var(--label-height);
+}
+
+.slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: calc(var(--slot-height) * var(--span));
+  transition: height 220ms ease;
+}
+
+/* Connector lines in the gap between rounds: out of each game to the gap's
+   middle, joining its sibling's line there, then on into the next game. */
+.joinDown::after,
+.joinUp::after,
+.fed::before {
+  content: "";
+  position: absolute;
+  width: calc(var(--column-gap) / 2);
+  border-color: rgba(255, 255, 255, 0.18);
+  border-style: solid;
+  border-width: 0;
+  pointer-events: none;
+}
+
+.joinDown::after {
+  left: 100%;
+  top: 50%;
+  height: 50%;
+  border-top-width: 1px;
+  border-right-width: 1px;
+}
+
+.joinUp::after {
+  left: 100%;
+  top: 0;
+  height: 50%;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
+}
+
+.fed::before {
+  right: 100%;
+  top: 50%;
+  border-top-width: 1px;
 }
 
 .game {
+  flex: 1;
+  min-width: 0;
   gap: 0;
   padding: 4px 12px;
+}
+
+/* A top seed's bye in round 1 - one quiet row. */
+.bye {
+  flex: 1;
+  opacity: 0.6;
+}
+
+.byeNote {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
 }
 
 .entrant {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 38px;
 }
 
 .entrant + .entrant {
