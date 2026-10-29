@@ -3,8 +3,7 @@
    cards are the shared glass .card from GlassMatchupCard.module.css. */
 
 .scroller {
-  /* Unitless so the transforms below can scale it - see SLOT_HEIGHT and
-     LABEL_HEIGHT in PlayoffBracket.tsx. */
+  /* Spot height in px, unitless so the transforms below can scale it. */
   --slot: 100;
   --label-height: 28px;
   --column-gap: 24px;
@@ -12,6 +11,12 @@
   display: flex;
   align-items: stretch;
   gap: var(--column-gap);
+  /* Round 1's spots, halving per round swiped - the room the round in view
+     needs, with every later round's spots spanning the same height. */
+  height: calc(
+    var(--label-height) +
+      var(--first-round-slots) * var(--slot) * pow(2, calc(-1 * var(--progress))) * 1px
+  );
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;

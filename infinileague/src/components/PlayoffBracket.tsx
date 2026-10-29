@@ -119,11 +119,6 @@ function initialRound(tournament: Tournament, currentWeek: number): number {
   return index === -1 ? tournament.rounds.length - 1 : index;
 }
 
-// Spot height in px, and the round-label height above the spots - kept in
-// step with PlayoffBracket.module.css's --slot / --label-height.
-const SLOT_HEIGHT = 100;
-const LABEL_HEIGHT = 28;
-
 function TournamentBracket({
   tournament,
   standingByTeam,
@@ -147,7 +142,8 @@ function TournamentBracket({
   // 2^(round - progress), so the round in view stacks tight and every later
   // game stays level between its two feeders, all the way through a swipe.
   // Moved with transforms only, never resized, so it keeps up with the
-  // finger. The scroller's height steps once per round, never clipping.
+  // finger. The scroller's height follows the same curve (only the round
+  // in view and later ones need the room), so it never clips or jumps.
   const scrollerRef = useRef<HTMLDivElement>(null);
   const columnRefs = useRef<Array<HTMLDivElement | null>>([]);
 
@@ -159,17 +155,11 @@ function TournamentBracket({
       const [first, second] = columnRefs.current;
       return first && second ? second.offsetLeft - first.offsetLeft : 0;
     };
-    let shownFloor = -1;
     const apply = () => {
       const width = step();
       const progress =
         width > 0 ? Math.min(Math.max(scroller.scrollLeft / width, 0), lastIndex) : 0;
       scroller.style.setProperty("--progress", String(progress));
-      const floor = Math.floor(progress + 0.001);
-      if (floor !== shownFloor) {
-        shownFloor = floor;
-        scroller.style.height = `${LABEL_HEIGHT + firstRoundSlots * SLOT_HEIGHT * 2 ** -floor}px`;
-      }
     };
     const start = initialRound(tournament, currentWeek);
     scroller.scrollLeft = step() * start;
@@ -203,7 +193,11 @@ function TournamentBracket({
           </div>
         </div>
       )}
-      <div ref={scrollerRef} className={classes.scroller}>
+      <div
+        ref={scrollerRef}
+        className={classes.scroller}
+        style={{ "--first-round-slots": firstRoundSlots } as CSSProperties}
+      >
         {tournament.rounds.map((round, r) => {
           const slots = layout[r] ?? [];
           const isLast = r === tournament.rounds.length - 1;
