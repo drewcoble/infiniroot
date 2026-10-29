@@ -3,21 +3,20 @@
    cards are the shared glass .card from GlassMatchupCard.module.css. */
 
 .scroller {
-  --slot-height: 100px;
+  /* Unitless so the transforms below can scale it - see SLOT_HEIGHT and
+     LABEL_HEIGHT in PlayoffBracket.tsx. */
+  --slot: 100;
   --label-height: 28px;
   --column-gap: 24px;
+  --progress: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: var(--column-gap);
-  /* Follows the focused round - earlier rounds, off to the left, are just
-     clipped. */
-  height: calc(var(--label-height) + var(--focused-slots) * var(--slot-height));
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
-  transition: height 160ms ease;
 }
 
 .scroller::-webkit-scrollbar {
@@ -28,61 +27,90 @@
 .scroller::after {
   content: "";
   flex: 0 0 calc(48px - var(--column-gap));
-  height: 1px;
 }
 
 .column {
+  /* This round's spot spacing: doubling per round past the swipe
+     position, halving per round before it. */
+  --spacing: calc(var(--slot) * pow(2, calc(var(--r) - var(--progress))) * 1px);
   flex: 0 0 calc(100% - 48px);
   min-width: 0;
+  display: flex;
+  flex-direction: column;
   scroll-snap-align: start;
+  /* Rounds already swiped past fade out by halfway, as they condense. */
+  opacity: calc(1 - min(1, max(0, (var(--progress) - var(--r)) * 2)));
 }
 
 .columnLabel {
   height: var(--label-height);
+  flex-shrink: 0;
 }
 
-.slot {
+.track {
   position: relative;
-  display: flex;
-  align-items: center;
-  height: calc(var(--slot-height) * var(--span));
-  transition: height 160ms ease;
+  flex: 1;
 }
 
-/* Connector lines in the gap between rounds: out of each game to the gap's
-   middle, joining its sibling's line there, then on into the next game. */
-.joinDown::after,
-.joinUp::after,
-.fed::before {
-  content: "";
+/* Spots and connectors sit at the track's top and move by transform only,
+   so a swipe never re-lays anything out. */
+.slot {
   position: absolute;
-  width: calc(var(--column-gap) / 2);
-  border-color: rgba(255, 255, 255, 0.18);
-  border-style: solid;
-  border-width: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  transform: translateY(calc(var(--c) * var(--spacing) - 50%));
+  will-change: transform;
+}
+
+.join {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: var(--column-gap);
+  height: 0;
   pointer-events: none;
 }
 
-.joinDown::after {
-  left: 100%;
-  top: 50%;
-  height: 50%;
-  border-top-width: 1px;
-  border-right-width: 1px;
-}
-
-.joinUp::after {
-  left: 100%;
+.joinTop,
+.joinBottom,
+.joinVertical,
+.joinInto {
+  position: absolute;
   top: 0;
-  height: 50%;
-  border-bottom-width: 1px;
-  border-right-width: 1px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  will-change: transform;
 }
 
-.fed::before {
-  right: 100%;
-  top: 50%;
-  border-top-width: 1px;
+.joinTop,
+.joinBottom {
+  left: 0;
+  width: calc(var(--column-gap) / 2);
+}
+
+.joinTop {
+  transform: translateY(calc(var(--c) * var(--spacing)));
+}
+
+.joinBottom {
+  transform: translateY(calc((var(--c) + 1) * var(--spacing)));
+}
+
+/* A 1px line stretched to the pair's spacing. */
+.joinVertical {
+  left: calc(var(--column-gap) / 2 - 1px);
+  width: 1px;
+  transform-origin: top;
+  transform: translateY(calc(var(--c) * var(--spacing)))
+    scaleY(calc(var(--slot) * pow(2, calc(var(--r) - var(--progress)))));
+}
+
+.joinInto {
+  left: calc(var(--column-gap) / 2);
+  width: calc(var(--column-gap) / 2);
+  transform: translateY(calc((var(--c) + 0.5) * var(--spacing)));
 }
 
 .game {

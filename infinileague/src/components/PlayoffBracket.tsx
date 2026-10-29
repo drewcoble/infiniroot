@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { Stack, Title } from "@mantine/core";
 import { Trophy } from "lucide-react";
 import { TeamLogo } from "./cards/TeamLogo";
@@ -119,6 +119,11 @@ function initialRound(tournament: Tournament, currentWeek: number): number {
   return index === -1 ? tournament.rounds.length - 1 : index;
 }
 
+// Spot height in px, and the round-label height above the spots - kept in
+// step with PlayoffBracket.module.css's --slot / --label-height.
+const SLOT_HEIGHT = 100;
+const LABEL_HEIGHT = 28;
+
 function TournamentBracket({
   tournament,
   standingByTeam,
@@ -132,63 +137,60 @@ function TournamentBracket({
     tournament.rounds.flatMap((round) => round.games.map((game) => [game.id, game] as const)),
   );
   const layout = layoutRounds(tournament, gamesById);
+  const firstRoundSlots = layout[0]?.length ?? 1;
   const champion =
     tournament.championTeamId !== null ? standingByTeam.get(tournament.championTeamId) : undefined;
 
-  // The round snapped into view. Its games stack tight; each later round's
-  // spots double in height per round, so every game stays level between its
-  // two feeders.
+  // How far the viewer has swiped, in rounds (1.5 = halfway from round 2 to
+  // round 3), written straight to the scroller as --progress on every
+  // scroll frame - no re-render. The CSS spaces each round's spots by
+  // 2^(round - progress), so the round in view stacks tight and every later
+  // game stays level between its two feeders, all the way through a swipe.
+  // Moved with transforms only, never resized, so it keeps up with the
+  // finger. The scroller's height steps once per round, never clipping.
   const scrollerRef = useRef<HTMLDivElement>(null);
   const columnRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const [focused, setFocused] = useState(() => initialRound(tournament, currentWeek));
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
-    const column = columnRefs.current[focused];
-    if (scroller && column) scroller.scrollLeft = column.offsetLeft - scroller.offsetLeft;
-    // Only on mount - after that the viewer's swipes move it.
+    if (!scroller) return;
+    const lastIndex = tournament.rounds.length - 1;
+    const step = () => {
+      const [first, second] = columnRefs.current;
+      return first && second ? second.offsetLeft - first.offsetLeft : 0;
+    };
+    let shownFloor = -1;
+    const apply = () => {
+      const width = step();
+      const progress =
+        width > 0 ? Math.min(Math.max(scroller.scrollLeft / width, 0), lastIndex) : 0;
+      scroller.style.setProperty("--progress", String(progress));
+      const floor = Math.floor(progress + 0.001);
+      if (floor !== shownFloor) {
+        shownFloor = floor;
+        scroller.style.height = `${LABEL_HEIGHT + firstRoundSlots * SLOT_HEIGHT * 2 ** -floor}px`;
+      }
+    };
+    const start = initialRound(tournament, currentWeek);
+    scroller.scrollLeft = step() * start;
+    apply();
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        apply();
+      });
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      scroller.removeEventListener("scroll", onScroll);
+    };
+    // Set up once per bracket - after that the viewer's swipes move it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-laid out only once a swipe settles - resizing rounds mid-swipe
-  // fights the scroll snap and stutters. Settled = a round snapped flush
-  // to the left edge, else scrollend, else a short pause in scroll events.
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    const nearestColumn = () => {
-      const left = scroller.scrollLeft + scroller.offsetLeft;
-      let nearest = 0;
-      const distance = (column: HTMLDivElement) => Math.abs(column.offsetLeft - left);
-      columnRefs.current.forEach((column, index) => {
-        const best = columnRefs.current[nearest];
-        if (column && best && distance(column) < distance(best)) nearest = index;
-      });
-      const column = columnRefs.current[nearest];
-      return { index: nearest, flush: column ? distance(column) < 1 : false };
-    };
-    const settle = () => setFocused(nearestColumn().index);
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const onScroll = () => {
-      clearTimeout(timer);
-      const { index, flush } = nearestColumn();
-      if (flush) setFocused(index);
-      else timer = setTimeout(settle, 80);
-    };
-    const onScrollEnd = () => {
-      clearTimeout(timer);
-      settle();
-    };
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    scroller.addEventListener("scrollend", onScrollEnd);
-    return () => {
-      clearTimeout(timer);
-      scroller.removeEventListener("scroll", onScroll);
-      scroller.removeEventListener("scrollend", onScrollEnd);
-    };
-  }, []);
-
-  const focusedSlots = layout[focused]?.length ?? 1;
   return (
     <Stack gap="md">
       {champion && (
@@ -201,14 +203,11 @@ function TournamentBracket({
           </div>
         </div>
       )}
-      <div
-        ref={scrollerRef}
-        className={classes.scroller}
-        style={{ "--focused-slots": focusedSlots } as CSSProperties}
-      >
+      <div ref={scrollerRef} className={classes.scroller}>
         {tournament.rounds.map((round, r) => {
           const slots = layout[r] ?? [];
           const isLast = r === tournament.rounds.length - 1;
+          const pairs = Array.from({ length: Math.ceil(slots.length / 2) }, (_, q) => q);
           return (
             <div
               key={round.round}
@@ -216,55 +215,64 @@ function TournamentBracket({
                 columnRefs.current[r] = element;
               }}
               className={classes.column}
+              style={{ "--r": r } as CSSProperties}
               aria-label={round.name}
             >
               <div className={`${glass.sectionLabel} ${classes.columnLabel}`}>
                 {round.name} · {weeksLabel(round.weeks)}
               </div>
-              {slots.map((slot, p) => {
-                const game = slot?.kind === "game" ? slot.game : null;
-                // Always an elbow to the gap's middle - that's where the
-                // next game sits, a bye on the other side or not.
-                const connector =
-                  isLast || !slot ? "" : p % 2 === 0 ? classes.joinDown : classes.joinUp;
-                const fed = game !== null && r > 0 && layout[r - 1]!.length > 0;
-                return (
-                  <div
-                    key={game?.id ?? `${slot?.kind ?? "empty"}-${p}`}
-                    className={`${classes.slot} ${connector} ${fed ? classes.fed : ""}`}
-                    // Spots grow by doubling per round past the focused
-                    // one (earlier rounds are off to the left).
-                    style={{ "--span": 2 ** Math.max(0, r - focused) } as CSSProperties}
-                  >
-                    {slot?.kind === "bye" && (
-                      <div className={`${glass.card} ${classes.game} ${classes.bye}`}>
-                        <EntrantRow
-                          entrant={slot.entrant}
-                          game={{
-                            id: "bye",
-                            entrants: [slot.entrant, slot.entrant],
-                            winnerTeamId: null,
-                          }}
-                          standingByTeam={standingByTeam}
-                          note="Bye"
-                        />
-                      </div>
-                    )}
-                    {game && (
-                      <div className={`${glass.card} ${classes.game}`}>
-                        {game.entrants.map((entrant, slot) => (
+              <div className={classes.track}>
+                {slots.map((slot, p) =>
+                  slot ? (
+                    <div
+                      key={slot.kind === "game" ? slot.game.id : `bye-${p}`}
+                      className={classes.slot}
+                      style={{ "--c": p + 0.5 } as CSSProperties}
+                    >
+                      {slot.kind === "bye" ? (
+                        <div className={`${glass.card} ${classes.game} ${classes.bye}`}>
                           <EntrantRow
-                            key={slot}
-                            entrant={entrant}
-                            game={game}
+                            entrant={slot.entrant}
+                            game={{
+                              id: "bye",
+                              entrants: [slot.entrant, slot.entrant],
+                              winnerTeamId: null,
+                            }}
                             standingByTeam={standingByTeam}
+                            note="Bye"
                           />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                        </div>
+                      ) : (
+                        <div className={`${glass.card} ${classes.game}`}>
+                          {slot.game.entrants.map((entrant, index) => (
+                            <EntrantRow
+                              key={index}
+                              entrant={entrant}
+                              game={slot.game}
+                              standingByTeam={standingByTeam}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null,
+                )}
+                {/* Each pair's connector: out of both spots, joined in the
+                    gap, on into the next round's game level between them. */}
+                {!isLast &&
+                  pairs.map((q) => (
+                    <div
+                      key={q}
+                      className={classes.join}
+                      style={{ "--c": 2 * q + 0.5 } as CSSProperties}
+                    >
+                      {slots[2 * q] && <span className={classes.joinTop} />}
+                      {slots[2 * q + 1] && <span className={classes.joinBottom} />}
+                      <span className={classes.joinVertical} />
+                      <span className={classes.joinInto} />
+                    </div>
+                  ))}
+              </div>
             </div>
           );
         })}
