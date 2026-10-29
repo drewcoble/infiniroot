@@ -2,21 +2,28 @@
    snapping row with no visible scrollbar, the next round peeking in. Game
    cards are the shared glass .card from GlassMatchupCard.module.css. */
 
-.scroller {
+/* Clips the bracket to the room the round in view needs: round 1's spots,
+   halving per round swiped, every later round's spots spanning the same
+   height. The scroller inside keeps round 1's full height - resizing the
+   scroll container mid-swipe breaks Safari's scroll snap. */
+.frame {
   /* Spot height in px, unitless so the transforms below can scale it. */
   --slot: 100;
   --label-height: 28px;
   --column-gap: 24px;
   --progress: 0;
-  display: flex;
-  align-items: stretch;
-  gap: var(--column-gap);
-  /* Round 1's spots, halving per round swiped - the room the round in view
-     needs, with every later round's spots spanning the same height. */
+  overflow: hidden;
   height: calc(
     var(--label-height) +
       var(--first-round-slots) * var(--slot) * pow(2, calc(-1 * var(--progress))) * 1px
   );
+}
+
+.scroller {
+  display: flex;
+  align-items: stretch;
+  gap: var(--column-gap);
+  height: calc(var(--label-height) + var(--first-round-slots) * var(--slot) * 1px);
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;

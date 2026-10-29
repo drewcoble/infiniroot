@@ -142,14 +142,18 @@ function TournamentBracket({
   // 2^(round - progress), so the round in view stacks tight and every later
   // game stays level between its two feeders, all the way through a swipe.
   // Moved with transforms only, never resized, so it keeps up with the
-  // finger. The scroller's height follows the same curve (only the round
-  // in view and later ones need the room), so it never clips or jumps.
+  // finger. The visible height follows the same curve (only the round in
+  // view and later ones need the room) on a clipping wrapper - the
+  // scroller itself keeps a fixed height, since resizing it mid-swipe
+  // breaks Safari's scroll snap.
+  const frameRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const columnRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   useLayoutEffect(() => {
+    const frame = frameRef.current;
     const scroller = scrollerRef.current;
-    if (!scroller) return;
+    if (!frame || !scroller) return;
     const lastIndex = tournament.rounds.length - 1;
     const step = () => {
       const [first, second] = columnRefs.current;
@@ -159,22 +163,22 @@ function TournamentBracket({
       const width = step();
       const progress =
         width > 0 ? Math.min(Math.max(scroller.scrollLeft / width, 0), lastIndex) : 0;
-      scroller.style.setProperty("--progress", String(progress));
+      frame.style.setProperty("--progress", String(progress));
     };
     const start = initialRound(tournament, currentWeek);
     scroller.scrollLeft = step() * start;
     apply();
-    let frame = 0;
+    let pending = 0;
     const onScroll = () => {
-      if (frame) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
+      if (pending) return;
+      pending = requestAnimationFrame(() => {
+        pending = 0;
         apply();
       });
     };
     scroller.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      cancelAnimationFrame(frame);
+      cancelAnimationFrame(pending);
       scroller.removeEventListener("scroll", onScroll);
     };
     // Set up once per bracket - after that the viewer's swipes move it.
@@ -194,82 +198,84 @@ function TournamentBracket({
         </div>
       )}
       <div
-        ref={scrollerRef}
-        className={classes.scroller}
+        ref={frameRef}
+        className={classes.frame}
         style={{ "--first-round-slots": firstRoundSlots } as CSSProperties}
       >
-        {tournament.rounds.map((round, r) => {
-          const slots = layout[r] ?? [];
-          const isLast = r === tournament.rounds.length - 1;
-          const pairs = Array.from({ length: Math.ceil(slots.length / 2) }, (_, q) => q);
-          return (
-            <div
-              key={round.round}
-              ref={(element) => {
-                columnRefs.current[r] = element;
-              }}
-              className={classes.column}
-              style={{ "--r": r } as CSSProperties}
-              aria-label={round.name}
-            >
-              <div className={`${glass.sectionLabel} ${classes.columnLabel}`}>
-                {round.name} · {weeksLabel(round.weeks)}
-              </div>
-              <div className={classes.track}>
-                {slots.map((slot, p) =>
-                  slot ? (
-                    <div
-                      key={slot.kind === "game" ? slot.game.id : `bye-${p}`}
-                      className={classes.slot}
-                      style={{ "--c": p + 0.5 } as CSSProperties}
-                    >
-                      {slot.kind === "bye" ? (
-                        <div className={`${glass.card} ${classes.game} ${classes.bye}`}>
-                          <EntrantRow
-                            entrant={slot.entrant}
-                            game={{
-                              id: "bye",
-                              entrants: [slot.entrant, slot.entrant],
-                              winnerTeamId: null,
-                            }}
-                            standingByTeam={standingByTeam}
-                            note="Bye"
-                          />
-                        </div>
-                      ) : (
-                        <div className={`${glass.card} ${classes.game}`}>
-                          {slot.game.entrants.map((entrant, index) => (
+        <div ref={scrollerRef} className={classes.scroller}>
+          {tournament.rounds.map((round, r) => {
+            const slots = layout[r] ?? [];
+            const isLast = r === tournament.rounds.length - 1;
+            const pairs = Array.from({ length: Math.ceil(slots.length / 2) }, (_, q) => q);
+            return (
+              <div
+                key={round.round}
+                ref={(element) => {
+                  columnRefs.current[r] = element;
+                }}
+                className={classes.column}
+                style={{ "--r": r } as CSSProperties}
+                aria-label={round.name}
+              >
+                <div className={`${glass.sectionLabel} ${classes.columnLabel}`}>
+                  {round.name} · {weeksLabel(round.weeks)}
+                </div>
+                <div className={classes.track}>
+                  {slots.map((slot, p) =>
+                    slot ? (
+                      <div
+                        key={slot.kind === "game" ? slot.game.id : `bye-${p}`}
+                        className={classes.slot}
+                        style={{ "--c": p + 0.5 } as CSSProperties}
+                      >
+                        {slot.kind === "bye" ? (
+                          <div className={`${glass.card} ${classes.game} ${classes.bye}`}>
                             <EntrantRow
-                              key={index}
-                              entrant={entrant}
-                              game={slot.game}
+                              entrant={slot.entrant}
+                              game={{
+                                id: "bye",
+                                entrants: [slot.entrant, slot.entrant],
+                                winnerTeamId: null,
+                              }}
                               standingByTeam={standingByTeam}
+                              note="Bye"
                             />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : null,
-                )}
-                {/* Each pair's connector: out of both spots, joined in the
-                    gap, on into the next round's game level between them. */}
-                {!isLast &&
-                  pairs.map((q) => (
-                    <div
-                      key={q}
-                      className={classes.join}
-                      style={{ "--c": 2 * q + 0.5 } as CSSProperties}
-                    >
-                      {slots[2 * q] && <span className={classes.joinTop} />}
-                      {slots[2 * q + 1] && <span className={classes.joinBottom} />}
-                      <span className={classes.joinVertical} />
-                      <span className={classes.joinInto} />
-                    </div>
-                  ))}
+                          </div>
+                        ) : (
+                          <div className={`${glass.card} ${classes.game}`}>
+                            {slot.game.entrants.map((entrant, index) => (
+                              <EntrantRow
+                                key={index}
+                                entrant={entrant}
+                                game={slot.game}
+                                standingByTeam={standingByTeam}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null,
+                  )}
+                  {/* Each pair's connector: out of both spots, joined in the
+                      gap, on into the next round's game level between them. */}
+                  {!isLast &&
+                    pairs.map((q) => (
+                      <div
+                        key={q}
+                        className={classes.join}
+                        style={{ "--c": 2 * q + 0.5 } as CSSProperties}
+                      >
+                        {slots[2 * q] && <span className={classes.joinTop} />}
+                        {slots[2 * q + 1] && <span className={classes.joinBottom} />}
+                        <span className={classes.joinVertical} />
+                        <span className={classes.joinInto} />
+                      </div>
+                    ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </Stack>
   );
