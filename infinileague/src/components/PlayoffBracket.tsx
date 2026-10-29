@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Stack, Title } from "@mantine/core";
 import { Trophy } from "lucide-react";
 import { TeamLogo } from "./cards/TeamLogo";
@@ -150,19 +150,39 @@ function TournamentBracket({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onScroll = () => {
+  // Re-laid out only once a swipe settles - resizing rounds mid-swipe
+  // fights the scroll snap and stutters. scrollend where the browser has
+  // it, else a short pause in scroll events.
+  useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
-    const left = scroller.scrollLeft + scroller.offsetLeft;
-    let nearest = 0;
-    columnRefs.current.forEach((column, index) => {
-      const best = columnRefs.current[nearest];
-      if (column && best && Math.abs(column.offsetLeft - left) < Math.abs(best.offsetLeft - left)) {
-        nearest = index;
-      }
-    });
-    if (nearest !== focused) setFocused(nearest);
-  };
+    const settle = () => {
+      const left = scroller.scrollLeft + scroller.offsetLeft;
+      let nearest = 0;
+      const distance = (column: HTMLDivElement) => Math.abs(column.offsetLeft - left);
+      columnRefs.current.forEach((column, index) => {
+        const best = columnRefs.current[nearest];
+        if (column && best && distance(column) < distance(best)) nearest = index;
+      });
+      setFocused(nearest);
+    };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onScroll = () => {
+      clearTimeout(timer);
+      timer = setTimeout(settle, 150);
+    };
+    const onScrollEnd = () => {
+      clearTimeout(timer);
+      settle();
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    scroller.addEventListener("scrollend", onScrollEnd);
+    return () => {
+      clearTimeout(timer);
+      scroller.removeEventListener("scroll", onScroll);
+      scroller.removeEventListener("scrollend", onScrollEnd);
+    };
+  }, []);
 
   const focusedSlots = layout[focused]?.length ?? 1;
   return (
@@ -180,7 +200,6 @@ function TournamentBracket({
       <div
         ref={scrollerRef}
         className={classes.scroller}
-        onScroll={onScroll}
         style={{ "--focused-slots": focusedSlots } as CSSProperties}
       >
         {tournament.rounds.map((round, r) => {
