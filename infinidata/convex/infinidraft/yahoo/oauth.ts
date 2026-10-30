@@ -107,6 +107,19 @@ export const saveTokens = internalMutation({
   },
 });
 
+// Drops a token Yahoo has revoked (password reset, app access removed) so
+// getConnectionStatus reads disconnected and the UI offers Connect again.
+export const deleteStoredToken = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("yahooOAuthTokens")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (existing) await ctx.db.delete(existing._id);
+  },
+});
+
 // Whether the signed-in user has a connected Yahoo account - drives the
 // Season Settings UI's "Connect Yahoo Account" vs. league-picker state.
 export const getConnectionStatus = query({
@@ -167,7 +180,20 @@ export async function withYahooToken<T>(
 
   let accessToken = stored.accessToken;
   if (stored.expiresAt - Date.now() < REFRESH_MARGIN_MS) {
-    const refreshed = await refreshYahooTokens(stored.refreshToken);
+    let refreshed;
+    try {
+      refreshed = await refreshYahooTokens(stored.refreshToken);
+    } catch (error) {
+      // Yahoo revokes every refresh token on a password reset - retrying
+      // can't recover, so clear it and send the user back through Connect.
+      if (error instanceof Error && /invalid_grant|invalid.?refresh/i.test(error.message)) {
+        await ctx.runMutation(internal.infinidraft.yahoo.oauth.deleteStoredToken, { userId });
+        throw new Error(
+          "Your Yahoo connection expired - reconnect your Yahoo account and try again.",
+        );
+      }
+      throw error;
+    }
     accessToken = refreshed.access_token;
     await ctx.runMutation(internal.infinidraft.yahoo.oauth.saveTokens, {
       userId,
