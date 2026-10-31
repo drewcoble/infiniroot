@@ -5,7 +5,7 @@ import { ConnectEspnLeague } from "./ConnectEspnLeague";
 import { ConnectSleeperLeague } from "./ConnectSleeperLeague";
 import { ConnectYahooLeague } from "./ConnectYahooLeague";
 
-type LeagueProvider = "sleeper" | "yahoo" | "espn";
+export type LeagueProvider = "sleeper" | "yahoo" | "espn";
 
 const PROVIDERS: Array<{
   value: LeagueProvider;
@@ -23,6 +23,8 @@ interface AddLeagueProps {
   // Which app is hosting this flow - only Yahoo's OAuth round trip cares
   // (it redirects back to that app's origin).
   app: "infinileague" | "infinifaab";
+  // Skip the provider choice and open this wizard (e.g. a reconnect link).
+  initialProvider?: LeagueProvider | undefined;
   onConnected: (seasonId: string) => void;
   onCancel: () => void;
 }
@@ -31,8 +33,8 @@ interface AddLeagueProps {
 // provider, then that provider's own connect wizard. A wizard's Back/Cancel
 // returns here rather than leaving the flow, so switching providers doesn't
 // mean starting over from the dashboard.
-export function AddLeague({ app, onConnected, onCancel }: AddLeagueProps) {
-  const [provider, setProvider] = useState<LeagueProvider | null>(null);
+export function AddLeague({ app, initialProvider, onConnected, onCancel }: AddLeagueProps) {
+  const [provider, setProvider] = useState<LeagueProvider | null>(initialProvider ?? null);
   const backToChoice = () => setProvider(null);
 
   if (provider === "sleeper") {
