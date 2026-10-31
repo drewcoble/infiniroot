@@ -37,6 +37,7 @@ import type {
   StandingsRow,
   TeamRosterRow,
 } from "../../../types/season";
+import { ErrorMessage } from "../../../components/ErrorMessage";
 
 // How many players each of the Buys / Sells strips shows.
 const SIGNAL_LIMIT = 10;
@@ -554,12 +555,12 @@ function TradePage() {
         {metricSwitch}
       </Stack>
 
-      {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
-      {tradeValuesError && <Alert color="red">{tradeValuesError}</Alert>}
-      {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
+      {teamARoster.error && <Alert color="red"><ErrorMessage message={teamARoster.error} /></Alert>}
+      {tradeValuesError && <Alert color="red"><ErrorMessage message={tradeValuesError} /></Alert>}
+      {teamBRoster.error && <Alert color="red"><ErrorMessage message={teamBRoster.error} /></Alert>}
       {impactError && (
         <Alert color="red" withCloseButton onClose={() => setTradeImpactError(null)}>
-          {impactError}
+          <ErrorMessage message={impactError} />
         </Alert>
       )}
 

@@ -34,6 +34,7 @@ import type {
   StandingsRow,
   TeamRosterRow,
 } from "../../../../types/season";
+import { ErrorMessage } from "../../../../components/ErrorMessage";
 
 const REGULAR_SEASON_WEEKS = 18;
 
@@ -261,7 +262,7 @@ function TeamPage() {
         Number(week) >= Number(currentWeek) && <LineupSuggestionsCard rows={roster} />}
 
       <Stack gap="sm">
-        {teamRoster.error && <Alert color="red">{teamRoster.error}</Alert>}
+        {teamRoster.error && <Alert color="red"><ErrorMessage message={teamRoster.error} /></Alert>}
 
         {roster === undefined ? (
           teamRoster.error ? null : (

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Anchor, Stack, Title } from "@mantine/core";
+import { Alert, Stack, Title } from "@mantine/core";
 import { RefreshCw } from "lucide-react";
 import { api } from "@infinidata/api";
 import { StandingsList } from "../../../components/StandingsList";
@@ -13,7 +13,7 @@ import { PlayoffBracket } from "../../../components/PlayoffBracket";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
 import { GlassSegmented } from "../../../components/cards/GlassSegmented";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
-import { getErrorMessage, isYahooReconnectError } from "@shared/errors";
+import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
 import { isAnyGameLive, useNow, type WeekGame } from "../../../lib/liveGames";
 import { LIVE_REFRESH_MS } from "../../../lib/matchupSummary";
@@ -27,6 +27,7 @@ import type {
   StandingsRow,
   TeamPositionRanks,
 } from "../../../types/season";
+import { ErrorMessage } from "../../../components/ErrorMessage";
 
 export const Route = createFileRoute("/league/$leagueId/")({
   component: LeaguePage,
@@ -382,17 +383,7 @@ function LeaguePage() {
       </div>
       {syncError && (
         <Alert color="red" withCloseButton onClose={() => setSyncError(null)}>
-          {syncError}
-          {isYahooReconnectError(syncError) && (
-            <>
-              {" "}
-              <Link to="/add-league" search={{ provider: "yahoo" }}>
-                <Anchor component="span" inherit>
-                  Reconnect Yahoo
-                </Anchor>
-              </Link>
-            </>
-          )}
+          <ErrorMessage message={syncError} />
         </Alert>
       )}
       {positionRanksError && (
@@ -401,7 +392,7 @@ function LeaguePage() {
           withCloseButton
           onClose={() => setPositionRanksError(null)}
         >
-          {positionRanksError}
+          <ErrorMessage message={positionRanksError} />
         </Alert>
       )}
       <GlassSegmented
@@ -433,7 +424,7 @@ function LeaguePage() {
               withCloseButton
               onClose={() => setEliminationWatchError(null)}
             >
-              {eliminationWatchError}
+              <ErrorMessage message={eliminationWatchError} />
             </Alert>
           )}
           <EliminationWatchList
@@ -450,7 +441,7 @@ function LeaguePage() {
               withCloseButton
               onClose={() => setProjectedStandingsError(null)}
             >
-              {projectedStandingsError}
+              <ErrorMessage message={projectedStandingsError} />
             </Alert>
           )}
           {!projectedStandingsError && (
@@ -487,7 +478,7 @@ function LeaguePage() {
                 />
               )}
               {error ? (
-                <Alert color="red">{error}</Alert>
+                <Alert color="red"><ErrorMessage message={error} /></Alert>
               ) : shown === undefined || standings === undefined ? (
                 <Stack gap={8}>
                   {Array.from({ length: 6 }, (_, index) => (
@@ -522,7 +513,7 @@ function LeaguePage() {
               withCloseButton
               onClose={() => setPowerRankingsError(null)}
             >
-              {powerRankingsError}
+              <ErrorMessage message={powerRankingsError} />
             </Alert>
           )}
           <PowerRankingsList

@@ -8,6 +8,7 @@ import { GlassMatchupHeader } from "./cards/GlassMatchupHeader";
 import { MatchupScoreCard } from "./MatchupScoreCard";
 import type { WeekGame } from "../lib/liveGames";
 import type { LeagueWeekMatchups, StandingsRow } from "../types/season";
+import { ErrorMessage } from "./ErrorMessage";
 
 // Every matchup in the league for one week - the Matchup tab's League view.
 // One score card per pairing (the same MatchupScoreCard as the cross-league
@@ -69,7 +70,7 @@ export function LeagueMatchupsList({
   }, [leagueId, week, key, refreshMs, getLeagueWeekMatchups]);
 
   const current = result !== null && result.key === key ? result : null;
-  if (current?.error) return <Alert color="red">{current.error}</Alert>;
+  if (current?.error) return <Alert color="red"><ErrorMessage message={current.error} /></Alert>;
   if (!current?.data) {
     return (
       <Stack gap="sm">

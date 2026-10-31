@@ -174,7 +174,7 @@ export async function withYahooToken<T>(
   });
   if (!stored) {
     throw new Error(
-      "Yahoo account not connected - connect it from Season Settings first.",
+      "Yahoo account not connected - connect your Yahoo account and try again.",
     );
   }
 

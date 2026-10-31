@@ -109,8 +109,8 @@ export function installStaleChunkReload() {
   });
 }
 
-// withYahooToken's message when Yahoo has revoked the stored refresh token
-// (convex/infinidraft/yahoo/oauth.ts) - callers show a reconnect link with it.
+// withYahooToken's messages when there's no Yahoo token or Yahoo revoked it
+// (convex/infinidraft/yahoo/oauth.ts) - callers show a reconnect link with them.
 export function isYahooReconnectError(message: string): boolean {
-  return message.includes("reconnect your Yahoo account");
+  return message.includes("connect your Yahoo account");
 }

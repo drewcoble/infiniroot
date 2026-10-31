@@ -17,6 +17,7 @@ import { setStoredLeagueId } from "../lib/leagueStorage";
 import { LIVE_REFRESH_MS } from "../lib/matchupSummary";
 import { isAnyGameLive, isGameFinal, useNow, type WeekGame } from "../lib/liveGames";
 import type { LinkedSeason, StandingsRow } from "../types/season";
+import { ErrorMessage } from "../components/ErrorMessage";
 
 export const Route = createFileRoute("/matchups")({
   component: MatchupsPage,
@@ -271,7 +272,7 @@ function LeagueMatchup({
       )}
       {error && (
         <Text size="xs" c="red">
-          {error}
+          <ErrorMessage message={error} />
         </Text>
       )}
     </Stack>

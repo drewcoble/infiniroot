@@ -47,6 +47,7 @@ import type {
   StandingsRow,
   TeamRosterRow,
 } from "../../../types/season";
+import { ErrorMessage } from "../../../components/ErrorMessage";
 
 // Regular-season weeks the week picker steps through.
 const REGULAR_SEASON_WEEKS = 18;
@@ -417,12 +418,12 @@ function MatchupPage() {
         <>
           {opponentError && (
             <Alert color="red" withCloseButton onClose={() => setOpponentError(null)}>
-              {opponentError}
+              <ErrorMessage message={opponentError} />
             </Alert>
           )}
-          {guillotine.error && <Alert color="red">{guillotine.error}</Alert>}
-          {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
-          {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
+          {guillotine.error && <Alert color="red"><ErrorMessage message={guillotine.error} /></Alert>}
+          {teamARoster.error && <Alert color="red"><ErrorMessage message={teamARoster.error} /></Alert>}
+          {teamBRoster.error && <Alert color="red"><ErrorMessage message={teamBRoster.error} /></Alert>}
 
           {autoOpponentId === null && (
             <Select
