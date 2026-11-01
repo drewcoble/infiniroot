@@ -1,0 +1,208 @@
+/* Playoff bracket (PlayoffBracket) - one column per round in a swipeable,
+   snapping row with no visible scrollbar, the next round peeking in. Game
+   cards are the shared glass .card from GlassMatchupCard.module.css. */
+
+/* Round 1's full height throughout - later rounds condense within it. */
+.scroller {
+  /* Spot height in px, unitless so the transforms below can scale it. */
+  --slot: 100;
+  --label-height: 28px;
+  --column-gap: 24px;
+  --progress: 0;
+  display: flex;
+  align-items: stretch;
+  gap: var(--column-gap);
+  height: calc(var(--label-height) + var(--first-round-slots) * var(--slot) * 1px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* Lets the last round snap to the left edge like the rest. */
+.scroller::after {
+  content: "";
+  flex: 0 0 calc(48px - var(--column-gap));
+}
+
+.column {
+  /* This round's spot spacing: doubling per round past the swipe
+     position, halving per round before it. */
+  --spacing: calc(var(--slot) * pow(2, calc(var(--r) - var(--progress))) * 1px);
+  flex: 0 0 calc(100% - 48px);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+  /* Rounds already swiped past fade out by halfway, as they condense. */
+  opacity: calc(1 - min(1, max(0, (var(--progress) - var(--r)) * 2)));
+}
+
+.columnLabel {
+  height: var(--label-height);
+  flex-shrink: 0;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+}
+
+/* Spots and connectors sit at the track's top and move by transform only,
+   so a swipe never re-lays anything out. */
+.slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  transform: translateY(calc(var(--c) * var(--spacing) - 50%));
+  will-change: transform;
+}
+
+.join {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: var(--column-gap);
+  height: 0;
+  pointer-events: none;
+}
+
+.joinTop,
+.joinBottom,
+.joinVertical,
+.joinInto {
+  position: absolute;
+  top: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  will-change: transform;
+}
+
+.joinTop,
+.joinBottom {
+  left: 0;
+  width: calc(var(--column-gap) / 2);
+}
+
+.joinTop {
+  transform: translateY(calc(var(--c) * var(--spacing)));
+}
+
+.joinBottom {
+  transform: translateY(calc((var(--c) + 1) * var(--spacing)));
+}
+
+/* A 1px line stretched to the pair's spacing. */
+.joinVertical {
+  left: calc(var(--column-gap) / 2 - 1px);
+  width: 1px;
+  transform-origin: top;
+  transform: translateY(calc(var(--c) * var(--spacing)))
+    scaleY(calc(var(--slot) * pow(2, calc(var(--r) - var(--progress)))));
+}
+
+.joinInto {
+  left: calc(var(--column-gap) / 2);
+  width: calc(var(--column-gap) / 2);
+  transform: translateY(calc((var(--c) + 0.5) * var(--spacing)));
+}
+
+.game {
+  flex: 1;
+  min-width: 0;
+  gap: 0;
+  padding: 4px 12px;
+}
+
+/* A top seed's bye in round 1 - one quiet row. */
+.bye {
+  flex: 1;
+  opacity: 0.6;
+}
+
+.byeNote {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.entrant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.entrant + .entrant {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.seed {
+  flex-shrink: 0;
+  min-width: 26px;
+  justify-content: center;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.points {
+  flex-shrink: 0;
+  font-family: var(--font-numeric);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Decided game: the winner stays bright, the loser recedes. */
+.winner .name,
+.winner .points {
+  font-weight: 750;
+}
+
+.loser {
+  opacity: 0.45;
+}
+
+.tbd .name {
+  color: rgba(248, 250, 252, 0.45);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.champion {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(
+    150deg,
+    rgba(250, 204, 21, 0.18) 0%,
+    rgba(250, 204, 21, 0.05) 100%
+  );
+}
+
+.championName {
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.note {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.6);
+}

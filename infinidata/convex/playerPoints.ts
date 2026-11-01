@@ -284,6 +284,8 @@ export const upsertPlayerPoints = internalMutation({
         pointsHalf: v.number(),
         pointsPpr: v.number(),
         stats: v.record(v.string(), v.number()),
+        team: v.optional(v.string()),
+        opponent: v.optional(v.string()),
       }),
     ),
   },
@@ -304,13 +306,22 @@ export const upsertPlayerPoints = internalMutation({
       // all of it unchanged since the last run - skip the write entirely
       // (not just applySeasonStatsDelta's own no-op) so an unchanged row
       // costs one read, and doesn't wake every query reading this table.
-      if (
-        existing &&
+      const sameGame =
+        existing !== null && existing.team === row.team && existing.opponent === row.opponent;
+      const samePoints =
+        existing !== null &&
         existing.pointsStd === row.pointsStd &&
         existing.pointsHalf === row.pointsHalf &&
         existing.pointsPpr === row.pointsPpr &&
-        statsEqual(existing.stats, row.stats)
-      ) {
+        statsEqual(existing.stats, row.stats);
+      if (samePoints && sameGame) {
+        continue;
+      }
+      // Only the team/opponent are new (a row synced before they were
+      // stored) - nothing playerSeasonStats folds in has changed.
+      if (existing && samePoints) {
+        await ctx.db.patch(existing._id, { team: row.team, opponent: row.opponent });
+        updated += 1;
         continue;
       }
 
@@ -342,6 +353,8 @@ export const upsertPlayerPoints = internalMutation({
         pointsHalf: row.pointsHalf,
         pointsPpr: row.pointsPpr,
         stats: row.stats,
+        ...(row.team !== undefined ? { team: row.team } : {}),
+        ...(row.opponent !== undefined ? { opponent: row.opponent } : {}),
         fetchedAt: now,
       };
       if (existing) {

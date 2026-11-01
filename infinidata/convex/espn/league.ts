@@ -70,6 +70,9 @@ interface EspnTeam {
   logoType?: string;
   primaryOwner?: string;
   waiverRank?: number;
+  // Playoff seed - confirmed live against league 164483: the final seeds
+  // once the bracket is set (1-6 there, 7-10 for the rest).
+  playoffSeed?: number;
   record?: {
     overall?: {
       wins?: number;
@@ -93,8 +96,11 @@ interface EspnMember {
 
 interface EspnScheduleEntry {
   matchupPeriodId: number;
-  home?: { teamId: number };
-  away?: { teamId: number };
+  // totalPoints covers the whole matchup period.
+  home?: { teamId: number; totalPoints?: number };
+  away?: { teamId: number; totalPoints?: number };
+  // "HOME" / "AWAY" once decided, else "UNDECIDED" - confirmed live.
+  winner?: string;
   // "NONE" for a regular-season game, a bracket name (WINNERS_BRACKET etc.)
   // for playoffs/consolation - confirmed live against league 164483.
   playoffTierType?: string;
@@ -114,6 +120,9 @@ interface EspnLeague {
 // Confirmed live against league 164483.
 interface EspnScheduleSettings {
   matchupPeriods?: Record<string, number[]>;
+  // Regular-season matchup periods; playoff periods follow.
+  matchupPeriodCount?: number;
+  playoffTeamCount?: number;
 }
 
 async function fetchEspnLeague(
@@ -516,6 +525,68 @@ export async function fetchEspnRegularSeasonMatchups(
     matchups.push({ weeks, teams: [String(home), String(away)] });
   }
   return matchups;
+}
+
+export interface EspnPlayoffGame {
+  matchupPeriodId: number;
+  // Missing away = a bye (round 1) or an opponent not set yet.
+  home: { teamId: string; points: number | null } | null;
+  away: { teamId: string; points: number | null } | null;
+  winnerTeamId: string | null;
+}
+
+export interface EspnPlayoffSchedule {
+  regularSeasonPeriodCount: number;
+  playoffTeamCount: number;
+  matchupPeriods: Record<string, number[]>;
+  // WINNERS_BRACKET games only, in schedule order - the consolation ladders
+  // are left out. Empty until ESPN sets the bracket (it lists no playoff
+  // games before then - confirmed live mid-season on league 164483).
+  games: EspnPlayoffGame[];
+  seeds: Record<string, number>;
+}
+
+// The championship bracket's games, for infinileague's playoffs view - one
+// request, same views as fetchEspnRegularSeasonMatchups plus mTeam for
+// seeds.
+export async function fetchEspnPlayoffSchedule(
+  espnLeagueId: string,
+  season: string,
+): Promise<EspnPlayoffSchedule> {
+  const league = await fetchEspnLeague(espnLeagueId, season, [
+    "mMatchupScore",
+    "mSettings",
+    "mTeam",
+  ]);
+  const scheduleSettings = league.settings?.scheduleSettings;
+  const side = (entry: EspnScheduleEntry["home"]) =>
+    entry ? { teamId: String(entry.teamId), points: entry.totalPoints ?? null } : null;
+  const games: EspnPlayoffGame[] = [];
+  for (const entry of league.schedule ?? []) {
+    if (entry.playoffTierType !== "WINNERS_BRACKET") continue;
+    const home = side(entry.home);
+    const away = side(entry.away);
+    games.push({
+      matchupPeriodId: entry.matchupPeriodId,
+      home,
+      away,
+      winnerTeamId:
+        entry.winner === "HOME" ? (home?.teamId ?? null)
+        : entry.winner === "AWAY" ? (away?.teamId ?? null)
+        : null,
+    });
+  }
+  const seeds: Record<string, number> = {};
+  for (const team of league.teams ?? []) {
+    if (team.playoffSeed !== undefined) seeds[String(team.id)] = team.playoffSeed;
+  }
+  return {
+    regularSeasonPeriodCount: scheduleSettings?.matchupPeriodCount ?? 0,
+    playoffTeamCount: scheduleSettings?.playoffTeamCount ?? 0,
+    matchupPeriods: scheduleSettings?.matchupPeriods ?? {},
+    games,
+    seeds,
+  };
 }
 
 export interface EspnWeekEntry {

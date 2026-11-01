@@ -4,31 +4,38 @@ import { internal } from "./_generated/api";
 import { POSITIONS, positionValidator } from "./positions";
 import { bonusPoints, pointsForScoring, scoringConfigFromSeason, scoringConfigValidator, type ScoringConfig } from "./scoring";
 
-// Rebuilds weekPositionRankSets (see its schema comment) for the given
-// weeks of one season, for every scoring setup a league currently uses.
-// Called by the playerWeekPoints sync (convex/sleeper/playerPoints.ts)
-// right after it writes those same weeks. One mutation per position-week:
-// each reads that position-week's rows once and ranks them under every
-// scoring setup.
-export async function refreshWeekPositionRanks(
-  ctx: ActionCtx,
-  args: { season: string; weeks: string[] },
-): Promise<void> {
+// Every scoring setup a league currently uses, deduped and in a stable
+// order - what weekPositionRankSets are built for, and (sorted) part of
+// the Sleeper stats sync's per-week ranks hash, so a new setup rebuilds
+// every week's ranks.
+export async function scoringConfigsInUse(ctx: ActionCtx): Promise<ScoringConfig[]> {
   const seasons = await ctx.runQuery(internal.leagues.listAllSeasons, {});
   const configs = new Map<string, ScoringConfig>();
   for (const season of seasons) {
     const config = scoringConfigFromSeason(season);
     configs.set(`${config.scoring}|${config.teScoring}|${config.sixPointPassTds}`, config);
   }
-  if (configs.size === 0) return;
+  return [...configs.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([, config]) => config);
+}
 
+// Rebuilds weekPositionRankSets (see its schema comment) for the given
+// weeks of one season, for every scoring setup in `configs` (see
+// scoringConfigsInUse). Called by the playerWeekPoints sync (convex/
+// sleeper/playerPoints.ts) for the weeks whose rows or setups changed.
+// One mutation per position-week: each reads that position-week's rows
+// once and ranks them under every scoring setup.
+export async function refreshWeekPositionRanks(
+  ctx: ActionCtx,
+  args: { season: string; weeks: string[]; configs: ScoringConfig[] },
+): Promise<void> {
+  if (args.configs.length === 0) return;
   for (const week of args.weeks) {
     for (const position of POSITIONS) {
       await ctx.runMutation(internal.weekPositionRanks.refreshPositionWeek, {
         season: args.season,
         week,
         position,
-        scoringConfigs: [...configs.values()],
+        scoringConfigs: args.configs,
       });
     }
   }

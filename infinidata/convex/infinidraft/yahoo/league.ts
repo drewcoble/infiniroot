@@ -244,6 +244,56 @@ export function yahooRegularSeasonEndWeek(settingsRaw: unknown): number | null {
   return endWeek > 0 ? endWeek : null;
 }
 
+// Where the playoffs start and how many teams make them, from the same
+// documented settings fields (plus num_playoff_teams) - NOT confirmed
+// against a live response (see YAHOO.md). Null for a league with no
+// playoffs.
+export function yahooPlayoffSettings(
+  settingsRaw: unknown,
+): { startWeek: number; teamCount: number } | null {
+  const field = (key: string): unknown => findNodesByKey(settingsRaw, key)[0];
+  if (String(field("uses_playoff")) === "0") return null;
+  const startWeek = Number(field("playoff_start_week"));
+  const teamCount = Number(field("num_playoff_teams"));
+  return startWeek > 1 && teamCount > 1 ? { startWeek, teamCount } : null;
+}
+
+export interface YahooPlayoffGame {
+  teams: { teamKey: string; points: number | null }[];
+  winnerTeamKey: string | null;
+}
+
+// One week's championship-bracket games (is_playoffs, not is_consolation)
+// for infinileague's playoffs view, from the same scoreboard resource as
+// fetchYahooWeekPairs - the matchup flags and team_points are documented
+// Yahoo fields, NOT confirmed against a live response (see YAHOO.md).
+export async function fetchYahooPlayoffGames(
+  accessToken: string,
+  leagueKey: string,
+  week: number,
+): Promise<YahooPlayoffGame[]> {
+  const json = await fetchYahooApi<unknown>(
+    accessToken,
+    `/league/${leagueKey}/scoreboard;week=${week}`,
+  );
+  const games: YahooPlayoffGame[] = [];
+  for (const matchupNode of findNodesByKey(json, "matchup")) {
+    const fields = mergeYahooFields(matchupNode);
+    if (String(fields.is_playoffs) !== "1" || String(fields.is_consolation) === "1") continue;
+    const teams = findNodesByKey(matchupNode, "team").flatMap((node) => {
+      const teamFields = mergeYahooFields(node);
+      if (typeof teamFields.team_key !== "string") return [];
+      const total = Number(mergeYahooFields(teamFields.team_points).total);
+      return [{ teamKey: teamFields.team_key, points: Number.isFinite(total) ? total : null }];
+    });
+    games.push({
+      teams,
+      winnerTeamKey: typeof fields.winner_team_key === "string" ? fields.winner_team_key : null,
+    });
+  }
+  return games;
+}
+
 export const fetchYahooLeagueTeams = action({
   args: { leagueKey: v.string() },
   handler: async (ctx, args): Promise<YahooTeamRow[]> => {

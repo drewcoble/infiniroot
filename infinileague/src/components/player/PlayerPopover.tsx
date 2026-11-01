@@ -12,6 +12,7 @@ import {
   type Pace,
 } from "../cards/cardShared";
 import { GameLineText } from "../cards/GameLineText";
+import { matchupSummary } from "../../lib/matchupDifficulty";
 import { GameStatusGlyph } from "../cards/GameStatusGlyph";
 import { GlassPopover } from "../cards/GlassPopover";
 import { meterScaleMax } from "../cards/meterScale";
@@ -90,6 +91,7 @@ export function PlayerPopover({
     weekPoints,
     weekRanks,
     weekGames,
+    matchupGrades,
     rookieFpids,
     byeWeeks,
     faab,
@@ -121,6 +123,7 @@ export function PlayerPopover({
           row,
           weekRank,
           seasonRank,
+          matchupGrades,
         )
       : undefined;
   const game = context.game ?? currentGame;
@@ -259,6 +262,18 @@ export function PlayerPopover({
       {ownerText && (
         <div className={classes.gameLine}>
           <span className={classes.gameLineText}>{ownerText}</span>
+        </div>
+      )}
+
+      {/* This week's matchup difficulty, broken down by stat category. */}
+      {game?.matchupGrade && game.gameState !== "bye" && (
+        <div className={classes.gameLine}>
+          <span className={classes.gameLineText}>
+            Matchup{" "}
+            <span className={classes[`matchup_${game.matchupGrade.tier}`]}>
+              {matchupSummary(game.matchupGrade)}
+            </span>
+          </span>
         </div>
       )}
 

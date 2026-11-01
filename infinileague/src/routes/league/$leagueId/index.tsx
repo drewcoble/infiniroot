@@ -9,6 +9,7 @@ import { StandingsList } from "../../../components/StandingsList";
 import { PowerRankingsList } from "../../../components/PowerRankingsList";
 import { ProjectedStandingsList } from "../../../components/ProjectedStandingsList";
 import { EliminationWatchList } from "../../../components/EliminationWatchList";
+import { PlayoffBracket } from "../../../components/PlayoffBracket";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
 import { GlassSegmented } from "../../../components/cards/GlassSegmented";
 import classes from "../../../components/cards/GlassMatchupCard.module.css";
@@ -19,12 +20,14 @@ import { LIVE_REFRESH_MS } from "../../../lib/matchupSummary";
 import { rankLive } from "../../../lib/eliminationWatch";
 import type {
   EliminationWatchRow,
+  LeaguePlayoffs,
   LinkedSeason,
   PowerRankingRow,
   ProjectedStandingsRow,
   StandingsRow,
   TeamPositionRanks,
 } from "../../../types/season";
+import { ErrorMessage } from "../../../components/ErrorMessage";
 
 export const Route = createFileRoute("/league/$leagueId/")({
   component: LeaguePage,
@@ -60,11 +63,11 @@ function LeaguePage() {
 
   // null = no manual pick yet, so the tab defaults to Elimination Watch for
   // a guillotine league (win/loss doesn't mean anything without head-to-
-  // head games) or Standings otherwise - see the tableView derivation
-  // below. Once the viewer picks a tab themselves, that choice sticks
+  // head games), Playoffs once they've started, or Standings otherwise -
+  // see the tableView derivation below. Once the viewer picks a tab themselves, that choice sticks
   // regardless of which league format this turns out to be.
   const [manualTableView, setManualTableView] = useState<
-    "standings" | "projected" | "power" | "elimination" | null
+    "standings" | "projected" | "playoffs" | "power" | "elimination" | null
   >(null);
 
   const seasonsList: LinkedSeason[] | undefined = useQuery(
@@ -73,8 +76,38 @@ function LeaguePage() {
   );
   const season = seasonsList?.find((s) => s._id === leagueId);
   const isGuillotine = season?.leagueType === "guillotine";
+
+  // The league's playoff picture - fetched once per league visit, since
+  // whether the playoffs have started picks the default view.
+  const getPlayoffs = useAction(api.infinileague.season.playoffs.getPlayoffs);
+  const [playoffs, setPlayoffs] = useState<LeaguePlayoffs | undefined>(undefined);
+  const [playoffsError, setPlayoffsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || season === undefined || isGuillotine) return;
+    setPlayoffs(undefined);
+    setPlayoffsError(null);
+    getPlayoffs({ seasonId })
+      .then(setPlayoffs)
+      .catch((err) => setPlayoffsError(getErrorMessage(err, "Failed to load playoffs.")));
+    // Same dep convention as the getPowerRankings effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated, season === undefined, isGuillotine]);
+
+  // Before the bracket is set: seed it from today's standings or the
+  // projected final ones.
+  const [bracketSeeding, setBracketSeeding] = useState<"current" | "projected">("current");
+  const [projectedPlayoffs, setProjectedPlayoffs] = useState<
+    { leagueId: string; data?: LeaguePlayoffs; error?: string } | undefined
+  >(undefined);
+
   const tableView =
-    manualTableView ?? (isGuillotine ? "elimination" : "standings");
+    manualTableView ??
+    (isGuillotine
+      ? "elimination"
+      : playoffs && playoffs.phase !== "regular"
+        ? "playoffs"
+        : "standings");
 
   const syncStatus: RosterSyncStatusRow[] | undefined = useQuery(
     api.infinileague.season.rosterPlayers.getRosterSyncStatus,
@@ -131,8 +164,12 @@ function LeaguePage() {
   >(null);
   const projectedLoadedRef = useRef<string | null>(null);
 
+  // Also wanted by the playoff bracket's projected seeding.
+  const wantsProjected =
+    tableView === "projected" || (tableView === "playoffs" && bracketSeeding === "projected");
+
   useEffect(() => {
-    if (!isAuthenticated || tableView !== "projected") return;
+    if (!isAuthenticated || !wantsProjected) return;
     if (projectedLoadedRef.current === leagueId) return;
     projectedLoadedRef.current = leagueId;
     setProjectedStandings(undefined);
@@ -146,7 +183,21 @@ function LeaguePage() {
       );
     // Same dep convention as the getPowerRankings effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueId, isAuthenticated, tableView]);
+  }, [leagueId, isAuthenticated, wantsProjected]);
+
+  // The bracket seeded by projected final standings, once they're in.
+  useEffect(() => {
+    if (!isAuthenticated || !wantsProjected || tableView !== "playoffs") return;
+    if (!projectedStandings || projectedPlayoffs?.leagueId === leagueId) return;
+    setProjectedPlayoffs({ leagueId });
+    const projectedOrder = projectedStandings.map((row) => row.teamId as Id<"seasonTeams">);
+    getPlayoffs({ seasonId, projectedOrder })
+      .then((data) => setProjectedPlayoffs({ leagueId, data }))
+      .catch((err) =>
+        setProjectedPlayoffs({ leagueId, error: getErrorMessage(err, "Failed to load playoffs.") }),
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, isAuthenticated, wantsProjected, tableView, projectedStandings]);
 
   const getEliminationWatch = useAction(
     api.infinileague.season.eliminationWatch.getEliminationWatch,
@@ -332,7 +383,7 @@ function LeaguePage() {
       </div>
       {syncError && (
         <Alert color="red" withCloseButton onClose={() => setSyncError(null)}>
-          {syncError}
+          <ErrorMessage message={syncError} />
         </Alert>
       )}
       {positionRanksError && (
@@ -341,7 +392,7 @@ function LeaguePage() {
           withCloseButton
           onClose={() => setPositionRanksError(null)}
         >
-          {positionRanksError}
+          <ErrorMessage message={positionRanksError} />
         </Alert>
       )}
       <GlassSegmented
@@ -358,6 +409,9 @@ function LeaguePage() {
             : [
                 { label: "Standings", value: "standings" as const },
                 { label: "Projected", value: "projected" as const },
+                ...(playoffs?.hasPlayoffs === false
+                  ? []
+                  : [{ label: "Playoffs", value: "playoffs" as const }]),
               ]),
           { label: "Power rankings", value: "power" as const },
         ]}
@@ -370,7 +424,7 @@ function LeaguePage() {
               withCloseButton
               onClose={() => setEliminationWatchError(null)}
             >
-              {eliminationWatchError}
+              <ErrorMessage message={eliminationWatchError} />
             </Alert>
           )}
           <EliminationWatchList
@@ -387,7 +441,7 @@ function LeaguePage() {
               withCloseButton
               onClose={() => setProjectedStandingsError(null)}
             >
-              {projectedStandingsError}
+              <ErrorMessage message={projectedStandingsError} />
             </Alert>
           )}
           {!projectedStandingsError && (
@@ -398,6 +452,45 @@ function LeaguePage() {
             />
           )}
         </>
+      ) : tableView === "playoffs" ? (
+        (() => {
+          // Seeding only means anything before the bracket is set.
+          const seedable = playoffs?.hasPlayoffs === true && playoffs.phase === "regular";
+          const projected = seedable && bracketSeeding === "projected";
+          const projectedForLeague =
+            projectedPlayoffs?.leagueId === leagueId ? projectedPlayoffs : undefined;
+          const shown = projected ? projectedForLeague?.data : playoffs;
+          const error = projected
+            ? (projectedStandingsError ?? projectedForLeague?.error)
+            : playoffsError;
+          return (
+            <>
+              {seedable && (
+                <GlassSegmented
+                  compact
+                  label="Bracket seeding"
+                  value={bracketSeeding}
+                  onChange={setBracketSeeding}
+                  options={[
+                    { label: "Today", value: "current" },
+                    { label: "Projected", value: "projected" },
+                  ]}
+                />
+              )}
+              {error ? (
+                <Alert color="red"><ErrorMessage message={error} /></Alert>
+              ) : shown === undefined || standings === undefined ? (
+                <Stack gap={8}>
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <GlassRosterSkeletonCard key={index} />
+                  ))}
+                </Stack>
+              ) : (
+                <PlayoffBracket playoffs={shown} standings={standings} />
+              )}
+            </>
+          );
+        })()
       ) : tableView === "standings" ? (
         standings === undefined ? (
           <Stack gap={8}>
@@ -420,7 +513,7 @@ function LeaguePage() {
               withCloseButton
               onClose={() => setPowerRankingsError(null)}
             >
-              {powerRankingsError}
+              <ErrorMessage message={powerRankingsError} />
             </Alert>
           )}
           <PowerRankingsList

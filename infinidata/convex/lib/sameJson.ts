@@ -7,7 +7,7 @@ export function sameJson(a: unknown, b: unknown): boolean {
   return stableStringify(a) === stableStringify(b);
 }
 
-function stableStringify(value: unknown): string {
+export function stableStringify(value: unknown): string {
   return JSON.stringify(value, (_key, val: unknown) =>
     val !== null && typeof val === "object" && !Array.isArray(val)
       ? Object.fromEntries(

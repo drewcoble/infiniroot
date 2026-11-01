@@ -493,6 +493,13 @@ export default defineSchema({
     // Per-category box score for that week (pass_yd, rush_td, rec, etc.) -
     // same shape as projections.stats.
     stats: v.record(v.string(), v.number()),
+    // The NFL team he played for and against that week, from the same
+    // Sleeper record - not players.team, which is only his current team and
+    // goes wrong for anyone traded or signed mid-season. The same values
+    // feed matchupGameWeeks. Absent on rows synced before these existed
+    // until the next full-season sync, and on weeks he didn't play.
+    team: v.optional(v.string()),
+    opponent: v.optional(v.string()),
     fetchedAt: v.number(),
   })
     // The sync's upsert key, and convex/lib/weekPoints.ts's one-week read.
@@ -524,6 +531,65 @@ export default defineSchema({
     ranks: v.array(v.object({ fpid: v.number(), rank: v.number() })),
     updatedAt: v.number(),
   }).index("by_key", ["season", "position", "scoring", "teScoring", "sixPointPassTds", "week"]),
+
+  // A sync's fingerprint of what it last wrote for one batch (lib/
+  // syncHash.ts) - lets it skip a batch whose incoming data hashes the
+  // same, without reading the rows it would otherwise compare against.
+  // Written only after the batch's own writes succeed, so a failed run is
+  // retried rather than skipped. Keys: "playerWeekPoints|<season>|<week>"
+  // (the Sleeper stats sync, convex/sleeper/playerPoints.ts) and
+  // "weekPositionRanks|<season>|<week>" (that week's rows plus the scoring
+  // setups leagues use - a new setup rebuilds every week's ranks).
+  syncHashes: defineTable({
+    key: v.string(),
+    hash: v.string(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  // One season-week's played QB/RB/WR/TE games, trimmed to what the matchup
+  // difficulty rating needs (opponent + lib/matchupDifficulty.ts's
+  // positionStatKeys) - so rebuilding defenseMatchupSets reads ~18 small
+  // docs instead of every playerWeekPoints row of the season. Written by
+  // the Sleeper stats sync from the rows it just parsed, only for weeks
+  // whose data changed (convex/defenseMatchups.ts's saveWeekGames).
+  matchupGameWeeks: defineTable({
+    season: v.string(),
+    week: v.number(),
+    games: v.array(
+      v.object({
+        fpid: v.number(),
+        position: positionValidator,
+        opponent: v.string(),
+        stats: v.record(v.string(), v.number()),
+      }),
+    ),
+    updatedAt: v.number(),
+  }).index("by_season_week", ["season", "week"]),
+
+  // Each defense's record against each position (QB/RB/WR/TE) for the
+  // matchup difficulty rating - the raw stats it allowed and what the same
+  // players' own baselines expected, summed game by game (see
+  // lib/matchupDifficulty.ts's buildDefenseMatchups). One doc per (season,
+  // throughWeek): week W's matchups read the set through W - 1, so a
+  // past week is graded on what was known before it. Raw stats rather than
+  // points so each league's scoring is applied at read time. Rebuilt from
+  // matchupGameWeeks by convex/defenseMatchups.ts when a sync changes one
+  // of those weeks - only the sets from that week on, rewritten only when
+  // a set changes; starts at MATCHUP_FIRST_WEEK - 1.
+  defenseMatchupSets: defineTable({
+    season: v.string(),
+    throughWeek: v.number(),
+    rows: v.array(
+      v.object({
+        defense: v.string(),
+        position: positionValidator,
+        games: v.number(),
+        allowed: v.record(v.string(), v.number()),
+        baseline: v.record(v.string(), v.number()),
+      }),
+    ),
+    updatedAt: v.number(),
+  }).index("by_season_week", ["season", "throughWeek"]),
 
   // Season-long digest of playerWeekPoints, maintained incrementally by
   // upsertPlayerPoints (see convex/playerPoints.ts) rather than recomputed at

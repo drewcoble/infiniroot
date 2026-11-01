@@ -1,5 +1,6 @@
 import type { GlassMatchupCardData } from "../components/cards/cardShared";
 import type { RosVorRow, SlotLabel, TeamRosterRow } from "../types/season";
+import { matchupGradeFor, type MatchupGrades } from "./matchupDifficulty";
 import {
   formatGameStatus,
   formatMatchup,
@@ -15,6 +16,8 @@ import {
 // this week's actual position rank (convex/infinileague/season/matchup.ts's
 // getWeekPositionRanks). `gamesByTeam` undefined (slate still loading, or
 // never synced) falls back to a plain pregame card with just the NFL team.
+// `matchupGrades` (lib/matchupDifficulty.ts's useMatchupGrades) adds his
+// opponent's matchup grade.
 export function toMatchupCardData(
   row: TeamRosterRow,
   gamesByTeam: Map<string, WeekGame> | undefined,
@@ -22,8 +25,9 @@ export function toMatchupCardData(
   vor: RosVorRow | undefined,
   weekRank: number | undefined,
   seasonPositionRank?: number,
+  matchupGrades?: MatchupGrades,
 ): GlassMatchupCardData {
-  const base = {
+  let base: Omit<GlassMatchupCardData, "matchup" | "gameState"> = {
     fpid: row.fpid,
     name: row.name ?? "",
     position: row.position ?? "QB",
@@ -48,6 +52,8 @@ export function toMatchupCardData(
 
   const matchup = formatMatchup(game);
   const status = formatGameStatus(game, now);
+  const matchupGrade = row.position ? matchupGradeFor(matchupGrades, game.opponent, row.position) : undefined;
+  if (matchupGrade) base = { ...base, matchupGrade };
   // IR players don't play even when their team does - shown like a bye
   // (dimmed, no points or meter), same "no live emphasis for IR" rule the
   // old cards had, with the real game line kept for context.

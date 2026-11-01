@@ -17,6 +17,7 @@ import {
 } from "../../../components/MatchupRosterMatchup";
 import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { toMatchupCardData } from "../../../lib/matchupCardData";
+import { useMatchupGrades } from "../../../lib/matchupDifficulty";
 import {
   isStarter,
   LIVE_REFRESH_MS,
@@ -46,6 +47,7 @@ import type {
   StandingsRow,
   TeamRosterRow,
 } from "../../../types/season";
+import { ErrorMessage } from "../../../components/ErrorMessage";
 
 // Regular-season weeks the week picker steps through.
 const REGULAR_SEASON_WEEKS = 18;
@@ -294,6 +296,9 @@ function MatchupPage() {
   // true, rather than a wrong number that then jumps to the right one.
   const matchupReady = teamBId !== null && teamBRoster.rows !== undefined;
 
+  // Each player's opponent's matchup grade (from week 5 on).
+  const matchupGrades = useMatchupGrades(seasonId, week);
+
   const toCardData = (row: TeamRosterRow) =>
     toMatchupCardData(
       row,
@@ -302,6 +307,7 @@ function MatchupPage() {
       row.fpid !== undefined ? vorByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? weekRankByFpid.get(row.fpid) : undefined,
       row.fpid !== undefined ? seasonPositionRankByFpid.get(row.fpid) : undefined,
+      matchupGrades,
     );
   const filledRows = [...(teamARoster.rows ?? []), ...(teamBRoster.rows ?? [])].filter(
     (row) => row.fpid !== undefined,
@@ -412,12 +418,12 @@ function MatchupPage() {
         <>
           {opponentError && (
             <Alert color="red" withCloseButton onClose={() => setOpponentError(null)}>
-              {opponentError}
+              <ErrorMessage message={opponentError} />
             </Alert>
           )}
-          {guillotine.error && <Alert color="red">{guillotine.error}</Alert>}
-          {teamARoster.error && <Alert color="red">{teamARoster.error}</Alert>}
-          {teamBRoster.error && <Alert color="red">{teamBRoster.error}</Alert>}
+          {guillotine.error && <Alert color="red"><ErrorMessage message={guillotine.error} /></Alert>}
+          {teamARoster.error && <Alert color="red"><ErrorMessage message={teamARoster.error} /></Alert>}
+          {teamBRoster.error && <Alert color="red"><ErrorMessage message={teamBRoster.error} /></Alert>}
 
           {autoOpponentId === null && (
             <Select

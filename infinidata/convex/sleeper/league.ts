@@ -451,6 +451,13 @@ interface SleeperLeagueSettings {
     // playoff weeks too, so this, not the matchups endpoint, marks where the
     // regular season ends.
     playoff_week_start?: number;
+    // Teams in the championship bracket - verified live (6 across four real
+    // leagues, absent for the guillotine one).
+    playoff_teams?: number;
+    // Weeks per playoff round - 0 (one week each) across four real leagues;
+    // 1 = two-week final, 2 = two weeks every round is Sleeper's documented
+    // meaning, NOT confirmed against a live league.
+    playoff_round_type?: number;
     // 1 when every team also plays the league median each week (an extra
     // win or loss) - verified present (0) across five real leagues.
     league_average_match?: number;
