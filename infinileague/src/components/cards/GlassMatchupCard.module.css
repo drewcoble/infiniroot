@@ -1427,8 +1427,6 @@
   font-variant-numeric: tabular-nums;
   font-family: var(--font-scoreboard);
   font-weight: var(--font-scoreboard-weight);
-  /* Lumen tops out at 900 - a same-color stroke fattens the dots further. */
-  -webkit-text-stroke: 0.04em currentColor;
 }
 
 .teamHeaderProj {
