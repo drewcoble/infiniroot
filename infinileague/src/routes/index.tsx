@@ -7,9 +7,7 @@ import {
   ActionIcon,
   Button,
   Card,
-  Center,
   Group,
-  Loader,
   SimpleGrid,
   Stack,
   Text,
@@ -17,6 +15,7 @@ import {
 import { Plus, Trash2 } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../components/AppHeader";
+import { useLoadingSplash } from "../components/LoadingSplash";
 import { PageContainer } from "@shared/PageContainer";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { RemoveLeagueModal } from "@shared/RemoveLeagueModal";
@@ -44,6 +43,7 @@ function Dashboard() {
     api.leagues.listLinkedSeasons,
     isAuthenticated ? {} : "skip",
   );
+  useLoadingSplash(seasonsList === undefined);
 
   const [removingSeason, setRemovingSeason] = useState<LinkedSeason | null>(
     null,
@@ -57,11 +57,7 @@ function Dashboard() {
     <PageContainer>
       <Stack gap="lg">
         <AppHeader />
-        {seasonsList === undefined ? (
-          <Center py="xl">
-            <Loader />
-          </Center>
-        ) : leagueGroups.length === 0 ? (
+        {seasonsList === undefined ? null : leagueGroups.length === 0 ? (
           <Stack gap="md" py="xl" align="center">
             <Text c="dimmed">No leagues connected yet.</Text>
             <Group>
