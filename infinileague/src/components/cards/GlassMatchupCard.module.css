@@ -1422,7 +1422,7 @@
 .teamHeaderTotal {
   grid-area: total;
   justify-self: end;
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-scoreboard);

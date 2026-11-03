@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { Center, Loader, Stack, Text } from "@mantine/core";
+import { Stack, Text } from "@mantine/core";
 // convex/react's useConvexAuth, not @convex-dev/auth/react's - same reason
 // as infinidraft's __root.tsx: this one waits for server confirmation of
 // the token, not just "we have some token value in local state".
@@ -10,6 +10,7 @@ import { AuthPanel } from "@shared/AuthPanel";
 import { PageContainer } from "@shared/PageContainer";
 import { RouteErrorFallback } from "@shared/RouteErrorFallback";
 import { SignedOutHeader } from "@shared/SignedOutHeader";
+import { LoadingSplash, useLoadingSplash } from "../components/LoadingSplash";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -26,18 +27,26 @@ function RootComponent() {
       void ensureUser({});
     }
   }, [ensureUser, isAuthenticated]);
+  useLoadingSplash(isLoading);
 
+  return (
+    <>
+      <RootContent isLoading={isLoading} isAuthenticated={isAuthenticated} />
+      <LoadingSplash />
+    </>
+  );
+}
+
+function RootContent({
+  isLoading,
+  isAuthenticated,
+}: {
+  isLoading: boolean;
+  isAuthenticated: boolean;
+}) {
+  // The splash covers the whole viewport while auth resolves.
   if (isLoading) {
-    return (
-      <PageContainer>
-        <Stack gap="md">
-          <SignedOutHeader wordmark="league" />
-          <Center>
-            <Loader />
-          </Center>
-        </Stack>
-      </PageContainer>
-    );
+    return null;
   }
 
   if (!isAuthenticated) {
