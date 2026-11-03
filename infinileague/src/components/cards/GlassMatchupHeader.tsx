@@ -9,6 +9,10 @@ export interface MatchupHeaderTeam {
   // Live projection - actual so far plus the unplayed share of each
   // starter's projection, same total the current Matchup tab shows as "Proj".
   projectedPoints: number;
+  // The pregame projection - shown instead once both teams' games are all
+  // final, when the live projection just equals the score. Never for one
+  // side alone: a live number beside a pregame one reads as a real gap.
+  pregameProjectedPoints?: number | undefined;
   // A future week's best possible projection from the same roster - shown
   // next to Proj when set.
   optimalPoints?: number | undefined;
@@ -59,10 +63,12 @@ function TeamSide({
   team,
   align,
   hideFinal,
+  bothFinal,
 }: {
   team: MatchupHeaderTeam;
   align: "left" | "right";
   hideFinal: boolean;
+  bothFinal: boolean;
 }) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
@@ -87,7 +93,7 @@ function TeamSide({
           player cards' corners, so the counts need no words here (the
           card's aria-label spells them out). */}
       <div className={classes.headerProj}>
-        <span>Proj {team.projectedPoints.toFixed(1)}</span>
+        <span>Proj {shownProjection(team, bothFinal).toFixed(1)}</span>
         {team.optimalPoints !== undefined && <span>Opt {team.optimalPoints.toFixed(1)}</span>}
         {team.liveCount > 0 && (
           <span className={classes.headerCount}>
@@ -95,20 +101,30 @@ function TeamSide({
             {team.liveCount}
           </span>
         )}
-        {team.toPlayCount > 0 && (
+        {/* A side that's done while the other still plays reads "🕒0", not
+            "Final" - both say Final together once neither has anyone left. */}
+        {(team.toPlayCount > 0 || (isAllFinal(team) && !bothFinal)) && (
           <span className={classes.headerCount}>
             <GameStatusGlyph state="pre" />
             {team.toPlayCount}
           </span>
         )}
-        {!hideFinal && team.liveCount === 0 && team.toPlayCount === 0 && <span>Final</span>}
+        {!hideFinal && isAllFinal(team) && bothFinal && <span>Final</span>}
       </div>
     </div>
   );
 }
 
-function countsText(team: MatchupHeaderTeam): string {
-  if (team.liveCount === 0 && team.toPlayCount === 0) return "all games final";
+function isAllFinal(team: MatchupHeaderTeam): boolean {
+  return team.liveCount === 0 && team.toPlayCount === 0;
+}
+
+function shownProjection(team: MatchupHeaderTeam, bothFinal: boolean): number {
+  return bothFinal ? (team.pregameProjectedPoints ?? team.projectedPoints) : team.projectedPoints;
+}
+
+function countsText(team: MatchupHeaderTeam, bothFinal: boolean): string {
+  if (bothFinal) return "all games final";
   return `${team.liveCount} live, ${team.toPlayCount} to play`;
 }
 
@@ -153,11 +169,18 @@ export function GlassMatchupHeader({
 }) {
   const pctA = Math.round((winProbA ?? 0.5) * 100);
   const pctB = 100 - pctA;
+  // Pregame projections only once every starter on both sides is final (or
+  // there's no opponent) - until then both stay live.
+  const bothFinal =
+    teamA !== "loading" &&
+    isAllFinal(teamA) &&
+    teamB !== "loading" &&
+    (teamB === null || isAllFinal(teamB));
   const teamText = (team: MatchupHeaderTeam) =>
     `${team.rank ? `rank ${team.rank.value}, ` : ""}${team.name} ${team.actualPoints.toFixed(2)}, ` +
-    `projected ${team.projectedPoints.toFixed(1)}, ` +
+    `projected ${shownProjection(team, bothFinal).toFixed(1)}, ` +
     (team.optimalPoints !== undefined ? `optimal ${team.optimalPoints.toFixed(1)}, ` : "") +
-    countsText(team);
+    countsText(team, bothFinal);
   const loaded = teamA !== "loading" && teamB !== "loading" && teamB !== null;
   const ariaLabel =
     teamA === "loading"
@@ -181,12 +204,12 @@ export function GlassMatchupHeader({
         {teamA === "loading" ? (
           <TeamSideSkeleton align="left" />
         ) : (
-          <TeamSide team={teamA} align="left" hideFinal={Boolean(result)} />
+          <TeamSide team={teamA} align="left" hideFinal={Boolean(result)} bothFinal={bothFinal} />
         )}
         {teamB === "loading" ? (
           <TeamSideSkeleton align="right" />
         ) : teamB ? (
-          <TeamSide team={teamB} align="right" hideFinal={Boolean(result)} />
+          <TeamSide team={teamB} align="right" hideFinal={Boolean(result)} bothFinal={bothFinal} />
         ) : (
           <div
             className={`${classes.headerTeam} ${classes.headerTeamRight} ${classes.headerPending}`}

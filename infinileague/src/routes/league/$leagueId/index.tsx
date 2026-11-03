@@ -97,8 +97,11 @@ function LeaguePage() {
   // Before the bracket is set: seed it from today's standings or the
   // projected final ones.
   const [bracketSeeding, setBracketSeeding] = useState<"current" | "projected">("current");
+  // rows = the projected standings it was seeded from, so a refresh of
+  // those reseeds it.
   const [projectedPlayoffs, setProjectedPlayoffs] = useState<
-    { leagueId: string; data?: LeaguePlayoffs; error?: string } | undefined
+    | { leagueId: string; rows: ProjectedStandingsRow[]; data?: LeaguePlayoffs; error?: string }
+    | undefined
   >(undefined);
 
   const tableView =
@@ -123,6 +126,11 @@ function LeaguePage() {
   );
   const syncEspnRoster = useAction(api.espn.league.syncEspnLeagueRoster);
 
+  // Bumped by each successful runSync below - power rankings, position
+  // ranks and projected standings all read rosters and records, so each
+  // refetches once a sync finishes.
+  const [syncCount, setSyncCount] = useState(0);
+
   const getPowerRankings = useAction(
     api.infinileague.season.powerRankings.getPowerRankings,
   );
@@ -133,26 +141,36 @@ function LeaguePage() {
     null,
   );
 
+  // A post-sync refresh keeps the current rows up until the new ones land.
+  const powerRankingsLeagueRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isAuthenticated) return;
-    setPowerRankings(undefined);
+    let cancelled = false;
+    if (powerRankingsLeagueRef.current !== leagueId) setPowerRankings(undefined);
+    powerRankingsLeagueRef.current = leagueId;
     setPowerRankingsError(null);
     getPowerRankings({ seasonId })
-      .then(setPowerRankings)
-      .catch((err) =>
-        setPowerRankingsError(
-          getErrorMessage(err, "Failed to load power rankings."),
-        ),
-      );
-    // Refetch whenever the league switches - deliberately excludes
-    // getPowerRankings/seasonId itself (derived from leagueId) from deps,
-    // same convention as the auto-sync effect below.
+      .then((rows) => {
+        if (!cancelled) setPowerRankings(rows);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setPowerRankingsError(getErrorMessage(err, "Failed to load power rankings."));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Refetch whenever the league switches or a sync finishes - deliberately
+    // excludes getPowerRankings/seasonId itself (derived from leagueId) from
+    // deps, same convention as the auto-sync effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueId, isAuthenticated]);
+  }, [leagueId, isAuthenticated, syncCount]);
 
   // Projected final standings - fetched the first time its tab opens for a
   // league (it gathers every team's rest-of-season lineups plus the
-  // provider's schedule), then kept for the rest of the visit.
+  // provider's schedule), then kept until a roster sync finishes - a fetch
+  // made mid-sync can read some teams' new records and others' old ones.
   const getProjectedStandings = useAction(
     api.infinileague.season.projectedStandings.getProjectedStandings,
   );
@@ -170,31 +188,46 @@ function LeaguePage() {
 
   useEffect(() => {
     if (!isAuthenticated || !wantsProjected) return;
-    if (projectedLoadedRef.current === leagueId) return;
-    projectedLoadedRef.current = leagueId;
-    setProjectedStandings(undefined);
+    const key = `${leagueId}:${syncCount}`;
+    if (projectedLoadedRef.current === key) return;
+    // A post-sync refresh keeps the current rows up until the new ones land.
+    const isRefresh = projectedLoadedRef.current?.startsWith(`${leagueId}:`) === true;
+    projectedLoadedRef.current = key;
+    if (!isRefresh) setProjectedStandings(undefined);
     setProjectedStandingsError(null);
     getProjectedStandings({ seasonId })
-      .then(setProjectedStandings)
-      .catch((err) =>
-        setProjectedStandingsError(
-          getErrorMessage(err, "Failed to load projected standings."),
-        ),
-      );
+      .then((rows) => {
+        if (projectedLoadedRef.current === key) setProjectedStandings(rows);
+      })
+      .catch((err) => {
+        if (projectedLoadedRef.current !== key) return;
+        setProjectedStandingsError(getErrorMessage(err, "Failed to load projected standings."));
+      });
     // Same dep convention as the getPowerRankings effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueId, isAuthenticated, wantsProjected]);
+  }, [leagueId, isAuthenticated, wantsProjected, syncCount]);
 
   // The bracket seeded by projected final standings, once they're in.
   useEffect(() => {
     if (!isAuthenticated || !wantsProjected || tableView !== "playoffs") return;
-    if (!projectedStandings || projectedPlayoffs?.leagueId === leagueId) return;
-    setProjectedPlayoffs({ leagueId });
-    const projectedOrder = projectedStandings.map((row) => row.teamId as Id<"seasonTeams">);
+    if (!projectedStandings || projectedPlayoffs?.rows === projectedStandings) return;
+    const rows = projectedStandings;
+    // Reseeding after a refresh keeps the current bracket up meanwhile.
+    const previous = projectedPlayoffs?.leagueId === leagueId ? projectedPlayoffs.data : undefined;
+    setProjectedPlayoffs({ leagueId, rows, ...(previous ? { data: previous } : {}) });
+    const projectedOrder = rows.map((row) => row.teamId as Id<"seasonTeams">);
     getPlayoffs({ seasonId, projectedOrder })
-      .then((data) => setProjectedPlayoffs({ leagueId, data }))
+      .then((data) =>
+        setProjectedPlayoffs((current) =>
+          current?.rows === rows ? { leagueId, rows, data } : current,
+        ),
+      )
       .catch((err) =>
-        setProjectedPlayoffs({ leagueId, error: getErrorMessage(err, "Failed to load playoffs.") }),
+        setProjectedPlayoffs((current) =>
+          current?.rows === rows
+            ? { leagueId, rows, error: getErrorMessage(err, "Failed to load playoffs.") }
+            : current,
+        ),
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leagueId, isAuthenticated, wantsProjected, tableView, projectedStandings]);
@@ -278,19 +311,28 @@ function LeaguePage() {
     null,
   );
 
+  // Same post-sync refresh as power rankings above.
+  const positionRanksLeagueRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isAuthenticated) return;
-    setPositionRanks(undefined);
+    let cancelled = false;
+    if (positionRanksLeagueRef.current !== leagueId) setPositionRanks(undefined);
+    positionRanksLeagueRef.current = leagueId;
     setPositionRanksError(null);
     getTeamPositionRanks({ seasonId })
-      .then(setPositionRanks)
-      .catch((err) =>
-        setPositionRanksError(
-          getErrorMessage(err, "Failed to load position rankings."),
-        ),
-      );
+      .then((rows) => {
+        if (!cancelled) setPositionRanks(rows);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setPositionRanksError(getErrorMessage(err, "Failed to load position rankings."));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueId, isAuthenticated]);
+  }, [leagueId, isAuthenticated, syncCount]);
   const positionRanksByTeam = new Map(
     (positionRanks ?? []).map((row) => [row.teamId, row]),
   );
@@ -321,6 +363,7 @@ function LeaguePage() {
       } else {
         await syncSleeperRoster({ seasonId });
       }
+      setSyncCount((count) => count + 1);
     } catch (err) {
       setSyncError(getErrorMessage(err, "Failed to sync roster."));
     } finally {

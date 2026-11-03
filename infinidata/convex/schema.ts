@@ -1075,9 +1075,9 @@ export default defineSchema({
     faabSpent: v.optional(v.number()),
     // Overrides seasons.faabBudget for this team only.
     faabBudgetOverride: v.optional(v.number()),
-    // Current-season standings, synced from the linked provider roster
-    // alongside faabSpent above (see convex/sleeper/league.ts's
-    // syncLeagueRoster) - powers convex/infinileague/season/standings.ts. All absent
+    // Current-season standings, synced from the linked provider for every
+    // team in one write (rosterSync.ts's writeSeasonStandings) - powers
+    // convex/infinileague/season/standings.ts. All absent
     // until the first sync, same as faabSpent. pointsFor/pointsAgainst are
     // real decimal totals (provider APIs commonly split whole/hundredths
     // internally - already combined by the time it lands here).
