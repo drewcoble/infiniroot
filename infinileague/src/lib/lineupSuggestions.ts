@@ -190,15 +190,14 @@ export function buildLineupSuggestions(rows: TeamRosterRow[]): LineupSuggestion[
     .filter((c) => !optimalStarters.has(c.fpid))
     .sort((a, b) => a.projectedPoints - b.projectedPoints);
 
-  // Pairs each should-start player with a should-sit player, preferring one
-  // at the same real position - e.g. "start this QB, sit that QB" - over
-  // whatever should-sit entry merely happens to land at the same index once
-  // both lists are sorted by points. Index-pairing across positions reads as
-  // two unrelated single-position swaps mashed into one confusing
-  // cross-position suggestion (start a WR, sit a QB) even when a like-for-
-  // like pairing was available. Only falls back to the next-lowest-points
-  // remaining candidate, regardless of position, once no same-position
-  // match is left in the pool.
+  // Pairs each should-start player with a should-sit player in passes over
+  // the whole list, so an early start can't take a sit a later one needed:
+  // same real position first ("start this TE, sit that TE"), then a swap
+  // through a FLEX/SUPERFLEX slot both positions can fill ("start this RB
+  // at FLEX, sit that WR"), and only then whatever's left. Pairing one
+  // start at a time let an RB with no RB to replace take the TE a later TE
+  // start needed, leaving two cross-position swaps neither of which could
+  // be made on its own.
   //
   // shouldStart.length >= shouldSit.length in virtually every real case -
   // the optimal set fills every slot it can (>= however many the actual
@@ -206,11 +205,32 @@ export function buildLineupSuggestions(rows: TeamRosterRow[]): LineupSuggestion[
   // "starting an empty slot" entries, not the reverse. The rare inverse
   // (a position with fewer eligible players than slots) just drops the
   // leftover shouldSit entries rather than surfacing a sit-only suggestion.
+  const sharesFlexSlot = (a: Candidate, b: Candidate): boolean =>
+    ((slotCounts.get("FLEX") ?? 0) > 0 &&
+      FLEX_ELIGIBLE.includes(a.position) &&
+      FLEX_ELIGIBLE.includes(b.position)) ||
+    ((slotCounts.get("SUPERFLEX") ?? 0) > 0 &&
+      SUPERFLEX_ELIGIBLE.includes(a.position) &&
+      SUPERFLEX_ELIGIBLE.includes(b.position));
+  const passes: ((start: Candidate, sit: Candidate) => boolean)[] = [
+    (start, sit) => start.position === sit.position,
+    sharesFlexSlot,
+    () => true,
+  ];
+
   const sitPool = [...shouldSit];
+  const sitByStart = new Map<number, Candidate & { slot: SlotLabel }>();
+  for (const matches of passes) {
+    for (const start of shouldStart) {
+      if (sitByStart.has(start.fpid)) continue;
+      // sitPool stays sorted lowest-points first, so this takes the weakest
+      // matching starter.
+      const index = sitPool.findIndex((sit) => matches(start, sit));
+      if (index !== -1) sitByStart.set(start.fpid, sitPool.splice(index, 1)[0]!);
+    }
+  }
   return shouldStart.map((start) => {
-    const samePositionIndex = sitPool.findIndex((c) => c.position === start.position);
-    const sit =
-      samePositionIndex !== -1 ? sitPool.splice(samePositionIndex, 1)[0] : sitPool.shift();
+    const sit = sitByStart.get(start.fpid);
     return sit ? { start, sit } : { start };
   });
 }
