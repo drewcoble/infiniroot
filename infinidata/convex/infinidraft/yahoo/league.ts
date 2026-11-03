@@ -581,6 +581,28 @@ export const syncYahooLeagueRoster = action({
       // pass faabBudget (see mapYahooWaiverType's comment) - leaves
       // whatever the commissioner has set in Season Settings untouched.
       const waiverType = mapYahooWaiverType(settings.raw);
+
+      // Falls back to zeroed standings (rather than leaving them unset)
+      // for any team fetchYahooStandingsForLeague didn't find a match
+      // for, so a Yahoo-linked season's standings read as "no games yet"
+      // instead of undefined/missing.
+      await ctx.runMutation(internal.rosterSync.writeSeasonStandings, {
+        seasonId: args.seasonId,
+        teams: teams.flatMap((team) => {
+          if (!team.yahooTeamKey) return [];
+          const standings = standingsByTeamKey.get(team.yahooTeamKey);
+          return [
+            {
+              teamId: team._id,
+              wins: standings?.wins ?? 0,
+              losses: standings?.losses ?? 0,
+              ties: standings?.ties ?? 0,
+              pointsFor: standings?.pointsFor ?? 0,
+              pointsAgainst: standings?.pointsAgainst ?? 0,
+            },
+          ];
+        }),
+      });
       await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
         seasonId: args.seasonId,
         waiverType,
@@ -654,21 +676,12 @@ export const syncYahooLeagueRoster = action({
             ? 0
             : (team.faabBudgetOverride ?? season.faabBudget ?? 0) - remainingBalance;
 
-        // Falls back to zeroed standings (rather than leaving them unset)
-        // for any team fetchYahooStandingsForLeague didn't find a match
-        // for, so a Yahoo-linked season's standings read as "no games yet"
-        // instead of undefined/missing.
         const standings = standingsByTeamKey.get(team.yahooTeamKey);
         await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
           seasonId: args.seasonId,
           teamId: team._id as Id<"seasonTeams">,
           fpids,
           faabSpent,
-          wins: standings?.wins ?? 0,
-          losses: standings?.losses ?? 0,
-          ties: standings?.ties ?? 0,
-          pointsFor: standings?.pointsFor ?? 0,
-          pointsAgainst: standings?.pointsAgainst ?? 0,
           ...(standings?.name ? { name: standings.name } : {}),
           ...(standings?.logoUrl ? { logoUrl: standings.logoUrl } : {}),
         });

@@ -54,16 +54,8 @@ export const replaceRosterForTeam = internalMutation({
     teamId: v.id("seasonTeams"),
     fpids: v.array(v.number()),
     faabSpent: v.number(),
-    // Current-season standings, synced alongside the roster itself - see
-    // convex/infinileague/season/standings.ts and schema.ts's seasonTeams
-    // comment. waiverPosition is genuinely absent for a FAAB league (not
-    // just 0), so it stays optional; the others always come back from
-    // Sleeper.
-    wins: v.number(),
-    losses: v.number(),
-    ties: v.number(),
-    pointsFor: v.number(),
-    pointsAgainst: v.number(),
+    // Genuinely absent for a FAAB league (not just 0). Records are written
+    // league-wide by writeSeasonStandings below, not here.
     waiverPosition: v.optional(v.number()),
     // The team's current name on the provider, so a manager renaming their
     // team after the initial import shows up here on the next sync. Absent
@@ -94,11 +86,6 @@ export const replaceRosterForTeam = internalMutation({
     }
     await ctx.db.patch(args.teamId, {
       faabSpent: args.faabSpent,
-      wins: args.wins,
-      losses: args.losses,
-      ties: args.ties,
-      pointsFor: args.pointsFor,
-      pointsAgainst: args.pointsAgainst,
       ...(args.waiverPosition !== undefined
         ? { waiverPosition: args.waiverPosition }
         : {}),
@@ -106,6 +93,33 @@ export const replaceRosterForTeam = internalMutation({
       // Patching a field to undefined removes it.
       ...(args.logoUrl !== undefined ? { logoUrl: args.logoUrl ?? undefined } : {}),
     });
+  },
+});
+
+// Every team's current-season record in one transaction (see
+// convex/infinileague/season/standings.ts), so a read mid-sync never sees
+// some teams with this week's result and others without it - the per-team
+// roster writes above run one mutation each.
+export const writeSeasonStandings = internalMutation({
+  args: {
+    seasonId: v.id("seasons"),
+    teams: v.array(
+      v.object({
+        teamId: v.id("seasonTeams"),
+        wins: v.number(),
+        losses: v.number(),
+        ties: v.number(),
+        pointsFor: v.number(),
+        pointsAgainst: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    for (const { teamId, ...record } of args.teams) {
+      const team = await ctx.db.get(teamId);
+      if (team?.seasonId !== args.seasonId) continue;
+      await ctx.db.patch(teamId, record);
+    }
   },
 });
 

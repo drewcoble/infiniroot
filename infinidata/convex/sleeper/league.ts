@@ -170,6 +170,27 @@ export const syncLeagueRoster = action({
       { seasonId: args.seasonId },
     );
 
+    await ctx.runMutation(internal.rosterSync.writeSeasonStandings, {
+      seasonId: args.seasonId,
+      teams: teams.flatMap((team) => {
+        const roster = team.sleeperRosterId ? rosterById.get(team.sleeperRosterId) : undefined;
+        if (!roster) return [];
+        return [
+          {
+            teamId: team._id,
+            wins: roster.settings?.wins ?? 0,
+            losses: roster.settings?.losses ?? 0,
+            ties: roster.settings?.ties ?? 0,
+            pointsFor: combinePoints(roster.settings?.fpts, roster.settings?.fpts_decimal),
+            pointsAgainst: combinePoints(
+              roster.settings?.fpts_against,
+              roster.settings?.fpts_against_decimal,
+            ),
+          },
+        ];
+      }),
+    });
+
     let syncedTeams = 0;
     for (const team of teams) {
       if (!team.sleeperRosterId) continue;
@@ -187,14 +208,6 @@ export const syncLeagueRoster = action({
         teamId: team._id as Id<"seasonTeams">,
         fpids: toFpids(roster.players),
         faabSpent: roster.settings?.waiver_budget_used ?? 0,
-        wins: roster.settings?.wins ?? 0,
-        losses: roster.settings?.losses ?? 0,
-        ties: roster.settings?.ties ?? 0,
-        pointsFor: combinePoints(roster.settings?.fpts, roster.settings?.fpts_decimal),
-        pointsAgainst: combinePoints(
-          roster.settings?.fpts_against,
-          roster.settings?.fpts_against_decimal,
-        ),
         ...(roster.settings?.waiver_position !== undefined
           ? { waiverPosition: roster.settings.waiver_position }
           : {}),

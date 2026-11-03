@@ -450,21 +450,30 @@ export const syncEspnLeagueRoster = action({
       }),
     });
 
+    await ctx.runMutation(internal.rosterSync.writeSeasonStandings, {
+      seasonId: args.seasonId,
+      teams: linked.map(({ team, espnTeam }) => {
+        const record = espnTeam.record?.overall;
+        return {
+          teamId: team._id,
+          wins: record?.wins ?? 0,
+          losses: record?.losses ?? 0,
+          ties: record?.ties ?? 0,
+          pointsFor: record?.pointsFor ?? 0,
+          pointsAgainst: record?.pointsAgainst ?? 0,
+        };
+      }),
+    });
+
     for (const { team, espnTeam } of linked) {
       const fpids = (espnTeam.roster?.entries ?? [])
         .map((entry) => fpidByEspnId.get(entry.playerId))
         .filter((fpid): fpid is number => fpid !== undefined);
-      const record = espnTeam.record?.overall;
       await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
         seasonId: args.seasonId,
         teamId: team._id as Id<"seasonTeams">,
         fpids,
         faabSpent: espnTeam.transactionCounter?.acquisitionBudgetSpent ?? 0,
-        wins: record?.wins ?? 0,
-        losses: record?.losses ?? 0,
-        ties: record?.ties ?? 0,
-        pointsFor: record?.pointsFor ?? 0,
-        pointsAgainst: record?.pointsAgainst ?? 0,
         ...(waiverType === "priority" && espnTeam.waiverRank !== undefined
           ? { waiverPosition: espnTeam.waiverRank }
           : {}),
