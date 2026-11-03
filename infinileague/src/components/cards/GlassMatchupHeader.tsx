@@ -63,12 +63,12 @@ function TeamSide({
   team,
   align,
   hideFinal,
-  pregame,
+  bothFinal,
 }: {
   team: MatchupHeaderTeam;
   align: "left" | "right";
   hideFinal: boolean;
-  pregame: boolean;
+  bothFinal: boolean;
 }) {
   return (
     <div className={`${classes.headerTeam} ${align === "right" ? classes.headerTeamRight : ""}`}>
@@ -93,7 +93,7 @@ function TeamSide({
           player cards' corners, so the counts need no words here (the
           card's aria-label spells them out). */}
       <div className={classes.headerProj}>
-        <span>Proj {shownProjection(team, pregame).toFixed(1)}</span>
+        <span>Proj {shownProjection(team, bothFinal).toFixed(1)}</span>
         {team.optimalPoints !== undefined && <span>Opt {team.optimalPoints.toFixed(1)}</span>}
         {team.liveCount > 0 && (
           <span className={classes.headerCount}>
@@ -101,13 +101,15 @@ function TeamSide({
             {team.liveCount}
           </span>
         )}
-        {team.toPlayCount > 0 && (
+        {/* A side that's done while the other still plays reads "🕒0", not
+            "Final" - both say Final together once neither has anyone left. */}
+        {(team.toPlayCount > 0 || (isAllFinal(team) && !bothFinal)) && (
           <span className={classes.headerCount}>
             <GameStatusGlyph state="pre" />
             {team.toPlayCount}
           </span>
         )}
-        {!hideFinal && team.liveCount === 0 && team.toPlayCount === 0 && <span>Final</span>}
+        {!hideFinal && isAllFinal(team) && bothFinal && <span>Final</span>}
       </div>
     </div>
   );
@@ -117,12 +119,12 @@ function isAllFinal(team: MatchupHeaderTeam): boolean {
   return team.liveCount === 0 && team.toPlayCount === 0;
 }
 
-function shownProjection(team: MatchupHeaderTeam, pregame: boolean): number {
-  return pregame ? (team.pregameProjectedPoints ?? team.projectedPoints) : team.projectedPoints;
+function shownProjection(team: MatchupHeaderTeam, bothFinal: boolean): number {
+  return bothFinal ? (team.pregameProjectedPoints ?? team.projectedPoints) : team.projectedPoints;
 }
 
-function countsText(team: MatchupHeaderTeam): string {
-  if (isAllFinal(team)) return "all games final";
+function countsText(team: MatchupHeaderTeam, bothFinal: boolean): string {
+  if (bothFinal) return "all games final";
   return `${team.liveCount} live, ${team.toPlayCount} to play`;
 }
 
@@ -169,16 +171,16 @@ export function GlassMatchupHeader({
   const pctB = 100 - pctA;
   // Pregame projections only once every starter on both sides is final (or
   // there's no opponent) - until then both stay live.
-  const pregame =
+  const bothFinal =
     teamA !== "loading" &&
     isAllFinal(teamA) &&
     teamB !== "loading" &&
     (teamB === null || isAllFinal(teamB));
   const teamText = (team: MatchupHeaderTeam) =>
     `${team.rank ? `rank ${team.rank.value}, ` : ""}${team.name} ${team.actualPoints.toFixed(2)}, ` +
-    `projected ${shownProjection(team, pregame).toFixed(1)}, ` +
+    `projected ${shownProjection(team, bothFinal).toFixed(1)}, ` +
     (team.optimalPoints !== undefined ? `optimal ${team.optimalPoints.toFixed(1)}, ` : "") +
-    countsText(team);
+    countsText(team, bothFinal);
   const loaded = teamA !== "loading" && teamB !== "loading" && teamB !== null;
   const ariaLabel =
     teamA === "loading"
@@ -202,12 +204,12 @@ export function GlassMatchupHeader({
         {teamA === "loading" ? (
           <TeamSideSkeleton align="left" />
         ) : (
-          <TeamSide team={teamA} align="left" hideFinal={Boolean(result)} pregame={pregame} />
+          <TeamSide team={teamA} align="left" hideFinal={Boolean(result)} bothFinal={bothFinal} />
         )}
         {teamB === "loading" ? (
           <TeamSideSkeleton align="right" />
         ) : teamB ? (
-          <TeamSide team={teamB} align="right" hideFinal={Boolean(result)} pregame={pregame} />
+          <TeamSide team={teamB} align="right" hideFinal={Boolean(result)} bothFinal={bothFinal} />
         ) : (
           <div
             className={`${classes.headerTeam} ${classes.headerTeamRight} ${classes.headerPending}`}
