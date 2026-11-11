@@ -273,7 +273,13 @@ function playGame(
   return { id, weeks, teamIds, points, bonus, winnerId, final };
 }
 
-function bonusFor(ctx: Ctx, bonus: Bonus | undefined, teamId: string | null, seed?: number, round?: number) {
+function bonusFor(
+  ctx: Ctx,
+  bonus: Bonus | undefined,
+  teamId: string | null,
+  seed?: number,
+  round?: number,
+) {
   if (!bonus || teamId === null) return 0;
   let total = 0;
   const tier = ctx.tierOf.get(teamId);
@@ -313,7 +319,9 @@ function regularSeason(format: PlayoffFormat, input: SeasonInput) {
   order.forEach((teamId, i) => seedOf.set(teamId, i + 1));
   const tierOf = new Map<string, string>();
   for (const tier of format.tiers) {
-    for (const teamId of order.slice(tier.firstSeed - 1, tier.lastSeed)) tierOf.set(teamId, tier.name);
+    for (const teamId of order.slice(tier.firstSeed - 1, tier.lastSeed)) {
+      tierOf.set(teamId, tier.name);
+    }
   }
   const standings: Standing[] = order.map((teamId, i) => ({
     teamId,
@@ -373,6 +381,10 @@ function resolveEntrants(ctx: Ctx, sources: TeamSource[], regularSeasonOrder: bo
 }
 
 // ---------------------------------------------------------------- groups
+
+function unsettled(stageId: string, seeds: Record<string, number>): StageResult {
+  return { stageId, entrants: null, advancers: null, eliminated: null, seeds };
+}
 
 function weakest(options: string[], strength: Record<string, number>): string {
   return options.reduce((best, teamId) =>
@@ -531,7 +543,7 @@ function rotate<T>(values: T[], by: number): T[] {
 function evaluateGroups(ctx: Ctx, stage: GroupStage): StageResult {
   const entrants = resolveEntrants(ctx, stage.entrants, true);
   const seeds = Object.fromEntries((entrants ?? []).map((teamId, i) => [teamId, i + 1]));
-  if (!entrants) return { stageId: stage.id, entrants: null, advancers: null, eliminated: null, seeds };
+  if (!entrants) return unsettled(stage.id, seeds);
 
   const formed =
     stage.formation.kind === "matchupDraft"
@@ -544,10 +556,9 @@ function evaluateGroups(ctx: Ctx, stage: GroupStage): StageResult {
     const games: GameResult[] = [];
     for (const week of stage.weeks) {
       for (const [a, b] of group.pairs.get(week) ?? []) {
-        const game = playGame(ctx.input, `${stage.id}g${g}w${week}${games.length}`, [week], [a, b], [
-          bonusFor(ctx, stage.bonus, a),
-          bonusFor(ctx, stage.bonus, b),
-        ]);
+        const id = `${stage.id}g${g}w${week}${games.length}`;
+        const bonus: [number, number] = [bonusFor(ctx, stage.bonus, a), bonusFor(ctx, stage.bonus, b)];
+        const game = playGame(ctx.input, id, [week], [a, b], bonus);
         games.push(game);
         record(book, game);
       }
@@ -571,7 +582,9 @@ function evaluateGroups(ctx: Ctx, stage: GroupStage): StageResult {
   });
 
   const advancers = settled
-    ? groups.flatMap((group) => group.table.slice(0, stage.advancePerGroup).map((row) => row.teamId))
+    ? groups.flatMap((group) =>
+        group.table.slice(0, stage.advancePerGroup).map((row) => row.teamId),
+      )
     : null;
   return {
     stageId: stage.id,
@@ -610,7 +623,8 @@ function evaluateBracket(ctx: Ctx, stage: BracketStage): StageResult {
   const size = 2 ** roundCount;
   const entrants = resolveEntrants(ctx, stage.entrants, stage.seeding === "regularSeason");
   const seeds = Object.fromEntries((entrants ?? []).map((teamId, i) => [teamId, i + 1]));
-  const seedOf = (teamId: string | null) => (teamId === null ? Infinity : (seeds[teamId] ?? Infinity));
+  const seedOf = (teamId: string | null) =>
+    teamId === null ? Infinity : (seeds[teamId] ?? Infinity);
 
   // Each slot is a team, a TBD (null), or empty (a bye).
   type Slot = { teamId: string | null; bye: boolean };
@@ -625,7 +639,9 @@ function evaluateBracket(ctx: Ctx, stage: BracketStage): StageResult {
   for (let round = 1; round <= roundCount; round++) {
     const weeks = stage.roundWeeks[round - 1] ?? [];
     if (stage.reseed && slots.every((slot) => slot.bye || slot.teamId !== null)) {
-      const alive = slots.filter((slot) => !slot.bye).sort((a, b) => seedOf(a.teamId) - seedOf(b.teamId));
+      const alive = slots
+        .filter((slot) => !slot.bye)
+        .sort((a, b) => seedOf(a.teamId) - seedOf(b.teamId));
       const reordered = seedSlotOrder(slots.length).map(
         (seed) => alive[seed - 1] ?? { teamId: null, bye: true },
       );
@@ -685,14 +701,15 @@ function evaluateBracket(ctx: Ctx, stage: BracketStage): StageResult {
 function evaluatePoints(ctx: Ctx, stage: PointsStage): StageResult {
   const entrants = resolveEntrants(ctx, stage.entrants, true);
   const seeds = Object.fromEntries((entrants ?? []).map((teamId, i) => [teamId, i + 1]));
-  if (!entrants) return { stageId: stage.id, entrants: null, advancers: null, eliminated: null, seeds };
+  if (!entrants) return unsettled(stage.id, seeds);
   const table = entrants
     .map((teamId) => ({
       teamId,
       points: sum(
         stage.weeks.map((week) => {
           const points = pointsIn(ctx.input, teamId, week);
-          return points === undefined ? 0 : points + bonusFor(ctx, stage.bonus, teamId, seeds[teamId], 1);
+          if (points === undefined) return 0;
+          return points + bonusFor(ctx, stage.bonus, teamId, seeds[teamId], 1);
         }),
       ),
     }))

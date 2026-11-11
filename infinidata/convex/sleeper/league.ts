@@ -124,107 +124,116 @@ export const syncLeagueRoster = action({
       internal.rosterSync.requireOwnedSeasonForSync,
       { seasonId: args.seasonId },
     );
-    if (!season.sleeperLeagueId) {
-      throw new Error("This league isn't linked to a Sleeper league yet.");
-    }
-
-    const [rosters, users, leagueSettings] = await Promise.all([
-      fetchSleeperLeagueJson<SleeperRoster[]>(season.sleeperLeagueId, "/rosters"),
-      fetchSleeperLeagueJson<SleeperLeagueUser[]>(season.sleeperLeagueId, "/users"),
-      fetchSleeperLeagueSettings(season.sleeperLeagueId),
-    ]);
-    const rosterById = new Map(
-      rosters.map((roster) => [String(roster.roster_id), roster]),
-    );
-    const userById = new Map(users.map((user) => [user.user_id, user]));
-
-    // Re-read every sync, not just at connect time - self-heals a season
-    // connected before this field existed, and keeps up with a mid-season
-    // commissioner change to waiver settings instead of going stale.
-    // leagueType only ever gets set to guillotine here, never back to
-    // redraft, so a manual League Type pick (leagues.ts's setLeagueType)
-    // on a league Sleeper doesn't flag still sticks.
-    await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
-      seasonId: args.seasonId,
-      waiverType: mapWaiverType(leagueSettings.settings?.waiver_type),
-      ...(leagueSettings.settings?.waiver_budget !== undefined
-        ? { faabBudget: leagueSettings.settings.waiver_budget }
-        : {}),
-      ...(leagueSettings.settings?.waiver_day_of_week !== undefined
-        ? { waiverDayOfWeek: leagueSettings.settings.waiver_day_of_week }
-        : {}),
-      ...(leagueSettings.settings?.waiver_clear_days !== undefined
-        ? { waiverClearDays: leagueSettings.settings.waiver_clear_days }
-        : {}),
-      ...(leagueSettings.settings?.daily_waivers !== undefined
-        ? { dailyWaivers: leagueSettings.settings.daily_waivers === 1 }
-        : {}),
-      ...(leagueSettings.settings?.daily_waivers_hour !== undefined
-        ? { dailyWaiversHour: leagueSettings.settings.daily_waivers_hour }
-        : {}),
-      ...(isSleeperGuillotine(leagueSettings) ? { leagueType: "guillotine" as const } : {}),
-    });
-
-    const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
-      internal.seasonTeams.listSeasonTeamsInternal,
-      { seasonId: args.seasonId },
-    );
-
-    await ctx.runMutation(internal.rosterSync.writeSeasonStandings, {
-      seasonId: args.seasonId,
-      teams: teams.flatMap((team) => {
-        const roster = team.sleeperRosterId ? rosterById.get(team.sleeperRosterId) : undefined;
-        if (!roster) return [];
-        return [
-          {
-            teamId: team._id,
-            wins: roster.settings?.wins ?? 0,
-            losses: roster.settings?.losses ?? 0,
-            ties: roster.settings?.ties ?? 0,
-            pointsFor: combinePoints(roster.settings?.fpts, roster.settings?.fpts_decimal),
-            pointsAgainst: combinePoints(
-              roster.settings?.fpts_against,
-              roster.settings?.fpts_against_decimal,
-            ),
-          },
-        ];
-      }),
-    });
-
-    let syncedTeams = 0;
-    for (const team of teams) {
-      if (!team.sleeperRosterId) continue;
-      const roster = rosterById.get(team.sleeperRosterId);
-      if (!roster) continue;
-      // Same team_name -> display_name preference as fetchLeagueTeamRows
-      // (the import path), so a manager's mid-season rename flows through.
-      const owner = roster.owner_id ? userById.get(roster.owner_id) : undefined;
-      const name = owner?.metadata?.team_name || owner?.display_name;
-      // An ownerless roster leaves the stored logo alone, like its name.
-      const logoUrl = owner ? sleeperTeamLogoUrl(owner) : undefined;
-
-      await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
-        seasonId: args.seasonId,
-        teamId: team._id as Id<"seasonTeams">,
-        fpids: toFpids(roster.players),
-        faabSpent: roster.settings?.waiver_budget_used ?? 0,
-        ...(roster.settings?.waiver_position !== undefined
-          ? { waiverPosition: roster.settings.waiver_position }
-          : {}),
-        ...(name ? { name } : {}),
-        ...(logoUrl !== undefined ? { logoUrl } : {}),
-      });
-      syncedTeams += 1;
-    }
-
-    // Fills in this league's rest-of-season board now if it doesn't have
-    // one yet (a just-connected league), rather than at the next daily
-    // cron - see rosVor.ts's ensureSeasonRosVor.
-    await ctx.scheduler.runAfter(0, internal.rosVor.ensureSeasonRosVor, { seasonId: args.seasonId });
-
-    return { syncedTeams };
+    return await runSleeperRosterSync(ctx, season);
   },
 });
+
+// syncLeagueRoster's work, minus the owner check - infiniyoffs runs it for a league
+// member's visit (see convex/infiniyoffs/refresh.ts).
+export async function runSleeperRosterSync(
+  ctx: ActionCtx,
+  season: Doc<"seasons">,
+): Promise<{ syncedTeams: number }> {
+  if (!season.sleeperLeagueId) {
+    throw new Error("This league isn't linked to a Sleeper league yet.");
+  }
+
+  const [rosters, users, leagueSettings] = await Promise.all([
+    fetchSleeperLeagueJson<SleeperRoster[]>(season.sleeperLeagueId, "/rosters"),
+    fetchSleeperLeagueJson<SleeperLeagueUser[]>(season.sleeperLeagueId, "/users"),
+    fetchSleeperLeagueSettings(season.sleeperLeagueId),
+  ]);
+  const rosterById = new Map(
+    rosters.map((roster) => [String(roster.roster_id), roster]),
+  );
+  const userById = new Map(users.map((user) => [user.user_id, user]));
+
+  // Re-read every sync, not just at connect time - self-heals a season
+  // connected before this field existed, and keeps up with a mid-season
+  // commissioner change to waiver settings instead of going stale.
+  // leagueType only ever gets set to guillotine here, never back to
+  // redraft, so a manual League Type pick (leagues.ts's setLeagueType)
+  // on a league Sleeper doesn't flag still sticks.
+  await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
+    seasonId: season._id,
+    waiverType: mapWaiverType(leagueSettings.settings?.waiver_type),
+    ...(leagueSettings.settings?.waiver_budget !== undefined
+      ? { faabBudget: leagueSettings.settings.waiver_budget }
+      : {}),
+    ...(leagueSettings.settings?.waiver_day_of_week !== undefined
+      ? { waiverDayOfWeek: leagueSettings.settings.waiver_day_of_week }
+      : {}),
+    ...(leagueSettings.settings?.waiver_clear_days !== undefined
+      ? { waiverClearDays: leagueSettings.settings.waiver_clear_days }
+      : {}),
+    ...(leagueSettings.settings?.daily_waivers !== undefined
+      ? { dailyWaivers: leagueSettings.settings.daily_waivers === 1 }
+      : {}),
+    ...(leagueSettings.settings?.daily_waivers_hour !== undefined
+      ? { dailyWaiversHour: leagueSettings.settings.daily_waivers_hour }
+      : {}),
+    ...(isSleeperGuillotine(leagueSettings) ? { leagueType: "guillotine" as const } : {}),
+  });
+
+  const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
+    internal.seasonTeams.listSeasonTeamsInternal,
+    { seasonId: season._id },
+  );
+
+  await ctx.runMutation(internal.rosterSync.writeSeasonStandings, {
+    seasonId: season._id,
+    teams: teams.flatMap((team) => {
+      const roster = team.sleeperRosterId ? rosterById.get(team.sleeperRosterId) : undefined;
+      if (!roster) return [];
+      return [
+        {
+          teamId: team._id,
+          wins: roster.settings?.wins ?? 0,
+          losses: roster.settings?.losses ?? 0,
+          ties: roster.settings?.ties ?? 0,
+          pointsFor: combinePoints(roster.settings?.fpts, roster.settings?.fpts_decimal),
+          pointsAgainst: combinePoints(
+            roster.settings?.fpts_against,
+            roster.settings?.fpts_against_decimal,
+          ),
+        },
+      ];
+    }),
+  });
+
+  let syncedTeams = 0;
+  for (const team of teams) {
+    if (!team.sleeperRosterId) continue;
+    const roster = rosterById.get(team.sleeperRosterId);
+    if (!roster) continue;
+    // Same team_name -> display_name preference as fetchLeagueTeamRows
+    // (the import path), so a manager's mid-season rename flows through.
+    const owner = roster.owner_id ? userById.get(roster.owner_id) : undefined;
+    const name = owner?.metadata?.team_name || owner?.display_name;
+    // An ownerless roster leaves the stored logo alone, like its name.
+    const logoUrl = owner ? sleeperTeamLogoUrl(owner) : undefined;
+
+    await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
+      seasonId: season._id,
+      teamId: team._id as Id<"seasonTeams">,
+      fpids: toFpids(roster.players),
+      faabSpent: roster.settings?.waiver_budget_used ?? 0,
+      ...(roster.settings?.waiver_position !== undefined
+        ? { waiverPosition: roster.settings.waiver_position }
+        : {}),
+      ...(name ? { name } : {}),
+      ...(logoUrl !== undefined ? { logoUrl } : {}),
+    });
+    syncedTeams += 1;
+  }
+
+  // Fills in this league's rest-of-season board now if it doesn't have
+  // one yet (a just-connected league), rather than at the next daily
+  // cron - see rosVor.ts's ensureSeasonRosVor.
+  await ctx.scheduler.runAfter(0, internal.rosVor.ensureSeasonRosVor, { seasonId: season._id });
+
+  return { syncedTeams };
+}
 
 export interface SleeperKeeperSuggestion {
   teamId: Id<"seasonTeams">;

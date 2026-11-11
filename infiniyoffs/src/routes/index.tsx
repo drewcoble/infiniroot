@@ -66,7 +66,8 @@ function Dashboard() {
                         )}
                       </Group>
                       <Text size="sm" c="dimmed">
-                        {latest.year} · {latest.teamCount} teams · {SCORING_LABELS[latest.scoring]}
+                        {latest.year} · {latest.teamCount} teams ·{" "}
+                        {SCORING_LABELS[latest.scoring]}
                       </Text>
                     </Stack>
                   </Card>

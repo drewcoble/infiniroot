@@ -125,7 +125,7 @@ interface EspnScheduleSettings {
   playoffTeamCount?: number;
 }
 
-async function fetchEspnLeague(
+export async function fetchEspnLeague(
   espnLeagueId: string,
   season: string,
   views: string[],
@@ -396,100 +396,109 @@ export const syncEspnLeagueRoster = action({
       internal.rosterSync.requireOwnedSeasonForSync,
       { seasonId: args.seasonId },
     );
-    if (!season.espnLeagueId) {
-      throw new Error("This league isn't linked to an ESPN league yet.");
-    }
-
-    const league = await fetchEspnLeague(season.espnLeagueId, season.year, [
-      "mSettings",
-      "mTeam",
-      "mRoster",
-      "mStandings",
-    ]);
-    const acquisition = league.settings?.acquisitionSettings;
-    const waiverType = mapEspnWaiverType(acquisition);
-
-    // Re-read every sync, same self-healing rationale as Sleeper's. Unlike
-    // Yahoo, ESPN reports the real league-wide FAAB budget.
-    await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
-      seasonId: args.seasonId,
-      waiverType,
-      ...(waiverType === "faab" && acquisition?.acquisitionBudget !== undefined
-        ? { faabBudget: acquisition.acquisitionBudget }
-        : {}),
-    });
-
-    const espnTeamById = new Map(
-      (league.teams ?? []).map((team) => [String(team.id), team]),
-    );
-    const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
-      internal.seasonTeams.listSeasonTeamsInternal,
-      { seasonId: args.seasonId },
-    );
-    const linked = teams.flatMap((team) => {
-      const espnTeam = team.espnTeamId
-        ? espnTeamById.get(team.espnTeamId)
-        : undefined;
-      return espnTeam ? [{ team, espnTeam }] : [];
-    });
-
-    // One resolution pass across every roster, so the name-match fallback's
-    // full players scan happens at most once per sync.
-    const rosterPlayers = linked.flatMap(({ espnTeam }) => extractRosterPlayers(espnTeam));
-    const resolved: Array<{ espnId: number; fpid: number }> = await ctx.runQuery(
-      internal.espn.league.resolveEspnPlayersToFpids,
-      { players: rosterPlayers },
-    );
-    const fpidByEspnId = new Map(resolved.map((r) => [r.espnId, r.fpid]));
-    await ctx.runMutation(internal.players.recordPlatformPositions, {
-      platform: "espn",
-      rows: rosterPlayers.flatMap((player) => {
-        const fpid = fpidByEspnId.get(player.espnId);
-        const position = recordablePosition(player.position);
-        return fpid !== undefined && position ? [{ fpid, position }] : [];
-      }),
-    });
-
-    await ctx.runMutation(internal.rosterSync.writeSeasonStandings, {
-      seasonId: args.seasonId,
-      teams: linked.map(({ team, espnTeam }) => {
-        const record = espnTeam.record?.overall;
-        return {
-          teamId: team._id,
-          wins: record?.wins ?? 0,
-          losses: record?.losses ?? 0,
-          ties: record?.ties ?? 0,
-          pointsFor: record?.pointsFor ?? 0,
-          pointsAgainst: record?.pointsAgainst ?? 0,
-        };
-      }),
-    });
-
-    for (const { team, espnTeam } of linked) {
-      const fpids = (espnTeam.roster?.entries ?? [])
-        .map((entry) => fpidByEspnId.get(entry.playerId))
-        .filter((fpid): fpid is number => fpid !== undefined);
-      await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
-        seasonId: args.seasonId,
-        teamId: team._id as Id<"seasonTeams">,
-        fpids,
-        faabSpent: espnTeam.transactionCounter?.acquisitionBudgetSpent ?? 0,
-        ...(waiverType === "priority" && espnTeam.waiverRank !== undefined
-          ? { waiverPosition: espnTeam.waiverRank }
-          : {}),
-        name: espnTeamName(espnTeam),
-        logoUrl: espnTeamLogoUrl(espnTeam),
-      });
-    }
-
-    // Fills in this league's rest-of-season board now if it doesn't have
-    // one yet (a just-connected league), rather than at the next daily
-    // cron - see rosVor.ts's ensureSeasonRosVor.
-    await ctx.scheduler.runAfter(0, internal.rosVor.ensureSeasonRosVor, { seasonId: args.seasonId });
-
-    return { syncedTeams: linked.length };
+    return await runEspnRosterSync(ctx, season);
   },
 });
+
+// syncEspnLeagueRoster's work, minus the owner check - infiniyoffs runs it for a league
+// member's visit (see convex/infiniyoffs/refresh.ts).
+export async function runEspnRosterSync(
+  ctx: ActionCtx,
+  season: Doc<"seasons">,
+): Promise<{ syncedTeams: number }> {
+  if (!season.espnLeagueId) {
+    throw new Error("This league isn't linked to an ESPN league yet.");
+  }
+
+  const league = await fetchEspnLeague(season.espnLeagueId, season.year, [
+    "mSettings",
+    "mTeam",
+    "mRoster",
+    "mStandings",
+  ]);
+  const acquisition = league.settings?.acquisitionSettings;
+  const waiverType = mapEspnWaiverType(acquisition);
+
+  // Re-read every sync, same self-healing rationale as Sleeper's. Unlike
+  // Yahoo, ESPN reports the real league-wide FAAB budget.
+  await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
+    seasonId: season._id,
+    waiverType,
+    ...(waiverType === "faab" && acquisition?.acquisitionBudget !== undefined
+      ? { faabBudget: acquisition.acquisitionBudget }
+      : {}),
+  });
+
+  const espnTeamById = new Map(
+    (league.teams ?? []).map((team) => [String(team.id), team]),
+  );
+  const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
+    internal.seasonTeams.listSeasonTeamsInternal,
+    { seasonId: season._id },
+  );
+  const linked = teams.flatMap((team) => {
+    const espnTeam = team.espnTeamId
+      ? espnTeamById.get(team.espnTeamId)
+      : undefined;
+    return espnTeam ? [{ team, espnTeam }] : [];
+  });
+
+  // One resolution pass across every roster, so the name-match fallback's
+  // full players scan happens at most once per sync.
+  const rosterPlayers = linked.flatMap(({ espnTeam }) => extractRosterPlayers(espnTeam));
+  const resolved: Array<{ espnId: number; fpid: number }> = await ctx.runQuery(
+    internal.espn.league.resolveEspnPlayersToFpids,
+    { players: rosterPlayers },
+  );
+  const fpidByEspnId = new Map(resolved.map((r) => [r.espnId, r.fpid]));
+  await ctx.runMutation(internal.players.recordPlatformPositions, {
+    platform: "espn",
+    rows: rosterPlayers.flatMap((player) => {
+      const fpid = fpidByEspnId.get(player.espnId);
+      const position = recordablePosition(player.position);
+      return fpid !== undefined && position ? [{ fpid, position }] : [];
+    }),
+  });
+
+  await ctx.runMutation(internal.rosterSync.writeSeasonStandings, {
+    seasonId: season._id,
+    teams: linked.map(({ team, espnTeam }) => {
+      const record = espnTeam.record?.overall;
+      return {
+        teamId: team._id,
+        wins: record?.wins ?? 0,
+        losses: record?.losses ?? 0,
+        ties: record?.ties ?? 0,
+        pointsFor: record?.pointsFor ?? 0,
+        pointsAgainst: record?.pointsAgainst ?? 0,
+      };
+    }),
+  });
+
+  for (const { team, espnTeam } of linked) {
+    const fpids = (espnTeam.roster?.entries ?? [])
+      .map((entry) => fpidByEspnId.get(entry.playerId))
+      .filter((fpid): fpid is number => fpid !== undefined);
+    await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
+      seasonId: season._id,
+      teamId: team._id as Id<"seasonTeams">,
+      fpids,
+      faabSpent: espnTeam.transactionCounter?.acquisitionBudgetSpent ?? 0,
+      ...(waiverType === "priority" && espnTeam.waiverRank !== undefined
+        ? { waiverPosition: espnTeam.waiverRank }
+        : {}),
+      name: espnTeamName(espnTeam),
+      logoUrl: espnTeamLogoUrl(espnTeam),
+    });
+  }
+
+  // Fills in this league's rest-of-season board now if it doesn't have
+  // one yet (a just-connected league), rather than at the next daily
+  // cron - see rosVor.ts's ensureSeasonRosVor.
+  await ctx.scheduler.runAfter(0, internal.rosVor.ensureSeasonRosVor, { seasonId: season._id });
+
+  return { syncedTeams: linked.length };
+}
 
 // Who an ESPN team plays in a given week, for infinileague's Matchup tab.
 // mMatchupScore is the lightest view that still carries the full schedule.

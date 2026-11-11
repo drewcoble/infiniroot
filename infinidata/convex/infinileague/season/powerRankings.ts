@@ -148,6 +148,17 @@ export async function gatherPowerRankingsInputs(
   const { season } = await ctx.runQuery(internal.rosterSync.requireOwnedSeasonForSync, {
     seasonId,
   });
+  return await gatherPowerRankingsInputsFor(ctx, season, weeksAhead);
+}
+
+// gatherPowerRankingsInputs minus the owner check - for callers that gate
+// access their own way (infiniyoffs' league members).
+export async function gatherPowerRankingsInputsFor(
+  ctx: ActionCtx,
+  season: Doc<"seasons">,
+  weeksAhead?: number | undefined,
+): Promise<PowerRankingsInputs> {
+  const seasonId = season._id;
   if (!season.sleeperLeagueId && !season.yahooLeagueKey && !season.espnLeagueId) {
     throw new Error("This league isn't linked to Sleeper, Yahoo, or ESPN yet.");
   }
