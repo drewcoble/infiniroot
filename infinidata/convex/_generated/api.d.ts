@@ -93,6 +93,7 @@ import type * as infinileague_season_tradeSuggestions from "../infinileague/seas
 import type * as infinileague_season_tradeValues from "../infinileague/season/tradeValues.js";
 import type * as infinileague_season_usage from "../infinileague/season/usage.js";
 import type * as infinileague_season_weekInjuries from "../infinileague/season/weekInjuries.js";
+import type * as infiniyoffs_leagues from "../infiniyoffs/leagues.js";
 import type * as injuries from "../injuries.js";
 import type * as injurySnapshots from "../injurySnapshots.js";
 import type * as jev_client from "../jev/client.js";
@@ -250,6 +251,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/tradeValues": typeof infinileague_season_tradeValues;
   "infinileague/season/usage": typeof infinileague_season_usage;
   "infinileague/season/weekInjuries": typeof infinileague_season_weekInjuries;
+  "infiniyoffs/leagues": typeof infiniyoffs_leagues;
   injuries: typeof injuries;
   injurySnapshots: typeof injurySnapshots;
   "jev/client": typeof jev_client;

@@ -25,16 +25,17 @@ export function requireYahooEnv() {
   return { clientId, clientSecret, redirectUri };
 }
 
-// All three frontend apps share this one Convex deployment (and the same
+// Every frontend app shares this one Convex deployment (and the same
 // Yahoo app registration), but each needs the OAuth round trip to land back
 // on its own origin - see startYahooAuth/consumeOAuthState in ./oauth.ts for
 // where this discriminator is stashed across the redirect.
-export type YahooOAuthApp = "infinidraft" | "infinileague" | "infinifaab";
+export type YahooOAuthApp = "infinidraft" | "infinileague" | "infinifaab" | "infiniyoffs";
 
 const APP_BASE_URL_ENV_VAR: Record<YahooOAuthApp, string> = {
   infinidraft: "APP_BASE_URL",
   infinileague: "APP_BASE_URL_INFINILEAGUE",
   infinifaab: "APP_BASE_URL_INFINIFAAB",
+  infiniyoffs: "APP_BASE_URL_INFINIYOFFS",
 };
 
 // Where the /yahoo/callback HTTP route (convex/http.ts) sends the browser

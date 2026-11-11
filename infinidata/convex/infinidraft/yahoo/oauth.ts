@@ -19,6 +19,7 @@ const yahooOAuthAppValidator = v.union(
   v.literal("infinidraft"),
   v.literal("infinileague"),
   v.literal("infinifaab"),
+  v.literal("infiniyoffs"),
 );
 
 // A stored state row older than this is treated as invalid (abandoned OAuth

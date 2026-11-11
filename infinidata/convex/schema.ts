@@ -1598,6 +1598,7 @@ export default defineSchema({
         v.literal("infinidraft"),
         v.literal("infinileague"),
         v.literal("infinifaab"),
+        v.literal("infiniyoffs"),
       ),
     ),
     createdAt: v.number(),

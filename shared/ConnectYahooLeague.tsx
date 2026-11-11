@@ -33,7 +33,7 @@ import { getErrorMessage } from "./errors";
 const FILLER_SALARY_CAP = 200;
 
 interface ConnectYahooLeagueProps {
-  app: "infinileague" | "infinifaab";
+  app: "infinileague" | "infinifaab" | "infiniyoffs";
   onConnected: (seasonId: string) => void;
   onCancel: () => void;
 }

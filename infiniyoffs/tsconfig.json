@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../shared/*"],
+      "@shared-core/*": ["../shared-core/*"],
+      "@infinidata/*": ["../infinidata/convex/_generated/*"]
+    }
+  },
+  "include": ["src", "../shared", "../shared-core"]
+}
