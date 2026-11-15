@@ -53,6 +53,9 @@ export interface GameResult {
   // Set once the game is final.
   winnerId: string | null;
   final: boolean;
+  // Bracket games: the earlier game each spot is fed by (null for a team
+  // that starts here, including off a bye).
+  from?: [string | null, string | null];
 }
 
 export interface GroupRow {
@@ -62,6 +65,9 @@ export interface GroupRow {
   ties: number;
   // Group-stage points, bonuses included.
   points: number;
+  // Raw points over the ranking's points tiebreaker span (no bonuses) -
+  // what decides a tied record. Null when the ranking has no points rule.
+  tiebreakPoints: number | null;
 }
 
 export interface GroupResult {
@@ -565,6 +571,7 @@ function evaluateGroups(ctx: Ctx, stage: GroupStage): StageResult {
     }
     if (games.some((game) => !game.final)) settled = false;
     const order = rank(group.teamIds, stage.ranking, book, ctx);
+    const pointsRule = stage.ranking.find((rule) => rule.kind === "pointsFor");
     const table = order.map((teamId) => ({
       teamId,
       wins: book.wins.get(teamId) ?? 0,
@@ -577,6 +584,10 @@ function evaluateGroups(ctx: Ctx, stage: GroupStage): StageResult {
           ),
         ),
       ),
+      tiebreakPoints:
+        pointsRule?.kind === "pointsFor"
+          ? rawPoints(ctx.input, teamId, pointsRule.fromWeek, pointsRule.toWeek)
+          : null,
     }));
     return { headId: group.headId, teamIds: group.teamIds, table, games };
   });
@@ -627,11 +638,12 @@ function evaluateBracket(ctx: Ctx, stage: BracketStage): StageResult {
     teamId === null ? Infinity : (seeds[teamId] ?? Infinity);
 
   // Each slot is a team, a TBD (null), or empty (a bye).
-  type Slot = { teamId: string | null; bye: boolean };
+  // `from` is the game that filled the slot.
+  type Slot = { teamId: string | null; bye: boolean; from: string | null };
   let slots: Slot[] = seedSlotOrder(size).map((seed) =>
     entrants
-      ? { teamId: entrants[seed - 1] ?? null, bye: seed > entrants.length }
-      : { teamId: null, bye: false },
+      ? { teamId: entrants[seed - 1] ?? null, bye: seed > entrants.length, from: null }
+      : { teamId: null, bye: false, from: null },
   );
   const rounds: RoundResult[] = [];
   let settled = entrants !== null;
@@ -643,7 +655,7 @@ function evaluateBracket(ctx: Ctx, stage: BracketStage): StageResult {
         .filter((slot) => !slot.bye)
         .sort((a, b) => seedOf(a.teamId) - seedOf(b.teamId));
       const reordered = seedSlotOrder(slots.length).map(
-        (seed) => alive[seed - 1] ?? { teamId: null, bye: true },
+        (seed) => alive[seed - 1] ?? { teamId: null, bye: true, from: null },
       );
       slots = reordered;
     }
@@ -671,15 +683,16 @@ function evaluateBracket(ctx: Ctx, stage: BracketStage): StageResult {
         bonus,
         better,
       );
+      game.from = [a.from, b.from];
       games.push(game);
       if (!game.final) {
         settled = false;
-        next.push({ teamId: null, bye: false });
+        next.push({ teamId: null, bye: false, from: game.id });
         continue;
       }
       const winnerId = game.winnerId!;
       const loserId = winnerId === a.teamId ? b.teamId! : a.teamId!;
-      next.push({ teamId: stage.loserAdvances ? loserId : winnerId, bye: false });
+      next.push({ teamId: stage.loserAdvances ? loserId : winnerId, bye: false, from: game.id });
     }
     rounds.push({ round, name: roundName(round, roundCount), weeks, games });
     slots = next;

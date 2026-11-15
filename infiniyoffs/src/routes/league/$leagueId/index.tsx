@@ -5,9 +5,9 @@ import { evaluate, type Standing } from "@playoffRules/evaluate";
 import type { PlayoffFormat } from "@playoffRules/format";
 import { GlassSectionDivider } from "@shared/glass/GlassSectionDivider";
 import { GlassSegmented } from "@shared/glass/GlassSegmented";
-import { pillStyle } from "@shared/glass/pills";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
 import { TeamRow } from "../../../components/TeamRow";
+import { TierPill } from "../../../components/TierPill";
 import { currentInput } from "../../../lib/engineInput";
 import type { TeamOdds } from "../../../lib/odds";
 import { useSeasonData, type SeasonData } from "../../../lib/seasonData";
@@ -18,9 +18,6 @@ export const Route = createFileRoute("/league/$leagueId/")({
 });
 
 type View = "now" | "projected";
-
-// Tier pill colors, top tier first.
-const TIER_COLORS = ["yellow", "teal", "blue", "gray", "grape", "orange"];
 
 function percent(p: number | undefined): string {
   if (p === undefined) return "—";
@@ -148,18 +145,7 @@ function Rows({
                 name: team?.name ?? "Unknown team",
                 rank: row.rank,
                 isMine: team?.isMine ?? false,
-                ...(tier
-                  ? {
-                      nameBadges: (
-                        <span
-                          className={classes.pill}
-                          style={pillStyle(TIER_COLORS[tierIndex] ?? "gray")}
-                        >
-                          {tier}
-                        </span>
-                      ),
-                    }
-                  : {}),
+                ...(tier ? { nameBadges: <TierPill format={format} tier={tier} /> } : {}),
                 primary: row.primary,
                 secondaryLeft: <span className="num">{row.secondaryLeft}</span>,
                 secondaryRight: <span className="num">{oddsLine}</span>,
