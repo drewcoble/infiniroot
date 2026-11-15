@@ -96,6 +96,7 @@ import type * as infinileague_season_weekInjuries from "../infinileague/season/w
 import type * as infiniyoffs_access from "../infiniyoffs/access.js";
 import type * as infiniyoffs_draft from "../infiniyoffs/draft.js";
 import type * as infiniyoffs_leagues from "../infiniyoffs/leagues.js";
+import type * as infiniyoffs_reads from "../infiniyoffs/reads.js";
 import type * as infiniyoffs_refresh from "../infiniyoffs/refresh.js";
 import type * as infiniyoffs_rules from "../infiniyoffs/rules.js";
 import type * as infiniyoffs_scores from "../infiniyoffs/scores.js";
@@ -265,6 +266,7 @@ declare const fullApi: ApiFromModules<{
   "infiniyoffs/access": typeof infiniyoffs_access;
   "infiniyoffs/draft": typeof infiniyoffs_draft;
   "infiniyoffs/leagues": typeof infiniyoffs_leagues;
+  "infiniyoffs/reads": typeof infiniyoffs_reads;
   "infiniyoffs/refresh": typeof infiniyoffs_refresh;
   "infiniyoffs/rules": typeof infiniyoffs_rules;
   "infiniyoffs/scores": typeof infiniyoffs_scores;

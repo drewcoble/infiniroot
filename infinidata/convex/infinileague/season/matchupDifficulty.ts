@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { query } from "../../_generated/server";
+import { query, type QueryCtx } from "../../_generated/server";
+import type { Doc, Id } from "../../_generated/dataModel";
 import { requireSeasonOwner } from "../../lib/access";
 import { MATCHUP_FIRST_WEEK } from "../../lib/matchupCalibration";
 import { gradeDefenseMatchups, type DefenseMatchupGrade } from "../../lib/matchupDifficulty";
@@ -15,14 +16,24 @@ export const getMatchupDifficulty = query({
   args: { seasonId: v.id("seasons"), week: v.string() },
   handler: async (ctx, args): Promise<DefenseMatchupGrade[] | null> => {
     const { season } = await requireSeasonOwner(ctx, args.seasonId);
-    const week = Number(args.week);
-    if (!(week >= MATCHUP_FIRST_WEEK)) return null;
-    const set = await ctx.db
-      .query("defenseMatchupSets")
-      .withIndex("by_season_week", (q) => q.eq("season", season.year).lte("throughWeek", week - 1))
-      .order("desc")
-      .first();
-    if (!set) return null;
-    return gradeDefenseMatchups(set.rows, scoringConfigFromSeason(season));
+    return await matchupDifficultyFor(ctx, season, args);
   },
 });
+
+// getMatchupDifficulty's read, minus the owner check - infiniyoffs serves it to league
+// members (convex/infiniyoffs/reads.ts).
+export async function matchupDifficultyFor(
+  ctx: QueryCtx,
+  season: Doc<"seasons">,
+  args: { seasonId: Id<"seasons">; week: string },
+): Promise<DefenseMatchupGrade[] | null> {
+  const week = Number(args.week);
+  if (!(week >= MATCHUP_FIRST_WEEK)) return null;
+  const set = await ctx.db
+    .query("defenseMatchupSets")
+    .withIndex("by_season_week", (q) => q.eq("season", season.year).lte("throughWeek", week - 1))
+    .order("desc")
+    .first();
+  if (!set) return null;
+  return gradeDefenseMatchups(set.rows, scoringConfigFromSeason(season));
+}

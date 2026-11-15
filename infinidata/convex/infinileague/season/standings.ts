@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query } from "../../_generated/server";
+import { query, type QueryCtx } from "../../_generated/server";
 import { Doc, Id } from "../../_generated/dataModel";
 import { requireSeasonOwner } from "../../lib/access";
 
@@ -52,33 +52,43 @@ export const getStandings = query({
   args: { seasonId: v.id("seasons") },
   handler: async (ctx, args): Promise<StandingsRow[]> => {
     const { season } = await requireSeasonOwner(ctx, args.seasonId);
-    const teams = await ctx.db
-      .query("seasonTeams")
-      .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
-      .collect();
-
-    const sorted = [...teams].sort(compareStandings);
-
-    return sorted.map((team, index) => ({
-      teamId: team._id,
-      name: team.name,
-      ...(team.logoUrl ? { logoUrl: team.logoUrl } : {}),
-      isSelf: team.isSelf,
-      rank: index + 1,
-      wins: team.wins ?? 0,
-      losses: team.losses ?? 0,
-      ties: team.ties ?? 0,
-      pointsFor: team.pointsFor ?? 0,
-      pointsAgainst: team.pointsAgainst ?? 0,
-      ...(season.waiverType === "faab"
-        ? {
-            faabRemaining:
-              (team.faabBudgetOverride ?? season.faabBudget ?? 0) -
-              (team.faabSpent ?? 0),
-          }
-        : team.waiverPosition !== undefined
-          ? { waiverPosition: team.waiverPosition }
-          : {}),
-    }));
+    return await standingsFor(ctx, season, (team) => team.isSelf);
   },
 });
+
+// getStandings' rows, minus the owner check - isSelf decides which team
+// reads as "yours" (infiniyoffs: the viewer's own team).
+export async function standingsFor(
+  ctx: QueryCtx,
+  season: Doc<"seasons">,
+  isSelf: (team: Doc<"seasonTeams">) => boolean,
+): Promise<StandingsRow[]> {
+  const teams = await ctx.db
+    .query("seasonTeams")
+    .withIndex("by_season", (q) => q.eq("seasonId", season._id))
+    .collect();
+
+  const sorted = [...teams].sort(compareStandings);
+
+  return sorted.map((team, index) => ({
+    teamId: team._id,
+    name: team.name,
+    ...(team.logoUrl ? { logoUrl: team.logoUrl } : {}),
+    isSelf: isSelf(team),
+    rank: index + 1,
+    wins: team.wins ?? 0,
+    losses: team.losses ?? 0,
+    ties: team.ties ?? 0,
+    pointsFor: team.pointsFor ?? 0,
+    pointsAgainst: team.pointsAgainst ?? 0,
+    ...(season.waiverType === "faab"
+      ? {
+          faabRemaining:
+            (team.faabBudgetOverride ?? season.faabBudget ?? 0) -
+            (team.faabSpent ?? 0),
+        }
+      : team.waiverPosition !== undefined
+        ? { waiverPosition: team.waiverPosition }
+        : {}),
+  }));
+}

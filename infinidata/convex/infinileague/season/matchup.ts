@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { action, ActionCtx, query } from "../../_generated/server";
+import { action, ActionCtx, query, type QueryCtx } from "../../_generated/server";
 import { api, internal } from "../../_generated/api";
-import { Id } from "../../_generated/dataModel";
+import { Doc, Id } from "../../_generated/dataModel";
 import { fetchSleeperJson } from "../../sleeper/league";
 import { fetchYahooOpponentTeamKey } from "../../infinidraft/yahoo/league";
 import { withYahooToken } from "../../infinidraft/yahoo/oauth";
@@ -213,30 +213,40 @@ export const getWeekPositionRanks = query({
   args: { seasonId: v.id("seasons"), week: v.string() },
   handler: async (ctx, args): Promise<Array<{ fpid: number; rank: number }>> => {
     const { season } = await requireSeasonOwner(ctx, args.seasonId);
-    const [entries, platformPositions] = await Promise.all([
-      loadWeekPoints(ctx, args.seasonId, args.week),
-      loadPlatformPositions(ctx, season),
-    ]);
-
-    // Ranked at the league platform's position (see schema.ts's
-    // platformPositions), matching the roster's position label.
-    const byPosition = new Map<string, typeof entries>();
-    for (const entry of entries) {
-      const position = platformPositions.get(entry.fpid) ?? entry.position;
-      const list = byPosition.get(position) ?? [];
-      list.push(entry);
-      byPosition.set(position, list);
-    }
-
-    const ranks: Array<{ fpid: number; rank: number }> = [];
-    for (const list of byPosition.values()) {
-      list.sort((a, b) => b.points - a.points);
-      list.forEach((entry, index) => {
-        const tiedWithPrevious = index > 0 && entry.points === list[index - 1]!.points;
-        const rank = tiedWithPrevious ? ranks[ranks.length - 1]!.rank : index + 1;
-        ranks.push({ fpid: entry.fpid, rank });
-      });
-    }
-    return ranks;
+    return await weekPositionRanksFor(ctx, season, args);
   },
 });
+
+// getWeekPositionRanks's read, minus the owner check - infiniyoffs serves it to league
+// members (convex/infiniyoffs/reads.ts).
+export async function weekPositionRanksFor(
+  ctx: QueryCtx,
+  season: Doc<"seasons">,
+  args: { seasonId: Id<"seasons">; week: string },
+): Promise<Array<{ fpid: number; rank: number }>> {
+  const [entries, platformPositions] = await Promise.all([
+    loadWeekPoints(ctx, args.seasonId, args.week),
+    loadPlatformPositions(ctx, season),
+  ]);
+
+  // Ranked at the league platform's position (see schema.ts's
+  // platformPositions), matching the roster's position label.
+  const byPosition = new Map<string, typeof entries>();
+  for (const entry of entries) {
+    const position = platformPositions.get(entry.fpid) ?? entry.position;
+    const list = byPosition.get(position) ?? [];
+    list.push(entry);
+    byPosition.set(position, list);
+  }
+
+  const ranks: Array<{ fpid: number; rank: number }> = [];
+  for (const list of byPosition.values()) {
+    list.sort((a, b) => b.points - a.points);
+    list.forEach((entry, index) => {
+      const tiedWithPrevious = index > 0 && entry.points === list[index - 1]!.points;
+      const rank = tiedWithPrevious ? ranks[ranks.length - 1]!.rank : index + 1;
+      ranks.push({ fpid: entry.fpid, rank });
+    });
+  }
+  return ranks;
+}
