@@ -5,7 +5,8 @@
     "paths": {
       "@shared/*": ["../shared/*"],
       "@shared-core/*": ["../shared-core/*"],
-      "@infinidata/*": ["../infinidata/convex/_generated/*"]
+      "@infinidata/*": ["../infinidata/convex/_generated/*"],
+      "@playoffRules/*": ["../infinidata/convex/lib/playoffRules/*"]
     }
   },
   "include": ["src", "../shared", "../shared-core"]

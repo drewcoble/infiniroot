@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Box, Center, Loader, Stack, Tabs } from "@mantine/core";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import type { GenericId as Id } from "convex/values";
@@ -7,6 +8,8 @@ import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
 import { useMyViewer } from "../../../hooks/useMyViewer";
+import { SeasonDataProvider, useSeasonData } from "../../../lib/seasonData";
+import { TeamLogosProvider } from "@shared/glass/TeamLogo";
 
 export const Route = createFileRoute("/league/$leagueId")({
   component: LeagueLayout,
@@ -33,7 +36,13 @@ function LeagueLayout() {
   const viewer = useMyViewer(seasonId);
 
   const tabs: TabItem[] = [
-    { value: "picture", label: "Picture", icon: Trophy, to: "/league/$leagueId", params: { leagueId } },
+    {
+      value: "picture",
+      label: "Picture",
+      icon: Trophy,
+      to: "/league/$leagueId",
+      params: { leagueId },
+    },
     {
       value: "bracket",
       label: "Bracket",
@@ -87,10 +96,20 @@ function LeagueLayout() {
             <Loader />
           </Center>
         ) : (
-          <Outlet />
+          <SeasonDataProvider seasonId={seasonId}>
+            <TeamLogos>
+              <Outlet />
+            </TeamLogos>
+          </SeasonDataProvider>
         )}
       </Stack>
       <BottomNav glass items={tabs} activeValue={activeValue} />
     </PageContainer>
   );
+}
+
+// Every card's team logo, from the season data once it's loaded.
+function TeamLogos({ children }: { children: ReactNode }) {
+  const { data } = useSeasonData();
+  return <TeamLogosProvider teams={data?.teams}>{children}</TeamLogosProvider>;
 }

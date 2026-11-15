@@ -21,6 +21,9 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../shared'),
       '@shared-core': path.resolve(__dirname, '../shared-core'),
       '@infinidata': path.resolve(__dirname, '../infinidata/convex/_generated'),
+      // The playoff rules engine runs in the browser too (picture, what-ifs,
+      // odds) - plain TS with no Convex imports.
+      '@playoffRules': path.resolve(__dirname, '../infinidata/convex/lib/playoffRules'),
     },
   },
   server: {
