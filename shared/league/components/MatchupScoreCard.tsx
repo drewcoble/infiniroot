@@ -27,6 +27,9 @@ export interface MatchupScoreSide {
   // league, which has no head-to-head standings.
   standing?: StandingsRow | undefined;
   logoUrl?: string | undefined;
+  // Points added to this side's score for the week (infiniyoffs' seed and
+  // tier bonuses) - counted in both its actual and projected totals.
+  bonus?: number | undefined;
 }
 
 // One matchup's score header as a link into the league's Matchup tab -
@@ -86,10 +89,12 @@ export function MatchupScoreCard({
   const gameStateFor = (row: TeamRosterRow) => toCardData(row).gameState;
 
   const opponent = teamB !== "loading" ? teamB : null;
-  const projA = sumStarterPoints(teamA.rows, liveProjFor);
-  const actualA = sumStarterPoints(teamA.rows, actualFor);
-  const projB = sumStarterPoints(opponent?.rows, liveProjFor);
-  const actualB = sumStarterPoints(opponent?.rows, actualFor);
+  const bonusA = teamA.bonus ?? 0;
+  const bonusB = opponent?.bonus ?? 0;
+  const projA = sumStarterPoints(teamA.rows, liveProjFor) + bonusA;
+  const actualA = sumStarterPoints(teamA.rows, actualFor) + bonusA;
+  const projB = sumStarterPoints(opponent?.rows, liveProjFor) + bonusB;
+  const actualB = sumStarterPoints(opponent?.rows, actualFor) + bonusB;
   const matchupReady = opponent !== null && opponent.rows !== undefined;
 
   const { cardProps, anchor, expanded, pressing, close } = useExpandableCard<HTMLAnchorElement>(

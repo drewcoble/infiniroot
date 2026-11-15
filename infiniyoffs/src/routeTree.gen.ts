@@ -15,7 +15,7 @@ import { Route as JoinTokenRouteImport } from './routes/join/$token'
 import { Route as LeagueLeagueIdRouteRouteImport } from './routes/league/$leagueId/route'
 import { Route as LeagueLeagueIdIndexRouteImport } from './routes/league/$leagueId/index'
 import { Route as LeagueLeagueIdBracketRouteImport } from './routes/league/$leagueId/bracket'
-import { Route as LeagueLeagueIdMatchupsRouteImport } from './routes/league/$leagueId/matchups'
+import { Route as LeagueLeagueIdMatchupRouteImport } from './routes/league/$leagueId/matchup'
 import { Route as LeagueLeagueIdSettingsRouteImport } from './routes/league/$leagueId/settings'
 
 const IndexRoute = IndexRouteImport.update({
@@ -48,9 +48,9 @@ const LeagueLeagueIdBracketRoute = LeagueLeagueIdBracketRouteImport.update({
   path: '/bracket',
   getParentRoute: () => LeagueLeagueIdRouteRoute,
 } as any)
-const LeagueLeagueIdMatchupsRoute = LeagueLeagueIdMatchupsRouteImport.update({
-  id: '/matchups',
-  path: '/matchups',
+const LeagueLeagueIdMatchupRoute = LeagueLeagueIdMatchupRouteImport.update({
+  id: '/matchup',
+  path: '/matchup',
   getParentRoute: () => LeagueLeagueIdRouteRoute,
 } as any)
 const LeagueLeagueIdSettingsRoute = LeagueLeagueIdSettingsRouteImport.update({
@@ -65,7 +65,7 @@ export interface FileRoutesByFullPath {
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/join/$token': typeof JoinTokenRoute
   '/league/$leagueId/bracket': typeof LeagueLeagueIdBracketRoute
-  '/league/$leagueId/matchups': typeof LeagueLeagueIdMatchupsRoute
+  '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
   '/league/$leagueId/settings': typeof LeagueLeagueIdSettingsRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
 }
@@ -74,7 +74,7 @@ export interface FileRoutesByTo {
   '/add-league': typeof AddLeagueRoute
   '/join/$token': typeof JoinTokenRoute
   '/league/$leagueId/bracket': typeof LeagueLeagueIdBracketRoute
-  '/league/$leagueId/matchups': typeof LeagueLeagueIdMatchupsRoute
+  '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
   '/league/$leagueId/settings': typeof LeagueLeagueIdSettingsRoute
   '/league/$leagueId': typeof LeagueLeagueIdIndexRoute
 }
@@ -85,7 +85,7 @@ export interface FileRoutesById {
   '/league/$leagueId': typeof LeagueLeagueIdRouteRouteWithChildren
   '/join/$token': typeof JoinTokenRoute
   '/league/$leagueId/bracket': typeof LeagueLeagueIdBracketRoute
-  '/league/$leagueId/matchups': typeof LeagueLeagueIdMatchupsRoute
+  '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
   '/league/$leagueId/settings': typeof LeagueLeagueIdSettingsRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
 }
@@ -97,7 +97,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId'
     | '/join/$token'
     | '/league/$leagueId/bracket'
-    | '/league/$leagueId/matchups'
+    | '/league/$leagueId/matchup'
     | '/league/$leagueId/settings'
     | '/league/$leagueId/'
   fileRoutesByTo: FileRoutesByTo
@@ -106,7 +106,7 @@ export interface FileRouteTypes {
     | '/add-league'
     | '/join/$token'
     | '/league/$leagueId/bracket'
-    | '/league/$leagueId/matchups'
+    | '/league/$leagueId/matchup'
     | '/league/$leagueId/settings'
     | '/league/$leagueId'
   id:
@@ -116,7 +116,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId'
     | '/join/$token'
     | '/league/$leagueId/bracket'
-    | '/league/$leagueId/matchups'
+    | '/league/$leagueId/matchup'
     | '/league/$leagueId/settings'
     | '/league/$leagueId/'
   fileRoutesById: FileRoutesById
@@ -172,11 +172,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeagueLeagueIdBracketRouteImport
       parentRoute: typeof LeagueLeagueIdRouteRoute
     }
-    '/league/$leagueId/matchups': {
-      id: '/league/$leagueId/matchups'
-      path: '/matchups'
-      fullPath: '/league/$leagueId/matchups'
-      preLoaderRoute: typeof LeagueLeagueIdMatchupsRouteImport
+    '/league/$leagueId/matchup': {
+      id: '/league/$leagueId/matchup'
+      path: '/matchup'
+      fullPath: '/league/$leagueId/matchup'
+      preLoaderRoute: typeof LeagueLeagueIdMatchupRouteImport
       parentRoute: typeof LeagueLeagueIdRouteRoute
     }
     '/league/$leagueId/settings': {
@@ -191,14 +191,14 @@ declare module '@tanstack/react-router' {
 
 interface LeagueLeagueIdRouteRouteChildren {
   LeagueLeagueIdBracketRoute: typeof LeagueLeagueIdBracketRoute
-  LeagueLeagueIdMatchupsRoute: typeof LeagueLeagueIdMatchupsRoute
+  LeagueLeagueIdMatchupRoute: typeof LeagueLeagueIdMatchupRoute
   LeagueLeagueIdSettingsRoute: typeof LeagueLeagueIdSettingsRoute
   LeagueLeagueIdIndexRoute: typeof LeagueLeagueIdIndexRoute
 }
 
 const LeagueLeagueIdRouteRouteChildren: LeagueLeagueIdRouteRouteChildren = {
   LeagueLeagueIdBracketRoute: LeagueLeagueIdBracketRoute,
-  LeagueLeagueIdMatchupsRoute: LeagueLeagueIdMatchupsRoute,
+  LeagueLeagueIdMatchupRoute: LeagueLeagueIdMatchupRoute,
   LeagueLeagueIdSettingsRoute: LeagueLeagueIdSettingsRoute,
   LeagueLeagueIdIndexRoute: LeagueLeagueIdIndexRoute,
 }

@@ -10,12 +10,14 @@ import { PageContainer } from "@shared/PageContainer";
 import { useMyViewer } from "../../../hooks/useMyViewer";
 import { SeasonDataProvider, useSeasonData } from "../../../lib/seasonData";
 import { TeamLogosProvider } from "@shared/glass/TeamLogo";
+import { LeagueApiProvider, type LeagueApi } from "@shared/league/LeagueApi";
+import { api } from "@infinidata/api";
 
 export const Route = createFileRoute("/league/$leagueId")({
   component: LeagueLayout,
 });
 
-type TabValue = "picture" | "bracket" | "matchups" | "settings";
+type TabValue = "picture" | "bracket" | "matchup" | "settings";
 
 interface TabItem {
   value: TabValue;
@@ -24,6 +26,20 @@ interface TabItem {
   to: string;
   params: Record<string, string>;
 }
+
+// The shared matchup/player UI's reads, member-gated (see
+// convex/infiniyoffs/reads.ts).
+const YOFFS_LEAGUE_API: LeagueApi = {
+  getStandings: api.infiniyoffs.reads.getStandings,
+  getRosVorBoard: api.infiniyoffs.reads.getRosVorBoard,
+  getWeekPoints: api.infiniyoffs.reads.getWeekPoints,
+  getWeekPositionRanks: api.infiniyoffs.reads.getWeekPositionRanks,
+  getMatchupDifficulty: api.infiniyoffs.reads.getMatchupDifficulty,
+  getGameLog: api.infiniyoffs.reads.getGameLog,
+  getGameLogSeasons: api.infiniyoffs.reads.getGameLogSeasons,
+  getUsageWeeks: api.infiniyoffs.reads.getUsageWeeks,
+  getTeamRosterForWeek: api.infiniyoffs.reads.getTeamRosterForWeek,
+};
 
 // infinileague's shell (glass header, top Tabs on desktop, glass
 // BottomNav on mobile), but every query under it goes through
@@ -51,10 +67,10 @@ function LeagueLayout() {
       params: { leagueId },
     },
     {
-      value: "matchups",
-      label: "Matchups",
+      value: "matchup",
+      label: "Matchup",
       icon: Ticket,
-      to: "/league/$leagueId/matchups",
+      to: "/league/$leagueId/matchup",
       params: { leagueId },
     },
     {
@@ -96,11 +112,13 @@ function LeagueLayout() {
             <Loader />
           </Center>
         ) : (
-          <SeasonDataProvider seasonId={seasonId}>
-            <TeamLogos>
-              <Outlet />
-            </TeamLogos>
-          </SeasonDataProvider>
+          <LeagueApiProvider value={YOFFS_LEAGUE_API}>
+            <SeasonDataProvider seasonId={seasonId}>
+              <TeamLogos>
+                <Outlet />
+              </TeamLogos>
+            </SeasonDataProvider>
+          </LeagueApiProvider>
         )}
       </Stack>
       <BottomNav glass items={tabs} activeValue={activeValue} />
