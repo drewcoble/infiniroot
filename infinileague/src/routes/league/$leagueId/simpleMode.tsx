@@ -13,8 +13,8 @@ import { SlopeChart, type SlopeRow } from "../../../components/charts/SlopeChart
 import { Sparkline } from "../../../components/charts/Sparkline";
 import { WeeklyBars } from "../../../components/charts/WeeklyBars";
 import chartClasses from "../../../components/charts/charts.module.css";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
-import cardClasses from "../../../components/cards/GlassMatchupCard.module.css";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
+import cardClasses from "@shared/glass/GlassMatchupCard.module.css";
 import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
 import { UsageChart } from "../../../components/player/UsageChart";
 import type { RosVorRow } from "../../../types/season";

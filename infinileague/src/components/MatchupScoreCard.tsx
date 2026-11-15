@@ -1,10 +1,10 @@
 import { useId } from "react";
 import { Link } from "@tanstack/react-router";
 import { GlassMatchupHeader, type MatchupHeaderTeam } from "./cards/GlassMatchupHeader";
-import { GlassPopover } from "./cards/GlassPopover";
+import { GlassPopover } from "@shared/glass/GlassPopover";
 import { MatchupSummaryDetail, type MatchupDetailTeam } from "./cards/MatchupSummaryDetail";
-import { useExpandableCard } from "./cards/useExpandableCard";
-import cardClasses from "./cards/GlassMatchupCard.module.css";
+import { useExpandableCard } from "@shared/glass/useExpandableCard";
+import cardClasses from "@shared/glass/GlassMatchupCard.module.css";
 import detailClasses from "./cards/MatchupSummaryDetail.module.css";
 import { toMatchupCardData } from "../lib/matchupCardData";
 import {

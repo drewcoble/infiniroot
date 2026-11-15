@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import classes from "./GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 // Matchup page's "Live only" switch - a glass chip like the Players position
 // filter's, green glass-badge style while on, with the cards' pulsing live dot.

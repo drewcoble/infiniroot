@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Position } from "@shared/positionColors";
-import classes from "./GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 // Sleeper's CDN, keyed by Sleeper's player_id - which is our fpid (see the
 // players table in infinidata/convex/schema.ts), so no extra id to thread

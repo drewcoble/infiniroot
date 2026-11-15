@@ -11,11 +11,11 @@ import {
 import { GameLineText } from "./GameLineText";
 import { GameStatusGlyph } from "./GameStatusGlyph";
 import { PointsHeadline, PointsMeter } from "./PointsMeter";
-import { useExpandableCard } from "./useExpandableCard";
+import { useExpandableCard } from "@shared/glass/useExpandableCard";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerPopover } from "../player/PlayerPopover";
 import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
-import classes from "./GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 export type { GlassMatchupCardData } from "./cardShared";
 

@@ -10,14 +10,14 @@ import { TradeRosterMatchup } from "../../../components/TradeRosterMatchup";
 import { MatchupRosterSkeleton } from "../../../components/MatchupRosterMatchup";
 import { GlassTradeHeader, type TradeHeaderTeam } from "../../../components/cards/GlassTradeHeader";
 import { buildShortNames } from "../../../lib/shortPlayerName";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import type { TradeMetric } from "../../../components/cards/GlassTradeCard";
 import {
   GlassTradeSuggestionCard,
   GlassTradeSuggestionSkeleton,
   type TradeSuggestion,
 } from "../../../components/cards/GlassTradeSuggestionCard";
-import classes from "../../../components/cards/GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import {
   GlassSignalCard,
   GlassSignalSkeleton,

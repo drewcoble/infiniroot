@@ -11,8 +11,8 @@ import { ProjectedStandingsList } from "../../../components/ProjectedStandingsLi
 import { EliminationWatchList } from "../../../components/EliminationWatchList";
 import { PlayoffBracket } from "../../../components/PlayoffBracket";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
-import classes from "../../../components/cards/GlassMatchupCard.module.css";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
 import { isAnyGameLive, useNow, type WeekGame } from "../../../lib/liveGames";

@@ -4,12 +4,12 @@ import { ChevronRight, X } from "lucide-react";
 import type { TeamPositionRanks } from "../../types/season";
 import { TeamPositionRanksPanel } from "../TeamPositionRanksPanel";
 import { rankPillStyle } from "./cardShared";
-import { GlassPopover } from "./GlassPopover";
-import { StatGroups, type StatGroup } from "./StatGroups";
-import { TeamLogo } from "./TeamLogo";
-import { useTeamLogoUrl } from "./teamLogos";
-import { useExpandableCard } from "./useExpandableCard";
-import classes from "./GlassMatchupCard.module.css";
+import { GlassPopover } from "@shared/glass/GlassPopover";
+import { StatGroups, type StatGroup } from "@shared/glass/StatGroups";
+import { TeamLogo } from "@shared/glass/TeamLogo";
+import { useTeamLogoUrl } from "@shared/glass/teamLogos";
+import { useExpandableCard } from "@shared/glass/useExpandableCard";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 export interface GlassTeamCardData {
   leagueId: string;

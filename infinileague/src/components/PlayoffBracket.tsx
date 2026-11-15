@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { Stack, Title } from "@mantine/core";
 import { Trophy } from "lucide-react";
-import { TeamLogo } from "./cards/TeamLogo";
+import { TeamLogo } from "@shared/glass/TeamLogo";
 import { rankPillStyle } from "./cards/cardShared";
-import glass from "./cards/GlassMatchupCard.module.css";
+import glass from "@shared/glass/GlassMatchupCard.module.css";
 import classes from "./PlayoffBracket.module.css";
 import type {
   LeaguePlayoffs,

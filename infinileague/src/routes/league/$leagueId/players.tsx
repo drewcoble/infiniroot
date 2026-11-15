@@ -9,8 +9,8 @@ import type { Position } from "@shared/positionColors";
 import { GlassPlayerRow } from "../../../components/cards/GlassPlayerRow";
 import { GlassPositionFilter } from "../../../components/cards/GlassPositionFilter";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
-import classes from "../../../components/cards/GlassMatchupCard.module.css";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import type { RosVorRow } from "../../../types/season";
 
 export const Route = createFileRoute("/league/$leagueId/players")({

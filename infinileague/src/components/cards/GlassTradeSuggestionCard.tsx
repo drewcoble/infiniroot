@@ -4,12 +4,12 @@ import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { gradeColor } from "../../lib/gradeColor";
 import { formatTradeValue } from "../../lib/tradeValue";
 import { pillStyle } from "./cardShared";
-import { TeamLogo } from "./TeamLogo";
-import { useTeamLogoUrl } from "./teamLogos";
-import { GlassPopover } from "./GlassPopover";
-import { StatGroups } from "./StatGroups";
-import { useExpandableCard } from "./useExpandableCard";
-import classes from "./GlassMatchupCard.module.css";
+import { TeamLogo } from "@shared/glass/TeamLogo";
+import { useTeamLogoUrl } from "@shared/glass/teamLogos";
+import { GlassPopover } from "@shared/glass/GlassPopover";
+import { StatGroups } from "@shared/glass/StatGroups";
+import { useExpandableCard } from "@shared/glass/useExpandableCard";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 export interface TradeSuggestionPlayer {
   fpid: number;

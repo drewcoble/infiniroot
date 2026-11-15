@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { pillStyle } from "./cards/cardShared";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
 import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
-import classes from "./cards/GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import type { PowerRankingRow, TeamPositionRanks } from "../types/season";
 
 interface PowerRankingsListProps {

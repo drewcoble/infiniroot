@@ -4,9 +4,9 @@ import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
 import { pillStyle } from "./cardShared";
 import type { TradeMetric } from "./GlassTradeCard";
-import { TeamLogo } from "./TeamLogo";
-import { useTeamLogoUrl } from "./teamLogos";
-import classes from "./GlassMatchupCard.module.css";
+import { TeamLogo } from "@shared/glass/TeamLogo";
+import { useTeamLogoUrl } from "@shared/glass/teamLogos";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 // One player a side sends, with every view's numbers - the header shows
 // whichever the switch picks.

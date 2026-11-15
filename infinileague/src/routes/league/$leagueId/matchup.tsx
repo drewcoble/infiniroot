@@ -8,7 +8,7 @@ import { getErrorMessage } from "@shared/errors";
 import { useGuillotineOpponent } from "../../../hooks/useGuillotineOpponent";
 import { useTeamRoster } from "../../../hooks/useTeamRoster";
 import { WeekPicker } from "../../../components/WeekPicker";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import { LeagueMatchupsList } from "../../../components/LeagueMatchupsList";
 import { LiveOnlyToggle } from "../../../components/cards/LiveOnlyToggle";
 import {

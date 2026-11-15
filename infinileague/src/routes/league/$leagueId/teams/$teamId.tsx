@@ -7,7 +7,7 @@ import { ChevronLeft } from "lucide-react";
 import { api } from "@infinidata/api";
 import { TeamRosterList, TeamRosterListSkeleton } from "../../../../components/TeamRosterList";
 import { WeekPicker } from "../../../../components/WeekPicker";
-import classes from "../../../../components/cards/GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import {
   GlassTeamHeader,
   type TeamWeekSummary,

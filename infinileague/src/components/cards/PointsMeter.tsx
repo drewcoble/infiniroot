@@ -4,7 +4,7 @@ import {
   paceVsProjection,
   type GlassMatchupCardData,
 } from "./cardShared";
-import classes from "./GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 // Bullet meter under the points: fill = actual points, tick = pregame
 // projection, and mid-game a faint extension from actual out to the live

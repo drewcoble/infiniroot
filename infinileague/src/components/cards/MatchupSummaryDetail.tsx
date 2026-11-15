@@ -10,7 +10,7 @@ import {
   rankPillStyle,
   type GlassMatchupCardData,
 } from "./cardShared";
-import classes from "./GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import detailClasses from "./MatchupSummaryDetail.module.css";
 
 export interface MatchupDetailTeam {

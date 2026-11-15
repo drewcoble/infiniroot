@@ -1,6 +1,6 @@
 import { Clock } from "lucide-react";
 import type { GameState } from "./cardShared";
-import classes from "./GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 // Top-right corner icon for games that aren't over yet: pulsing dot while
 // live, a clock before kickoff. Final games and byes get nothing - a

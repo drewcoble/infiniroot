@@ -1,7 +1,7 @@
 import { rankPillStyle } from "./cardShared";
 import { GameStatusGlyph } from "./GameStatusGlyph";
-import { TeamLogo } from "./TeamLogo";
-import classes from "./GlassMatchupCard.module.css";
+import { TeamLogo } from "@shared/glass/TeamLogo";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 export interface MatchupHeaderTeam {
   name: string;

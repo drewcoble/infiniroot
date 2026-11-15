@@ -14,13 +14,13 @@ import {
 import { GameLineText } from "../cards/GameLineText";
 import { matchupSummary } from "../../lib/matchupDifficulty";
 import { GameStatusGlyph } from "../cards/GameStatusGlyph";
-import { GlassPopover } from "../cards/GlassPopover";
+import { GlassPopover } from "@shared/glass/GlassPopover";
 import { meterScaleMax } from "../cards/meterScale";
 import { PlayerGameLog } from "../cards/PlayerGameLog";
 import { PlayerHeadshot } from "../cards/PlayerHeadshot";
 import { PointsMeter } from "../cards/PointsMeter";
-import { StatGroups, type StatGroup } from "../cards/StatGroups";
-import classes from "../cards/GlassMatchupCard.module.css";
+import { StatGroups, type StatGroup } from "@shared/glass/StatGroups";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import { isAnyGameLive, useNow } from "../../lib/liveGames";
 import { toMatchupCardData } from "../../lib/matchupCardData";
 import { LIVE_REFRESH_MS } from "../../lib/matchupSummary";

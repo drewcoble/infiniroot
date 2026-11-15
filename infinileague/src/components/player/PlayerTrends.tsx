@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Position } from "@shared/positionColors";
-import { GlassSegmented } from "../cards/GlassSegmented";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import { PointsChart, type CurrentWeekPoints } from "./PointsChart";
 import { UsageChart } from "./UsageChart";
 import classes from "../charts/charts.module.css";

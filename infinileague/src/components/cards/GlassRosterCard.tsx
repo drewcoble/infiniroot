@@ -16,8 +16,8 @@ import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerPopover } from "../player/PlayerPopover";
 import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
 import { PointsMeter } from "./PointsMeter";
-import { useExpandableCard } from "./useExpandableCard";
-import classes from "./GlassMatchupCard.module.css";
+import { useExpandableCard } from "@shared/glass/useExpandableCard";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 // Full-width (My Team) version of the glass player card - same pieces as
 // GlassMatchupCard, laid out for a full row on mobile: the roster slot chip

@@ -2,7 +2,7 @@ import { gradeColor } from "../lib/gradeColor";
 import type { TeamPositionRanks } from "../types/season";
 import { pillStyle } from "./cards/cardShared";
 import { PositionRadarChart } from "./PositionRadarChart";
-import classes from "./cards/GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 interface TeamPositionRanksPanelProps {
   // undefined while getTeamPositionRanks is still loading - the shared fetch

@@ -3,8 +3,8 @@ import type { StandingsRow } from "../../types/season";
 import { ELIMINATION_STATUS_BADGE, type EliminationStatus } from "../../lib/eliminationWatch";
 import { pillStyle, rankPillStyle } from "./cardShared";
 import { GameStatusGlyph } from "./GameStatusGlyph";
-import { TeamLogo } from "./TeamLogo";
-import classes from "./GlassMatchupCard.module.css";
+import { TeamLogo } from "@shared/glass/TeamLogo";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 export interface TeamWeekSummary {
   actualPoints: number;

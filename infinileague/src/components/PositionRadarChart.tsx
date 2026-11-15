@@ -1,7 +1,7 @@
 import { RadarChart } from "@mantine/charts";
 import { gradeColor } from "../lib/gradeColor";
 import type { StarterCategory } from "../types/season";
-import classes from "./cards/GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 function ordinal(n: number): string {
   const rem100 = n % 100;

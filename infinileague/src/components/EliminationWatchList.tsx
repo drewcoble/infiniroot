@@ -2,7 +2,7 @@ import { Stack } from "@mantine/core";
 import { pillStyle } from "./cards/cardShared";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
 import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
-import classes from "./cards/GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import { ELIMINATION_STATUS_BADGE, type LiveEliminationRow } from "../lib/eliminationWatch";
 import type { TeamPositionRanks } from "../types/season";
 

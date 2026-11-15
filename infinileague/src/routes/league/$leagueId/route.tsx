@@ -16,7 +16,7 @@ import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
 import type { StandingsRow } from "../../../types/season";
-import { TeamLogosProvider } from "../../../components/cards/TeamLogo";
+import { TeamLogosProvider } from "@shared/glass/TeamLogo";
 import { TradeValuesProvider } from "../../../components/player/TradeValuesProvider";
 
 export const Route = createFileRoute("/league/$leagueId")({

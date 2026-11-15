@@ -4,10 +4,10 @@ import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { pillStyle, rankPillStyle } from "./cardShared";
 import { FittedName } from "./FittedName";
 import { PlayerHeadshot } from "./PlayerHeadshot";
-import { useExpandableCard } from "./useExpandableCard";
+import { useExpandableCard } from "@shared/glass/useExpandableCard";
 import { PlayerPopover } from "../player/PlayerPopover";
 import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
-import classes from "./GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 export interface GlassPlayerRowData {
   fpid: number;

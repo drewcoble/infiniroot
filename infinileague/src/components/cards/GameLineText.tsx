@@ -1,6 +1,6 @@
 import { ordinal } from "../../lib/matchupDifficulty";
 import type { GlassMatchupCardData } from "./cardShared";
-import classes from "./GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 // A card's game line, rendered inside a .gameLine flex row. Normally one
 // truncating line - "vs. KC · Sun 1:00 PM". While the game is live, the

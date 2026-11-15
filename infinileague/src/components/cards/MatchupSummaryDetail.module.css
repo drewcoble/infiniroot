@@ -73,21 +73,21 @@
    name on the first row, the section's line under it. Composed from those
    classes so the two stay in step. */
 .playerGrid {
-  composes: tradeHeaderEntry from "./GlassMatchupCard.module.css";
+  composes: tradeHeaderEntry from "../../../../shared/glass/GlassMatchupCard.module.css";
 }
 
 .badge {
-  composes: tradeHeaderBadge from "./GlassMatchupCard.module.css";
+  composes: tradeHeaderBadge from "../../../../shared/glass/GlassMatchupCard.module.css";
 }
 
 /* Keeps "+N more" lined up under the names, like the trade summary's
    2-for-1 row. */
 .badgeSpace {
-  composes: tradeHeaderBadgeSpace from "./GlassMatchupCard.module.css";
+  composes: tradeHeaderBadgeSpace from "../../../../shared/glass/GlassMatchupCard.module.css";
 }
 
 .playerNameText {
-  composes: tradeHeaderPlayerName from "./GlassMatchupCard.module.css";
+  composes: tradeHeaderPlayerName from "../../../../shared/glass/GlassMatchupCard.module.css";
 }
 
 .playerDetail {
