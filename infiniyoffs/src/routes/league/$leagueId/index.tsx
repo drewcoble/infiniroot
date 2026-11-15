@@ -138,7 +138,7 @@ function Rows({
         const oddsLine = odds ? `${percent(odds.playoffs)} playoffs` : "";
         return (
           <Fragment key={row.teamId}>
-            {startsTier && row.rank > 1 && <GlassSectionDivider label={`${tier} tier`} />}
+            {startsTier && <GlassSectionDivider label={`${tier} tier`} />}
             {line !== null && row.rank === line + 1 && (
               <GlassSectionDivider label="Outside the playoffs" />
             )}
