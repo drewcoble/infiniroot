@@ -3,7 +3,7 @@ import { Stack } from "@mantine/core";
 import type { TeamRosterRow } from "../types/season";
 import { slotLabel } from "../lib/matchupCardData";
 import { ROSTER_SECTION_LABEL, rosterSection, type GlassMatchupCardData } from "./cards/cardShared";
-import { GlassSectionDivider } from "./cards/GlassMatchupCard";
+import { GlassSectionDivider } from "@shared/glass/GlassSectionDivider";
 import {
   EmptyGlassRosterCard,
   GlassRosterCard,

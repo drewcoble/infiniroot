@@ -6,10 +6,10 @@ import { api } from "@infinidata/api";
 import {
   EmptyGlassCard,
   GlassMatchupCard,
-  GlassSectionDivider,
   GlassSlotChip,
   type GlassMatchupCardData,
 } from "../../../components/cards/GlassMatchupCard";
+import { GlassSectionDivider } from "@shared/glass/GlassSectionDivider";
 import {
   GlassMatchupHeader,
   type MatchupHeaderTeam,

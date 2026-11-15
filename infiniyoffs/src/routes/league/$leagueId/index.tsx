@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Alert, Center, Loader, Stack, Text } from "@mantine/core";
 import { evaluate, type Standing } from "@playoffRules/evaluate";
 import type { PlayoffFormat } from "@playoffRules/format";
+import { GlassSectionDivider } from "@shared/glass/GlassSectionDivider";
 import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import { pillStyle } from "@shared/glass/pills";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
@@ -137,9 +138,9 @@ function Rows({
         const oddsLine = odds ? `${percent(odds.playoffs)} playoffs` : "";
         return (
           <Fragment key={row.teamId}>
-            {startsTier && <span className={classes.sectionLabel}>{tier} tier</span>}
+            {startsTier && row.rank > 1 && <GlassSectionDivider label={`${tier} tier`} />}
             {line !== null && row.rank === line + 1 && (
-              <span className={classes.sectionLabel}>Outside the playoffs</span>
+              <GlassSectionDivider label="Outside the playoffs" />
             )}
             <TeamRow
               data={{

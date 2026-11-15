@@ -4,12 +4,8 @@ import type { RosVorRow, TeamRosterRow, TradeValueRow } from "../types/season";
 import { alignRosterRows } from "../lib/rosterAlignment";
 import { slotLabel } from "../lib/matchupCardData";
 import { ROSTER_SECTION_LABEL, rosterSection } from "./cards/cardShared";
-import {
-  EmptyGlassCard,
-  GlassSectionDivider,
-  GlassSkeletonCard,
-  GlassSlotChip,
-} from "./cards/GlassMatchupCard";
+import { EmptyGlassCard, GlassSkeletonCard, GlassSlotChip } from "./cards/GlassMatchupCard";
+import { GlassSectionDivider } from "@shared/glass/GlassSectionDivider";
 import { GlassTradeCard, type GlassTradeCardData, type TradeMetric } from "./cards/GlassTradeCard";
 
 interface TradeRosterMatchupProps {

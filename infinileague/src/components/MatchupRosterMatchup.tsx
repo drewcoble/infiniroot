@@ -14,10 +14,10 @@ import {
 import {
   EmptyGlassCard,
   GlassMatchupCard,
-  GlassSectionDivider,
   GlassSkeletonCard,
   GlassSlotChip,
 } from "./cards/GlassMatchupCard";
+import { GlassSectionDivider } from "@shared/glass/GlassSectionDivider";
 
 interface MatchupRosterMatchupProps {
   teamARows: TeamRosterRow[];
