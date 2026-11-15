@@ -1,7 +1,7 @@
 import { useParams } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { api } from "@infinidata/api";
+import { useLeagueApi } from "../../LeagueApi";
 import type { GameState } from "../cards/cardShared";
 import { ChartTitle } from "../charts/ChartTitle";
 import { ChartLoading } from "./chartLoading";
@@ -56,8 +56,9 @@ export function PointsChart({
 }) {
   const { leagueId } = useParams({ strict: false });
   const { isAuthenticated } = useConvexAuth();
+  const leagueApi = useLeagueApi();
   const log = useQuery(
-    api.infinileague.season.gameLog.getGameLog,
+    leagueApi.getGameLog,
     leagueId && isAuthenticated ? { seasonId: leagueId as Id<"seasons">, fpid, year } : "skip",
   );
   if (log === undefined) return <ChartLoading />;

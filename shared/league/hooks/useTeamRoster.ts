@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAction } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { api } from "@infinidata/api";
+import { useLeagueApi } from "../LeagueApi";
 import { getErrorMessage } from "@shared/errors";
 import type { TeamRosterRow } from "../types/season";
 
@@ -25,7 +25,8 @@ export function useTeamRoster(
   week: string | null,
   refreshMs: number | null = null,
 ) {
-  const getTeamRosterForWeek = useAction(api.infinileague.season.teamRoster.getTeamRosterForWeek);
+  const leagueApi = useLeagueApi();
+  const getTeamRosterForWeek = useAction(leagueApi.getTeamRosterForWeek);
   const key = teamId !== null && week !== null ? `${teamId}:${week}` : null;
   const [result, setResult] = useState<{
     key: string;

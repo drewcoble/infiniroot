@@ -19,7 +19,7 @@ import { useLoadingSplash } from "../components/LoadingSplash";
 import { PageContainer } from "@shared/PageContainer";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { RemoveLeagueModal } from "@shared/RemoveLeagueModal";
-import type { LinkedSeason } from "../types/season";
+import type { LinkedSeason } from "@shared/league/types/season";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,

@@ -1,6 +1,6 @@
 import { gradeColor } from "../lib/gradeColor";
-import type { TeamPositionRanks } from "../types/season";
-import { pillStyle } from "./cards/cardShared";
+import type { TeamPositionRanks } from "@shared/league/types/season";
+import { pillStyle } from "@shared/league/components/cards/cardShared";
 import { PositionRadarChart } from "./PositionRadarChart";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
 

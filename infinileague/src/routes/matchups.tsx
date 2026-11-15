@@ -10,14 +10,14 @@ import { getErrorMessage } from "@shared/errors";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { PageContainer } from "@shared/PageContainer";
 import { AppHeader } from "../components/AppHeader";
-import { MatchupScoreCard } from "../components/MatchupScoreCard";
+import { MatchupScoreCard } from "@shared/league/components/MatchupScoreCard";
 import { useGuillotineOpponent } from "../hooks/useGuillotineOpponent";
-import { useTeamRoster } from "../hooks/useTeamRoster";
+import { useTeamRoster } from "@shared/league/hooks/useTeamRoster";
 import { setStoredLeagueId } from "../lib/leagueStorage";
-import { LIVE_REFRESH_MS } from "../lib/matchupSummary";
-import { isAnyGameLive, isGameFinal, useNow, type WeekGame } from "../lib/liveGames";
-import type { LinkedSeason, StandingsRow } from "../types/season";
-import { ErrorMessage } from "../components/ErrorMessage";
+import { LIVE_REFRESH_MS } from "@shared/league/lib/matchupSummary";
+import { isAnyGameLive, isGameFinal, useNow, type WeekGame } from "@shared/league/lib/liveGames";
+import type { LinkedSeason, StandingsRow } from "@shared/league/types/season";
+import { ErrorMessage } from "@shared/league/components/ErrorMessage";
 
 export const Route = createFileRoute("/matchups")({
   component: MatchupsPage,

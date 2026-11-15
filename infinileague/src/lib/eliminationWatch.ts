@@ -1,5 +1,5 @@
-import { liveProjection, remainingFraction, type WeekGame } from "./liveGames";
-import type { EliminationWatchRow } from "../types/season";
+import { liveProjection, remainingFraction, type WeekGame } from "@shared/league/lib/liveGames";
+import type { EliminationWatchRow } from "@shared/league/types/season";
 
 // An Elimination Watch row as the list shows it - weekPoints is the live
 // projection, plus the points scored so far once the week is underway.

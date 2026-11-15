@@ -1,8 +1,8 @@
 import { Fragment } from "react";
 import { Stack } from "@mantine/core";
-import type { TeamRosterRow } from "../types/season";
-import { slotLabel } from "../lib/matchupCardData";
-import { ROSTER_SECTION_LABEL, rosterSection, type GlassMatchupCardData } from "./cards/cardShared";
+import type { TeamRosterRow } from "@shared/league/types/season";
+import { slotLabel } from "@shared/league/lib/matchupCardData";
+import { ROSTER_SECTION_LABEL, rosterSection, type GlassMatchupCardData } from "@shared/league/components/cards/cardShared";
 import { GlassSectionDivider } from "@shared/glass/GlassSectionDivider";
 import {
   EmptyGlassRosterCard,

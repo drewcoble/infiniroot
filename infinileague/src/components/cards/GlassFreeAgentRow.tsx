@@ -1,12 +1,12 @@
 import type { CSSProperties } from "react";
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
-import { pillStyle } from "./cardShared";
+import { pillStyle } from "@shared/league/components/cards/cardShared";
 import { FittedName } from "./FittedName";
-import { PlayerHeadshot } from "./PlayerHeadshot";
+import { PlayerHeadshot } from "@shared/league/components/cards/PlayerHeadshot";
 import { useExpandableCard } from "@shared/glass/useExpandableCard";
-import { PlayerPopover } from "../player/PlayerPopover";
-import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
+import { PlayerPopover } from "@shared/league/components/player/PlayerPopover";
+import { usePlayerPopoverQueries } from "@shared/league/components/player/usePlayerPopoverQueries";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 export interface GlassFreeAgentRowData {

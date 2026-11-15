@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { buildShortNames } from "../../lib/shortPlayerName";
+import { buildShortNames } from "@shared/league/lib/shortPlayerName";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 // A full-width card's name on one line: the full name when it fits beside

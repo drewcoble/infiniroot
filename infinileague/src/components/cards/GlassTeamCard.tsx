@@ -1,9 +1,9 @@
 import { useId, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, X } from "lucide-react";
-import type { TeamPositionRanks } from "../../types/season";
+import type { TeamPositionRanks } from "@shared/league/types/season";
 import { TeamPositionRanksPanel } from "../TeamPositionRanksPanel";
-import { rankPillStyle } from "./cardShared";
+import { rankPillStyle } from "@shared/league/components/cards/cardShared";
 import { GlassPopover } from "@shared/glass/GlassPopover";
 import { StatGroups, type StatGroup } from "@shared/glass/StatGroups";
 import { TeamLogo } from "@shared/glass/TeamLogo";

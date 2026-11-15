@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
-import { pillStyle } from "./cardShared";
+import { pillStyle } from "@shared/league/components/cards/cardShared";
 import type { TradeMetric } from "./GlassTradeCard";
 import { TeamLogo } from "@shared/glass/TeamLogo";
 import { useTeamLogoUrl } from "@shared/glass/teamLogos";

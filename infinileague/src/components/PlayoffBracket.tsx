@@ -1,7 +1,7 @@
 import { Stack, Title } from "@mantine/core";
 import { TournamentBracket, type BracketTeam } from "@shared/glass/TournamentBracket";
 import classes from "@shared/glass/TournamentBracket.module.css";
-import type { LeaguePlayoffs, StandingsRow } from "../types/season";
+import type { LeaguePlayoffs, StandingsRow } from "@shared/league/types/season";
 
 // The league's playoff tournaments, one bracket each (just the championship
 // for now). Before the bracket is set it's seeded from today's standings

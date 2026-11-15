@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
-import type { StandingsRow } from "../../types/season";
+import type { StandingsRow } from "@shared/league/types/season";
 import { ELIMINATION_STATUS_BADGE, type EliminationStatus } from "../../lib/eliminationWatch";
-import { pillStyle, rankPillStyle } from "./cardShared";
-import { GameStatusGlyph } from "./GameStatusGlyph";
+import { pillStyle, rankPillStyle } from "@shared/league/components/cards/cardShared";
+import { GameStatusGlyph } from "@shared/league/components/cards/GameStatusGlyph";
 import { TeamLogo } from "@shared/glass/TeamLogo";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
 

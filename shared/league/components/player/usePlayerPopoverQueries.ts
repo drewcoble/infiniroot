@@ -2,6 +2,7 @@ import { useParams } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
+import { useLeagueApi } from "../../LeagueApi";
 import type { WeekGame } from "../../lib/liveGames";
 import { useMatchupGrades } from "../../lib/matchupDifficulty";
 import type { FaabSuggestionsResult, RosVorRow, StandingsRow } from "../../types/season";
@@ -22,6 +23,7 @@ export function usePlayerPopoverQueries(fpid: number | undefined, enabled: boole
   const { leagueId } = useParams({ strict: false });
   const seasonId = leagueId as Id<"seasons"> | undefined;
   const { isAuthenticated } = useConvexAuth();
+  const leagueApi = useLeagueApi();
   const live = enabled && isAuthenticated && seasonId !== undefined && fpid !== undefined;
 
   const nflState: NflState | null | undefined = useQuery(
@@ -30,21 +32,21 @@ export function usePlayerPopoverQueries(fpid: number | undefined, enabled: boole
   );
   const week = nflState?.week;
   const standings: StandingsRow[] | undefined = useQuery(
-    api.infinileague.season.standings.getStandings,
+    leagueApi.getStandings,
     live && seasonId ? { seasonId } : "skip",
   );
   // The same board args every league page uses, so it's usually already
   // loaded.
   const board: RosVorRow[] | undefined = useQuery(
-    api.rosVor.getRosVorBoard,
+    leagueApi.getRosVorBoard,
     live && seasonId && week ? { seasonId, week } : "skip",
   );
   const weekPoints = useQuery(
-    api.rosVor.getWeekPoints,
+    leagueApi.getWeekPoints,
     live && seasonId && week ? { seasonId, week } : "skip",
   );
   const weekRanks = useQuery(
-    api.infinileague.season.matchup.getWeekPositionRanks,
+    leagueApi.getWeekPositionRanks,
     live && seasonId && week ? { seasonId, week } : "skip",
   );
   const weekGames: WeekGame[] | undefined = useQuery(
@@ -74,10 +76,10 @@ export function usePlayerPopoverQueries(fpid: number | undefined, enabled: boole
   const year = nflState?.season;
   const playerSeasonArgs =
     live && seasonId && fpid !== undefined && year ? { seasonId, fpid, year } : "skip";
-  useQuery(api.infinileague.season.gameLog.getGameLog, playerSeasonArgs);
-  useQuery(api.infinileague.season.usage.getUsageWeeks, playerSeasonArgs);
+  useQuery(leagueApi.getGameLog, playerSeasonArgs);
+  useQuery(leagueApi.getUsageWeeks, playerSeasonArgs);
   useQuery(
-    api.infinileague.season.gameLog.getGameLogSeasons,
+    leagueApi.getGameLogSeasons,
     live && seasonId && fpid !== undefined ? { seasonId, fpid } : "skip",
   );
 

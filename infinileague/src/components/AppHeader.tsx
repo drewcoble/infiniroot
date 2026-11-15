@@ -18,7 +18,7 @@ import { glassClasses } from "@shared/glassClasses";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { setStoredLeagueId } from "../lib/leagueStorage";
 import { TicketStack } from "./icons/TicketStack";
-import type { LinkedSeason } from "../types/season";
+import type { LinkedSeason } from "@shared/league/types/season";
 
 // Thin infinileague-specific wrapper around @shared/AppHeader: backed by
 // listLinkedSeasons, and its own "Add League" footer item instead of

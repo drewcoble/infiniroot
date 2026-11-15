@@ -7,15 +7,15 @@ import {
   pillStyle,
   positionBadge,
   type GlassMatchupCardData,
-} from "./cardShared";
+} from "@shared/league/components/cards/cardShared";
 import { FittedName } from "./FittedName";
-import { GameLineText } from "./GameLineText";
-import { GameStatusGlyph } from "./GameStatusGlyph";
-import { GlassSlotChip } from "./GlassMatchupCard";
-import { PlayerHeadshot } from "./PlayerHeadshot";
-import { PlayerPopover } from "../player/PlayerPopover";
-import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
-import { PointsMeter } from "./PointsMeter";
+import { GameLineText } from "@shared/league/components/cards/GameLineText";
+import { GameStatusGlyph } from "@shared/league/components/cards/GameStatusGlyph";
+import { GlassSlotChip } from "@shared/league/components/cards/GlassMatchupCard";
+import { PlayerHeadshot } from "@shared/league/components/cards/PlayerHeadshot";
+import { PlayerPopover } from "@shared/league/components/player/PlayerPopover";
+import { usePlayerPopoverQueries } from "@shared/league/components/player/usePlayerPopoverQueries";
+import { PointsMeter } from "@shared/league/components/cards/PointsMeter";
 import { useExpandableCard } from "@shared/glass/useExpandableCard";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
 

@@ -16,7 +16,7 @@ import type {
   FaabSuggestionsResult,
   RosVorRow,
   StandingsRow,
-} from "../../../types/season";
+} from "@shared/league/types/season";
 
 export const Route = createFileRoute("/league/$leagueId/freeAgents")({
   component: FreeAgentsPage,

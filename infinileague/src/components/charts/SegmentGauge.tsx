@@ -1,4 +1,4 @@
-import classes from "./charts.module.css";
+import classes from "@shared/league/components/charts/charts.module.css";
 
 // A fixed row of labeled steps, filled up to the current one - for ordinal
 // reads like an injury's availability or timeline, where "2.31 / 4" means

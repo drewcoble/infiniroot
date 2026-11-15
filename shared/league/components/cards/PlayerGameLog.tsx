@@ -2,7 +2,7 @@ import { Fragment, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
 import { ChevronDown } from "lucide-react";
-import { api } from "@infinidata/api";
+import { useLeagueApi } from "../../LeagueApi";
 import type { GenericId as Id } from "convex/values";
 import { injuryColor } from "@shared/injuryColor";
 import { pillStyle } from "./cardShared";
@@ -16,9 +16,10 @@ import classes from "./PlayerGameLog.module.css";
 export function PlayerGameLog({ fpid, position }: { fpid: number; position: string }) {
   const { leagueId } = useParams({ strict: false });
   const { isAuthenticated } = useConvexAuth();
+  const leagueApi = useLeagueApi();
   const seasonId = leagueId as Id<"seasons"> | undefined;
   const seasons = useQuery(
-    api.infinileague.season.gameLog.getGameLogSeasons,
+    leagueApi.getGameLogSeasons,
     seasonId && isAuthenticated ? { seasonId, fpid } : "skip",
   );
   const [openYear, setOpenYear] = useState<string | null>(null);
@@ -82,7 +83,8 @@ function SeasonTable({
   year: string;
   position: string;
 }) {
-  const log = useQuery(api.infinileague.season.gameLog.getGameLog, { seasonId, fpid, year });
+  const leagueApi = useLeagueApi();
+  const log = useQuery(leagueApi.getGameLog, { seasonId, fpid, year });
   if (log === undefined) return <div className={classes.message}>Loading…</div>;
   if (log === null || log.weeks.length === 0) return <div className={classes.message}>No games recorded for {year}.</div>;
 

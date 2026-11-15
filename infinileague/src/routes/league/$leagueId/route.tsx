@@ -15,7 +15,7 @@ import { api } from "@infinidata/api";
 import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
-import type { StandingsRow } from "../../../types/season";
+import type { StandingsRow } from "@shared/league/types/season";
 import { TeamLogosProvider } from "@shared/glass/TeamLogo";
 import { TradeValuesProvider } from "../../../components/player/TradeValuesProvider";
 

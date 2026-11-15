@@ -6,14 +6,14 @@ import { Alert, Group, Stack, Title } from "@mantine/core";
 import { ChevronLeft } from "lucide-react";
 import { api } from "@infinidata/api";
 import { TeamRosterList, TeamRosterListSkeleton } from "../../../../components/TeamRosterList";
-import { WeekPicker } from "../../../../components/WeekPicker";
+import { WeekPicker } from "@shared/league/components/WeekPicker";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
 import {
   GlassTeamHeader,
   type TeamWeekSummary,
 } from "../../../../components/cards/GlassTeamHeader";
-import { meterScaleMax } from "../../../../components/cards/meterScale";
-import { useTeamRoster } from "../../../../hooks/useTeamRoster";
+import { meterScaleMax } from "@shared/league/components/cards/meterScale";
+import { useTeamRoster } from "@shared/league/hooks/useTeamRoster";
 import { useEliminationWatch } from "../../../../hooks/useEliminationWatch";
 import type { EliminationStatus } from "../../../../lib/eliminationWatch";
 import {
@@ -22,10 +22,10 @@ import {
   remainingFraction,
   useNow,
   type WeekGame,
-} from "../../../../lib/liveGames";
-import { seasonPositionRanks } from "../../../../lib/seasonPositionRanks";
-import { toMatchupCardData } from "../../../../lib/matchupCardData";
-import { useMatchupGrades } from "../../../../lib/matchupDifficulty";
+} from "@shared/league/lib/liveGames";
+import { seasonPositionRanks } from "@shared/league/lib/seasonPositionRanks";
+import { toMatchupCardData } from "@shared/league/lib/matchupCardData";
+import { useMatchupGrades } from "@shared/league/lib/matchupDifficulty";
 import { LineupSuggestionsCard } from "../../../../components/LineupSuggestionsCard";
 import type {
   LinkedSeason,
@@ -33,8 +33,8 @@ import type {
   SlotLabel,
   StandingsRow,
   TeamRosterRow,
-} from "../../../../types/season";
-import { ErrorMessage } from "../../../../components/ErrorMessage";
+} from "@shared/league/types/season";
+import { ErrorMessage } from "@shared/league/components/ErrorMessage";
 
 const REGULAR_SEASON_WEEKS = 18;
 

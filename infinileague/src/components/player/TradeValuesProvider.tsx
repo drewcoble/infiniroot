@@ -3,7 +3,7 @@ import { useAction, useConvexAuth } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
-import type { TradeValueRow } from "../../types/season";
+import type { TradeValueRow } from "@shared/league/types/season";
 import { TradeValuesContext, type TradeValuesState } from "./tradeValues";
 
 // One league's trade values (convex/infinileague/season/tradeValues.ts),

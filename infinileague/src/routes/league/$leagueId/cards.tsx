@@ -8,16 +8,16 @@ import {
   GlassMatchupCard,
   GlassSlotChip,
   type GlassMatchupCardData,
-} from "../../../components/cards/GlassMatchupCard";
+} from "@shared/league/components/cards/GlassMatchupCard";
 import { GlassSectionDivider } from "@shared/glass/GlassSectionDivider";
 import {
   GlassMatchupHeader,
   type MatchupHeaderTeam,
-} from "../../../components/cards/GlassMatchupHeader";
+} from "@shared/league/components/cards/GlassMatchupHeader";
 import { EmptyGlassRosterCard, GlassRosterCard } from "../../../components/cards/GlassRosterCard";
-import { meterScaleMax } from "../../../components/cards/meterScale";
-import { ROSTER_SECTION_LABEL, rosterSection } from "../../../components/cards/cardShared";
-import { buildShortNames } from "../../../lib/shortPlayerName";
+import { meterScaleMax } from "@shared/league/components/cards/meterScale";
+import { ROSTER_SECTION_LABEL, rosterSection } from "@shared/league/components/cards/cardShared";
+import { buildShortNames } from "@shared/league/lib/shortPlayerName";
 
 export const Route = createFileRoute("/league/$leagueId/cards")({
   component: CardsPage,

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { WeekGame } from "../lib/liveGames";
+import type { WeekGame } from "@shared/league/lib/liveGames";
 import { useEliminationWatch } from "./useEliminationWatch";
 
 // A guillotine league has no head-to-head games, so its "opponent" is the

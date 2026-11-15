@@ -4,8 +4,8 @@ import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { rankLive, type LiveEliminationRow } from "../lib/eliminationWatch";
-import type { WeekGame } from "../lib/liveGames";
-import type { EliminationWatchRow } from "../types/season";
+import type { WeekGame } from "@shared/league/lib/liveGames";
+import type { EliminationWatchRow } from "@shared/league/types/season";
 
 // A guillotine league's Elimination Watch for one week - every still-active
 // team's set lineup, re-ranked by live projection as games are played (see

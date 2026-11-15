@@ -11,7 +11,7 @@ import { GlassPositionFilter } from "../../../components/cards/GlassPositionFilt
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
 import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
-import type { RosVorRow } from "../../../types/season";
+import type { RosVorRow } from "@shared/league/types/season";
 
 export const Route = createFileRoute("/league/$leagueId/players")({
   component: PlayersPage,

@@ -1,6 +1,6 @@
 import { RadarChart } from "@mantine/charts";
 import { gradeColor } from "../lib/gradeColor";
-import type { StarterCategory } from "../types/season";
+import type { StarterCategory } from "@shared/league/types/season";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 function ordinal(n: number): string {

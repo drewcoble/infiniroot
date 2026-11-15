@@ -1,5 +1,5 @@
-import { SURFACE } from "./chartTheme";
-import classes from "./charts.module.css";
+import { SURFACE } from "@shared/league/components/charts/chartTheme";
+import classes from "@shared/league/components/charts/charts.module.css";
 
 // Tiny trend line for a list row - no axes, just the shape, with the latest
 // value as an end dot. `null` entries (byes, missed games) break the line

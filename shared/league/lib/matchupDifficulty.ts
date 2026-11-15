@@ -3,6 +3,7 @@ import { useConvexAuth, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
+import { useLeagueApi } from "../LeagueApi";
 
 // One defense's matchup grade at one position, in the league's scoring -
 // see convex/lib/matchupDifficulty.ts. rank 1 = the easiest of `of`
@@ -22,8 +23,9 @@ export function useMatchupGrades(
   week: string | null | undefined,
 ): MatchupGrades | undefined {
   const { isAuthenticated } = useConvexAuth();
+  const leagueApi = useLeagueApi();
   const grades = useQuery(
-    api.infinileague.season.matchupDifficulty.getMatchupDifficulty,
+    leagueApi.getMatchupDifficulty,
     isAuthenticated && seasonId && week ? { seasonId: seasonId as Id<"seasons">, week } : "skip",
   );
   return useMemo(

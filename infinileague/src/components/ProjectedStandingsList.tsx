@@ -2,7 +2,7 @@ import { Stack } from "@mantine/core";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
 import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
 import { RankChangeBadge } from "./PowerRankingsList";
-import type { ProjectedStandingsRow, TeamPositionRanks } from "../types/season";
+import type { ProjectedStandingsRow, TeamPositionRanks } from "@shared/league/types/season";
 
 // Expected record in whole games ("9-5"), ties only when there are any.
 // Losses are what's left of the season after rounded wins, so the record
