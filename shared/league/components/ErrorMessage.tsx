@@ -9,7 +9,9 @@ export function ErrorMessage({ message }: { message: string }) {
   return (
     <>
       {message}{" "}
-      <Link to="/add-league" search={{ provider: "yahoo" }}>
+      {/* Typed loosely: shared/ is also compiled by apps without this route
+          (see MatchupScoreCard). */}
+      <Link {...({ to: "/add-league" as string, search: { provider: "yahoo" } } as { to: "/" })}>
         <Anchor component="span" inherit>
           Reconnect Yahoo
         </Anchor>

@@ -132,10 +132,15 @@ export function MatchupScoreCard({
 
   return (
     <>
+      {/* Every app that shows these cards (infinileague, infiniyoffs) has
+          this route; shared/ is also compiled by apps that don't, so the
+          link is typed loosely, the same way BottomNav's items are. */}
       <Link
-        to="/league/$leagueId/matchup"
-        params={{ leagueId }}
-        search={search}
+        {...({
+          to: "/league/$leagueId/matchup" as string,
+          params: { leagueId },
+          search,
+        } as { to: "/" })}
         {...cardProps}
         onClick={(event) => {
           cardProps.onClick(event);
