@@ -181,9 +181,13 @@ function GroupsView({
   const groups = result.groups ?? [];
   const groupSize = Math.ceil((result.entrants?.length ?? 0) / Math.max(stage.groupCount, 1));
   const note = draftNote(result.draft, teams);
-  const bonuses = Object.entries(stage.bonus?.byTier ?? {}).filter(([, bonus]) => bonus !== 0);
-  const bonusLine = bonuses.length
-    ? `Weekly bonus: ${bonuses.map(([tier, bonus]) => `${tier} +${bonus}`).join(" · ")}`
+  // In the format's tier order - the stored bonus map's key order isn't kept.
+  const byTier = stage.bonus?.byTier ?? {};
+  const bonuses = format.tiers.flatMap((tier) =>
+    byTier[tier.name] !== undefined ? [`${tier.name} +${byTier[tier.name]}`] : [],
+  );
+  const bonusLine = Object.values(byTier).some((bonus) => bonus !== 0)
+    ? `Weekly bonus: ${bonuses.join(" · ")}`
     : null;
   if (groups.length === 0) {
     return <div className={bracketClasses.note}>Groups are set when the regular season ends.</div>;
