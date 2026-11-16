@@ -1,4 +1,4 @@
-import type { PlayoffFormat, TeamSource } from "./format";
+import { stageWeeks, type PlayoffFormat, type TeamSource } from "./format";
 
 // Structural checks on a commissioner-submitted PlayoffFormat - the
 // playoffSettings row stores it as v.any(), so this is its schema. Returns
@@ -30,7 +30,7 @@ export function formatProblem(format: PlayoffFormat, teamCount: number): string 
       }
     }
     seen.add(stage.id);
-    const weeks = stage.kind === "bracket" ? stage.roundWeeks.flat() : stage.weeks;
+    const weeks = stageWeeks(stage);
     if (weeks.length === 0 || !weeks.every(isWeek)) return `${stage.name}: weeks must be 1-18.`;
     if (weeks.some((week) => week <= format.regularSeasonEndWeek)) {
       return `${stage.name} can't start before the regular season ends.`;

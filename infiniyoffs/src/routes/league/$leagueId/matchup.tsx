@@ -43,10 +43,17 @@ import {
 } from "@shared/league/lib/liveGames";
 import type { RosVorRow, TeamRosterRow } from "@shared/league/types/season";
 import { LeagueMatchups } from "../../../components/LeagueMatchups";
+import { TeamRow } from "../../../components/TeamRow";
 import { currentInput, lastFormatWeek } from "../../../lib/engineInput";
 import { useSeasonData } from "../../../lib/seasonData";
 import { useMySeasons } from "../../../hooks/useMySeasons";
-import { standingsRows, weekPairings } from "../../../lib/weekPairings";
+import {
+  isRumbleWeek,
+  rumbleField,
+  standingsRows,
+  weekPairings,
+} from "../../../lib/weekPairings";
+import { useWeekLineups } from "../../../hooks/useWeekLineups";
 
 const LAST_NFL_WEEK = 18;
 
@@ -105,12 +112,14 @@ function MatchupPage() {
 
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const leagueView = search.view === "league";
   const myTeamId = data?.teams.find((team) => team.isMine)?.teamId ?? null;
-  const teamAId = leagueView ? null : (search.team ?? myTeamId);
-
   const currentWeek = nflState?.week ?? null;
   const week = search.week !== undefined ? String(search.week) : currentWeek;
+  // A Royal Rumble week has no pairings - everyone left plays everyone -
+  // so it's one view: your team against the highest projected rival
+  // (guillotine's lowest-projected opponent, flipped).
+  const rumbleWeek = format && week !== null ? isRumbleWeek(format, Number(week)) : false;
+  const leagueView = search.view === "league" && !rumbleWeek;
   const isCurrentWeek = week === currentWeek;
   const isFutureWeek = week !== null && currentWeek !== null && Number(week) > Number(currentWeek);
   const lastWeek = format ? lastFormatWeek(format) : LAST_NFL_WEEK;
@@ -152,8 +161,39 @@ function MatchupPage() {
     weekGames.length > 0 &&
     weekGames.every((game) => isGameFinal(game, now));
 
+  const liveProjFor = (row: TeamRosterRow) =>
+    liveProjection(row, remainingFraction(row.team ? gamesByTeam.get(row.team) : undefined, now));
+  const actualFor = (row: TeamRosterRow) => row.actualPoints ?? 0;
+
+  const field =
+    rumbleWeek && format && state && week !== null
+      ? rumbleField(format, state, Number(week))
+      : null;
+  const rumbleLineups = useWeekLineups(leagueId, week, refreshMs, field !== null);
+  // The field by live projection (actual so far + what's left), best first.
+  const rumbleRanks = useMemo(() => {
+    if (!field || !rumbleLineups.lineups) return undefined;
+    const lineups = rumbleLineups.lineups;
+    return field
+      .map((teamId) => ({
+        teamId,
+        proj: sumStarterPoints(lineups.get(teamId), liveProjFor),
+        actual: sumStarterPoints(lineups.get(teamId), actualFor),
+      }))
+      .sort((a, b) => b.proj - a.proj);
+    // liveProjFor/actualFor are re-made every render; what they read is
+    // gamesByTeam and now.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [field?.join(), rumbleLineups.lineups, gamesByTeam, now]);
+  const wantedTeamId = leagueView ? null : (search.team ?? myTeamId);
+  // Your team if it's in the Rumble, else the top projected team.
+  const inField = wantedTeamId !== null && (field?.includes(wantedTeamId) ?? false);
+  const rumbleTeamA = inField ? wantedTeamId : (rumbleRanks?.[0]?.teamId ?? null);
+  const rumbleTeamB = rumbleRanks?.find((entry) => entry.teamId !== rumbleTeamA)?.teamId ?? null;
+  const teamAId = rumbleWeek ? (field ? rumbleTeamA : wantedTeamId) : wantedTeamId;
+
   const pairings =
-    data && format && state && week !== null
+    data && format && state && week !== null && !rumbleWeek
       ? weekPairings(data, format, isCustom, state, Number(week))
       : undefined;
   const pairing = pairings?.find((p) => p.teamAId === teamAId || p.teamBId === teamAId);
@@ -174,8 +214,14 @@ function MatchupPage() {
     manualOpponent !== null && manualOpponent.week === week ? manualOpponent.teamId : null;
   const setManualOpponentId = (teamId: string | null) =>
     setManualOpponent(teamId !== null && week !== null ? { week, teamId } : null);
-  const teamBId = pairings === undefined ? null : (autoOpponentId ?? manualOpponentId);
-  const opponentPending = pairings === undefined;
+  const teamBId = rumbleWeek
+    ? rumbleTeamB
+    : pairings === undefined
+      ? null
+      : (autoOpponentId ?? manualOpponentId);
+  const opponentPending = rumbleWeek
+    ? field !== null && rumbleRanks === undefined
+    : pairings === undefined;
 
   const teamARoster = useTeamRoster(teamAId, week, refreshMs);
   const teamBRoster = useTeamRoster(teamBId, week, refreshMs);
@@ -207,9 +253,6 @@ function MatchupPage() {
     [vorRows, teamARoster.rows, teamBRoster.rows],
   );
 
-  const liveProjFor = (row: TeamRosterRow) =>
-    liveProjection(row, remainingFraction(row.team ? gamesByTeam.get(row.team) : undefined, now));
-  const actualFor = (row: TeamRosterRow) => row.actualPoints ?? 0;
   const projA = sumStarterPoints(teamARoster.rows, liveProjFor) + bonusA;
   const actualA = sumStarterPoints(teamARoster.rows, actualFor) + bonusA;
   const projB = sumStarterPoints(teamBRoster.rows, liveProjFor) + bonusB;
@@ -294,7 +337,7 @@ function MatchupPage() {
   return (
     <Stack gap="md">
       <Group justify="space-between" align="center" wrap="nowrap">
-        <Title order={3}>{pairing?.label ?? "Matchup"}</Title>
+        <Title order={3}>{rumbleWeek ? "Royal Rumble" : (pairing?.label ?? "Matchup")}</Title>
         {week !== null && (
           <WeekPicker
             week={Number(week)}
@@ -305,18 +348,28 @@ function MatchupPage() {
         )}
       </Group>
 
-      <GlassSegmented
-        label="Matchups to show"
-        value={viewValue}
-        onChange={setView}
-        compact
-        options={[
-          { label: "Mine", value: "mine" },
-          { label: "League", value: "league" },
-        ]}
-      />
+      {!rumbleWeek && (
+        <GlassSegmented
+          label="Matchups to show"
+          value={viewValue}
+          onChange={setView}
+          compact
+          options={[
+            { label: "Mine", value: "mine" },
+            { label: "League", value: "league" },
+          ]}
+        />
+      )}
 
-      {leagueView ? (
+      {rumbleWeek && field === null ? (
+        <Text c="dimmed" ta="center" py="xl">
+          The Royal Rumble field is set once the bracket weeks are final.
+        </Text>
+      ) : rumbleWeek && rumbleLineups.error ? (
+        <Alert color="red">
+          <ErrorMessage message={rumbleLineups.error} />
+        </Alert>
+      ) : leagueView ? (
         week !== null &&
         (pairings === undefined ? (
           <Center py="xl">
@@ -341,6 +394,8 @@ function MatchupPage() {
             refreshMs={refreshMs}
           />
         ))
+      ) : teamAId === null && rumbleWeek ? (
+        <GlassMatchupHeader teamA="loading" teamB="loading" winProbA={null} />
       ) : teamAId === null ? (
         <Text c="dimmed" ta="center" py="xl">
           You aren't on a team in this league - see the League view.
@@ -356,7 +411,7 @@ function MatchupPage() {
               ),
           )}
 
-          {!opponentPending && autoOpponentId === null && (
+          {!rumbleWeek && !opponentPending && autoOpponentId === null && (
             <Select
               label={
                 playoffWeek ? "No playoff game set this week - compare with" : "Opponent this week"
@@ -390,6 +445,28 @@ function MatchupPage() {
                 : undefined
             }
           />
+          {rumbleRanks && (
+            <Stack gap={8}>
+              {rumbleRanks.map((entry, index) => {
+                const standing = standings.find((row) => row.teamId === entry.teamId);
+                return (
+                  <TeamRow
+                    key={entry.teamId}
+                    data={{
+                      teamId: entry.teamId,
+                      name: standing?.name ?? "Team",
+                      rank: index + 1,
+                      isMine: standing?.isSelf ?? false,
+                      primary: entry.actual.toFixed(1),
+                      secondaryLeft: <span className="num">Proj {entry.proj.toFixed(1)}</span>,
+                      summary: `Projected ${entry.proj.toFixed(1)}`,
+                      stats: [],
+                    }}
+                  />
+                );
+              })}
+            </Stack>
+          )}
           {bonusNote && (
             <Text size="xs" c="dimmed" ta="center">
               {bonusNote}

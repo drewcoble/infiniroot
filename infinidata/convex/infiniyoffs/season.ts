@@ -9,7 +9,7 @@ import {
 } from "../infinileague/season/powerRankings";
 import { currentWeekFor, loadPlayoffs, type LeaguePlayoffs } from "../infinileague/season/playoffs";
 import { evaluate } from "../lib/playoffRules/evaluate";
-import { EMPTY_DRAFT, type PlayoffFormat } from "../lib/playoffRules/format";
+import { EMPTY_DRAFT, stageWeeks, type PlayoffFormat } from "../lib/playoffRules/format";
 import { loadWeeklyPoints } from "./scores";
 
 export interface YoffsTeam {
@@ -43,9 +43,7 @@ export interface SeasonData {
 const LAST_WEEK = 18;
 
 function lastFormatWeek(format: PlayoffFormat): number {
-  const weeks = format.stages.flatMap((stage) =>
-    stage.kind === "bracket" ? stage.roundWeeks.flat() : stage.weeks,
-  );
+  const weeks = format.stages.flatMap(stageWeeks);
   return Math.max(format.regularSeasonEndWeek, ...weeks);
 }
 

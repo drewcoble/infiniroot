@@ -93,6 +93,14 @@ function stageText(stage: Stage, format: PlayoffFormat, names: Map<string, strin
     }
     case "points":
       return `${stage.name} (${when}): ${from}; top ${stage.advance} in points advance.${bonus}`;
+    case "doubleElim":
+      return (
+        `${stage.name} (${weekRange(stage.weeks)}): ${from}. Two losses and you're out; ` +
+        "each week, best seed plays worst. " +
+        `Royal Rumble week ${stage.rumbleWeek}: everyone left plays, top score wins - ` +
+        "the last unbeaten team is champion if it's them, otherwise the Rumble winner " +
+        `plays them in week ${stage.finalWeek}.${bonus}`
+      );
   }
 }
 

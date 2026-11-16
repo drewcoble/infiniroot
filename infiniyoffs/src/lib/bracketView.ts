@@ -1,5 +1,5 @@
 import type { SeasonInput, StageResult } from "@playoffRules/evaluate";
-import type { PlayoffFormat, Stage } from "@playoffRules/format";
+import { stageWeeks, type PlayoffFormat } from "@playoffRules/format";
 import type { BracketTournament } from "@shared/glass/TournamentBracket";
 
 // The engine's input as if the regular season ended today: today's
@@ -16,9 +16,7 @@ export function ifEndedTodayInput(format: PlayoffFormat, input: SeasonInput): Se
   return { ...input, points, finalThroughWeek: format.regularSeasonEndWeek };
 }
 
-export function stageWeeks(stage: Stage): number[] {
-  return stage.kind === "bracket" ? stage.roundWeeks.flat() : stage.weeks;
-}
+export { stageWeeks };
 
 // A bracket stage's rounds in the shared bracket's shape.
 export function stageTournament(result: StageResult): BracketTournament {

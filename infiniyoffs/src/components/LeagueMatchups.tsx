@@ -1,18 +1,11 @@
-import { useEffect, useState } from "react";
-import { useAction } from "convex/react";
-import type { GenericId as Id } from "convex/values";
 import { Alert, Stack, Text } from "@mantine/core";
-import { api } from "@infinidata/api";
-import { getErrorMessage } from "@shared/errors";
 import { GlassMatchupHeader } from "@shared/league/components/cards/GlassMatchupHeader";
 import { MatchupScoreCard } from "@shared/league/components/MatchupScoreCard";
 import { ErrorMessage } from "@shared/league/components/ErrorMessage";
 import type { WeekGame } from "@shared/league/lib/liveGames";
-import type { StandingsRow, TeamRosterRow } from "@shared/league/types/season";
+import type { StandingsRow } from "@shared/league/types/season";
+import { useWeekLineups } from "../hooks/useWeekLineups";
 import type { WeekPairing } from "../lib/weekPairings";
-
-// Slots that can't be started - left out of the score cards' lineups.
-const UNSTARTABLE_SLOTS = new Set(["IR", "TAXI"]);
 
 // Every matchup in the league for one week - infinileague's League view,
 // with the pairings from the league's own format. One score card per
@@ -42,46 +35,8 @@ export function LeagueMatchups({
   weekRankByFpid: Map<number, number>;
   refreshMs: number | null;
 }) {
-  const getWeekLineups = useAction(api.infiniyoffs.reads.getWeekLineups);
-  const key = `${leagueId}:${week}`;
-  const [result, setResult] = useState<{
-    key: string;
-    lineups?: Map<string, TeamRosterRow[]>;
-    error?: string;
-  } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = (isRefresh: boolean) =>
-      getWeekLineups({ seasonId: leagueId as Id<"seasons">, week })
-        .then((lineups) => {
-          if (cancelled) return;
-          const byTeam = new Map(
-            lineups.map(({ teamId, rows }) => [
-              teamId as string,
-              rows.filter(
-                (row) =>
-                  !(row.slot && UNSTARTABLE_SLOTS.has(row.slot)) &&
-                  !(row.fpid === undefined && row.slot === "BENCH"),
-              ),
-            ]),
-          );
-          setResult({ key, lineups: byTeam });
-        })
-        .catch((err) => {
-          if (cancelled || isRefresh) return;
-          setResult({ key, error: getErrorMessage(err, "Failed to load this week's matchups.") });
-        });
-    void load(false);
-    const id = refreshMs !== null ? setInterval(() => void load(true), refreshMs) : null;
-    return () => {
-      cancelled = true;
-      if (id !== null) clearInterval(id);
-    };
-  }, [leagueId, week, key, refreshMs, getWeekLineups]);
-
-  const current = result !== null && result.key === key ? result : null;
-  if (current?.error) return <Alert color="red"><ErrorMessage message={current.error} /></Alert>;
+  const { lineups, error } = useWeekLineups(leagueId, week, refreshMs);
+  if (error) return <Alert color="red"><ErrorMessage message={error} /></Alert>;
   if (pairings.length === 0) {
     return (
       <Text c="dimmed" ta="center" py="xl">
@@ -89,7 +44,7 @@ export function LeagueMatchups({
       </Text>
     );
   }
-  if (!current?.lineups) {
+  if (!lineups) {
     return (
       <Stack gap="sm">
         {pairings.map((_, index) => (
@@ -99,7 +54,6 @@ export function LeagueMatchups({
     );
   }
 
-  const { lineups } = current;
   const standingByTeam = new Map(standings.map((row) => [row.teamId, row]));
   const isFutureWeek = currentWeek !== null && Number(week) > Number(currentWeek);
   const isSelf = (teamId: string) => standingByTeam.get(teamId)?.isSelf ?? false;

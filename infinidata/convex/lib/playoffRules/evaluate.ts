@@ -1,6 +1,7 @@
 import type {
   BracketStage,
   Bonus,
+  DoubleElimStage,
   DraftState,
   GroupStage,
   MatchupDraftFormation,
@@ -105,6 +106,33 @@ export interface StageResult {
   rounds?: RoundResult[];
   // Points stages: entrants ranked by stage points so far.
   table?: { teamId: string; points: number }[];
+  doubleElim?: DoubleElimResult;
+}
+
+export interface DoubleElimWeek {
+  week: number;
+  winners: GameResult[];
+  losers: GameResult[];
+  // Teams sitting the week out, by side.
+  byes: { winners: string[]; losers: string[] };
+}
+
+export interface DoubleElimResult {
+  // Each bracket week played or set so far.
+  weeks: DoubleElimWeek[];
+  // Who's still alive, after the last decided week.
+  unbeaten: string[];
+  onceBeaten: string[];
+  // Set once the Rumble's field is known.
+  rumble: {
+    week: number;
+    // Ranked by points (with bonuses) once any are in, else by seed.
+    entries: { teamId: string; points: number | null }[];
+    winnerId: string | null;
+    final: boolean;
+  } | null;
+  // Set once a once-beaten team wins the Rumble.
+  final: GameResult | null;
 }
 
 export interface PlayoffState {
@@ -581,7 +609,10 @@ function evaluateGroups(ctx: Ctx, stage: GroupStage): StageResult {
     for (const week of stage.weeks) {
       for (const [a, b] of group.pairs.get(week) ?? []) {
         const id = `${stage.id}g${g}w${week}${games.length}`;
-        const bonus: [number, number] = [bonusFor(ctx, stage.bonus, a), bonusFor(ctx, stage.bonus, b)];
+        const bonus: [number, number] = [
+          bonusFor(ctx, stage.bonus, a),
+          bonusFor(ctx, stage.bonus, b),
+        ];
         const game = playGame(ctx.input, id, [week], [a, b], bonus);
         games.push(game);
         record(book, game);
@@ -727,6 +758,112 @@ function evaluateBracket(ctx: Ctx, stage: BracketStage): StageResult {
   };
 }
 
+// ---------------------------------------------------------------- double elimination
+
+// Best seed vs worst among `teams`; in an odd field the best seed sits out.
+function pairBestWorst(teams: string[], seedOf: (teamId: string) => number) {
+  const sorted = [...teams].sort((a, b) => seedOf(a) - seedOf(b));
+  const byes = sorted.length % 2 === 1 ? [sorted.shift()!] : [];
+  const pairs: [string, string][] = [];
+  while (sorted.length >= 2) pairs.push([sorted.shift()!, sorted.pop()!]);
+  return { pairs, byes };
+}
+
+function evaluateDoubleElim(ctx: Ctx, stage: DoubleElimStage): StageResult {
+  const entrants = resolveEntrants(ctx, stage.entrants, true);
+  const seeds = Object.fromEntries((entrants ?? []).map((teamId, i) => [teamId, i + 1]));
+  if (!entrants) return unsettled(stage.id, seeds);
+  const seedOf = (teamId: string) => seeds[teamId] ?? Infinity;
+  const better = (a: string, b: string) => (seedOf(a) <= seedOf(b) ? a : b);
+  const bonus = (teamId: string) => bonusFor(ctx, stage.bonus, teamId, seedOf(teamId), 1);
+
+  let unbeaten = [...entrants];
+  let onceBeaten: string[] = [];
+  const weeks: DoubleElimWeek[] = [];
+  // Every week so far decided - later weeks' pairings depend on it.
+  let decided = true;
+
+  for (const week of stage.weeks) {
+    const side = (teams: string[], tag: string) => {
+      const { pairs, byes } = pairBestWorst(teams, seedOf);
+      const games = pairs.map(([a, b], i) =>
+        playGame(ctx.input, `${stage.id}${tag}w${week}g${i + 1}`, [week], [a, b], [
+          bonus(a),
+          bonus(b),
+        ], better(a, b)),
+      );
+      return { games, byes };
+    };
+    const winners = side(unbeaten, "W");
+    const losers = side(onceBeaten, "L");
+    weeks.push({
+      week,
+      winners: winners.games,
+      losers: losers.games,
+      byes: { winners: winners.byes, losers: losers.byes },
+    });
+    if ([...winners.games, ...losers.games].some((game) => !game.final)) {
+      decided = false;
+      break;
+    }
+    const loserOf = (game: GameResult) =>
+      game.winnerId === game.teamIds[0] ? game.teamIds[1]! : game.teamIds[0]!;
+    const dropped = winners.games.map(loserOf);
+    unbeaten = [...winners.byes, ...winners.games.map((game) => game.winnerId!)];
+    onceBeaten = [...losers.byes, ...losers.games.map((game) => game.winnerId!), ...dropped];
+  }
+
+  let rumble: DoubleElimResult["rumble"] = null;
+  let final: GameResult | null = null;
+  let championId: string | null = null;
+  if (decided) {
+    const field = [...unbeaten, ...onceBeaten];
+    const week = stage.rumbleWeek;
+    const pointsOf = (teamId: string) => {
+      const points = pointsIn(ctx.input, teamId, week);
+      return points === undefined ? null : points + bonus(teamId);
+    };
+    const entries = field
+      .map((teamId) => ({ teamId, points: pointsOf(teamId) }))
+      .sort(
+        (a, b) => (b.points ?? -1) - (a.points ?? -1) || seedOf(a.teamId) - seedOf(b.teamId),
+      );
+    const rumbleFinal =
+      week <= ctx.input.finalThroughWeek && entries.every((entry) => entry.points !== null);
+    const winnerId = rumbleFinal ? (entries[0]?.teamId ?? null) : null;
+    rumble = { week, entries, winnerId, final: rumbleFinal };
+    if (winnerId !== null) {
+      if (unbeaten.includes(winnerId)) {
+        championId = winnerId;
+      } else {
+        const unbeatenBest = [...unbeaten].sort((a, b) => seedOf(a) - seedOf(b))[0] ?? null;
+        if (unbeatenBest !== null) {
+          final = playGame(
+            ctx.input,
+            `${stage.id}final`,
+            [stage.finalWeek],
+            [unbeatenBest, winnerId],
+            [bonus(unbeatenBest), bonus(winnerId)],
+            better(unbeatenBest, winnerId),
+          );
+          championId = final.winnerId;
+        } else {
+          championId = winnerId;
+        }
+      }
+    }
+  }
+
+  return {
+    stageId: stage.id,
+    entrants,
+    advancers: championId ? [championId] : null,
+    eliminated: championId ? entrants.filter((teamId) => teamId !== championId) : null,
+    seeds,
+    doubleElim: { weeks, unbeaten, onceBeaten, rumble, final },
+  };
+}
+
 // ---------------------------------------------------------------- points
 
 function evaluatePoints(ctx: Ctx, stage: PointsStage): StageResult {
@@ -775,5 +912,7 @@ function evaluateStage(ctx: Ctx, stage: Stage): StageResult {
       return evaluateBracket(ctx, stage);
     case "points":
       return evaluatePoints(ctx, stage);
+    case "doubleElim":
+      return evaluateDoubleElim(ctx, stage);
   }
 }

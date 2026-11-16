@@ -100,7 +100,12 @@ export function GroupCard({
             );
           }
           return games.map((game, index) => (
-            <GameLine key={game.id} game={game} week={index === 0 ? week : null} teams={teams} />
+            <GameLine
+              key={game.id}
+              game={game}
+              label={index === 0 ? `Wk ${week}` : ""}
+              teams={teams}
+            />
           ));
         })}
       </div>
@@ -108,13 +113,15 @@ export function GroupCard({
   );
 }
 
-function GameLine({
+// One game on a line: label (week), both teams, the score - the winner
+// bold and the loser faded once final, "vs" before any points.
+export function GameLine({
   game,
-  week,
+  label,
   teams,
 }: {
   game: GameResult;
-  week: number | null;
+  label: string;
   teams: ReadonlyMap<string, GroupTeam>;
 }) {
   const side = (index: 0 | 1) => {
@@ -134,7 +141,7 @@ function GameLine({
     a === null && b === null ? "vs" : `${a?.toFixed(1) ?? "—"} – ${b?.toFixed(1) ?? "—"}`;
   return (
     <div className={classes.game}>
-      <span className={classes.week}>{week !== null ? `Wk ${week}` : ""}</span>
+      <span className={classes.week}>{label}</span>
       {side(0)}
       <span className={classes.score}>{score}</span>
       {side(1)}

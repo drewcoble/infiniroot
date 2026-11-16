@@ -6,6 +6,7 @@ import type { GroupStage, PlayoffFormat, Stage } from "@playoffRules/format";
 import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import { TournamentBracket, type BracketTeam } from "@shared/glass/TournamentBracket";
 import bracketClasses from "@shared/glass/TournamentBracket.module.css";
+import { DoubleElimView } from "../../../components/DoubleElimView";
 import { GroupCard, type GroupTeam } from "../../../components/GroupCard";
 import { TeamRow } from "../../../components/TeamRow";
 import { ifEndedTodayInput, stageTournament, stageWeeks } from "../../../lib/bracketView";
@@ -152,6 +153,9 @@ function StageView({
         })}
       </Stack>
     );
+  }
+  if (stage.kind === "doubleElim") {
+    return <DoubleElimView stage={stage} result={result} teams={teams} />;
   }
   const tournament = stageTournament(result);
   // A toilet bowl's last team standing finished last - no trophy.

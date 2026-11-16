@@ -7,6 +7,7 @@ import { bracketRoundCount } from "@playoffRules/bracketMath";
 import { roundName } from "@playoffRules/evaluate";
 import type { PlayoffFormat, PresetConfig } from "@playoffRules/format";
 import {
+  defaultDoubleElim,
   defaultStandard,
   defaultWorldCup,
   presetFormat,
@@ -23,6 +24,7 @@ type Kind = "platform" | PresetConfig["kind"] | "custom";
 
 type StandardConfig = Extract<PresetConfig, { kind: "standard" }>;
 type WorldCupConfig = Extract<PresetConfig, { kind: "worldCup" }>;
+type DoubleElimConfig = Extract<PresetConfig, { kind: "doubleElim" }>;
 
 const TIERS = ["S", "A", "B", "C"] as const;
 
@@ -50,6 +52,11 @@ export function RulesEditor({
   const [standard, setStandard] = useState<StandardConfig>(
     saved?.preset?.kind === "standard" ? saved.preset : defaultStandard(platformEnd, platformTeams),
   );
+  const [doubleElim, setDoubleElim] = useState<DoubleElimConfig>(
+    saved?.preset?.kind === "doubleElim"
+      ? saved.preset
+      : defaultDoubleElim(Math.min(platformEnd, 13), teamCount),
+  );
   const [worldCup, setWorldCup] = useState<WorldCupConfig>(
     saved?.preset?.kind === "worldCup" ? saved.preset : defaultWorldCup(),
   );
@@ -60,11 +67,13 @@ export function RulesEditor({
   const built: PlayoffFormat | null =
     kind === "standard"
       ? presetFormat(standard, teamCount)
-      : kind === "worldCup"
-        ? presetFormat(worldCup, teamCount)
-        : kind === "custom"
-          ? saved
-          : null;
+      : kind === "doubleElim"
+        ? presetFormat(doubleElim, teamCount)
+        : kind === "worldCup"
+          ? presetFormat(worldCup, teamCount)
+          : kind === "custom"
+            ? saved
+            : null;
   const problem = built ? formatProblem(built, teamCount) : null;
   // The preview only once it says something the saved rules above don't.
   // (Key order differs - the database returns keys sorted.)
@@ -86,6 +95,7 @@ export function RulesEditor({
   const kindOptions: { value: Kind; label: string }[] = [
     { value: "platform", label: "Platform" },
     { value: "standard", label: "Bracket" },
+    { value: "doubleElim", label: "Double elim" },
     ...(teamCount === WORLD_CUP_TEAMS ? [{ value: "worldCup" as const, label: "World Cup" }] : []),
     ...(savedKind === "custom" ? [{ value: "custom" as const, label: "Custom" }] : []),
   ];
@@ -106,6 +116,9 @@ export function RulesEditor({
         )}
         {kind === "standard" && (
           <StandardForm config={standard} onChange={setStandard} teamCount={teamCount} />
+        )}
+        {kind === "doubleElim" && (
+          <DoubleElimForm config={doubleElim} onChange={setDoubleElim} teamCount={teamCount} />
         )}
         {kind === "worldCup" && <WorldCupForm config={worldCup} onChange={setWorldCup} />}
 
@@ -301,6 +314,70 @@ function SeedBonusRow({
         />
       ))}
     </>
+  );
+}
+
+function SeedingSelect({
+  value,
+  onChange,
+}: {
+  value: "record" | "points";
+  onChange: (value: "record" | "points") => void;
+}) {
+  return (
+    <Select
+      label="Seeding"
+      value={value}
+      allowDeselect={false}
+      data={[
+        { value: "record", label: "Record" },
+        { value: "points", label: "Points only" },
+      ]}
+      onChange={(next) => next && onChange(next as "record" | "points")}
+    />
+  );
+}
+
+function DoubleElimForm({
+  config,
+  onChange,
+  teamCount,
+}: {
+  config: DoubleElimConfig;
+  onChange: (config: DoubleElimConfig) => void;
+  teamCount: number;
+}) {
+  const set = (patch: Partial<DoubleElimConfig>) => onChange({ ...config, ...patch });
+  return (
+    <Stack gap="sm">
+      <Group grow>
+        <WeekInput
+          label="Regular season ends"
+          value={config.regularSeasonEndWeek}
+          onChange={(regularSeasonEndWeek) => set({ regularSeasonEndWeek })}
+        />
+        <NumberInput
+          label="Playoff teams"
+          value={config.playoffTeams}
+          min={3}
+          max={teamCount}
+          allowDecimal={false}
+          onChange={(next) => typeof next === "number" && set({ playoffTeams: next })}
+        />
+      </Group>
+      <Group grow>
+        <NumberInput
+          label="Bracket weeks"
+          description="Before the Royal Rumble"
+          value={config.bracketWeeks}
+          min={1}
+          max={6}
+          allowDecimal={false}
+          onChange={(next) => typeof next === "number" && set({ bracketWeeks: next })}
+        />
+        <SeedingSelect value={config.seeding} onChange={(seeding) => set({ seeding })} />
+      </Group>
+    </Stack>
   );
 }
 

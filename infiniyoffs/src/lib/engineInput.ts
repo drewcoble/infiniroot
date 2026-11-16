@@ -1,5 +1,10 @@
 import type { SeasonInput } from "@playoffRules/evaluate";
-import { EMPTY_DRAFT, type DraftState, type PlayoffFormat } from "@playoffRules/format";
+import {
+  EMPTY_DRAFT,
+  stageWeeks,
+  type DraftState,
+  type PlayoffFormat,
+} from "@playoffRules/format";
 import type { PlayoffRules, SeasonData } from "./seasonData";
 
 // The recorded matchup draft, if the format has one (one per league).
@@ -37,8 +42,6 @@ export function currentInput(
 }
 
 export function lastFormatWeek(format: PlayoffFormat): number {
-  const weeks = format.stages.flatMap((stage) =>
-    stage.kind === "bracket" ? stage.roundWeeks.flat() : stage.weeks,
-  );
+  const weeks = format.stages.flatMap(stageWeeks);
   return Math.max(format.regularSeasonEndWeek, ...weeks);
 }

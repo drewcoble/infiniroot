@@ -53,12 +53,21 @@ export function weekPairings(
   const brackets = format.stages.filter((stage) => stage.kind === "bracket").length;
   for (const stage of format.stages) {
     const result = state.stages[stage.id];
+    const de = result?.doubleElim;
     const games =
       stage.kind === "groups"
         ? (result?.groups ?? []).flatMap((group) =>
             group.games.map((game) => ({ game, label: stage.name })),
           )
-        : (result?.rounds ?? []).flatMap((round) =>
+        : de
+          ? [
+              ...de.weeks.flatMap((w) => [
+                ...w.winners.map((game) => ({ game, label: "Winners bracket" })),
+                ...w.losers.map((game) => ({ game, label: "Losers bracket" })),
+              ]),
+              ...(de.final ? [{ game: de.final, label: "Final" }] : []),
+            ]
+          : (result?.rounds ?? []).flatMap((round) =>
             round.games.map((game) => ({
               game,
               label: brackets > 1 ? `${stage.name} · ${round.name}` : round.name,
@@ -77,6 +86,26 @@ export function weekPairings(
     }
   }
   return pairings.length ? pairings : null;
+}
+
+// A double elimination's Royal Rumble field, if `week` is its Rumble and
+// the field is set - every team plays everyone, so there are no pairings.
+export function rumbleField(
+  format: PlayoffFormat,
+  state: PlayoffState,
+  week: number,
+): string[] | null {
+  for (const stage of format.stages) {
+    if (stage.kind !== "doubleElim" || stage.rumbleWeek !== week) continue;
+    const rumble = state.stages[stage.id]?.doubleElim?.rumble;
+    return rumble ? rumble.entries.map((entry) => entry.teamId) : null;
+  }
+  return null;
+}
+
+// Whether `week` is a Royal Rumble week, field set or not.
+export function isRumbleWeek(format: PlayoffFormat, week: number): boolean {
+  return format.stages.some((stage) => stage.kind === "doubleElim" && stage.rumbleWeek === week);
 }
 
 // The matchup header's standings line, from the league's own standings

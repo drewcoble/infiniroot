@@ -175,6 +175,55 @@ export function worldCupFormat(config: WorldCupConfig = defaultWorldCup()): Play
   };
 }
 
+type DoubleElimConfig = Extract<PresetConfig, { kind: "doubleElim" }>;
+
+export function defaultDoubleElim(
+  regularSeasonEndWeek: number,
+  teamCount: number,
+): DoubleElimConfig {
+  return {
+    kind: "doubleElim",
+    regularSeasonEndWeek,
+    playoffTeams: Math.min(8, teamCount),
+    bracketWeeks: 4,
+    seeding: "record",
+  };
+}
+
+// The top seeds in a double elimination (see format.ts's DoubleElimStage):
+// weekly brackets, then the Royal Rumble the week after, then a final if
+// a once-beaten team wins it.
+export function doubleElimFormat(config: DoubleElimConfig): PlayoffFormat {
+  const end = config.regularSeasonEndWeek;
+  const weeks = Array.from({ length: config.bracketWeeks }, (_, i) => end + 1 + i);
+  const rumbleWeek = end + config.bracketWeeks + 1;
+  return {
+    preset: config,
+    regularSeasonEndWeek: end,
+    seeding: seedingRules(config.seeding, end),
+    tiers: [],
+    stages: [
+      {
+        kind: "doubleElim",
+        id: "doubleElim",
+        name: "Double Elimination",
+        entrants: [{ from: "seeds", firstSeed: 1, lastSeed: config.playoffTeams }],
+        weeks,
+        rumbleWeek,
+        finalWeek: rumbleWeek + 1,
+      },
+    ],
+    championshipStageId: "doubleElim",
+  };
+}
+
 export function presetFormat(config: PresetConfig, teamCount: number): PlayoffFormat {
-  return config.kind === "standard" ? standardFormat(config, teamCount) : worldCupFormat(config);
+  switch (config.kind) {
+    case "standard":
+      return standardFormat(config, teamCount);
+    case "doubleElim":
+      return doubleElimFormat(config);
+    case "worldCup":
+      return worldCupFormat(config);
+  }
 }

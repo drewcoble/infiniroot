@@ -123,7 +123,27 @@ export interface PointsStage {
   advance: number;
 }
 
-export type Stage = GroupStage | BracketStage | PointsStage;
+// Double elimination, played as weekly brackets: every week the unbeaten
+// teams and the once-beaten teams each pair off best seed vs worst (the
+// best seed takes the bye in an odd field). A first loss drops a team to
+// the losers' side the next week; a second ends its season. Then a Royal
+// Rumble: everyone left plays one week and only the top score wins - the
+// last unbeaten team is champion if it's them; otherwise the Rumble winner
+// plays that team in a final. Ties go to the better seed.
+export interface DoubleElimStage {
+  kind: "doubleElim";
+  id: string;
+  name: string;
+  entrants: TeamSource[];
+  // The weekly bracket weeks, before the Rumble.
+  weeks: number[];
+  rumbleWeek: number;
+  // Only played if a once-beaten team wins the Rumble.
+  finalWeek: number;
+  bonus?: Bonus;
+}
+
+export type Stage = GroupStage | BracketStage | PointsStage | DoubleElimStage;
 
 // The rules form's settings a format was built from (see presets.ts), so
 // the commissioner can reopen and adjust them. Absent = built by hand.
@@ -140,6 +160,14 @@ export type PresetConfig =
       seeding: "record" | "points";
       // Seed -> bonus per round, round 1 first.
       seedBonus: Record<number, number[]>;
+    }
+  | {
+      kind: "doubleElim";
+      regularSeasonEndWeek: number;
+      playoffTeams: number;
+      // Weekly bracket weeks before the Rumble.
+      bracketWeeks: number;
+      seeding: "record" | "points";
     }
   | {
       kind: "worldCup";
@@ -166,3 +194,15 @@ export interface DraftState {
 }
 
 export const EMPTY_DRAFT: DraftState = { slots: [], picks: [], rematches: [] };
+
+// Every week a stage plays.
+export function stageWeeks(stage: Stage): number[] {
+  switch (stage.kind) {
+    case "bracket":
+      return stage.roundWeeks.flat();
+    case "doubleElim":
+      return [...stage.weeks, stage.rumbleWeek, stage.finalWeek];
+    default:
+      return stage.weeks;
+  }
+}
