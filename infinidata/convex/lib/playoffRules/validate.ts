@@ -17,7 +17,7 @@ export function formatProblem(format: PlayoffFormat, teamCount: number): string 
     if (!stage.id || seen.has(stage.id)) return "Every stage needs its own id.";
     const sources: TeamSource[] = stage.entrants;
     for (const source of sources) {
-      if (source.from === "seeds") {
+      if (source.from === "seeds" || source.from === "pointsLeaders") {
         const { firstSeed, lastSeed } = source;
         if (firstSeed < 1 || lastSeed > teamCount || firstSeed > lastSeed) {
           return `${stage.name}: seeds must fall within 1-${teamCount}.`;

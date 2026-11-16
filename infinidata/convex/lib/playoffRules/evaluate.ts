@@ -362,6 +362,24 @@ function resolveSource(ctx: Ctx, source: TeamSource): string[] | null {
       const eliminated = ctx.stages[source.stageId]?.eliminated ?? null;
       return eliminated && bySeed(eliminated);
     }
+    case "nonEntrants": {
+      const entrants = ctx.stages[source.stageId]?.entrants ?? null;
+      if (!entrants) return null;
+      return ctx.standings.map((row) => row.teamId).filter((teamId) => !entrants.includes(teamId));
+    }
+    case "pointsLeaders": {
+      if (!ctx.regularSeasonFinal || source.toWeek > ctx.input.finalThroughWeek) return null;
+      const pool = ctx.standings
+        .filter((row) => row.seed >= source.firstSeed && row.seed <= source.lastSeed)
+        .map((row) => row.teamId);
+      const ranked = rank(
+        pool,
+        [{ kind: "pointsFor", fromWeek: source.fromWeek, toWeek: source.toWeek }],
+        emptyBook(),
+        ctx,
+      );
+      return bySeed(ranked.slice(0, source.count));
+    }
     case "wildcards": {
       const pools = source.stageIds.map((id) => ctx.stages[id]?.eliminated ?? null);
       if (pools.some((pool) => pool === null)) return null;

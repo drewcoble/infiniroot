@@ -30,6 +30,19 @@ export type TeamSource =
   | { from: "advancers"; stageId: string }
   // Everyone an earlier stage started with but didn't advance.
   | { from: "eliminated"; stageId: string }
+  // Every team that isn't one of an earlier stage's entrants (a toilet
+  // bowl of everyone who missed the playoffs).
+  | { from: "nonEntrants"; stageId: string }
+  // The best `count` teams by raw points over these weeks, from these
+  // regular-season seeds - wildcards straight from the regular season.
+  | {
+      from: "pointsLeaders";
+      firstSeed: number;
+      lastSeed: number;
+      count: number;
+      fromWeek: number;
+      toWeek: number;
+    }
   // The best `count` teams by raw points over these weeks, out of every
   // team the listed stages eliminated.
   | {
@@ -112,7 +125,30 @@ export interface PointsStage {
 
 export type Stage = GroupStage | BracketStage | PointsStage;
 
+// The rules form's settings a format was built from (see presets.ts), so
+// the commissioner can reopen and adjust them. Absent = built by hand.
+export type PresetConfig =
+  | {
+      kind: "standard";
+      regularSeasonEndWeek: number;
+      playoffTeams: number;
+      // Of playoffTeams, how many get in on points instead of seed.
+      wildcards: number;
+      weeksPerRound: 1 | 2;
+      reseed: boolean;
+      toiletBowl: boolean;
+      seeding: "record" | "points";
+      // Seed -> bonus per round, round 1 first.
+      seedBonus: Record<number, number[]>;
+    }
+  | {
+      kind: "worldCup";
+      regularSeasonEndWeek: number;
+      tierBonus: [number, number, number, number];
+    };
+
 export interface PlayoffFormat {
+  preset?: PresetConfig;
   regularSeasonEndWeek: number;
   seeding: Tiebreaker[];
   tiers: Tier[];

@@ -1,13 +1,14 @@
 import { bracketRoundCount } from "./bracketMath";
-import type { PlayoffFormat, Tiebreaker } from "./format";
+import type { PlayoffFormat, PresetConfig, TeamSource, Tiebreaker } from "./format";
 
-// Starting points for the commissioner's rules form - each one a complete
-// PlayoffFormat the form then adjusts.
+// The commissioner's rules form: each preset's settings (PresetConfig)
+// build a complete PlayoffFormat, stored with the settings so the form can
+// reopen them.
 
-const standardSeeding = (endWeek: number): Tiebreaker[] => [
-  { kind: "winPct" },
-  { kind: "pointsFor", fromWeek: 1, toWeek: endWeek },
-];
+function seedingRules(seeding: "record" | "points", endWeek: number): Tiebreaker[] {
+  const points: Tiebreaker = { kind: "pointsFor", fromWeek: 1, toWeek: endWeek };
+  return seeding === "points" ? [points] : [{ kind: "winPct" }, points];
+}
 
 function consecutiveRounds(firstWeek: number, count: number, weeksPerRound = 1): number[][] {
   return Array.from({ length: count }, (_, round) =>
@@ -15,44 +16,81 @@ function consecutiveRounds(firstWeek: number, count: number, weeksPerRound = 1):
   );
 }
 
-// A single-elimination bracket of the top `playoffTeams` (byes to the top
-// seeds), plus an optional toilet bowl for everyone else.
-export function standardBracket(opts: {
-  teamCount: number;
-  regularSeasonEndWeek: number;
-  playoffTeams: number;
-  reseed?: boolean;
-  toiletBowl?: boolean;
-}): PlayoffFormat {
-  const rounds = bracketRoundCount(opts.playoffTeams);
-  const firstWeek = opts.regularSeasonEndWeek + 1;
+type StandardConfig = Extract<PresetConfig, { kind: "standard" }>;
+
+export function defaultStandard(
+  regularSeasonEndWeek: number,
+  playoffTeams: number,
+): StandardConfig {
+  return {
+    kind: "standard",
+    regularSeasonEndWeek,
+    playoffTeams,
+    wildcards: 0,
+    weeksPerRound: 1,
+    reseed: false,
+    toiletBowl: false,
+    seeding: "record",
+    seedBonus: {},
+  };
+}
+
+// A single-elimination bracket of the top seeds (byes to the best), with
+// optional points wildcards, reseeding, two-week rounds, per-seed bonuses,
+// and a toilet bowl for everyone else.
+export function standardFormat(config: StandardConfig, teamCount: number): PlayoffFormat {
+  const end = config.regularSeasonEndWeek;
+  const rounds = bracketRoundCount(config.playoffTeams);
+  const firstWeek = end + 1;
+  const bySeed = config.playoffTeams - config.wildcards;
+  const entrants: TeamSource[] = [{ from: "seeds", firstSeed: 1, lastSeed: bySeed }];
+  if (config.wildcards > 0) {
+    entrants.push({
+      from: "pointsLeaders",
+      firstSeed: bySeed + 1,
+      lastSeed: teamCount,
+      count: config.wildcards,
+      fromWeek: 1,
+      toWeek: end,
+    });
+  }
+  const bonus = Object.fromEntries(
+    Object.entries(config.seedBonus).filter(([, perRound]) => perRound.some((b) => b !== 0)),
+  );
   const format: PlayoffFormat = {
-    regularSeasonEndWeek: opts.regularSeasonEndWeek,
-    seeding: standardSeeding(opts.regularSeasonEndWeek),
+    preset: config,
+    regularSeasonEndWeek: end,
+    seeding: seedingRules(config.seeding, end),
     tiers: [],
     stages: [
       {
         kind: "bracket",
         id: "championship",
         name: "Championship",
-        entrants: [{ from: "seeds", firstSeed: 1, lastSeed: opts.playoffTeams }],
-        seeding: "regularSeason",
-        roundWeeks: consecutiveRounds(firstWeek, rounds),
-        reseed: opts.reseed ?? false,
+        entrants,
+        // Wildcards seed after every team that got in by seed.
+        seeding: config.wildcards > 0 ? "sourceOrder" : "regularSeason",
+        roundWeeks: consecutiveRounds(firstWeek, rounds, config.weeksPerRound),
+        reseed: config.reseed,
+        ...(Object.keys(bonus).length ? { bonus: { bySeedRound: bonus } } : {}),
       },
     ],
     championshipStageId: "championship",
   };
-  const bowlTeams = opts.teamCount - opts.playoffTeams;
-  if (opts.toiletBowl && bowlTeams >= 2) {
+  const bowlTeams = teamCount - config.playoffTeams;
+  if (config.toiletBowl && bowlTeams >= 2) {
     const bowlRounds = Math.min(bracketRoundCount(bowlTeams), rounds);
     format.stages.push({
       kind: "bracket",
       id: "toiletBowl",
       name: "Toilet Bowl",
-      entrants: [{ from: "seeds", firstSeed: opts.playoffTeams + 1, lastSeed: opts.teamCount }],
+      entrants: [{ from: "nonEntrants", stageId: "championship" }],
       seeding: "regularSeason",
-      roundWeeks: consecutiveRounds(firstWeek + rounds - bowlRounds, bowlRounds),
+      roundWeeks: consecutiveRounds(
+        firstWeek + (rounds - bowlRounds) * config.weeksPerRound,
+        bowlRounds,
+        config.weeksPerRound,
+      ),
       reseed: false,
       loserAdvances: true,
     });
@@ -60,23 +98,41 @@ export function standardBracket(opts: {
   return format;
 }
 
-// Tiers by seed, a matchup-draft group stage with tier bonuses, then the
-// group winners plus a points wildcard in a knockout. Defaults are the
-// 12-team original: S/A/B/C tiers of three, drafts over weeks 12-14, a
-// week-15 rematch, semis in 16 and the final in 17.
-export function worldCup(
-  opts: {
-    regularSeasonEndWeek?: number;
-    tierBonus?: [number, number, number, number];
-  } = {},
-): PlayoffFormat {
-  const end = opts.regularSeasonEndWeek ?? 11;
-  const [s, a, b, c] = opts.tierBonus ?? [15, 10, 5, 0];
+// The platform's playoffs as a format - a standard bracket by record.
+export function standardBracket(opts: {
+  teamCount: number;
+  regularSeasonEndWeek: number;
+  playoffTeams: number;
+}): PlayoffFormat {
+  const format = standardFormat(
+    defaultStandard(opts.regularSeasonEndWeek, opts.playoffTeams),
+    opts.teamCount,
+  );
+  delete format.preset;
+  return format;
+}
+
+type WorldCupConfig = Extract<PresetConfig, { kind: "worldCup" }>;
+
+export const WORLD_CUP_TEAMS = 12;
+
+export function defaultWorldCup(): WorldCupConfig {
+  return { kind: "worldCup", regularSeasonEndWeek: 11, tierBonus: [15, 10, 5, 0] };
+}
+
+// Tiers by seed (S/A/B/C, three each), a matchup-draft group stage with
+// tier bonuses - S teams draft weeks 1-3 of it, then pick a rematch for
+// week 4 - and the group winners plus a points wildcard in a two-round
+// knockout. Twelve teams.
+export function worldCupFormat(config: WorldCupConfig = defaultWorldCup()): PlayoffFormat {
+  const end = config.regularSeasonEndWeek;
+  const [s, a, b, c] = config.tierBonus;
   const groupWeeks = [end + 1, end + 2, end + 3, end + 4];
   const pointsThroughGroups = { fromWeek: 1, toWeek: end + 4 };
   return {
+    preset: config,
     regularSeasonEndWeek: end,
-    seeding: standardSeeding(end),
+    seeding: seedingRules("record", end),
     tiers: [
       { name: "S", firstSeed: 1, lastSeed: 3 },
       { name: "A", firstSeed: 4, lastSeed: 6 },
@@ -88,7 +144,7 @@ export function worldCup(
         kind: "groups",
         id: "groups",
         name: "Group Stage",
-        entrants: [{ from: "seeds", firstSeed: 1, lastSeed: 12 }],
+        entrants: [{ from: "seeds", firstSeed: 1, lastSeed: WORLD_CUP_TEAMS }],
         groupCount: 3,
         formation: {
           kind: "matchupDraft",
@@ -117,4 +173,8 @@ export function worldCup(
     ],
     championshipStageId: "knockout",
   };
+}
+
+export function presetFormat(config: PresetConfig, teamCount: number): PlayoffFormat {
+  return config.kind === "standard" ? standardFormat(config, teamCount) : worldCupFormat(config);
 }
