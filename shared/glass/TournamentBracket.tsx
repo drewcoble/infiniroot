@@ -42,6 +42,18 @@ export interface BracketTournament {
   championTeamId: string | null;
 }
 
+// A column after the bracket's rounds, outside the bracket's game tree -
+// a double elimination's Royal Rumble (any number of teams in one game)
+// and final. No connector lines into it.
+export interface BracketExtraColumn {
+  key: string;
+  name: string;
+  weeks: number[];
+  games: { id: string; entrants: BracketEntrant[]; winnerTeamId: string | null }[];
+  // A line under the column's games.
+  caption?: string | undefined;
+}
+
 export interface BracketTeam {
   name: string;
   logoUrl?: string | undefined;
@@ -61,7 +73,7 @@ function EntrantRow({
   note,
 }: {
   entrant: BracketEntrant;
-  game: BracketGame;
+  game: Pick<BracketGame, "winnerTeamId">;
   // Stands in for points, e.g. "Bye".
   note?: string;
   teams: ReadonlyMap<string, BracketTeam>;
@@ -147,21 +159,23 @@ function layoutRounds(
 
 // Which round the viewer starts on: the one being played (or next up), the
 // final once it's over.
-function initialRound(tournament: BracketTournament, currentWeek: number): number {
-  const index = tournament.rounds.findIndex(
-    (round) => (round.weeks[round.weeks.length - 1] ?? 0) >= currentWeek,
+function initialRound(columns: Array<{ weeks: number[] }>, currentWeek: number): number {
+  const index = columns.findIndex(
+    (column) => (column.weeks[column.weeks.length - 1] ?? 0) >= currentWeek,
   );
-  return index === -1 ? tournament.rounds.length - 1 : index;
+  return index === -1 ? columns.length - 1 : index;
 }
 
 export function TournamentBracket({
   tournament,
   teams,
   currentWeek,
+  extraColumns = [],
 }: {
   tournament: BracketTournament;
   teams: ReadonlyMap<string, BracketTeam>;
   currentWeek: number;
+  extraColumns?: BracketExtraColumn[];
 }) {
   const gamesById = new Map(
     tournament.rounds.flatMap((round) => round.games.map((game) => [game.id, game] as const)),
@@ -186,7 +200,7 @@ export function TournamentBracket({
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
-    const lastIndex = tournament.rounds.length - 1;
+    const lastIndex = tournament.rounds.length + extraColumns.length - 1;
     const step = () => {
       const [first, second] = columnRefs.current;
       return first && second ? second.offsetLeft - first.offsetLeft : 0;
@@ -197,7 +211,7 @@ export function TournamentBracket({
         width > 0 ? Math.min(Math.max(scroller.scrollLeft / width, 0), lastIndex) : 0;
       scroller.style.setProperty("--progress", String(progress));
     };
-    const start = initialRound(tournament, currentWeek);
+    const start = initialRound([...tournament.rounds, ...extraColumns], currentWeek);
     scroller.scrollLeft = step() * start;
     apply();
     let pending = 0;
@@ -263,11 +277,7 @@ export function TournamentBracket({
                         <div className={`${glass.card} ${classes.game} ${classes.bye}`}>
                           <EntrantRow
                             entrant={slot.entrant}
-                            game={{
-                              id: "bye",
-                              entrants: [slot.entrant, slot.entrant],
-                              winnerTeamId: null,
-                            }}
+                            game={{ winnerTeamId: null }}
                             teams={teams}
                             note={slot.entrant.note ?? "Bye"}
                           />
@@ -302,6 +312,40 @@ export function TournamentBracket({
                       <span className={classes.joinInto} />
                     </div>
                   ))}
+              </div>
+            </div>
+          );
+        })}
+        {extraColumns.map((column, i) => {
+          const r = tournament.rounds.length + i;
+          return (
+            <div
+              key={column.key}
+              ref={(element) => {
+                columnRefs.current[r] = element;
+              }}
+              className={classes.column}
+              style={{ "--r": r } as CSSProperties}
+              aria-label={column.name}
+            >
+              <div className={`${glass.sectionLabel} ${classes.columnLabel}`}>
+                {column.name} · {weeksLabel(column.weeks)}
+              </div>
+              <div className={`${classes.track} ${classes.extraTrack}`}>
+                {column.games.map((game) => (
+                  <div key={game.id} className={`${glass.card} ${classes.game}`}>
+                    {game.entrants.map((entrant, index) => (
+                      <EntrantRow
+                        key={index}
+                        entrant={entrant}
+                        game={game}
+                        teams={teams}
+                        {...(entrant.note !== undefined ? { note: entrant.note } : {})}
+                      />
+                    ))}
+                  </div>
+                ))}
+                {column.caption && <div className={classes.note}>{column.caption}</div>}
               </div>
             </div>
           );

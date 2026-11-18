@@ -1,6 +1,6 @@
 import type { GameResult, SeasonInput, StageResult } from "@playoffRules/evaluate";
 import { stageWeeks, type DoubleElimStage, type PlayoffFormat } from "@playoffRules/format";
-import type { BracketTournament } from "@shared/glass/TournamentBracket";
+import type { BracketExtraColumn, BracketTournament } from "@shared/glass/TournamentBracket";
 
 // The engine's input as if the regular season ended today: today's
 // standings are final, and nothing after the last final week has been
@@ -53,7 +53,12 @@ type BracketEntrant = BracketGame["entrants"][number];
 export function doubleElimBrackets(
   stage: DoubleElimStage,
   result: StageResult,
-): { winners: BracketTournament; losers: BracketTournament } {
+): {
+  winners: BracketTournament;
+  losers: BracketTournament;
+  winnersExtra: BracketExtraColumn[];
+  losersExtra: BracketExtraColumn[];
+} {
   const de = result.doubleElim;
   const seed = (teamId: string | null) =>
     teamId !== null ? (result.seeds[teamId] ?? null) : null;
@@ -98,7 +103,58 @@ export function doubleElimBrackets(
     });
     return { rounds, championTeamId: null };
   };
-  return { winners: build("winners"), losers: build("losers") };
+  // The Royal Rumble's field size once the bracket weeks are played.
+  const rumbleSize = unbeaten + onceBeaten;
+  const rumbleEntries = de?.rumble
+    ? de.rumble.entries.map(({ teamId, points }) => ({
+        teamId,
+        seed: seed(teamId),
+        points,
+        fromGameId: null,
+      }))
+    : Array.from({ length: rumbleSize }, () => tbd(null));
+  const rumble: BracketExtraColumn = {
+    key: "rumble",
+    name: "Royal Rumble",
+    weeks: [stage.rumbleWeek],
+    games: [{ id: "rumble", entrants: rumbleEntries, winnerTeamId: de?.rumble?.winnerId ?? null }],
+    caption: "Top score wins",
+  };
+  const finalGame = de?.final;
+  const unbeatenWonRumble =
+    de?.rumble?.winnerId != null && de.unbeaten.includes(de.rumble.winnerId);
+  const final: BracketExtraColumn = {
+    key: "final",
+    name: "Final",
+    weeks: [stage.finalWeek],
+    games: unbeatenWonRumble
+      ? []
+      : [
+          finalGame
+            ? {
+                id: finalGame.id,
+                entrants: finalGame.teamIds.map((teamId, side) => ({
+                  teamId,
+                  seed: seed(teamId),
+                  points: finalGame.points[side] ?? null,
+                  fromGameId: null,
+                })),
+                winnerTeamId: finalGame.winnerId,
+              }
+            : { id: "final", entrants: [tbd(null), tbd(null)], winnerTeamId: null },
+        ],
+    caption: unbeatenWonRumble
+      ? "Not needed - the unbeaten team won the Rumble"
+      : finalGame
+        ? undefined
+        : "If a once-beaten team wins the Rumble",
+  };
+  return {
+    winners: build("winners"),
+    losers: build("losers"),
+    winnersExtra: [rumble, final],
+    losersExtra: [rumble],
+  };
 }
 
 function tbd(fromGameId: string | null): BracketEntrant {

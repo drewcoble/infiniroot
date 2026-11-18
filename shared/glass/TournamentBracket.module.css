@@ -55,6 +55,20 @@
 
 /* Spots and connectors sit at the track's top and move by transform only,
    so a swipe never re-lays anything out. */
+/* An extra column (BracketExtraColumn): its games stacked, centered in the
+   bracket's height, not positioned in the game tree. */
+.extraTrack {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Game cards grow to fill a tree slot - not here. */
+.extraTrack > .game {
+  flex: 0 0 auto;
+}
+
 .slot {
   position: absolute;
   top: 0;
