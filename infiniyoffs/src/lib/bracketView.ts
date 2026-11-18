@@ -57,6 +57,7 @@ export function doubleElimBrackets(
   winners: BracketTournament;
   losers: BracketTournament;
   winnersExtra: BracketExtraColumn[];
+  losersLeading: BracketExtraColumn[];
   losersExtra: BracketExtraColumn[];
 } {
   const de = result.doubleElim;
@@ -149,11 +150,28 @@ export function doubleElimBrackets(
         ? undefined
         : "If a once-beaten team wins the Rumble",
   };
+  // The losers side lines up week for week with the winners side (the
+  // two swipe together): a column for each week before its first game,
+  // and the Rumble and final columns as pointers to the winners side's.
+  const losersLeading: BracketExtraColumn[] = stage.weeks
+    .slice(0, Math.max(0, counts.findIndex((c) => c.losers > 0)))
+    .map((week) => ({
+      key: `lb-wait-${week}`,
+      name: "Waiting",
+      weeks: [week],
+      games: [],
+      caption: `Week ${week} losers drop in here next week`,
+    }));
+  const losersExtra: BracketExtraColumn[] = [
+    { ...rumble, games: [], caption: "Survivors join the Royal Rumble above" },
+    { ...final, games: [], caption: undefined },
+  ];
   return {
     winners: build("winners"),
     losers: build("losers"),
     winnersExtra: [rumble, final],
-    losersExtra: [rumble],
+    losersLeading,
+    losersExtra,
   };
 }
 

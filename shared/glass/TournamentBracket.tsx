@@ -54,6 +54,19 @@ export interface BracketExtraColumn {
   caption?: string | undefined;
 }
 
+// Brackets that swipe together (a double elimination's winners and
+// losers): whichever one the viewer touches leads and snaps; the rest
+// follow its scroll position, snapping off. Their columns must line up -
+// same count, same weeks.
+export interface BracketSync {
+  members: Set<{ scroller: HTMLDivElement; apply: () => void }>;
+  leader: HTMLDivElement | null;
+}
+
+export function createBracketSync(): BracketSync {
+  return { members: new Set(), leader: null };
+}
+
 export interface BracketTeam {
   name: string;
   logoUrl?: string | undefined;
@@ -170,13 +183,20 @@ export function TournamentBracket({
   tournament,
   teams,
   currentWeek,
+  leadingColumns = [],
   extraColumns = [],
+  sync,
 }: {
   tournament: BracketTournament;
   teams: ReadonlyMap<string, BracketTeam>;
   currentWeek: number;
+  // Columns before round 1 - weeks this bracket sits out, so it lines up
+  // with a synced one.
+  leadingColumns?: BracketExtraColumn[];
   extraColumns?: BracketExtraColumn[];
+  sync?: BracketSync | undefined;
 }) {
+  const lead = leadingColumns.length;
   const gamesById = new Map(
     tournament.rounds.flatMap((round) => round.games.map((game) => [game.id, game] as const)),
   );
@@ -200,7 +220,7 @@ export function TournamentBracket({
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
-    const lastIndex = tournament.rounds.length + extraColumns.length - 1;
+    const lastIndex = lead + tournament.rounds.length + extraColumns.length - 1;
     const step = () => {
       const [first, second] = columnRefs.current;
       return first && second ? second.offsetLeft - first.offsetLeft : 0;
@@ -211,11 +231,30 @@ export function TournamentBracket({
         width > 0 ? Math.min(Math.max(scroller.scrollLeft / width, 0), lastIndex) : 0;
       scroller.style.setProperty("--progress", String(progress));
     };
-    const start = initialRound([...tournament.rounds, ...extraColumns], currentWeek);
+    const start = initialRound(
+      [...leadingColumns, ...tournament.rounds, ...extraColumns],
+      currentWeek,
+    );
     scroller.scrollLeft = step() * start;
     apply();
+    const member = { scroller, apply };
+    sync?.members.add(member);
+    // The touched bracket leads: it snaps, the others follow unsnapped.
+    const takeLead = () => {
+      if (!sync || sync.leader === scroller) return;
+      sync.leader = scroller;
+      for (const other of sync.members) {
+        other.scroller.style.scrollSnapType = other.scroller === scroller ? "" : "none";
+      }
+    };
     let pending = 0;
     const onScroll = () => {
+      if (sync?.leader === scroller) {
+        for (const other of sync.members) {
+          if (other.scroller === scroller) continue;
+          other.scroller.scrollLeft = scroller.scrollLeft;
+        }
+      }
       if (pending) return;
       pending = requestAnimationFrame(() => {
         pending = 0;
@@ -223,13 +262,53 @@ export function TournamentBracket({
       });
     };
     scroller.addEventListener("scroll", onScroll, { passive: true });
+    scroller.addEventListener("pointerdown", takeLead, { passive: true });
+    scroller.addEventListener("touchstart", takeLead, { passive: true });
+    scroller.addEventListener("wheel", takeLead, { passive: true });
     return () => {
       cancelAnimationFrame(pending);
+      sync?.members.delete(member);
       scroller.removeEventListener("scroll", onScroll);
+      scroller.removeEventListener("pointerdown", takeLead);
+      scroller.removeEventListener("touchstart", takeLead);
+      scroller.removeEventListener("wheel", takeLead);
     };
     // Set up once per bracket - after that the viewer's swipes move it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A column outside the game tree (leading or trailing) at column index r.
+  const renderExtra = (column: BracketExtraColumn, r: number) => (
+    <div
+      key={column.key}
+      ref={(element) => {
+        columnRefs.current[r] = element;
+      }}
+      className={classes.column}
+      style={{ "--r": r } as CSSProperties}
+      aria-label={column.name}
+    >
+      <div className={`${glass.sectionLabel} ${classes.columnLabel}`}>
+        {column.name} · {weeksLabel(column.weeks)}
+      </div>
+      <div className={`${classes.track} ${classes.extraTrack}`}>
+        {column.games.map((game) => (
+          <div key={game.id} className={`${glass.card} ${classes.game}`}>
+            {game.entrants.map((entrant, index) => (
+              <EntrantRow
+                key={index}
+                entrant={entrant}
+                game={game}
+                teams={teams}
+                {...(entrant.note !== undefined ? { note: entrant.note } : {})}
+              />
+            ))}
+          </div>
+        ))}
+        {column.caption && <div className={classes.note}>{column.caption}</div>}
+      </div>
+    </div>
+  );
 
   return (
     <Stack gap="md">
@@ -248,6 +327,7 @@ export function TournamentBracket({
         className={classes.scroller}
         style={{ "--first-round-slots": firstRoundSlots } as CSSProperties}
       >
+        {leadingColumns.map((column, i) => renderExtra(column, i))}
         {tournament.rounds.map((round, r) => {
           const slots = layout[r] ?? [];
           const isLast = r === tournament.rounds.length - 1;
@@ -256,10 +336,10 @@ export function TournamentBracket({
             <div
               key={round.round}
               ref={(element) => {
-                columnRefs.current[r] = element;
+                columnRefs.current[lead + r] = element;
               }}
               className={classes.column}
-              style={{ "--r": r } as CSSProperties}
+              style={{ "--r": lead + r } as CSSProperties}
               aria-label={round.name}
             >
               <div className={`${glass.sectionLabel} ${classes.columnLabel}`}>
@@ -316,40 +396,9 @@ export function TournamentBracket({
             </div>
           );
         })}
-        {extraColumns.map((column, i) => {
-          const r = tournament.rounds.length + i;
-          return (
-            <div
-              key={column.key}
-              ref={(element) => {
-                columnRefs.current[r] = element;
-              }}
-              className={classes.column}
-              style={{ "--r": r } as CSSProperties}
-              aria-label={column.name}
-            >
-              <div className={`${glass.sectionLabel} ${classes.columnLabel}`}>
-                {column.name} · {weeksLabel(column.weeks)}
-              </div>
-              <div className={`${classes.track} ${classes.extraTrack}`}>
-                {column.games.map((game) => (
-                  <div key={game.id} className={`${glass.card} ${classes.game}`}>
-                    {game.entrants.map((entrant, index) => (
-                      <EntrantRow
-                        key={index}
-                        entrant={entrant}
-                        game={game}
-                        teams={teams}
-                        {...(entrant.note !== undefined ? { note: entrant.note } : {})}
-                      />
-                    ))}
-                  </div>
-                ))}
-                {column.caption && <div className={classes.note}>{column.caption}</div>}
-              </div>
-            </div>
-          );
-        })}
+        {extraColumns.map((column, i) =>
+          renderExtra(column, lead + tournament.rounds.length + i),
+        )}
       </div>
     </Stack>
   );
