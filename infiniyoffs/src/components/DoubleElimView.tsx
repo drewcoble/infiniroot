@@ -6,6 +6,8 @@ import { TeamLogo } from "@shared/glass/TeamLogo";
 import { useTeamLogoUrl } from "@shared/glass/teamLogos";
 import glass from "@shared/glass/GlassMatchupCard.module.css";
 import bracketClasses from "@shared/glass/TournamentBracket.module.css";
+import { TournamentBracket, type BracketTeam } from "@shared/glass/TournamentBracket";
+import { doubleElimBrackets } from "../lib/bracketView";
 import { GameLine, type GroupTeam } from "./GroupCard";
 import classes from "./GroupCard.module.css";
 
@@ -13,17 +15,19 @@ function Logo({ teamId, name, size }: { teamId: string; name: string; size: numb
   return <TeamLogo name={name} logoUrl={useTeamLogoUrl(teamId)} size={size} />;
 }
 
-// A double elimination week by week - each week's unbeaten (WB) and
-// once-beaten (LB) games and byes - then the Royal Rumble's standings and
-// the final, if a once-beaten team forces one.
+// A double elimination: the champion, the final (if a once-beaten team
+// forces one) and the Royal Rumble's standings, then the winners and
+// losers brackets, each swipeable round to round like the Knockout's.
 export function DoubleElimView({
   stage,
   result,
   teams,
+  currentWeek,
 }: {
   stage: DoubleElimStage;
   result: StageResult;
-  teams: ReadonlyMap<string, GroupTeam>;
+  teams: ReadonlyMap<string, GroupTeam & BracketTeam>;
+  currentWeek: number;
 }) {
   const de = result.doubleElim;
   const name = (teamId: string) => teams.get(teamId)?.name ?? "Team";
@@ -35,8 +39,7 @@ export function DoubleElimView({
     );
   }
   const championId = result.advancers?.[0] ?? null;
-  const byeLine = (side: string, teamIds: string[]) =>
-    teamIds.length ? `${side} bye: ${teamIds.map(name).join(", ")}` : null;
+  const brackets = doubleElimBrackets(stage, result);
 
   return (
     <Stack gap="md">
@@ -98,31 +101,23 @@ export function DoubleElimView({
         </div>
       ) : (
         <div className={bracketClasses.note}>
-          Royal Rumble week {stage.rumbleWeek} · {de.unbeaten.length} unbeaten,{" "}
-          {de.onceBeaten.length} once beaten
+          Royal Rumble week {stage.rumbleWeek} · field set after week{" "}
+          {stage.weeks[stage.weeks.length - 1]}
         </div>
       )}
 
-      {[...de.weeks].reverse().map((week) => {
-        const byes = [
-          byeLine("WB", week.byes.winners),
-          byeLine("LB", week.byes.losers),
-        ].filter(Boolean);
-        return (
-          <div key={week.week} className={glass.card}>
-            <span className={classes.title}>Week {week.week}</span>
-            <div className={classes.games}>
-              {week.winners.map((game, index) => (
-                <GameLine key={game.id} game={game} label={index === 0 ? "WB" : ""} teams={teams} />
-              ))}
-              {week.losers.map((game, index) => (
-                <GameLine key={game.id} game={game} label={index === 0 ? "LB" : ""} teams={teams} />
-              ))}
-            </div>
-            {byes.length > 0 && <span className={classes.bonusLine}>{byes.join(" · ")}</span>}
-          </div>
-        );
-      })}
+      {(["winners", "losers"] as const).map((side) => (
+        <Stack key={side} gap="sm">
+          <span className={classes.title}>
+            {side === "winners" ? "Winners bracket" : "Losers bracket"}
+          </span>
+          <TournamentBracket
+            tournament={brackets[side]}
+            teams={teams}
+            currentWeek={currentWeek}
+          />
+        </Stack>
+      ))}
     </Stack>
   );
 }

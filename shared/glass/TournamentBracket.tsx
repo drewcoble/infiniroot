@@ -19,6 +19,9 @@ export interface BracketEntrant {
   // The earlier game this spot is fed by - null for a team that starts in
   // this round (round 1, or off a bye).
   fromGameId: string | null;
+  // What a team with no feeder game shows in the earlier round's column -
+  // "Bye" unless said otherwise (e.g. a double elimination's "From WB").
+  note?: string | undefined;
 }
 
 export interface BracketGame {
@@ -266,7 +269,7 @@ export function TournamentBracket({
                               winnerTeamId: null,
                             }}
                             teams={teams}
-                            note="Bye"
+                            note={slot.entrant.note ?? "Bye"}
                           />
                         </div>
                       ) : (

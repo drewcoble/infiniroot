@@ -155,7 +155,9 @@ function StageView({
     );
   }
   if (stage.kind === "doubleElim") {
-    return <DoubleElimView stage={stage} result={result} teams={teams} />;
+    return (
+      <DoubleElimView stage={stage} result={result} teams={teams} currentWeek={currentWeek} />
+    );
   }
   const tournament = stageTournament(result);
   // A toilet bowl's last team standing finished last - no trophy.
