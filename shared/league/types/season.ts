@@ -27,6 +27,11 @@ export interface LinkedSeason {
   sleeperLeagueId?: string;
   yahooLeagueKey?: string;
   espnLeagueId?: string;
+  // Which positions the league can start - see infinileague's
+  // useLeaguePositions.
+  rosterSlots: Record<"QB" | "RB" | "WR" | "TE" | "DST" | "K", number>;
+  flexPositions: string[];
+  superflexPositions: string[];
   // The league's image from Sleeper/Yahoo (convex schema.ts's seasons.
   // logoUrl) - absent means show its initials.
   logoUrl?: string;
