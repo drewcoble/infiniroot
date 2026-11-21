@@ -11,12 +11,12 @@ import { ProjectedStandingsList } from "../../../components/ProjectedStandingsLi
 import { EliminationWatchList } from "../../../components/EliminationWatchList";
 import { PlayoffBracket } from "../../../components/PlayoffBracket";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
-import classes from "../../../components/cards/GlassMatchupCard.module.css";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import { getErrorMessage } from "@shared/errors";
 import { formatRelativeTime } from "../../../lib/relativeTime";
-import { isAnyGameLive, useNow, type WeekGame } from "../../../lib/liveGames";
-import { LIVE_REFRESH_MS } from "../../../lib/matchupSummary";
+import { isAnyGameLive, useNow, type WeekGame } from "@shared/league/lib/liveGames";
+import { LIVE_REFRESH_MS } from "@shared/league/lib/matchupSummary";
 import { rankLive } from "../../../lib/eliminationWatch";
 import type {
   EliminationWatchRow,
@@ -26,8 +26,8 @@ import type {
   ProjectedStandingsRow,
   StandingsRow,
   TeamPositionRanks,
-} from "../../../types/season";
-import { ErrorMessage } from "../../../components/ErrorMessage";
+} from "@shared/league/types/season";
+import { ErrorMessage } from "@shared/league/components/ErrorMessage";
 
 export const Route = createFileRoute("/league/$leagueId/")({
   component: LeaguePage,

@@ -1,5 +1,5 @@
-import { NEGATIVE, POSITIVE, TEXT } from "./chartTheme";
-import classes from "./charts.module.css";
+import { NEGATIVE, POSITIVE, TEXT } from "@shared/league/components/charts/chartTheme";
+import classes from "@shared/league/components/charts/charts.module.css";
 
 // Share of the track a bar may fill - the rest stays free for the value
 // label at its tip (and the marker's value after it), so a label is never

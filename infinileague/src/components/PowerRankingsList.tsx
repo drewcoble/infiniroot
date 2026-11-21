@@ -1,10 +1,10 @@
 import { Stack } from "@mantine/core";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { pillStyle } from "./cards/cardShared";
+import { pillStyle } from "@shared/league/components/cards/cardShared";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
 import { GlassRosterSkeletonCard } from "./cards/GlassRosterCard";
-import classes from "./cards/GlassMatchupCard.module.css";
-import type { PowerRankingRow, TeamPositionRanks } from "../types/season";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
+import type { PowerRankingRow, TeamPositionRanks } from "@shared/league/types/season";
 
 interface PowerRankingsListProps {
   leagueId: string;

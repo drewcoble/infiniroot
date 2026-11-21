@@ -245,3 +245,66 @@ export async function requireTeamAccess(
   }
   return { season, league };
 }
+
+// infiniyoffs' access boundary - read-only, league-wide. The commissioner
+// (owner or leagueCollaborators co-manager) and anyone holding a
+// leagueTeamMembers row for this season may view - the same team invites
+// infinifaab hands out, so one link onboards a member to both apps.
+// teamIds is the viewer's own team(s), for "my team" highlighting: the
+// commissioner's seasonTeams.isSelf team, else their membership rows.
+export async function requireSeasonViewer(
+  ctx: QueryCtx | MutationCtx,
+  seasonId: Id<"seasons">,
+): Promise<{
+  season: Doc<"seasons">;
+  league: Doc<"leagues">;
+  userId: Id<"users">;
+  isCommissioner: boolean;
+  teamIds: Id<"seasonTeams">[];
+}> {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    throw new Error("You must be signed in.");
+  }
+  const season = await ctx.db.get(seasonId);
+  if (!season) {
+    throw new Error("Season not found.");
+  }
+  const league = await ctx.db.get(season.leagueId);
+  if (!league) {
+    throw new Error("League not found.");
+  }
+
+  if (await isLeagueAuthorized(ctx, league, userId)) {
+    const selfTeam = (
+      await ctx.db
+        .query("seasonTeams")
+        .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+        .collect()
+    ).find((t) => t.isSelf);
+    return {
+      season,
+      league,
+      userId,
+      isCommissioner: true,
+      teamIds: selfTeam ? [selfTeam._id] : [],
+    };
+  }
+
+  const memberships = await ctx.db
+    .query("leagueTeamMembers")
+    .withIndex("by_season_user", (q) =>
+      q.eq("seasonId", seasonId).eq("userId", userId),
+    )
+    .collect();
+  if (memberships.length === 0) {
+    throw new Error("You don't have access to this league.");
+  }
+  return {
+    season,
+    league,
+    userId,
+    isCommissioner: false,
+    teamIds: memberships.map((m) => m.teamId),
+  };
+}

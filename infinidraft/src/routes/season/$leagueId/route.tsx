@@ -76,7 +76,7 @@ function SeasonLayout() {
   const { selfTeam } = selfTeamResult;
 
   return (
-    <PageContainer pb={{ base: 100, sm: "xl" }}>
+    <PageContainer pb={{ base: "calc(100px + env(safe-area-inset-bottom))", sm: "xl" }}>
       <Stack gap="md">
         <AppHeader />
         <Box visibleFrom="sm">

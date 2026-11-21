@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
-import { GRID, SERIES, SURFACE, TEXT } from "./chartTheme";
-import classes from "./charts.module.css";
+import { GRID, SERIES, SURFACE, TEXT } from "@shared/league/components/charts/chartTheme";
+import classes from "@shared/league/components/charts/charts.module.css";
 
 export interface SlopeRow {
   key: string;

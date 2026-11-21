@@ -5,19 +5,19 @@ import { useConvexAuth, useQuery } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
 import { DivergingBars, ValueBars } from "../../../components/charts/BarRows";
-import { NEUTRAL_MARK, SERIES, STATUS } from "../../../components/charts/chartTheme";
+import { NEUTRAL_MARK, SERIES, STATUS } from "@shared/league/components/charts/chartTheme";
 import { RankDumbbell } from "../../../components/charts/RankDumbbell";
 import { RankLine } from "../../../components/charts/RankLine";
 import { SegmentGauge } from "../../../components/charts/SegmentGauge";
 import { SlopeChart, type SlopeRow } from "../../../components/charts/SlopeChart";
 import { Sparkline } from "../../../components/charts/Sparkline";
-import { WeeklyBars } from "../../../components/charts/WeeklyBars";
-import chartClasses from "../../../components/charts/charts.module.css";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
-import cardClasses from "../../../components/cards/GlassMatchupCard.module.css";
-import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
-import { UsageChart } from "../../../components/player/UsageChart";
-import type { RosVorRow } from "../../../types/season";
+import { WeeklyBars } from "@shared/league/components/charts/WeeklyBars";
+import chartClasses from "@shared/league/components/charts/charts.module.css";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
+import cardClasses from "@shared/glass/GlassMatchupCard.module.css";
+import { seasonPositionRanks } from "@shared/league/lib/seasonPositionRanks";
+import { UsageChart } from "@shared/league/components/player/UsageChart";
+import type { RosVorRow } from "@shared/league/types/season";
 
 export const Route = createFileRoute("/league/$leagueId/simpleMode")({
   component: SimpleModePage,

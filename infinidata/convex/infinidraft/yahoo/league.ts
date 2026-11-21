@@ -559,144 +559,154 @@ export const syncYahooLeagueRoster = action({
       internal.rosterSync.requireOwnedSeasonForSync,
       { seasonId: args.seasonId },
     );
-    if (!season.yahooLeagueKey) {
-      throw new Error("This league isn't linked to a Yahoo league yet.");
-    }
-    const yahooLeagueKey = season.yahooLeagueKey;
-
-    const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
-      internal.seasonTeams.listSeasonTeamsInternal,
-      { seasonId: args.seasonId },
-    );
-
-    let syncedTeams = 0;
-    await withYahooToken(ctx, league.ownerId, async (accessToken) => {
-      const [standingsByTeamKey, settings] = await Promise.all([
-        fetchYahooStandingsForLeague(accessToken, yahooLeagueKey),
-        fetchYahooLeagueSettings(accessToken, yahooLeagueKey),
-      ]);
-
-      // Re-read every sync, not just at connect time - same self-healing
-      // rationale as convex/sleeper/league.ts's syncLeagueRoster. Doesn't
-      // pass faabBudget (see mapYahooWaiverType's comment) - leaves
-      // whatever the commissioner has set in Season Settings untouched.
-      const waiverType = mapYahooWaiverType(settings.raw);
-
-      // Falls back to zeroed standings (rather than leaving them unset)
-      // for any team fetchYahooStandingsForLeague didn't find a match
-      // for, so a Yahoo-linked season's standings read as "no games yet"
-      // instead of undefined/missing.
-      await ctx.runMutation(internal.rosterSync.writeSeasonStandings, {
-        seasonId: args.seasonId,
-        teams: teams.flatMap((team) => {
-          if (!team.yahooTeamKey) return [];
-          const standings = standingsByTeamKey.get(team.yahooTeamKey);
-          return [
-            {
-              teamId: team._id,
-              wins: standings?.wins ?? 0,
-              losses: standings?.losses ?? 0,
-              ties: standings?.ties ?? 0,
-              pointsFor: standings?.pointsFor ?? 0,
-              pointsAgainst: standings?.pointsAgainst ?? 0,
-            },
-          ];
-        }),
-      });
-      await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
-        seasonId: args.seasonId,
-        waiverType,
-      });
-
-      // Every team's roster in one request rather than two per team (a
-      // 12-team league was 26 back-to-back requests, the kind of burst
-      // Yahoo throttles - see client.ts's fetchYahooApi). Unconfirmed
-      // shape, so any team it doesn't cover falls back to its own requests,
-      // as before.
-      const leagueRosters = await fetchYahooLeagueRosters(accessToken, yahooLeagueKey).catch(
-        (error: unknown) => {
-          console.error("syncYahooLeagueRoster: league rosters fetch failed", error);
-          return new Map<string, YahooTeamRoster>();
-        },
-      );
-
-      for (const team of teams) {
-        if (!team.yahooTeamKey) continue;
-
-        let teamRoster = leagueRosters.get(team.yahooTeamKey);
-        if (!teamRoster) {
-          const rosterJson = await fetchYahooApi<unknown>(
-            accessToken,
-            `/team/${team.yahooTeamKey}/roster`,
-          );
-          const rosterTeamNode = findNodesByKey(rosterJson, "team")[0] ?? rosterJson;
-          teamRoster = {
-            players: extractRosterPlayers(findNodesByKey(rosterJson, "player")),
-            faabBalance: readFaabBalance(mergeYahooFields(rosterTeamNode)),
-          };
-        }
-        const resolved: Array<{ fpid: number; position: string }> = await ctx.runQuery(
-          internal.infinidraft.yahoo.league.resolveFpidsByName,
-          { players: teamRoster.players },
-        );
-        const fpids = resolved.map((r) => r.fpid);
-        await ctx.runMutation(internal.players.recordPlatformPositions, {
-          platform: "yahoo",
-          rows: yahooPositionRows(resolved),
-        });
-
-        // FAAB field name not confirmed live - see YAHOO.md. Best-effort:
-        // a missing/unreachable field just leaves faabSpent at 0 rather
-        // than failing the whole sync. Only a FAAB league asks the team
-        // resource itself when the roster response didn't carry it.
-        let remainingBalance = teamRoster.faabBalance;
-        if (remainingBalance === undefined && waiverType === "faab") {
-          try {
-            const teamJson = await fetchYahooApi<unknown>(
-              accessToken,
-              `/team/${team.yahooTeamKey}`,
-            );
-            const teamNode = findNodesByKey(teamJson, "team")[0] ?? teamJson;
-            remainingBalance = readFaabBalance(mergeYahooFields(teamNode));
-          } catch {
-            // Leave faabSpent at 0.
-          }
-        }
-        // faab_balance is the team's current REMAINING FAAB dollars, not
-        // amount spent (confirmed live: every team read "-100 FAAB left"
-        // when this stored the raw balance straight into faabSpent).
-        // Converting remaining -> spent against whatever budget baseline
-        // getStandings/bids.ts will later subtract it back out of
-        // (faabBudgetOverride ?? season.faabBudget ?? 0) makes the two
-        // operations exact inverses regardless of that budget's actual
-        // value - this doesn't need Yahoo's real configured budget at all,
-        // just internal consistency with the read side. See YAHOO.md.
-        const faabSpent =
-          remainingBalance === undefined
-            ? 0
-            : (team.faabBudgetOverride ?? season.faabBudget ?? 0) - remainingBalance;
-
-        const standings = standingsByTeamKey.get(team.yahooTeamKey);
-        await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
-          seasonId: args.seasonId,
-          teamId: team._id as Id<"seasonTeams">,
-          fpids,
-          faabSpent,
-          ...(standings?.name ? { name: standings.name } : {}),
-          ...(standings?.logoUrl ? { logoUrl: standings.logoUrl } : {}),
-        });
-        syncedTeams += 1;
-      }
-    });
-
-    // Fills in this league's rest-of-season board now if it doesn't have
-    // one yet (a just-connected league), rather than at the next daily
-    // cron - see rosVor.ts's ensureSeasonRosVor.
-    await ctx.scheduler.runAfter(0, internal.rosVor.ensureSeasonRosVor, { seasonId: args.seasonId });
-
-    return { syncedTeams };
+    return await runYahooRosterSync(ctx, season, league);
   },
 });
+
+// syncYahooLeagueRoster's work, minus the owner check - infiniyoffs runs it for a league
+// member's visit (see convex/infiniyoffs/refresh.ts).
+export async function runYahooRosterSync(
+  ctx: ActionCtx,
+  season: Doc<"seasons">,
+  league: Doc<"leagues">,
+): Promise<{ syncedTeams: number }> {
+  if (!season.yahooLeagueKey) {
+    throw new Error("This league isn't linked to a Yahoo league yet.");
+  }
+  const yahooLeagueKey = season.yahooLeagueKey;
+
+  const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
+    internal.seasonTeams.listSeasonTeamsInternal,
+    { seasonId: season._id },
+  );
+
+  let syncedTeams = 0;
+  await withYahooToken(ctx, league.ownerId, async (accessToken) => {
+    const [standingsByTeamKey, settings] = await Promise.all([
+      fetchYahooStandingsForLeague(accessToken, yahooLeagueKey),
+      fetchYahooLeagueSettings(accessToken, yahooLeagueKey),
+    ]);
+
+    // Re-read every sync, not just at connect time - same self-healing
+    // rationale as convex/sleeper/league.ts's syncLeagueRoster. Doesn't
+    // pass faabBudget (see mapYahooWaiverType's comment) - leaves
+    // whatever the commissioner has set in Season Settings untouched.
+    const waiverType = mapYahooWaiverType(settings.raw);
+
+    // Falls back to zeroed standings (rather than leaving them unset)
+    // for any team fetchYahooStandingsForLeague didn't find a match
+    // for, so a Yahoo-linked season's standings read as "no games yet"
+    // instead of undefined/missing.
+    await ctx.runMutation(internal.rosterSync.writeSeasonStandings, {
+      seasonId: season._id,
+      teams: teams.flatMap((team) => {
+        if (!team.yahooTeamKey) return [];
+        const standings = standingsByTeamKey.get(team.yahooTeamKey);
+        return [
+          {
+            teamId: team._id,
+            wins: standings?.wins ?? 0,
+            losses: standings?.losses ?? 0,
+            ties: standings?.ties ?? 0,
+            pointsFor: standings?.pointsFor ?? 0,
+            pointsAgainst: standings?.pointsAgainst ?? 0,
+          },
+        ];
+      }),
+    });
+    await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
+      seasonId: season._id,
+      waiverType,
+    });
+
+    // Every team's roster in one request rather than two per team (a
+    // 12-team league was 26 back-to-back requests, the kind of burst
+    // Yahoo throttles - see client.ts's fetchYahooApi). Unconfirmed
+    // shape, so any team it doesn't cover falls back to its own requests,
+    // as before.
+    const leagueRosters = await fetchYahooLeagueRosters(accessToken, yahooLeagueKey).catch(
+      (error: unknown) => {
+        console.error("syncYahooLeagueRoster: league rosters fetch failed", error);
+        return new Map<string, YahooTeamRoster>();
+      },
+    );
+
+    for (const team of teams) {
+      if (!team.yahooTeamKey) continue;
+
+      let teamRoster = leagueRosters.get(team.yahooTeamKey);
+      if (!teamRoster) {
+        const rosterJson = await fetchYahooApi<unknown>(
+          accessToken,
+          `/team/${team.yahooTeamKey}/roster`,
+        );
+        const rosterTeamNode = findNodesByKey(rosterJson, "team")[0] ?? rosterJson;
+        teamRoster = {
+          players: extractRosterPlayers(findNodesByKey(rosterJson, "player")),
+          faabBalance: readFaabBalance(mergeYahooFields(rosterTeamNode)),
+        };
+      }
+      const resolved: Array<{ fpid: number; position: string }> = await ctx.runQuery(
+        internal.infinidraft.yahoo.league.resolveFpidsByName,
+        { players: teamRoster.players },
+      );
+      const fpids = resolved.map((r) => r.fpid);
+      await ctx.runMutation(internal.players.recordPlatformPositions, {
+        platform: "yahoo",
+        rows: yahooPositionRows(resolved),
+      });
+
+      // FAAB field name not confirmed live - see YAHOO.md. Best-effort:
+      // a missing/unreachable field just leaves faabSpent at 0 rather
+      // than failing the whole sync. Only a FAAB league asks the team
+      // resource itself when the roster response didn't carry it.
+      let remainingBalance = teamRoster.faabBalance;
+      if (remainingBalance === undefined && waiverType === "faab") {
+        try {
+          const teamJson = await fetchYahooApi<unknown>(
+            accessToken,
+            `/team/${team.yahooTeamKey}`,
+          );
+          const teamNode = findNodesByKey(teamJson, "team")[0] ?? teamJson;
+          remainingBalance = readFaabBalance(mergeYahooFields(teamNode));
+        } catch {
+          // Leave faabSpent at 0.
+        }
+      }
+      // faab_balance is the team's current REMAINING FAAB dollars, not
+      // amount spent (confirmed live: every team read "-100 FAAB left"
+      // when this stored the raw balance straight into faabSpent).
+      // Converting remaining -> spent against whatever budget baseline
+      // getStandings/bids.ts will later subtract it back out of
+      // (faabBudgetOverride ?? season.faabBudget ?? 0) makes the two
+      // operations exact inverses regardless of that budget's actual
+      // value - this doesn't need Yahoo's real configured budget at all,
+      // just internal consistency with the read side. See YAHOO.md.
+      const faabSpent =
+        remainingBalance === undefined
+          ? 0
+          : (team.faabBudgetOverride ?? season.faabBudget ?? 0) - remainingBalance;
+
+      const standings = standingsByTeamKey.get(team.yahooTeamKey);
+      await ctx.runMutation(internal.rosterSync.replaceRosterForTeam, {
+        seasonId: season._id,
+        teamId: team._id as Id<"seasonTeams">,
+        fpids,
+        faabSpent,
+        ...(standings?.name ? { name: standings.name } : {}),
+        ...(standings?.logoUrl ? { logoUrl: standings.logoUrl } : {}),
+      });
+      syncedTeams += 1;
+    }
+  });
+
+  // Fills in this league's rest-of-season board now if it doesn't have
+  // one yet (a just-connected league), rather than at the next daily
+  // cron - see rosVor.ts's ensureSeasonRosVor.
+  await ctx.scheduler.runAfter(0, internal.rosVor.ensureSeasonRosVor, { seasonId: season._id });
+
+  return { syncedTeams };
+}
 
 interface YahooLeagueSettingsSummary {
   name: string;

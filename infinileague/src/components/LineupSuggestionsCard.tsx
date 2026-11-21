@@ -1,7 +1,7 @@
 import { Card, Group, Stack, Text } from "@mantine/core";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { buildLineupSuggestions } from "../lib/lineupSuggestions";
-import type { TeamRosterRow } from "../types/season";
+import { buildLineupSuggestions } from "@shared/league/lib/lineupSuggestions";
+import type { TeamRosterRow } from "@shared/league/types/season";
 
 interface LineupSuggestionsCardProps {
   rows: TeamRosterRow[];

@@ -1,0 +1,162 @@
+/* A group-stage group: its table, then each week's games. Sits inside a
+   glass .card. */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.table {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 6px;
+}
+
+.position {
+  min-width: 14px;
+  text-align: center;
+  font-family: var(--font-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.team {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mine .name {
+  color: color-mix(in srgb, #8b4513 25%, #fff);
+}
+
+.record,
+.points {
+  font-family: var(--font-numeric);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.points {
+  min-width: 64px;
+  color: rgba(248, 250, 252, 0.7);
+}
+
+/* The group's advancing spot(s). */
+.advancing .position {
+  color: #facc15;
+}
+
+.open {
+  grid-column: 2 / -1;
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(248, 250, 252, 0.45);
+}
+
+.divider {
+  height: 1px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.games {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.game {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  font-size: 13px;
+}
+
+.week {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.5);
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sideRight {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.sideName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.score {
+  font-family: var(--font-numeric);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.bonusLine {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+/* W-L / points headers over the last two table columns. */
+.columnLabel {
+  text-align: right;
+}
+
+.columnLabel:first-child {
+  grid-column: 4;
+}
+
+.won {
+  font-weight: 750;
+}
+
+.lost {
+  opacity: 0.45;
+}
+
+.pending {
+  grid-column: 2 / -1;
+  font-style: italic;
+  color: rgba(248, 250, 252, 0.45);
+}

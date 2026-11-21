@@ -1598,6 +1598,7 @@ export default defineSchema({
         v.literal("infinidraft"),
         v.literal("infinileague"),
         v.literal("infinifaab"),
+        v.literal("infiniyoffs"),
       ),
     ),
     createdAt: v.number(),
@@ -2093,4 +2094,48 @@ export default defineSchema({
     fetchedAt: v.number(),
     values: v.array(v.object({ fpid: v.number(), value: v.number() })),
   }).index("by_key", ["key"]),
+
+  // infiniyoffs' per-season settings. format is a PlayoffFormat (convex/lib/
+  // playoffRules/format.ts) - stored as v.any() since it's a deep tagged
+  // union, checked by convex/infiniyoffs/rules.ts's setFormat instead.
+  // Absent format = the platform's own playoffs. refreshStartedAt throttles
+  // member-triggered roster syncs (convex/infiniyoffs/refresh.ts).
+  playoffSettings: defineTable({
+    seasonId: v.id("seasons"),
+    format: v.optional(v.any()),
+    formatUpdatedAt: v.optional(v.number()),
+    refreshStartedAt: v.optional(v.number()),
+  }).index("by_season", ["seasonId"]),
+
+  // A group stage's matchup draft (convex/infiniyoffs/draft.ts): draft
+  // slots, then (opponent, week) picks, then rematch picks - team ids are
+  // seasonTeams ids. One row per (season, stage), created once the regular
+  // season is final.
+  playoffDrafts: defineTable({
+    seasonId: v.id("seasons"),
+    stageId: v.string(),
+    // Fixed when the regular season goes final: the drafter tier's teams in
+    // seed order, and every other entrant (the draft pool).
+    drafterIds: v.array(v.id("seasonTeams")),
+    poolIds: v.array(v.id("seasonTeams")),
+    slots: v.array(v.object({ drafterId: v.id("seasonTeams"), slot: v.number() })),
+    picks: v.array(
+      v.object({
+        drafterId: v.id("seasonTeams"),
+        opponentId: v.id("seasonTeams"),
+        week: v.number(),
+        pickedByUserId: v.id("users"),
+        pickedAt: v.number(),
+      }),
+    ),
+    rematches: v.array(
+      v.object({
+        drafterId: v.id("seasonTeams"),
+        opponentId: v.id("seasonTeams"),
+        week: v.number(),
+        pickedByUserId: v.id("users"),
+        pickedAt: v.number(),
+      }),
+    ),
+  }).index("by_season_stage", ["seasonId", "stageId"]),
 });

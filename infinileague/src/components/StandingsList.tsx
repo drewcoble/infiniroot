@@ -1,6 +1,6 @@
 import { Stack } from "@mantine/core";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
-import type { StandingsRow, TeamPositionRanks } from "../types/season";
+import type { StandingsRow, TeamPositionRanks } from "@shared/league/types/season";
 
 interface StandingsListProps {
   leagueId: string;

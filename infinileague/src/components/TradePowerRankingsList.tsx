@@ -1,7 +1,7 @@
 import { Stack } from "@mantine/core";
 import { RankChangeBadge } from "./PowerRankingsList";
 import { GlassTeamCard } from "./cards/GlassTeamCard";
-import type { PowerRankingRow } from "../types/season";
+import type { PowerRankingRow } from "@shared/league/types/season";
 
 interface TradePowerRankingsListProps {
   leagueId: string;

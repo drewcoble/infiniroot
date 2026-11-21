@@ -7,7 +7,7 @@ import { ChevronUp } from "lucide-react";
 import { RankChangeBadge } from "./PowerRankingsList";
 import { TradePowerRankingsList } from "./TradePowerRankingsList";
 import { BOTTOM_NAV_BOTTOM_OFFSET, BOTTOM_NAV_HEIGHT } from "@shared/constants";
-import type { PowerRankingRow } from "../types/season";
+import type { PowerRankingRow } from "@shared/league/types/season";
 
 // Same overlap-BottomNav-by-its-own-corner-radius trick infinidraft's
 // DraftRoom/components/MobileNomination.tsx uses for its peek card - the

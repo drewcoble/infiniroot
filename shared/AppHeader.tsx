@@ -23,7 +23,7 @@ import { AppLogo } from "./AppLogo";
 import { glassClasses, glassMenuProps } from "./glassClasses";
 
 interface AppHeaderProps {
-  wordmark: "draft" | "faab" | "league";
+  wordmark: "draft" | "faab" | "league" | "yoffs";
   // Hides just the league picker + modeSwitchSlot, keeping the overflow
   // menu - for a dashboard that has a
   // signed-in user but no "current league" to show either of those for.

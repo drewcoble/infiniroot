@@ -1,15 +1,11 @@
 import { Fragment } from "react";
 import { Box, Group } from "@mantine/core";
-import type { RosVorRow, TeamRosterRow, TradeValueRow } from "../types/season";
-import { alignRosterRows } from "../lib/rosterAlignment";
-import { slotLabel } from "../lib/matchupCardData";
-import { ROSTER_SECTION_LABEL, rosterSection } from "./cards/cardShared";
-import {
-  EmptyGlassCard,
-  GlassSectionDivider,
-  GlassSkeletonCard,
-  GlassSlotChip,
-} from "./cards/GlassMatchupCard";
+import type { RosVorRow, TeamRosterRow, TradeValueRow } from "@shared/league/types/season";
+import { alignRosterRows } from "@shared/league/lib/rosterAlignment";
+import { slotLabel } from "@shared/league/lib/matchupCardData";
+import { ROSTER_SECTION_LABEL, rosterSection } from "@shared/league/components/cards/cardShared";
+import { EmptyGlassCard, GlassSkeletonCard, GlassSlotChip } from "@shared/league/components/cards/GlassMatchupCard";
+import { GlassSectionDivider } from "@shared/glass/GlassSectionDivider";
 import { GlassTradeCard, type GlassTradeCardData, type TradeMetric } from "./cards/GlassTradeCard";
 
 interface TradeRosterMatchupProps {

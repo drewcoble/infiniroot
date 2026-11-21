@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, type QueryCtx } from "../../_generated/server";
-import type { Doc } from "../../_generated/dataModel";
+import type { Doc, Id } from "../../_generated/dataModel";
 import { requireSeasonOwner } from "../../lib/access";
 import { normalizeNflTeam } from "../../lib/liveGames";
 import { BYE_WEEKS_2026 } from "../../nflSchedule";
@@ -136,25 +136,35 @@ export const getGameLogSeasons = query({
   args: { seasonId: v.id("seasons"), fpid: v.number() },
   handler: async (ctx, args): Promise<Array<{ season: string; gamesPlayed: number; totalPoints: number }>> => {
     const { season } = await requireSeasonOwner(ctx, args.seasonId);
-    const config = scoringConfigFromSeason(season);
-    const [rows, nflState] = await Promise.all([
-      ctx.db
-        .query("playerSeasonStats")
-        .withIndex("by_fpid_season_scoring_teScoring_sixPointPassTds", (q) => q.eq("fpid", args.fpid))
-        .collect(),
-      ctx.db.query("nflState").first(),
-    ]);
-    const bySeason = new Map<string, { season: string; gamesPlayed: number; totalPoints: number }>();
-    for (const row of rows) {
-      if (row.scoring !== config.scoring || row.teScoring !== config.teScoring || row.sixPointPassTds !== config.sixPointPassTds) continue;
-      bySeason.set(row.season, { season: row.season, gamesPlayed: row.gamesPlayed, totalPoints: row.totalPoints });
-    }
-    if (nflState && !bySeason.has(nflState.season)) {
-      bySeason.set(nflState.season, { season: nflState.season, gamesPlayed: 0, totalPoints: 0 });
-    }
-    return [...bySeason.values()].sort((a, b) => Number(b.season) - Number(a.season));
+    return await gameLogSeasonsFor(ctx, season, args);
   },
 });
+
+// getGameLogSeasons's read, minus the owner check - infiniyoffs serves it to league
+// members (convex/infiniyoffs/reads.ts).
+export async function gameLogSeasonsFor(
+  ctx: QueryCtx,
+  season: Doc<"seasons">,
+  args: { seasonId: Id<"seasons">; fpid: number },
+): Promise<Array<{ season: string; gamesPlayed: number; totalPoints: number }>> {
+  const config = scoringConfigFromSeason(season);
+  const [rows, nflState] = await Promise.all([
+    ctx.db
+      .query("playerSeasonStats")
+      .withIndex("by_fpid_season_scoring_teScoring_sixPointPassTds", (q) => q.eq("fpid", args.fpid))
+      .collect(),
+    ctx.db.query("nflState").first(),
+  ]);
+  const bySeason = new Map<string, { season: string; gamesPlayed: number; totalPoints: number }>();
+  for (const row of rows) {
+    if (row.scoring !== config.scoring || row.teScoring !== config.teScoring || row.sixPointPassTds !== config.sixPointPassTds) continue;
+    bySeason.set(row.season, { season: row.season, gamesPlayed: row.gamesPlayed, totalPoints: row.totalPoints });
+  }
+  if (nflState && !bySeason.has(nflState.season)) {
+    bySeason.set(nflState.season, { season: nflState.season, gamesPlayed: 0, totalPoints: 0 });
+  }
+  return [...bySeason.values()].sort((a, b) => Number(b.season) - Number(a.season));
+}
 
 // One week of a player's season, before it's shaped for a particular read
 // (the game log's columns, the usage score) - see loadPlayerSeason.
@@ -285,32 +295,42 @@ export const getGameLog = query({
     args,
   ): Promise<{ columns: Array<{ key: string; group: string; label: string; decimals: number }>; weeks: GameLogWeek[] } | null> => {
     const { season } = await requireSeasonOwner(ctx, args.seasonId);
-    const config = scoringConfigFromSeason(season);
-    const loaded = await loadPlayerSeason(ctx, { fpid: args.fpid, year: args.year, config });
-    if (!loaded) return null;
-    const { position } = loaded;
-
-    const playedStats = loaded.weeks.flatMap((week) => (week.row ? [week.row.stats] : []));
-    const columns = LAYOUT[position]
-      .filter((group) => !group.optional || group.columns.some((column) => playedStats.some((stats) => column.value(stats) !== 0)))
-      .flatMap((group) => group.columns);
-
-    const weeks: GameLogWeek[] = loaded.weeks.map((week) =>
-      week.row
-        ? {
-            week: week.week,
-            kind: week.kind,
-            injury: week.injury,
-            points: pointsForScoring(week.row, config.scoring) + bonusPoints({ position, stats: week.row.stats }, config),
-            positionRank: week.positionRank,
-            values: columns.map((column) => column.value(week.row!.stats)),
-          }
-        : { week: week.week, kind: week.kind, injury: week.injury, points: null, positionRank: null, values: columns.map(() => null) },
-    );
-
-    return {
-      columns: columns.map(({ key, group, label, decimals }) => ({ key, group, label, decimals })),
-      weeks,
-    };
+    return await gameLogFor(ctx, season, args);
   },
 });
+
+// getGameLog's read, minus the owner check - infiniyoffs serves it to league
+// members (convex/infiniyoffs/reads.ts).
+export async function gameLogFor(
+  ctx: QueryCtx,
+  season: Doc<"seasons">,
+  args: { seasonId: Id<"seasons">; fpid: number; year: string },
+): Promise<{ columns: Array<{ key: string; group: string; label: string; decimals: number }>; weeks: GameLogWeek[] } | null> {
+  const config = scoringConfigFromSeason(season);
+  const loaded = await loadPlayerSeason(ctx, { fpid: args.fpid, year: args.year, config });
+  if (!loaded) return null;
+  const { position } = loaded;
+
+  const playedStats = loaded.weeks.flatMap((week) => (week.row ? [week.row.stats] : []));
+  const columns = LAYOUT[position]
+    .filter((group) => !group.optional || group.columns.some((column) => playedStats.some((stats) => column.value(stats) !== 0)))
+    .flatMap((group) => group.columns);
+
+  const weeks: GameLogWeek[] = loaded.weeks.map((week) =>
+    week.row
+      ? {
+          week: week.week,
+          kind: week.kind,
+          injury: week.injury,
+          points: pointsForScoring(week.row, config.scoring) + bonusPoints({ position, stats: week.row.stats }, config),
+          positionRank: week.positionRank,
+          values: columns.map((column) => column.value(week.row!.stats)),
+        }
+      : { week: week.week, kind: week.kind, injury: week.injury, points: null, positionRank: null, values: columns.map(() => null) },
+  );
+
+  return {
+    columns: columns.map(({ key, group, label, decimals }) => ({ key, group, label, decimals })),
+    weeks,
+  };
+}

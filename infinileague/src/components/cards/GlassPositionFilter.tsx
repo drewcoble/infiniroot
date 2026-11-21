@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
-import classes from "./GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 // Players board position filter: a row of glass chips that sticks just under
 // the header while the list scrolls (no bar behind it - each chip carries

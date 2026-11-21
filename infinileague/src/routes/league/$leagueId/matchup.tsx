@@ -6,18 +6,18 @@ import { Alert, Group, Select, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { useGuillotineOpponent } from "../../../hooks/useGuillotineOpponent";
-import { useTeamRoster } from "../../../hooks/useTeamRoster";
-import { WeekPicker } from "../../../components/WeekPicker";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import { useTeamRoster } from "@shared/league/hooks/useTeamRoster";
+import { WeekPicker } from "@shared/league/components/WeekPicker";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import { LeagueMatchupsList } from "../../../components/LeagueMatchupsList";
-import { LiveOnlyToggle } from "../../../components/cards/LiveOnlyToggle";
+import { LiveOnlyToggle } from "@shared/league/components/cards/LiveOnlyToggle";
 import {
   MatchupRosterMatchup,
   MatchupRosterSkeleton,
-} from "../../../components/MatchupRosterMatchup";
-import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
-import { toMatchupCardData } from "../../../lib/matchupCardData";
-import { useMatchupGrades } from "../../../lib/matchupDifficulty";
+} from "@shared/league/components/MatchupRosterMatchup";
+import { seasonPositionRanks } from "@shared/league/lib/seasonPositionRanks";
+import { toMatchupCardData } from "@shared/league/lib/matchupCardData";
+import { useMatchupGrades } from "@shared/league/lib/matchupDifficulty";
 import {
   isStarter,
   LIVE_REFRESH_MS,
@@ -25,14 +25,14 @@ import {
   matchupResult,
   sumStarterPoints,
   winProbability,
-} from "../../../lib/matchupSummary";
+} from "@shared/league/lib/matchupSummary";
 import {
   GlassMatchupHeader,
   type MatchupHeaderTeam,
-} from "../../../components/cards/GlassMatchupHeader";
-import { meterScaleMax } from "../../../components/cards/meterScale";
-import { buildShortNames } from "../../../lib/shortPlayerName";
-import { optimalProjectedPoints } from "../../../lib/lineupSuggestions";
+} from "@shared/league/components/cards/GlassMatchupHeader";
+import { meterScaleMax } from "@shared/league/components/cards/meterScale";
+import { buildShortNames } from "@shared/league/lib/shortPlayerName";
+import { optimalProjectedPoints } from "@shared/league/lib/lineupSuggestions";
 import {
   isAnyGameLive,
   isGameFinal,
@@ -40,14 +40,14 @@ import {
   remainingFraction,
   useNow,
   type WeekGame,
-} from "../../../lib/liveGames";
+} from "@shared/league/lib/liveGames";
 import type {
   LinkedSeason,
   RosVorRow,
   StandingsRow,
   TeamRosterRow,
-} from "../../../types/season";
-import { ErrorMessage } from "../../../components/ErrorMessage";
+} from "@shared/league/types/season";
+import { ErrorMessage } from "@shared/league/components/ErrorMessage";
 
 // Regular-season weeks the week picker steps through.
 const REGULAR_SEASON_WEEKS = 18;

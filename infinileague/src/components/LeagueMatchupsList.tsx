@@ -4,11 +4,11 @@ import type { GenericId as Id } from "convex/values";
 import { Alert, Stack, Text } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
-import { GlassMatchupHeader } from "./cards/GlassMatchupHeader";
-import { MatchupScoreCard } from "./MatchupScoreCard";
-import type { WeekGame } from "../lib/liveGames";
-import type { LeagueWeekMatchups, StandingsRow } from "../types/season";
-import { ErrorMessage } from "./ErrorMessage";
+import { GlassMatchupHeader } from "@shared/league/components/cards/GlassMatchupHeader";
+import { MatchupScoreCard } from "@shared/league/components/MatchupScoreCard";
+import type { WeekGame } from "@shared/league/lib/liveGames";
+import type { LeagueWeekMatchups, StandingsRow } from "@shared/league/types/season";
+import { ErrorMessage } from "@shared/league/components/ErrorMessage";
 
 // Every matchup in the league for one week - the Matchup tab's League view.
 // One score card per pairing (the same MatchupScoreCard as the cross-league

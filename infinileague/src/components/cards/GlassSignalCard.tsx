@@ -1,12 +1,12 @@
 import { injuryColor } from "@shared/injuryColor";
 import { positionColorOrDefault, type Position } from "@shared/positionColors";
 import { formatTradeValue } from "../../lib/tradeValue";
-import { pillStyle } from "./cardShared";
-import { useExpandableCard } from "./useExpandableCard";
-import { PlayerHeadshot } from "./PlayerHeadshot";
-import { PlayerPopover } from "../player/PlayerPopover";
-import { usePlayerPopoverQueries } from "../player/usePlayerPopoverQueries";
-import classes from "./GlassMatchupCard.module.css";
+import { pillStyle } from "@shared/league/components/cards/cardShared";
+import { useExpandableCard } from "@shared/glass/useExpandableCard";
+import { PlayerHeadshot } from "@shared/league/components/cards/PlayerHeadshot";
+import { PlayerPopover } from "@shared/league/components/player/PlayerPopover";
+import { usePlayerPopoverQueries } from "@shared/league/components/player/usePlayerPopoverQueries";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 export interface GlassSignalCardData {
   fpid: number;

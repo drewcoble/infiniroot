@@ -5,19 +5,19 @@ import type { GenericId as Id } from "convex/values";
 import { Alert, Box, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
-import { useTeamRoster } from "../../../hooks/useTeamRoster";
+import { useTeamRoster } from "@shared/league/hooks/useTeamRoster";
 import { TradeRosterMatchup } from "../../../components/TradeRosterMatchup";
-import { MatchupRosterSkeleton } from "../../../components/MatchupRosterMatchup";
+import { MatchupRosterSkeleton } from "@shared/league/components/MatchupRosterMatchup";
 import { GlassTradeHeader, type TradeHeaderTeam } from "../../../components/cards/GlassTradeHeader";
-import { buildShortNames } from "../../../lib/shortPlayerName";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
+import { buildShortNames } from "@shared/league/lib/shortPlayerName";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import type { TradeMetric } from "../../../components/cards/GlassTradeCard";
 import {
   GlassTradeSuggestionCard,
   GlassTradeSuggestionSkeleton,
   type TradeSuggestion,
 } from "../../../components/cards/GlassTradeSuggestionCard";
-import classes from "../../../components/cards/GlassMatchupCard.module.css";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import {
   GlassSignalCard,
   GlassSignalSkeleton,
@@ -25,7 +25,7 @@ import {
 } from "../../../components/cards/GlassSignalCard";
 import { tradeTotals } from "../../../lib/tradeValue";
 import { useTradeValues } from "../../../components/player/tradeValues";
-import { seasonPositionRanks } from "../../../lib/seasonPositionRanks";
+import { seasonPositionRanks } from "@shared/league/lib/seasonPositionRanks";
 import { TradePowerRankingsList } from "../../../components/TradePowerRankingsList";
 import {
   TradePowerRankingsSheet,
@@ -36,8 +36,8 @@ import type {
   RosVorRow,
   StandingsRow,
   TeamRosterRow,
-} from "../../../types/season";
-import { ErrorMessage } from "../../../components/ErrorMessage";
+} from "@shared/league/types/season";
+import { ErrorMessage } from "@shared/league/components/ErrorMessage";
 
 // How many players each of the Buys / Sells strips shows.
 const SIGNAL_LIMIT = 10;

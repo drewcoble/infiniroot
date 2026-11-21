@@ -1,0 +1,128 @@
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { BOTTOM_NAV_BOTTOM_OFFSET, BOTTOM_NAV_HEIGHT } from "../constants";
+import classes from "./GlassMatchupCard.module.css";
+
+const MAX_WIDTH = 380;
+// Breathing room from the viewport edges, and what's kept clear at the
+// bottom for the mobile BottomNav's floating pill.
+const EDGE_MARGIN = 12;
+const BOTTOM_RESERVE = BOTTOM_NAV_HEIGHT + BOTTOM_NAV_BOTTOM_OFFSET + EDGE_MARGIN;
+
+// The long-press detail popover's shell, shared by every glass card's
+// detail view (PlayerPopover, GlassTeamCard's). Floats over the page
+// (portaled to body, absolutely positioned in document coordinates so it
+// scrolls with the content) starting at the base card's own top corner -
+// the base card hides underneath while this is open, so it reads as the
+// card growing in place without pushing anything else around. Grows toward
+// the middle of the screen: left-column cards anchor their left edge,
+// right-column cards their right edge. Closes on a tap outside, Escape, or
+// a width change; takes focus while open.
+export function GlassPopover({
+  anchor,
+  onClose,
+  labelledBy,
+  className,
+  children,
+}: {
+  anchor: HTMLElement;
+  onClose: () => void;
+  // id of the element naming this dialog (its title).
+  labelledBy: string;
+  // Extra class on the card, e.g. the live tint.
+  className?: string | false | undefined;
+  children: ReactNode;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Positioned directly on the DOM node (not via state) since it depends
+  // on the card's own rendered height - one measure-then-place pass before
+  // paint, no visible jump. After that it stays where it is: when its height
+  // changes (a game-log year expanding, a chart switch) it only nudges up
+  // as far as needed to keep its bottom on screen, and never past the top
+  // of the screen - so if you've scrolled down into it, it doesn't move.
+  // (Re-placing from the anchor instead would yank it back to the top of
+  // the screen once the anchor has scrolled away.)
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    const place = () => {
+      const rect = anchor.getBoundingClientRect();
+      const viewportWidth = document.documentElement.clientWidth;
+      const width = Math.min(viewportWidth - EDGE_MARGIN * 2, MAX_WIDTH);
+      const alignRight = rect.left + rect.width / 2 > viewportWidth / 2;
+      const left = Math.min(
+        Math.max(alignRight ? rect.right - width : rect.left, EDGE_MARGIN),
+        viewportWidth - EDGE_MARGIN - width,
+      );
+      card.style.width = `${width}px`;
+      const bottomLimit = window.innerHeight - BOTTOM_RESERVE;
+      const top = Math.max(
+        EDGE_MARGIN,
+        rect.top + card.offsetHeight > bottomLimit ? bottomLimit - card.offsetHeight : rect.top,
+      );
+      card.style.left = `${left + window.scrollX}px`;
+      card.style.top = `${top + window.scrollY}px`;
+      card.style.transformOrigin = `${rect.left + (alignRight ? rect.width : 0) - left}px ${rect.top - top}px`;
+    };
+    place();
+    card.dataset.placed = "true";
+    card.focus();
+
+    let lastHeight = card.offsetHeight;
+    const observer = new ResizeObserver(() => {
+      if (card.offsetHeight === lastHeight) return;
+      lastHeight = card.offsetHeight;
+      const rect = card.getBoundingClientRect();
+      const overflow = rect.bottom - (window.innerHeight - BOTTOM_RESERVE);
+      const shift = Math.min(overflow, rect.top - EDGE_MARGIN);
+      if (shift > 0) card.style.top = `${rect.top - shift + window.scrollY}px`;
+    });
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [anchor]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    // Its position was computed for the old viewport - closing is simpler
+    // and less surprising than re-anchoring mid-rotation. Width only: a
+    // mobile browser's address bar showing/hiding while you scroll also
+    // fires resize (height-only), and that shouldn't close the card.
+    let width = document.documentElement.clientWidth;
+    const onResize = () => {
+      const next = document.documentElement.clientWidth;
+      if (next === width) return;
+      width = next;
+      onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <>
+      {/* onClick rather than onPointerDown: a pointerdown close would let
+          the rest of that tap land on whatever's underneath (a tab link,
+          say). The release of the long-press that opened this doesn't
+          click here either - its pointerdown was on the base card. */}
+      <div className={classes.scrim} onClick={onClose} aria-hidden />
+      <div
+        ref={cardRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        tabIndex={-1}
+        className={[classes.card, classes.expanded, className].filter(Boolean).join(" ")}
+      >
+        {children}
+      </div>
+    </>,
+    document.body,
+  );
+}

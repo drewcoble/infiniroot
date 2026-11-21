@@ -8,15 +8,15 @@ import { api } from "@infinidata/api";
 import { GlassFreeAgentRow } from "../../../components/cards/GlassFreeAgentRow";
 import { GlassPositionFilter } from "../../../components/cards/GlassPositionFilter";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
-import { GlassSegmented } from "../../../components/cards/GlassSegmented";
-import classes from "../../../components/cards/GlassMatchupCard.module.css";
+import { GlassSegmented } from "@shared/glass/GlassSegmented";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 import { compareSortValues } from "../../../lib/tableSort";
 import type {
   FaabSuggestionRow,
   FaabSuggestionsResult,
   RosVorRow,
   StandingsRow,
-} from "../../../types/season";
+} from "@shared/league/types/season";
 
 export const Route = createFileRoute("/league/$leagueId/freeAgents")({
   component: FreeAgentsPage,

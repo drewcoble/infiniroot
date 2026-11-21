@@ -1,7 +1,7 @@
 import { Group, Stack, Text } from "@mantine/core";
 import { Sparkles } from "lucide-react";
 import type { Doc } from "@infinidata/dataModel";
-import { STATUS } from "./charts/chartTheme";
+import { STATUS } from "@shared/league/components/charts/chartTheme";
 import { SegmentGauge } from "./charts/SegmentGauge";
 import { formatRelativeTime } from "../lib/relativeTime";
 

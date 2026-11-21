@@ -1,0 +1,376 @@
+import { useId, useMemo } from "react";
+import { Minus, TrendingDown, TrendingUp, X } from "lucide-react";
+import { injuryColor } from "@shared/injuryColor";
+import { positionColorOrDefault, type Position } from "@shared/positionColors";
+import {
+  formatPoints,
+  formatProj,
+  paceFor,
+  pillStyle,
+  rankPillStyle,
+  type GlassMatchupCardData,
+  type Pace,
+} from "../cards/cardShared";
+import { GameLineText } from "../cards/GameLineText";
+import { matchupSummary } from "../../lib/matchupDifficulty";
+import { GameStatusGlyph } from "../cards/GameStatusGlyph";
+import { GlassPopover } from "@shared/glass/GlassPopover";
+import { meterScaleMax } from "../cards/meterScale";
+import { PlayerGameLog } from "../cards/PlayerGameLog";
+import { PlayerHeadshot } from "../cards/PlayerHeadshot";
+import { PointsMeter } from "../cards/PointsMeter";
+import { StatGroups, type StatGroup } from "@shared/glass/StatGroups";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
+import { isAnyGameLive, useNow } from "../../lib/liveGames";
+import { toMatchupCardData } from "../../lib/matchupCardData";
+import { LIVE_REFRESH_MS } from "../../lib/matchupSummary";
+import { seasonPositionRanks } from "../../lib/seasonPositionRanks";
+import type { TeamRosterRow } from "../../types/season";
+import { PlayerTrends } from "./PlayerTrends";
+import { usePlayerPopoverQueries } from "./usePlayerPopoverQueries";
+
+// What only the page knows about the player - everything else the popover
+// looks up itself by fpid, so it reads the same on every page.
+export interface PlayerPopoverContext {
+  // He's selected in the Trade analyzer.
+  inTrade?: boolean | undefined;
+  // The page's own card for the week it's showing (Matchup / Team, which
+  // can show past and future weeks) - otherwise the popover builds this
+  // week's from the league's live data.
+  game?: GlassMatchupCardData | undefined;
+  // The page's shared meter scale, so the popover's meter matches the
+  // cards around it.
+  scaleMax?: number | undefined;
+}
+
+// The detail card's own label for the state its corner icon stands for.
+const STATUS_LABEL = { live: "Live", final: "Final", pre: "Upcoming", bye: "Bye" } as const;
+const PACE_ICON = { ahead: TrendingUp, behind: TrendingDown, even: Minus } as const;
+
+function paceSentence(data: GlassMatchupCardData, pace: Pace): string {
+  const target = data.gameState === "live" ? data.liveProjectedPoints : data.actualPoints;
+  const delta = (target ?? 0) - (data.projectedPoints ?? 0);
+  const signed = `${delta >= 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}`;
+  if (data.gameState === "live") {
+    if (pace === "even") return `On pace to match projection (${signed})`;
+    return `On pace ${signed} ${pace === "ahead" ? "over" : "under"} projection`;
+  }
+  if (pace === "even") return `Finished near projection (${signed})`;
+  return `Finished ${signed} ${pace === "ahead" ? "over" : "under"} projection`;
+}
+
+const positionRankLabel = (position: string, rank: number | undefined | null) =>
+  rank ? `${position}${rank}` : "—";
+
+// THE player popover - one detail card for a player, whichever page opened
+// it (Matchup, Team, Players, Free Agents, Trade), looked up here by fpid:
+// who he is, his rank and bye, who rosters him, this week's game (score,
+// meter, pace), season / rest-of-season numbers, a free agent's bid, his
+// weekly points and usage (PlayerTrends), and the game log. Pages pass
+// only their own context (PlayerPopoverContext). The popover shell,
+// placement, and dismissal are GlassPopover's. Without an fpid (the Cards
+// sandbox's sample players) it shows only what `context.game` carries.
+export function PlayerPopover({
+  fpid,
+  anchor,
+  onClose,
+  context = {},
+}: {
+  fpid: number | undefined;
+  anchor: HTMLElement;
+  onClose: () => void;
+  context?: PlayerPopoverContext;
+}) {
+  const titleId = useId();
+  const {
+    week,
+    nflState,
+    board,
+    row,
+    selfTeam,
+    weekPoints,
+    weekRanks,
+    weekGames,
+    matchupGrades,
+    rookieFpids,
+    byeWeeks,
+    faab,
+    ready,
+  } = usePlayerPopoverQueries(fpid, true);
+  const seasonRank = useMemo(() => seasonPositionRanks(board), [board]).get(fpid ?? -1);
+  const bid = faab?.suggestions.find((entry) => entry.fpid === fpid);
+
+  // This week's game: the page's card when it has one, otherwise built
+  // from the live slate, his projection, and points so far.
+  const now = useNow(isAnyGameLive(weekGames, Date.now()) ? LIVE_REFRESH_MS / 4 : 60 * 1000);
+  const actual = weekPoints?.find((entry) => entry.fpid === fpid)?.points;
+  const weekRank = weekRanks?.find((entry) => entry.fpid === fpid)?.rank;
+  // The current week's game, always - the points chart's latest bar.
+  const currentGame: GlassMatchupCardData | undefined =
+    row && weekGames
+      ? toMatchupCardData(
+          {
+            fpid: row.fpid,
+            name: row.name,
+            position: row.position,
+            team: row.team,
+            projectedPoints: row.weekPpg,
+            ...(actual !== undefined ? { actualPoints: actual } : {}),
+            ...(row.injury ? { injury: row.injury } : {}),
+          } satisfies TeamRosterRow,
+          new Map(weekGames.map((entry) => [entry.team, entry])),
+          now,
+          row,
+          weekRank,
+          seasonRank,
+          matchupGrades,
+        )
+      : undefined;
+  const game = context.game ?? currentGame;
+
+  const name = row?.name ?? game?.name ?? "";
+  const position: Position = row?.position ?? game?.position ?? "QB";
+  const team = row?.team ?? game?.team ?? null;
+  const injury = row?.injury ?? game?.injury;
+  const isRookie = (fpid !== undefined && rookieFpids?.includes(fpid)) || game?.isRookie;
+  const byeWeek = (team ? byeWeeks?.[team] : undefined) ?? game?.byeWeek;
+  const rosRank = row?.positionRank ?? game?.positionRank;
+  const owner = row?.rosteredByTeamName;
+  const ownerText =
+    row === undefined
+      ? null
+      : owner === null
+        ? "Free agent"
+        : owner === selfTeam?.name
+          ? "Your team"
+          : owner;
+
+  const isLive = game?.gameState === "live";
+  const isPre = game?.gameState === "pre";
+  const showGame = game !== undefined && game.gameState !== "bye";
+  const pace = game ? paceFor(game) : undefined;
+  const PaceIcon = pace ? PACE_ICON[pace] : null;
+  const scaleMax = context.scaleMax ?? (game ? meterScaleMax([game]) : 25);
+
+  const groups: StatGroup[] = [
+    {
+      columns: ["Season", "ROS"],
+      rows: [
+        {
+          label: "PPG",
+          values: [
+            formatProj(row?.actualPpg ?? game?.seasonPpg),
+            formatProj(row?.rosPpg ?? game?.rosPpg),
+          ],
+        },
+        {
+          label: "Pos rank",
+          values: [
+            positionRankLabel(position, seasonRank ?? game?.seasonPositionRank),
+            positionRankLabel(position, rosRank),
+          ],
+        },
+        ...(row
+          ? [
+              {
+                label: "Overall",
+                values: [
+                  row.actualRank > 0 ? `#${row.actualRank}` : "—",
+                  row.rosRank > 0 ? `#${row.rosRank}` : "—",
+                ],
+              },
+            ]
+          : []),
+      ],
+    },
+    ...(bid
+      ? [
+          {
+            label: "Bidding",
+            items: [
+              { label: "Bid", value: `$${bid.marketValue}` },
+              { label: "Teams in need", value: String(bid.demandCount) },
+            ],
+          },
+        ]
+      : []),
+  ];
+
+  // Nothing until the basics are in - the card the popover opens from
+  // starts these loading during its long-press, so this is normally
+  // instant; drawing early would show an empty card that then fills in
+  // and grows.
+  if (!ready) return null;
+
+  return (
+    <GlassPopover
+      anchor={anchor}
+      onClose={onClose}
+      labelledBy={titleId}
+      className={isLive && classes.live}
+    >
+      <div className={classes.expandedHeader}>
+        <PlayerHeadshot fpid={fpid} position={position} team={team} />
+        <div style={{ minWidth: 0 }}>
+          <div className={classes.teamCardPopoverTitle}>
+            <span id={titleId} className={classes.expandedName}>
+              {name}
+            </span>
+          </div>
+          <div className={classes.gameLine}>
+            {game ? (
+              <GameLineText data={game} prefix={team ?? ""} />
+            ) : (
+              <span className={classes.gameLineText}>{team ?? "FA"}</span>
+            )}
+          </div>
+        </div>
+        <button type="button" className={classes.closeButton} onClick={onClose} aria-label="Close">
+          <X size={16} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      <div className={classes.pills}>
+        <span className={classes.pill} style={pillStyle(positionColorOrDefault(position))}>
+          {position}
+          {rosRank ? rosRank : ""}
+        </span>
+        {byeWeek !== undefined && (
+          <span className={classes.pill} style={rankPillStyle(false)}>
+            Bye {byeWeek}
+          </span>
+        )}
+        {injury && (
+          <span className={classes.pill} style={pillStyle(injuryColor(injury.status))}>
+            {injury.status}
+          </span>
+        )}
+        {isRookie && (
+          <span className={classes.pill} style={pillStyle("grape")}>
+            Rookie
+          </span>
+        )}
+        {context.inTrade && <span className={classes.statusLabel}>In trade</span>}
+        {game && game.gameState !== "bye" && (
+          <span className={classes.statusLabel}>
+            <GameStatusGlyph state={game.gameState} />
+            {STATUS_LABEL[game.gameState]}
+          </span>
+        )}
+      </div>
+
+      {ownerText && (
+        <div className={classes.gameLine}>
+          <span className={classes.gameLineText}>{ownerText}</span>
+        </div>
+      )}
+
+      {/* This week's matchup difficulty, broken down by stat category. */}
+      {game?.matchupGrade && game.gameState !== "bye" && (
+        <div className={classes.gameLine}>
+          <span className={classes.gameLineText}>
+            Matchup{" "}
+            <span className={classes[`matchup_${game.matchupGrade.tier}`]}>
+              {matchupSummary(game.matchupGrade)}
+            </span>
+          </span>
+        </div>
+      )}
+
+      {showGame && game && (
+        <div>
+          <div className={classes.statsRow}>
+            {isPre ? (
+              <>
+                <span className={`${classes.expandedPoints} ${classes.pointsPending}`}>
+                  {formatProj(game.projectedPoints)}
+                </span>
+                <span className={classes.pointsUnit}>projected</span>
+              </>
+            ) : (
+              <>
+                <span className={`${classes.expandedPoints} ${classes.playerPoints}`}>
+                  {formatPoints(game.actualPoints)}
+                </span>
+                <span className={classes.pointsUnit}>points</span>
+              </>
+            )}
+          </div>
+          <PointsMeter
+            actual={game.actualPoints ?? 0}
+            projected={game.projectedPoints}
+            liveProjected={isLive ? game.liveProjectedPoints : undefined}
+            isFinal={game.gameState === "final"}
+            scaleMax={scaleMax}
+            large
+          />
+          {/* The meter's legend - each swatch is the same mark it names, so
+              the bar reads without color alone. */}
+          <div className={classes.legend}>
+            {!isPre && (
+              <span className={classes.legendItem}>
+                <span
+                  className={[
+                    classes.swatchFill,
+                    game.gameState === "final" && pace && classes[`final_${pace}`],
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                />
+                Actual {formatPoints(game.actualPoints)}
+              </span>
+            )}
+            <span className={classes.legendItem}>
+              <span className={classes.swatchTick} />
+              Proj {formatProj(game.projectedPoints)}
+            </span>
+            {isLive && (
+              <span className={classes.legendItem}>
+                <span
+                  className={[classes.swatchGhost, pace && classes[`pace_${pace}`]]
+                    .filter(Boolean)
+                    .join(" ")}
+                />
+                Pace {formatProj(game.liveProjectedPoints)}
+              </span>
+            )}
+          </div>
+          {pace && PaceIcon && (
+            <div className={classes.paceLine}>
+              <PaceIcon size={15} strokeWidth={2.5} className={classes[`paceIcon_${pace}`]} />
+              {paceSentence(game, pace)}
+            </div>
+          )}
+        </div>
+      )}
+
+      <StatGroups groups={groups} />
+
+      {bid?.boostReason && (
+        <div className={classes.freeAgentPopoverNotes}>
+          <p>{bid.boostReason}</p>
+        </div>
+      )}
+
+      {fpid !== undefined && nflState && (
+        <PlayerTrends
+          fpid={fpid}
+          year={nflState.season}
+          position={position}
+          current={
+            week !== undefined
+              ? {
+                  week: Number(week),
+                  state: currentGame?.gameState,
+                  actual,
+                  projection: row?.weekPpg,
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {fpid !== undefined && <PlayerGameLog fpid={fpid} position={position} />}
+    </GlassPopover>
+  );
+}

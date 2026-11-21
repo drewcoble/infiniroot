@@ -15,8 +15,8 @@ import { api } from "@infinidata/api";
 import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
-import type { StandingsRow } from "../../../types/season";
-import { TeamLogosProvider } from "../../../components/cards/TeamLogo";
+import type { StandingsRow } from "@shared/league/types/season";
+import { TeamLogosProvider } from "@shared/glass/TeamLogo";
 import { TradeValuesProvider } from "../../../components/player/TradeValuesProvider";
 
 export const Route = createFileRoute("/league/$leagueId")({
@@ -152,7 +152,7 @@ function LeagueLayout() {
                 : undefined;
 
   return (
-    <PageContainer pb={{ base: 100, sm: "xl" }}>
+    <PageContainer pb={{ base: "calc(100px + env(safe-area-inset-bottom))", sm: "xl" }}>
       <Stack gap="md">
         <AppHeader />
         <Box visibleFrom="sm">

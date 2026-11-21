@@ -451,87 +451,101 @@ export const getRosVorBoard = query({
   },
   handler: async (ctx, args): Promise<RosVorRow[]> => {
     const { season } = await requireSeasonOwner(ctx, args.seasonId);
-
-    const [boardRows, rosteredRows, teams, injuries, platformPositions] = await Promise.all([
-      loadSeasonRosVorRows(ctx, season, args.week),
-      ctx.db
-        .query("rosterPlayers")
-        .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
-        .collect(),
-      ctx.db
-        .query("seasonTeams")
-        .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
-        .collect(),
-      ctx.db.query("injuries").collect(),
-      loadPlatformPositions(ctx, season),
-    ]);
-    // Labeled, filtered and position-ranked at this league platform's
-    // position (see schema.ts's platformPositions) - the shared board's
-    // values stay on Sleeper's.
-    const rows = boardRows.map((row) => {
-      const position = platformPositions.get(row.fpid);
-      return position ? { ...row, position } : row;
-    });
-    const teamNameById = new Map(teams.map((team) => [team._id, team.name]));
-    const teamNameByFpid = new Map(rosteredRows.map((row) => [row.fpid, teamNameById.get(row.teamId) ?? null]));
-    const teamIdByFpid = new Map(rosteredRows.map((row) => [row.fpid, row.teamId]));
-    const injuryByFpid = new Map(injuries.map((row) => [row.fpid, row]));
-
-    // Positional rank - grouped from this week's full board (before the
-    // optional position filter below), same rosVor ordering rosRank uses
-    // globally, just scoped to one position at a time.
-    const byPosition = new Map<Position, typeof rows>();
-    for (const row of rows) {
-      const list = byPosition.get(row.position) ?? [];
-      list.push(row);
-      byPosition.set(row.position, list);
-    }
-    const positionRankByFpid = new Map<number, number>();
-    for (const list of byPosition.values()) {
-      [...list]
-        .sort((a, b) => b.rosVor - a.rosVor)
-        .forEach((row, index) => positionRankByFpid.set(row.fpid, index + 1));
-    }
-    // Week-mode counterpart, sorted by weekVor instead - powers the
-    // Players tab's position-rank badge when its toggle is set to "This
-    // Week" (see infinileague/src/routes/league/$leagueId/players.tsx).
-    const weekPositionRankByFpid = new Map<number, number>();
-    for (const list of byPosition.values()) {
-      [...list]
-        .sort((a, b) => (b.weekVor ?? 0) - (a.weekVor ?? 0))
-        .forEach((row, index) => weekPositionRankByFpid.set(row.fpid, index + 1));
-    }
-
-    return rows
-      .filter((row) => !args.position || row.position === args.position)
-      .sort((a, b) => a.rosRank - b.rosRank)
-      .map((row) => {
-        const injury = injuryByFpid.get(row.fpid);
-        return {
-          fpid: row.fpid,
-          name: row.name,
-          team: row.team,
-          position: row.position,
-          rosVor: row.rosVor,
-          rosRank: row.rosRank,
-          actualVor: row.actualVor,
-          actualRank: row.actualRank,
-          positionRank: positionRankByFpid.get(row.fpid) ?? 0,
-          rosPpg: row.rosPpg ?? 0,
-          actualPpg: row.actualPpg ?? 0,
-          weekVor: row.weekVor ?? 0,
-          weekRank: row.weekRank ?? 0,
-          weekPpg: row.weekPpg ?? 0,
-          seasonUsage: row.seasonUsage ?? null,
-          weekUsage: row.weekUsage ?? null,
-          weekPositionRank: weekPositionRankByFpid.get(row.fpid) ?? 0,
-          rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
-          isOnMyTeam: args.teamId !== undefined && teamIdByFpid.get(row.fpid) === args.teamId,
-          ...(injury ? { injury: { status: injury.status, statusShort: injury.statusShort } } : {}),
-        };
-      });
+    return await rosVorBoardFor(ctx, season, args);
   },
 });
+
+// getRosVorBoard's read, minus the owner check - infiniyoffs serves it to league
+// members (convex/infiniyoffs/reads.ts).
+export async function rosVorBoardFor(
+  ctx: QueryCtx,
+  season: Doc<"seasons">,
+  args: {
+    seasonId: Id<"seasons">;
+    week: string;
+    position?: Position | undefined;
+    teamId?: Id<"seasonTeams"> | undefined;
+  },
+): Promise<RosVorRow[]> {
+  const [boardRows, rosteredRows, teams, injuries, platformPositions] = await Promise.all([
+    loadSeasonRosVorRows(ctx, season, args.week),
+    ctx.db
+      .query("rosterPlayers")
+      .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+      .collect(),
+    ctx.db
+      .query("seasonTeams")
+      .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+      .collect(),
+    ctx.db.query("injuries").collect(),
+    loadPlatformPositions(ctx, season),
+  ]);
+  // Labeled, filtered and position-ranked at this league platform's
+  // position (see schema.ts's platformPositions) - the shared board's
+  // values stay on Sleeper's.
+  const rows = boardRows.map((row) => {
+    const position = platformPositions.get(row.fpid);
+    return position ? { ...row, position } : row;
+  });
+  const teamNameById = new Map(teams.map((team) => [team._id, team.name]));
+  const teamNameByFpid = new Map(rosteredRows.map((row) => [row.fpid, teamNameById.get(row.teamId) ?? null]));
+  const teamIdByFpid = new Map(rosteredRows.map((row) => [row.fpid, row.teamId]));
+  const injuryByFpid = new Map(injuries.map((row) => [row.fpid, row]));
+
+  // Positional rank - grouped from this week's full board (before the
+  // optional position filter below), same rosVor ordering rosRank uses
+  // globally, just scoped to one position at a time.
+  const byPosition = new Map<Position, typeof rows>();
+  for (const row of rows) {
+    const list = byPosition.get(row.position) ?? [];
+    list.push(row);
+    byPosition.set(row.position, list);
+  }
+  const positionRankByFpid = new Map<number, number>();
+  for (const list of byPosition.values()) {
+    [...list]
+      .sort((a, b) => b.rosVor - a.rosVor)
+      .forEach((row, index) => positionRankByFpid.set(row.fpid, index + 1));
+  }
+  // Week-mode counterpart, sorted by weekVor instead - powers the
+  // Players tab's position-rank badge when its toggle is set to "This
+  // Week" (see infinileague/src/routes/league/$leagueId/players.tsx).
+  const weekPositionRankByFpid = new Map<number, number>();
+  for (const list of byPosition.values()) {
+    [...list]
+      .sort((a, b) => (b.weekVor ?? 0) - (a.weekVor ?? 0))
+      .forEach((row, index) => weekPositionRankByFpid.set(row.fpid, index + 1));
+  }
+
+  return rows
+    .filter((row) => !args.position || row.position === args.position)
+    .sort((a, b) => a.rosRank - b.rosRank)
+    .map((row) => {
+      const injury = injuryByFpid.get(row.fpid);
+      return {
+        fpid: row.fpid,
+        name: row.name,
+        team: row.team,
+        position: row.position,
+        rosVor: row.rosVor,
+        rosRank: row.rosRank,
+        actualVor: row.actualVor,
+        actualRank: row.actualRank,
+        positionRank: positionRankByFpid.get(row.fpid) ?? 0,
+        rosPpg: row.rosPpg ?? 0,
+        actualPpg: row.actualPpg ?? 0,
+        weekVor: row.weekVor ?? 0,
+        weekRank: row.weekRank ?? 0,
+        weekPpg: row.weekPpg ?? 0,
+        seasonUsage: row.seasonUsage ?? null,
+        weekUsage: row.weekUsage ?? null,
+        weekPositionRank: weekPositionRankByFpid.get(row.fpid) ?? 0,
+        rosteredByTeamName: teamNameByFpid.get(row.fpid) ?? null,
+        isOnMyTeam: args.teamId !== undefined && teamIdByFpid.get(row.fpid) === args.teamId,
+        ...(injury ? { injury: { status: injury.status, statusShort: injury.statusShort } } : {}),
+      };
+    });
+}
 
 // Actual fantasy points for one week, in this season's scoring (base
 // format + TE premium / 6pt passing TD bonus) - powers the Players tab's
@@ -544,10 +558,19 @@ export const getWeekPoints = query({
   args: { seasonId: v.id("seasons"), week: v.string() },
   handler: async (ctx, args): Promise<Array<{ fpid: number; points: number }>> => {
     await requireSeasonOwner(ctx, args.seasonId);
-    const entries = await loadWeekPoints(ctx, args.seasonId, args.week);
-    return entries.map((entry) => ({ fpid: entry.fpid, points: entry.points }));
+    return await weekPointsFor(ctx, args);
   },
 });
+
+// getWeekPoints's read, minus the owner check - infiniyoffs serves it to league
+// members (convex/infiniyoffs/reads.ts).
+export async function weekPointsFor(
+  ctx: QueryCtx,
+  args: { seasonId: Id<"seasons">; week: string },
+): Promise<Array<{ fpid: number; points: number }>> {
+  const entries = await loadWeekPoints(ctx, args.seasonId, args.week);
+  return entries.map((entry) => ({ fpid: entry.fpid, points: entry.points }));
+}
 
 // One player's full weekly history for a season, oldest first - "rank vs.
 // last week" is just comparing consecutive entries; the full run is what

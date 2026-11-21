@@ -22,7 +22,7 @@ const PROVIDERS: Array<{
 interface AddLeagueProps {
   // Which app is hosting this flow - only Yahoo's OAuth round trip cares
   // (it redirects back to that app's origin).
-  app: "infinileague" | "infinifaab";
+  app: "infinileague" | "infinifaab" | "infiniyoffs";
   // Skip the provider choice and open this wizard (e.g. a reconnect link).
   initialProvider?: LeagueProvider | undefined;
   onConnected: (seasonId: string) => void;

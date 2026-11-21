@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect } from "react";
-import type { TradeValueRow } from "../../types/season";
+import type { TradeValueRow } from "@shared/league/types/season";
 
 // The league's shared trade values - see TradeValuesProvider.
 export interface TradeValuesState {
