@@ -3,16 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 // useConvexAuth from convex/react, not @convex-dev/auth/react's - see
 // __root.tsx's comment on the same import.
 import { useConvexAuth, useQuery } from "convex/react";
-import {
-  ActionIcon,
-  Button,
-  Card,
-  Group,
-  SimpleGrid,
-  Stack,
-  Text,
-} from "@mantine/core";
-import { Plus, Trash2 } from "lucide-react";
+import { ActionIcon, Button, Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { ChevronRight, Plus, Trash2 } from "lucide-react";
 import { api } from "@infinidata/api";
 import { AppHeader } from "../components/AppHeader";
 import { useLoadingSplash } from "../components/LoadingSplash";
@@ -20,6 +12,8 @@ import { PageContainer } from "@shared/PageContainer";
 import { groupSeasonsByLeague } from "@shared/leagueGroups";
 import { RemoveLeagueModal } from "@shared/RemoveLeagueModal";
 import type { LinkedSeason } from "@shared/league/types/season";
+import { TeamLogo } from "@shared/glass/TeamLogo";
+import classes from "@shared/glass/GlassMatchupCard.module.css";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -84,54 +78,47 @@ function Dashboard() {
                 </Button>
               </Link>
             </Group>
-            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
               {leagueGroups.map(({ latest }) => (
                 <Link
                   key={latest.leagueId}
                   to="/league/$leagueId"
                   params={{ leagueId: latest._id }}
-                  style={{
-                    display: "block",
-                    height: "100%",
-                    color: "inherit",
-                    textDecoration: "none",
-                  }}
+                  className={`${classes.card} ${classes.wide} ${classes.teamCard}`}
                 >
-                  <Card
-                    padding="lg"
-                    style={{ cursor: "pointer", height: "100%" }}
+                  <TeamLogo
+                    name={latest.name}
+                    logoUrl={latest.logoUrl}
+                    size={40}
+                    className={`${classes.teamCardLogo} ${classes.leagueLogo}`}
+                  />
+                  <div className={`${classes.wideName} ${classes.teamCardName}`}>
+                    <span className={classes.name}>{latest.name}</span>
+                  </div>
+                  <div className={`${classes.wideDetail} ${classes.teamCardSecondary}`}>
+                    {latest.year} · {latest.teamCount} teams · {SCORING_LABELS[latest.scoring]}
+                  </div>
+                  {/* preventDefault/stopPropagation keep this click from
+                      also following the card's own Link. */}
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    aria-label="Remove league"
+                    style={{ gridArea: "points", gridRowEnd: "span 2" }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setRemovingSeason(latest);
+                    }}
                   >
-                    <Stack gap="sm" justify="space-between" h="100%">
-                      <Stack gap={4}>
-                        <Group justify="space-between" wrap="nowrap" align="flex-start">
-                          <Text fw={600} lineClamp={2}>
-                            {latest.name}
-                          </Text>
-                          {/* preventDefault/stopPropagation keep this click
-                              from also following the card's own Link. */}
-                          <ActionIcon
-                            variant="subtle"
-                            color="gray"
-                            aria-label="Remove league"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setRemovingSeason(latest);
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </ActionIcon>
-                        </Group>
-                        <Text size="sm" c="dimmed">
-                          {latest.year} · {latest.teamCount} teams ·{" "}
-                          {SCORING_LABELS[latest.scoring]}
-                        </Text>
-                      </Stack>
-                      <Button component="span" variant="light" fullWidth>
-                        Open League
-                      </Button>
-                    </Stack>
-                  </Card>
+                    <Trash2 size={16} />
+                  </ActionIcon>
+                  <ChevronRight
+                    className={classes.teamCardChevron}
+                    size={18}
+                    strokeWidth={2.5}
+                    aria-hidden
+                  />
                 </Link>
               ))}
             </SimpleGrid>

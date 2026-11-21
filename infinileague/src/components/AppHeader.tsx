@@ -8,6 +8,7 @@ import {
   Database,
   GalleryVerticalEnd,
   HeartPulse,
+  House,
   LayoutGrid,
   Plus,
   ShieldCheck,
@@ -23,8 +24,8 @@ import type { LinkedSeason } from "@shared/league/types/season";
 // Thin infinileague-specific wrapper around @shared/AppHeader: backed by
 // listLinkedSeasons, and its own "Add League" footer item instead of
 // infinidraft's "New League" - no draft phase/status, no TV board/report
-// card/billing overflow items (none of those concepts exist here). The
-// shared header's mode-switch slot holds the Matchups button instead.
+// card/billing overflow items (none of those concepts exist here). Home and
+// Matchups icon buttons sit left of the league switcher instead.
 export function AppHeader() {
   const navigate = useNavigate();
   const { leagueId } = useParams({ strict: false });
@@ -55,21 +56,30 @@ export function AppHeader() {
       // ~10% wider than the shared default (150 / 220).
       leagueButtonWidth={{ base: 165, sm: 242 }}
       selectedLeagueLabel={selectedLeague?.name}
-      // Every league's matchup this week on one page (routes/matchups.tsx) -
-      // icon-only glass button right of the league switcher. marginRight
-      // auto keeps it beside the switcher on mobile, where the controls row
-      // spreads its pieces to the edges (see shared glass.module.css).
-      modeSwitchSlot={
-        <Link
-          to="/matchups"
-          className={glassClasses.iconButton}
-          activeProps={{ className: glassClasses.iconButtonActive }}
-          aria-label="Matchups"
-          title="Matchups"
-          style={{ marginRight: "auto" }}
-        >
-          <TicketStack size={18} strokeWidth={2.5} />
-        </Link>
+      leadingSlot={
+        <>
+          {/* The league dashboard (routes/index.tsx). */}
+          <Link
+            to="/"
+            className={glassClasses.iconButton}
+            activeProps={{ className: glassClasses.iconButtonActive }}
+            activeOptions={{ exact: true }}
+            aria-label="Home"
+            title="Home"
+          >
+            <House size={18} strokeWidth={2.5} />
+          </Link>
+          {/* Every league's matchup this week on one page (routes/matchups.tsx). */}
+          <Link
+            to="/matchups"
+            className={glassClasses.iconButton}
+            activeProps={{ className: glassClasses.iconButtonActive }}
+            aria-label="Matchups"
+            title="Matchups"
+          >
+            <TicketStack size={18} strokeWidth={2.5} />
+          </Link>
+        </>
       }
       leagueMenuItems={
         <>

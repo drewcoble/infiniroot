@@ -143,6 +143,10 @@ export const updateSeasonWaiverSettings = internalMutation({
     // Sleeper-only - set when Sleeper marks the league guillotine (see
     // sleeper/league.ts's isSleeperGuillotine), absent otherwise.
     leagueType: v.optional(v.literal("guillotine")),
+    // The league's image (schema.ts's seasons.logoUrl). null = the provider
+    // has none, which clears a stale one; absent = this provider doesn't
+    // offer one (ESPN), leaving the field as is.
+    logoUrl: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.seasonId, {
@@ -161,6 +165,7 @@ export const updateSeasonWaiverSettings = internalMutation({
         ? { dailyWaiversHour: args.dailyWaiversHour }
         : {}),
       ...(args.leagueType !== undefined ? { leagueType: args.leagueType } : {}),
+      ...(args.logoUrl !== undefined ? { logoUrl: args.logoUrl ?? undefined } : {}),
     });
   },
 });

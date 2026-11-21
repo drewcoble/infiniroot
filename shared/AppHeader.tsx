@@ -35,6 +35,9 @@ interface AppHeaderProps {
   // Extra control right of the league picker - infinidraft's Setup/Draft
   // Room mode-switch button, infinileague's Matchups button.
   modeSwitchSlot?: ReactNode;
+  // Controls left of the league picker - infinileague's Home and Matchups
+  // buttons.
+  leadingSlot?: ReactNode;
   // App-specific overflow items, one slot per labeled group: NFL-wide
   // reference pages (Depth Charts, Injuries), super-admin tools, and
   // account items (e.g. infinidraft's Billing), which the built-in theme
@@ -78,6 +81,7 @@ export function AppHeader({
   selectedLeagueLabel,
   leagueMenuItems,
   modeSwitchSlot,
+  leadingSlot,
   nflMenuItems,
   adminMenuItems,
   userMenuItems,
@@ -89,6 +93,44 @@ export function AppHeader({
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const isDark = colorScheme === "dark";
   const menuProps = glass ? glassMenuProps : { withArrow: true };
+
+  const leagueMenu = (
+    <Menu
+      position={leadingSlot ? "bottom-start" : "bottom-end"}
+      offset={8}
+      width={260}
+      {...menuProps}
+    >
+      <Menu.Target>
+        {glass ? (
+          <Box
+            component="button"
+            type="button"
+            className={glassClasses.button}
+            w={leagueButtonWidth}
+          >
+            <span className={glassClasses.buttonLabel}>
+              {selectedLeagueLabel ?? "Select league"}
+            </span>
+            <ChevronDown size={16} style={{ flexShrink: 0 }} />
+          </Box>
+        ) : (
+          <Button
+            variant="default"
+            size="sm"
+            w={leagueButtonWidth}
+            justify="space-between"
+            rightSection={<ChevronDown size={16} />}
+          >
+            <Text truncate span>
+              {selectedLeagueLabel ?? "Select league"}
+            </Text>
+          </Button>
+        )}
+      </Menu.Target>
+      <Menu.Dropdown>{leagueMenuItems}</Menu.Dropdown>
+    </Menu>
+  );
 
   return (
     <Box
@@ -165,36 +207,17 @@ export function AppHeader({
         >
           {!hideLeagueControls && (
             <>
-              <Menu position="bottom-end" offset={8} width={260} {...menuProps}>
-                <Menu.Target>
-                  {glass ? (
-                    <Box
-                      component="button"
-                      type="button"
-                      className={glassClasses.button}
-                      w={leagueButtonWidth}
-                    >
-                      <span className={glassClasses.buttonLabel}>
-                        {selectedLeagueLabel ?? "Select league"}
-                      </span>
-                      <ChevronDown size={16} style={{ flexShrink: 0 }} />
-                    </Box>
-                  ) : (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      w={leagueButtonWidth}
-                      justify="space-between"
-                      rightSection={<ChevronDown size={16} />}
-                    >
-                      <Text truncate span>
-                        {selectedLeagueLabel ?? "Select league"}
-                      </Text>
-                    </Button>
-                  )}
-                </Menu.Target>
-                <Menu.Dropdown>{leagueMenuItems}</Menu.Dropdown>
-              </Menu>
+              {leadingSlot ? (
+                // Grouped with the league picker so the glass header's
+                // mobile row (controls spread edge to edge) keeps them
+                // together at the left and the overflow button at the right.
+                <Group gap="xs" wrap="nowrap">
+                  {leadingSlot}
+                  {leagueMenu}
+                </Group>
+              ) : (
+                leagueMenu
+              )}
               {modeSwitchSlot}
             </>
           )}

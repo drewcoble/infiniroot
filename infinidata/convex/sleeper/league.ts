@@ -173,6 +173,7 @@ export async function runSleeperRosterSync(
       ? { dailyWaiversHour: leagueSettings.settings.daily_waivers_hour }
       : {}),
     ...(isSleeperGuillotine(leagueSettings) ? { leagueType: "guillotine" as const } : {}),
+    logoUrl: leagueSettings.avatar ? `${SLEEPER_AVATAR_URL}/${leagueSettings.avatar}` : null,
   });
 
   const teams: Doc<"seasonTeams">[] = await ctx.runQuery(
@@ -413,6 +414,8 @@ export const listSleeperLeaguesForUsername = action({
 interface SleeperLeagueSettings {
   league_id: string;
   name: string;
+  // The league avatar's id, same CDN as team avatars (SLEEPER_AVATAR_URL).
+  avatar?: string | null;
   season: string;
   total_rosters: number;
   roster_positions: string[];
