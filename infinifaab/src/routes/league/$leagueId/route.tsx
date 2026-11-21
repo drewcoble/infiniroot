@@ -122,7 +122,7 @@ function LeagueLayout() {
 
   if (settings === undefined || participation === undefined) {
     return (
-      <PageContainer pb={{ base: 100, sm: "xl" }}>
+      <PageContainer pb={{ base: "calc(100px + env(safe-area-inset-bottom))", sm: "xl" }}>
         <Stack gap="md">
           <AppHeader />
           <Center py="xl">
@@ -136,7 +136,7 @@ function LeagueLayout() {
   if (!settings.enabled) {
     const isCommissioner = participation?.isCommissioner ?? false;
     return (
-      <PageContainer pb={{ base: 100, sm: "xl" }}>
+      <PageContainer pb={{ base: "calc(100px + env(safe-area-inset-bottom))", sm: "xl" }}>
         <Stack gap="md">
           <AppHeader />
           <Center py="xl">
@@ -172,7 +172,7 @@ function LeagueLayout() {
   }
 
   return (
-    <PageContainer pb={{ base: 100, sm: "xl" }}>
+    <PageContainer pb={{ base: "calc(100px + env(safe-area-inset-bottom))", sm: "xl" }}>
       <Stack gap="md">
         <AppHeader />
         <Box visibleFrom="sm">

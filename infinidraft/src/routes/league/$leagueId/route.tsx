@@ -302,7 +302,10 @@ function LeagueLayout() {
           16,
         sm: "xl",
       }}
-      pb={{ base: isStarted ? 230 : 116, sm: "xl" }}
+      pb={{
+        base: `calc(${isStarted ? 230 : 116}px + env(safe-area-inset-bottom))`,
+        sm: "xl",
+      }}
     >
       <Stack gap="md">
         <AppHeader />
