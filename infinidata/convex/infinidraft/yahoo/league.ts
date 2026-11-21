@@ -617,6 +617,7 @@ export async function runYahooRosterSync(
     await ctx.runMutation(internal.rosterSync.updateSeasonWaiverSettings, {
       seasonId: season._id,
       waiverType,
+      logoUrl: settings.logoUrl ?? null,
     });
 
     // Every team's roster in one request rather than two per team (a
@@ -728,6 +729,10 @@ interface YahooLeagueSettingsSummary {
   // than something the wizard has to ask for manually (see leagueType.ts,
   // previewYahooImport below).
   isGuillotine: boolean;
+  // The commissioner-uploaded league logo (logo_url, a sibling of name/
+  // season on the same "league" node) - Yahoo sends false rather than
+  // omitting it when there's none, so only an http(s) string counts.
+  logoUrl: string | undefined;
   // The full settings response, handed to mapYahooRosterPositions/
   // mapYahooScoringSettings, which each do their own deep search rather
   // than assume one exact nesting.
@@ -769,6 +774,10 @@ export async function fetchYahooLeagueSettings(
       leagueFields.is_guillotine === "1" ||
       leagueFields.is_guillotine === 1 ||
       leagueFields.is_guillotine === true,
+    logoUrl:
+      typeof leagueFields.logo_url === "string" && /^https?:\/\//.test(leagueFields.logo_url)
+        ? leagueFields.logo_url
+        : undefined,
     raw: json,
   };
 }

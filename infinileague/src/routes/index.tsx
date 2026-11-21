@@ -88,9 +88,9 @@ function Dashboard() {
                 >
                   <TeamLogo
                     name={latest.name}
-                    logoUrl={undefined}
+                    logoUrl={latest.logoUrl}
                     size={40}
-                    className={classes.teamCardLogo}
+                    className={`${classes.teamCardLogo} ${classes.leagueLogo}`}
                   />
                   <div className={`${classes.wideName} ${classes.teamCardName}`}>
                     <span className={classes.name}>{latest.name}</span>

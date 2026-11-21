@@ -27,6 +27,9 @@ export interface LinkedSeason {
   sleeperLeagueId?: string;
   yahooLeagueKey?: string;
   espnLeagueId?: string;
+  // The league's image from Sleeper/Yahoo (convex schema.ts's seasons.
+  // logoUrl) - absent means show its initials.
+  logoUrl?: string;
   // Absent means "redraft" (see convex/leagueType.ts's resolveLeagueType) -
   // "guillotine" swaps the dashboard's Standings tab for Elimination Watch
   // (see routes/league/$leagueId/index.tsx).

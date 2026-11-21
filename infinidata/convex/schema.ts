@@ -872,6 +872,11 @@ export default defineSchema({
     // convex/espn/league.ts). Public leagues only for now (no espn_s2/SWID
     // cookie support), so this alone is enough to read the league.
     espnLeagueId: v.optional(v.string()),
+    // The league's own image on its linked provider - Sleeper's league
+    // avatar or Yahoo's commissioner-uploaded logo (ESPN has none). Synced
+    // with the roster sync (rosterSync.ts's updateSeasonWaiverSettings);
+    // absent = no image, and the dashboard shows the league's initials.
+    logoUrl: v.optional(v.string()),
     faabBudget: v.optional(v.number()),
     // Which waiver system this league actually uses - determines whether
     // infinileague's standings page shows remaining FAAB $ or waiver order
