@@ -7,6 +7,7 @@ import type { Position } from "@shared/positionColors";
 import { api } from "@infinidata/api";
 import { GlassFreeAgentRow } from "../../../components/cards/GlassFreeAgentRow";
 import { GlassPositionFilter } from "../../../components/cards/GlassPositionFilter";
+import { ALL_POSITIONS, useLeaguePositions } from "../../../lib/leaguePositions";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
 import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
@@ -22,7 +23,6 @@ export const Route = createFileRoute("/league/$leagueId/freeAgents")({
   component: FreeAgentsPage,
 });
 
-const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 
 // Same Week / Season views and sorts as the Players page: "rank" = the
 // view's rosVOR rank (weekRank / rosRank); "actual" / "projected" = this
@@ -81,6 +81,7 @@ function FreeAgentsPage() {
   const rosVorByFpid = new Map((rosVorRows ?? []).map((row) => [row.fpid, row]));
 
   // Same position filter and sort control as the Players page.
+  const leaguePositions = useLeaguePositions(leagueId);
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
   const [view, setView] = useState<View>("ros");
   const [sortKey, setSortKey] = useState<SortKey>("rank");
@@ -142,7 +143,10 @@ function FreeAgentsPage() {
   };
   const sortChain: SortKey[] = sortKey === "rank" ? ["rank"] : [sortKey, "rank"];
   const rows = result.suggestions
-    .filter((row) => selectedPositions.includes(row.position))
+    .filter(
+      (row) =>
+        leaguePositions.includes(row.position) && selectedPositions.includes(row.position),
+    )
     .sort((a, b) => {
       for (const key of sortChain) {
         const order = compareSortValues(sortValue(a, key), sortValue(b, key), "desc");
@@ -184,7 +188,7 @@ function FreeAgentsPage() {
         </div>
       </Group>
       <GlassPositionFilter
-        positions={ALL_POSITIONS}
+        positions={leaguePositions}
         selected={selectedPositions}
         onChange={setSelectedPositions}
       />

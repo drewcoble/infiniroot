@@ -8,6 +8,7 @@ import { api } from "@infinidata/api";
 import type { Position } from "@shared/positionColors";
 import { GlassPlayerRow } from "../../../components/cards/GlassPlayerRow";
 import { GlassPositionFilter } from "../../../components/cards/GlassPositionFilter";
+import { ALL_POSITIONS, useLeaguePositions } from "../../../lib/leaguePositions";
 import { GlassRosterSkeletonCard } from "../../../components/cards/GlassRosterCard";
 import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import classes from "@shared/glass/GlassMatchupCard.module.css";
@@ -23,7 +24,6 @@ interface NflState {
   seasonType: "pre" | "regular" | "post";
 }
 
-const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "DST", "K"];
 
 // Starting estimate for a glass player row (~64px) + the gap below it
 // (8px) - the virtualizer then measures each rendered row (measureElement),
@@ -187,6 +187,7 @@ function PlayersPage() {
     });
   }, [boardRows, weekPoints, weekUsage]);
 
+  const leaguePositions = useLeaguePositions(leagueId);
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([...ALL_POSITIONS]);
   // Defaults to "ros" - matches the board's own default sort
   // (getRosVorBoard orders by rosRank) so switching to this tab shows the
@@ -206,7 +207,10 @@ function PlayersPage() {
   }, [rows, sortKey, metric, isWeekMode]);
 
   const filteredRows = (rows ?? [])
-    .filter((row) => selectedPositions.includes(row.position))
+    .filter(
+      (row) =>
+        leaguePositions.includes(row.position) && selectedPositions.includes(row.position),
+    )
     .filter((row) => show === "all" || row.rosteredByTeamName === null)
     .sort((a, b) => {
       if (metricRanks) {
@@ -325,7 +329,7 @@ function PlayersPage() {
         </div>
       </Group>
       <GlassPositionFilter
-        positions={ALL_POSITIONS}
+        positions={leaguePositions}
         selected={selectedPositions}
         onChange={setSelectedPositions}
       />
