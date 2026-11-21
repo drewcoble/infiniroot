@@ -194,6 +194,7 @@ function PlayersPage() {
   const [metric, setMetric] = useState<View>("ros");
   const isWeekMode = metric === "week";
   const [sortKey, setSortKey] = useState<SortKey>("rank");
+  const [show, setShow] = useState<"all" | "freeAgents">("all");
 
   // Memoized since the window virtualizer re-renders this component on
   // every scroll frame - no need to re-rank 800+ players each time.
@@ -206,6 +207,7 @@ function PlayersPage() {
 
   const filteredRows = (rows ?? [])
     .filter((row) => selectedPositions.includes(row.position))
+    .filter((row) => show === "all" || row.rosteredByTeamName === null)
     .sort((a, b) => {
       if (metricRanks) {
         return (metricRanks.get(a.fpid)?.overall ?? 0) - (metricRanks.get(b.fpid)?.overall ?? 0);
@@ -303,6 +305,21 @@ function PlayersPage() {
               { label: SORT_LABELS[metric].actual, value: "actual" as const },
               { label: SORT_LABELS[metric].projected, value: "projected" as const },
               { label: SORT_LABELS[metric].usage, value: "usage" as const },
+            ]}
+          />
+        </div>
+      </Group>
+      <Group gap="sm" wrap="nowrap">
+        <span className={classes.strengthLabel}>Show</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <GlassSegmented
+            compact
+            label="Show players"
+            value={show}
+            onChange={setShow}
+            options={[
+              { label: "All", value: "all" as const },
+              { label: "Free Agents", value: "freeAgents" as const },
             ]}
           />
         </div>

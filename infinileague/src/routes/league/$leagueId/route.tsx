@@ -78,6 +78,7 @@ function LeagueLayout() {
     isAuthenticated ? { seasonId } : "skip",
   );
   const selfTeam = standings?.find((row) => row.isSelf);
+  const currentUser = useQuery(api.users.getCurrentUser);
 
   const tabs: TabItem[] = [
     {
@@ -106,13 +107,6 @@ function LeagueLayout() {
         ]
       : []),
     {
-      value: "freeAgents",
-      label: "Free Agents",
-      icon: UserSearch,
-      to: "/league/$leagueId/freeAgents",
-      params: { leagueId },
-    },
-    {
       value: "players",
       label: "Players",
       icon: Users,
@@ -126,6 +120,19 @@ function LeagueLayout() {
       to: "/league/$leagueId/trade",
       params: { leagueId },
     },
+    // Super-admin only while it's reworked - the Players tab's Free Agents
+    // filter covers the list for everyone else.
+    ...(currentUser?.role === "super-admin"
+      ? [
+          {
+            value: "freeAgents" as const,
+            label: "Free Agents",
+            icon: UserSearch,
+            to: "/league/$leagueId/freeAgents",
+            params: { leagueId },
+          },
+        ]
+      : []),
   ];
 
   // Path-based rather than TAB_META's exact route string, since the
