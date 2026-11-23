@@ -179,32 +179,52 @@ export async function withYahooToken<T>(
     );
   }
 
-  let accessToken = stored.accessToken;
   if (stored.expiresAt - Date.now() < REFRESH_MARGIN_MS) {
-    let refreshed;
-    try {
-      refreshed = await refreshYahooTokens(stored.refreshToken);
-    } catch (error) {
-      // Yahoo revokes every refresh token on a password reset - retrying
-      // can't recover, so clear it and send the user back through Connect.
-      if (error instanceof Error && /invalid_grant|invalid.?refresh/i.test(error.message)) {
-        await ctx.runMutation(internal.infinidraft.yahoo.oauth.deleteStoredToken, { userId });
-        throw new Error(
-          "Your Yahoo connection expired - reconnect your Yahoo account and try again.",
-        );
-      }
-      throw error;
-    }
-    accessToken = refreshed.access_token;
-    await ctx.runMutation(internal.infinidraft.yahoo.oauth.saveTokens, {
-      userId,
-      accessToken: refreshed.access_token,
-      // Yahoo may not always return a fresh refresh_token on refresh -
-      // fall back to the one already on file when it doesn't.
-      refreshToken: refreshed.refresh_token || stored.refreshToken,
-      expiresAt: Date.now() + refreshed.expires_in * 1000,
-    });
+    return await fn(await refreshStoredToken(ctx, userId, stored.refreshToken));
   }
 
-  return await fn(accessToken);
+  try {
+    return await fn(stored.accessToken);
+  } catch (error) {
+    // A password reset revokes the access token too, before it expires - so a
+    // 401 on an unexpired token gets one forced refresh (which clears the token
+    // and asks for a reconnect if the refresh token is dead as well) and a retry.
+    if (!(error instanceof Error) || !error.message.startsWith("Yahoo API request failed: 401")) {
+      throw error;
+    }
+    return await fn(await refreshStoredToken(ctx, userId, stored.refreshToken));
+  }
+}
+
+async function refreshStoredToken(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  refreshToken: string,
+): Promise<string> {
+  let refreshed;
+  try {
+    refreshed = await refreshYahooTokens(refreshToken);
+  } catch (error) {
+    // Yahoo revokes every refresh token on a password reset - retrying
+    // can't recover, so clear it and send the user back through Connect.
+    if (
+      error instanceof Error &&
+      /invalid_grant|invalid.?refresh|token request failed: 40[01]/i.test(error.message)
+    ) {
+      await ctx.runMutation(internal.infinidraft.yahoo.oauth.deleteStoredToken, { userId });
+      throw new Error(
+        "Your Yahoo connection expired - reconnect your Yahoo account and try again.",
+      );
+    }
+    throw error;
+  }
+  await ctx.runMutation(internal.infinidraft.yahoo.oauth.saveTokens, {
+    userId,
+    accessToken: refreshed.access_token,
+    // Yahoo may not always return a fresh refresh_token on refresh -
+    // fall back to the one already on file when it doesn't.
+    refreshToken: refreshed.refresh_token || refreshToken,
+    expiresAt: Date.now() + refreshed.expires_in * 1000,
+  });
+  return refreshed.access_token;
 }
