@@ -92,6 +92,7 @@ import type * as infinileague_season_tournaments from "../infinileague/season/to
 import type * as infinileague_season_tradeSuggestions from "../infinileague/season/tradeSuggestions.js";
 import type * as infinileague_season_tradeValues from "../infinileague/season/tradeValues.js";
 import type * as infinileague_season_usage from "../infinileague/season/usage.js";
+import type * as infinileague_season_weekBonuses from "../infinileague/season/weekBonuses.js";
 import type * as infinileague_season_weekInjuries from "../infinileague/season/weekInjuries.js";
 import type * as infiniyoffs_access from "../infiniyoffs/access.js";
 import type * as infiniyoffs_draft from "../infiniyoffs/draft.js";
@@ -262,6 +263,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/tradeSuggestions": typeof infinileague_season_tradeSuggestions;
   "infinileague/season/tradeValues": typeof infinileague_season_tradeValues;
   "infinileague/season/usage": typeof infinileague_season_usage;
+  "infinileague/season/weekBonuses": typeof infinileague_season_weekBonuses;
   "infinileague/season/weekInjuries": typeof infinileague_season_weekInjuries;
   "infiniyoffs/access": typeof infiniyoffs_access;
   "infiniyoffs/draft": typeof infiniyoffs_draft;

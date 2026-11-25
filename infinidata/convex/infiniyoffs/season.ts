@@ -9,7 +9,12 @@ import {
 } from "../infinileague/season/powerRankings";
 import { currentWeekFor, loadPlayoffs, type LeaguePlayoffs } from "../infinileague/season/playoffs";
 import { evaluate } from "../lib/playoffRules/evaluate";
-import { EMPTY_DRAFT, stageWeeks, type PlayoffFormat } from "../lib/playoffRules/format";
+import {
+  EMPTY_DRAFT,
+  stageWeeks,
+  type DraftState,
+  type PlayoffFormat,
+} from "../lib/playoffRules/format";
 import { loadWeeklyPoints } from "./scores";
 
 export interface YoffsTeam {
@@ -58,6 +63,26 @@ export const getFormatInternal = internalQuery({
   },
 });
 
+// The format's recorded matchup draft, if it has one (one per league).
+export const getDraftStateInternal = internalQuery({
+  args: { seasonId: v.id("seasons"), stageId: v.string() },
+  handler: async (ctx, args): Promise<DraftState> => {
+    const row = await ctx.db
+      .query("playoffDrafts")
+      .withIndex("by_season_stage", (q) =>
+        q.eq("seasonId", args.seasonId).eq("stageId", args.stageId),
+      )
+      .unique();
+    if (!row) return EMPTY_DRAFT;
+    const strip = ({ drafterId, opponentId, week }: (typeof row.picks)[number]) => ({
+      drafterId,
+      opponentId,
+      week,
+    });
+    return { slots: row.slots, picks: row.picks.map(strip), rematches: row.rematches.map(strip) };
+  },
+});
+
 // Creates a stage's draft row once its drafters are known - idempotent.
 export const ensureDraft = internalMutation({
   args: {
@@ -94,22 +119,13 @@ export const getSeasonData = action({
     const pastSeason = nflState !== null && Number(season.year) < Number(nflState.season);
     const lastWeek = Math.min(format ? lastFormatWeek(format) : LAST_WEEK, LAST_WEEK);
 
-    // Past weeks' pairings week by week (cached long once final), this
-    // week on from the live schedule.
-    const upcoming = await loadLeagueSchedule(ctx, season, league, teams, currentWeek);
-    const pastWeeks = Array.from(
-      { length: Math.min(currentWeek - 1, upcoming.regularSeasonEndWeek) },
-      (_, i) => i + 1,
+    const { upcoming, schedule } = await loadSeasonSchedule(
+      ctx,
+      season,
+      league,
+      teams,
+      currentWeek,
     );
-    const pastPairs = await Promise.all(
-      pastWeeks.map((week) => loadWeekPairs(ctx, season, league, teams, week, currentWeek)),
-    );
-    const schedule: SeasonData["schedule"] = [
-      ...pastPairs.flatMap(({ pairs }, i) =>
-        pairs.map((teamIds) => ({ weeks: [pastWeeks[i]!], teamIds })),
-      ),
-      ...upcoming.matchups.filter((matchup) => matchup.weeks.every((week) => week >= currentWeek)),
-    ];
 
     const [points, projected, platformPlayoffs] = await Promise.all([
       loadWeeklyPoints(ctx, season, league, teams, currentWeek, Math.min(currentWeek, lastWeek)),
@@ -147,6 +163,33 @@ export const getSeasonData = action({
     };
   },
 });
+
+// The season's head-to-head schedule for the rules engine: past weeks'
+// pairings week by week (cached long once final), this week on from the
+// live schedule.
+export async function loadSeasonSchedule(
+  ctx: ActionCtx,
+  season: Doc<"seasons">,
+  league: Doc<"leagues">,
+  teams: Doc<"seasonTeams">[],
+  currentWeek: number,
+) {
+  const upcoming = await loadLeagueSchedule(ctx, season, league, teams, currentWeek);
+  const pastWeeks = Array.from(
+    { length: Math.min(currentWeek - 1, upcoming.regularSeasonEndWeek) },
+    (_, i) => i + 1,
+  );
+  const pastPairs = await Promise.all(
+    pastWeeks.map((week) => loadWeekPairs(ctx, season, league, teams, week, currentWeek)),
+  );
+  const schedule: SeasonData["schedule"] = [
+    ...pastPairs.flatMap(({ pairs }, i) =>
+      pairs.map((teamIds) => ({ weeks: [pastWeeks[i]!], teamIds })),
+    ),
+    ...upcoming.matchups.filter((matchup) => matchup.weeks.every((week) => week >= currentWeek)),
+  ];
+  return { upcoming, schedule };
+}
 
 async function loadProjected(
   ctx: ActionCtx,

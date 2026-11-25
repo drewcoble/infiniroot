@@ -12,6 +12,7 @@ import { PageContainer } from "@shared/PageContainer";
 import { AppHeader } from "../components/AppHeader";
 import { MatchupScoreCard } from "@shared/league/components/MatchupScoreCard";
 import { useGuillotineOpponent } from "../hooks/useGuillotineOpponent";
+import { useWeekBonuses } from "../hooks/useWeekBonuses";
 import { useTeamRoster } from "@shared/league/hooks/useTeamRoster";
 import { setStoredLeagueId } from "../lib/leagueStorage";
 import { LIVE_REFRESH_MS } from "@shared/league/lib/matchupSummary";
@@ -211,6 +212,7 @@ function LeagueMatchup({
 
   const teamARoster = useTeamRoster(teamAId, week, refreshMs);
   const teamBRoster = useTeamRoster(teamBId, week, refreshMs);
+  const bonuses = useWeekBonuses(isGuillotine ? null : seasonId, week);
 
   // This week's actual position rank per player - the detail's top
   // performers show it on their badges ("QB4"), same as the Matchup tab's
@@ -247,7 +249,13 @@ function LeagueMatchup({
             teamBId !== null ? nameB : "no opponent"
           }`}
           week={week}
-          teamA={{ name: nameA, rows: teamARoster.rows, standing: self, logoUrl: self?.logoUrl }}
+          teamA={{
+            name: nameA,
+            rows: teamARoster.rows,
+            standing: self,
+            logoUrl: self?.logoUrl,
+            bonus: teamAId !== null ? bonuses[teamAId] : undefined,
+          }}
           teamB={
             current === undefined
               ? "loading"
@@ -257,6 +265,7 @@ function LeagueMatchup({
                     rows: teamBRoster.rows,
                     standing: opponentRow,
                     logoUrl: opponentRow?.logoUrl,
+                    bonus: bonuses[teamBId],
                   }
                 : null
           }
