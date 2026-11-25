@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>infinifantasy - fantasy football, simplified</title>
+    <meta
+      name="description"
+      content="Focused fantasy football tools for draft day, the waiver wire, free agency, and the playoffs. Connect your ESPN, Yahoo, or Sleeper league and get the call."
+    />
+    <meta property="og:title" content="infinifantasy" />
+    <meta property="og:description" content="Fantasy decisions, simplified." />
+    <meta property="og:image" content="/logo.png" />
+    <meta name="theme-color" content="#0c1310" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="/" aria-label="infinifantasy home">
+          <img src="/logo.png" alt="" width="36" height="36" />
+          <span>infini<b>fantasy</b></span>
+        </a>
+        <nav class="nav-links" aria-label="Apps">
+          <a href="#apps">Apps</a>
+          <a href="#how">How it works</a>
+        </nav>
+        <a class="btn btn-small" href="#apps">Get started</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow reveal">Fantasy football tools</p>
+            <h1 class="reveal">Fantasy decisions,<br /><span class="accent">simplified.</span></h1>
+            <p class="lede reveal">
+              The same math the spreadsheet crowd uses, boiled down to the call. Less to read. Same
+              edge.
+            </p>
+            <div class="hero-actions reveal">
+              <a class="btn" href="#apps">Explore the apps</a>
+              <a class="btn btn-ghost" href="#how">How it works</a>
+            </div>
+            <p class="platforms reveal">
+              <span>Works with</span> ESPN <i></i> Yahoo <i></i> Sleeper
+            </p>
+          </div>
+
+          <!-- Illustrative only - a stylized take on infinileague's simple-mode waiver view. -->
+          <figure class="demo reveal" aria-label="Example waiver recommendation">
+            <div class="demo-card">
+              <div class="demo-head">
+                <span class="mono">Waivers · Week 12</span>
+                <span class="chip">Simple</span>
+              </div>
+              <p class="demo-call">Bid <strong>$14</strong> on the WR.</p>
+              <p class="demo-sub">Best add for your roster this week.</p>
+              <ol class="demo-list">
+                <li>
+                  <span class="pos pos-wr">WR</span>
+                  <span class="bar"><span style="--v: 0.92"></span></span>
+                  <span class="mono">$14</span>
+                </li>
+                <li>
+                  <span class="pos pos-rb">RB</span>
+                  <span class="bar"><span style="--v: 0.64"></span></span>
+                  <span class="mono">$8</span>
+                </li>
+                <li>
+                  <span class="pos pos-te">TE</span>
+                  <span class="bar"><span style="--v: 0.41"></span></span>
+                  <span class="mono">$3</span>
+                </li>
+              </ol>
+              <div class="demo-foot">
+                <span class="mono">Budget left</span>
+                <span class="meter"><span style="--v: 0.58"></span></span>
+                <span class="mono">$58</span>
+              </div>
+            </div>
+            <div class="demo-nerd" aria-hidden="true">
+              <span class="mono">Nerd mode</span>
+              <span class="grid-lines"></span>
+            </div>
+          </figure>
+        </div>
+      </section>
+
+      <section class="principles">
+        <div class="wrap">
+          <div class="principle-grid">
+            <article class="reveal">
+              <span class="num mono">01</span>
+              <h2>The answer first.</h2>
+              <p>Every screen leads with the call. The why is right underneath.</p>
+            </article>
+            <article class="reveal">
+              <span class="num mono">02</span>
+              <h2>Your league's rules.</h2>
+              <p>Scoring, rosters, keepers and budgets come straight from your league.</p>
+            </article>
+            <article class="reveal">
+              <span class="num mono">03</span>
+              <h2>Nerd mode on tap.</h2>
+              <p>Want every number? The full tables are one toggle away.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="apps" id="apps">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <p class="eyebrow">The apps</p>
+            <h2>One for every part of the season.</h2>
+          </div>
+
+          <ol class="timeline">
+            <li class="app reveal">
+              <a href="https://infinidraft.com">
+                <span class="when mono">Aug</span>
+                <h3>infini<b>draft</b></h3>
+                <p>Auction draft values built for your cap, keepers and league.</p>
+                <span class="go">Open <span aria-hidden="true">→</span></span>
+              </a>
+            </li>
+            <li class="app reveal">
+              <a href="https://infinileague.com">
+                <span class="when mono">Sep – Dec</span>
+                <h3>infini<b>league</b></h3>
+                <p>Waiver picks, FAAB bids and trade checks, every week.</p>
+                <span class="go">Open <span aria-hidden="true">→</span></span>
+              </a>
+            </li>
+            <li class="app reveal">
+              <a href="https://infinifaab.com">
+                <span class="when mono">Weekly</span>
+                <h3>infini<b>faab</b></h3>
+                <p>Silent-auction free agency for your whole league.</p>
+                <span class="go">Open <span aria-hidden="true">→</span></span>
+              </a>
+            </li>
+            <li class="app reveal">
+              <a href="https://infiniyoffs.com">
+                <span class="when mono">Dec – Jan</span>
+                <h3>infini<b>yoffs</b></h3>
+                <p>Custom playoff formats with live brackets and odds.</p>
+                <span class="go">Open <span aria-hidden="true">→</span></span>
+              </a>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="how" id="how">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <p class="eyebrow">How it works</p>
+            <h2>Connect once. Decide fast.</h2>
+          </div>
+          <ol class="steps">
+            <li class="reveal">
+              <span class="num mono">1</span>
+              <h3>Connect your league</h3>
+              <p>ESPN, Yahoo or Sleeper. One sign-in covers every app.</p>
+            </li>
+            <li class="reveal">
+              <span class="num mono">2</span>
+              <h3>We sync the details</h3>
+              <p>Rosters, scoring and settings stay current all season.</p>
+            </li>
+            <li class="reveal">
+              <span class="num mono">3</span>
+              <h3>Make the call</h3>
+              <p>Clear recommendations, ready when you are.</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="closer">
+        <div class="wrap closer-inner reveal">
+          <img src="/logo.png" alt="" width="96" height="96" />
+          <h2>Less noise. Same edge.</h2>
+          <a class="btn" href="#apps">Pick an app</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <span class="brand-small">infini<b>fantasy</b></span>
+        <nav aria-label="Footer">
+          <a href="https://infinidraft.com">draft</a>
+          <a href="https://infinileague.com">league</a>
+          <a href="https://infinifaab.com">faab</a>
+          <a href="https://infiniyoffs.com">yoffs</a>
+        </nav>
+        <span class="mono muted">© <span id="year">2026</span></span>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
