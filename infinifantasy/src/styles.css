@@ -1,6 +1,9 @@
 /* infinifantasy marketing site. Tokens mirror shared-core/colors.ts (darkSurfaces body,
-   paper/ink, burlywood primary, saddlebrown emblem, position colors) so the site reads as
-   the same family as the apps. Dark-first, with a paper light theme. */
+   paper/ink, burlywood + saddlebrown, position colors) so the site reads as the same family
+   as the apps. Dark-first, with a paper light theme.
+
+   Color roles follow the apps: burlywood (--accent) for links, highlights and data;
+   saddlebrown (--brown) for buttons, wordmark suffixes and selected/hover borders. */
 
 :root {
   --bg: #0c1310;
@@ -11,9 +14,13 @@
   --muted: #909296;
   --accent: #deb887;
   --accent-strong: #ca8d3e;
-  --accent-ink: #12161c;
+  --brown: #af591e;
+  --brown-fill: #8b4513;
+  --brown-fill-hover: #6a320c;
+  --on-brown: #f5f4ef;
   --glass: rgba(255, 255, 255, 0.04);
   --glow: rgba(222, 184, 135, 0.14);
+  --brown-glow: rgba(175, 89, 30, 0.22);
   --wr: #337de4;
   --rb: #62b789;
   --te: #a342d5;
@@ -34,11 +41,15 @@
     --line-strong: rgba(18, 22, 28, 0.16);
     --text: #12161c;
     --muted: #5c5f66;
-    --accent: #8b4513;
-    --accent-strong: #6a320c;
-    --accent-ink: #f5f4ef;
+    --accent: #9f6b27;
+    --accent-strong: #8b5c1b;
+    --brown: #8b4513;
+    --brown-fill: #af591e;
+    --brown-fill-hover: #8b4513;
+    --on-brown: #ffffff;
     --glass: rgba(255, 255, 255, 0.6);
-    --glow: rgba(139, 69, 19, 0.08);
+    --glow: rgba(159, 107, 39, 0.1);
+    --brown-glow: rgba(139, 69, 19, 0.1);
     color-scheme: light;
   }
 }
@@ -91,7 +102,7 @@ p {
 
 b {
   font-weight: 700;
-  color: var(--accent);
+  color: var(--brown);
 }
 
 .wrap {
@@ -144,8 +155,8 @@ b {
   height: 48px;
   padding: 0 22px;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--brown-fill);
+  color: var(--on-brown);
   font-weight: 600;
   font-size: 0.95rem;
   transition:
@@ -154,7 +165,7 @@ b {
 }
 
 .btn:hover {
-  background: var(--accent-strong);
+  background: var(--brown-fill-hover);
 }
 
 .btn:active {
@@ -253,6 +264,7 @@ b {
   z-index: -1;
   background:
     radial-gradient(600px 400px at 78% 30%, var(--glow), transparent 70%),
+    radial-gradient(500px 360px at 92% 70%, var(--brown-glow), transparent 70%),
     linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 64px 64px,
     linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 64px 64px;
   mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 30%, transparent 80%);
@@ -611,8 +623,8 @@ h1 {
 }
 
 .app a:hover {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  background: color-mix(in srgb, var(--accent) 5%, var(--glass));
+  border-color: color-mix(in srgb, var(--brown) 70%, transparent);
+  background: color-mix(in srgb, var(--brown) 6%, var(--glass));
   transform: translateY(-3px);
 }
 
@@ -750,7 +762,7 @@ h1 {
 .pill-app {
   font-family: var(--font-display);
   font-size: 1rem;
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  border-color: color-mix(in srgb, var(--brown) 55%, transparent);
 }
 
 .flow-hub {
@@ -762,8 +774,8 @@ h1 {
   height: 72px;
   border-radius: 50%;
   background: var(--bg-raised);
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow: 0 0 0 8px var(--glow);
+  border: 1px solid var(--brown);
+  box-shadow: 0 0 0 8px var(--brown-glow);
 }
 
 @media (max-width: 480px) {
@@ -789,7 +801,7 @@ h1 {
   .flow-hub {
     width: 56px;
     height: 56px;
-    box-shadow: 0 0 0 6px var(--glow);
+    box-shadow: 0 0 0 6px var(--brown-glow);
   }
 
   .flow-hub img {
