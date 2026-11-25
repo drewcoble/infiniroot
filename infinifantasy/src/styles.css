@@ -588,15 +588,9 @@ h1 {
   gap: 12px;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 820px) {
   .timeline {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1000px) {
-  .timeline {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
