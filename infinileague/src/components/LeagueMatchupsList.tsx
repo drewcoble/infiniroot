@@ -9,7 +9,6 @@ import { MatchupScoreCard } from "@shared/league/components/MatchupScoreCard";
 import type { WeekGame } from "@shared/league/lib/liveGames";
 import type { LeagueWeekMatchups, StandingsRow } from "@shared/league/types/season";
 import { ErrorMessage } from "@shared/league/components/ErrorMessage";
-import { useWeekAdjustments } from "../hooks/useWeekAdjustments";
 
 // Every matchup in the league for one week - the Matchup tab's League view.
 // One score card per pairing (the same MatchupScoreCard as the cross-league
@@ -42,7 +41,6 @@ export function LeagueMatchupsList({
   const getLeagueWeekMatchups = useAction(
     api.infinileague.season.matchup.getLeagueWeekMatchups,
   );
-  const adjustments = useWeekAdjustments(leagueId, week, refreshMs);
   // Tagged with the week it was fetched for, same as useTeamRoster - a week
   // change reads as loading straight away.
   const key = `${leagueId}:${week}`;
@@ -111,7 +109,6 @@ export function LeagueMatchupsList({
       rows: lineupByTeam.get(teamId) ?? [],
       standing,
       logoUrl: standing?.logoUrl,
-      bonus: adjustments[teamId],
     };
   };
 

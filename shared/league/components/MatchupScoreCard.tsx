@@ -28,8 +28,7 @@ export interface MatchupScoreSide {
   standing?: StandingsRow | undefined;
   logoUrl?: string | undefined;
   // Points added to this side's score for the week (infiniyoffs' seed and
-  // tier bonuses, a platform commissioner's adjustments in infinileague) -
-  // counted in both its actual and projected totals.
+  // tier bonuses) - counted in both its actual and projected totals.
   bonus?: number | undefined;
 }
 
