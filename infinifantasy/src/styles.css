@@ -277,7 +277,7 @@ b {
 }
 
 h1 {
-  font-size: clamp(2.75rem, 7vw, 5rem);
+  font-size: clamp(2.75rem, 7vw, 4.5rem);
   font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 0.98;
