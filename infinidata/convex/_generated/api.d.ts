@@ -56,6 +56,7 @@ import type * as infinidraft_gemini_client from "../infinidraft/gemini/client.js
 import type * as infinidraft_gemini_preDraftInsights from "../infinidraft/gemini/preDraftInsights.js";
 import type * as infinidraft_gemini_reportSummary from "../infinidraft/gemini/reportSummary.js";
 import type * as infinidraft_sharing_invites from "../infinidraft/sharing/invites.js";
+import type * as infinidraft_yahoo_adjustments from "../infinidraft/yahoo/adjustments.js";
 import type * as infinidraft_yahoo_cache from "../infinidraft/yahoo/cache.js";
 import type * as infinidraft_yahoo_client from "../infinidraft/yahoo/client.js";
 import type * as infinidraft_yahoo_draftSync from "../infinidraft/yahoo/draftSync.js";
@@ -92,7 +93,7 @@ import type * as infinileague_season_tournaments from "../infinileague/season/to
 import type * as infinileague_season_tradeSuggestions from "../infinileague/season/tradeSuggestions.js";
 import type * as infinileague_season_tradeValues from "../infinileague/season/tradeValues.js";
 import type * as infinileague_season_usage from "../infinileague/season/usage.js";
-import type * as infinileague_season_weekBonuses from "../infinileague/season/weekBonuses.js";
+import type * as infinileague_season_weekAdjustments from "../infinileague/season/weekAdjustments.js";
 import type * as infinileague_season_weekInjuries from "../infinileague/season/weekInjuries.js";
 import type * as infiniyoffs_access from "../infiniyoffs/access.js";
 import type * as infiniyoffs_draft from "../infiniyoffs/draft.js";
@@ -227,6 +228,7 @@ declare const fullApi: ApiFromModules<{
   "infinidraft/gemini/preDraftInsights": typeof infinidraft_gemini_preDraftInsights;
   "infinidraft/gemini/reportSummary": typeof infinidraft_gemini_reportSummary;
   "infinidraft/sharing/invites": typeof infinidraft_sharing_invites;
+  "infinidraft/yahoo/adjustments": typeof infinidraft_yahoo_adjustments;
   "infinidraft/yahoo/cache": typeof infinidraft_yahoo_cache;
   "infinidraft/yahoo/client": typeof infinidraft_yahoo_client;
   "infinidraft/yahoo/draftSync": typeof infinidraft_yahoo_draftSync;
@@ -263,7 +265,7 @@ declare const fullApi: ApiFromModules<{
   "infinileague/season/tradeSuggestions": typeof infinileague_season_tradeSuggestions;
   "infinileague/season/tradeValues": typeof infinileague_season_tradeValues;
   "infinileague/season/usage": typeof infinileague_season_usage;
-  "infinileague/season/weekBonuses": typeof infinileague_season_weekBonuses;
+  "infinileague/season/weekAdjustments": typeof infinileague_season_weekAdjustments;
   "infinileague/season/weekInjuries": typeof infinileague_season_weekInjuries;
   "infiniyoffs/access": typeof infiniyoffs_access;
   "infiniyoffs/draft": typeof infiniyoffs_draft;

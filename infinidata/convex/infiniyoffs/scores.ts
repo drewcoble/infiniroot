@@ -2,9 +2,9 @@ import type { ActionCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { fetchSleeperJson } from "../sleeper/league";
 import { fetchEspnLeague } from "../espn/league";
-import { fetchYahooApi, findNodesByKey, mergeYahooFields } from "../infinidraft/yahoo/client";
 import { withYahooToken } from "../infinidraft/yahoo/oauth";
 import { cachedYahoo } from "../infinidraft/yahoo/cache";
+import { fetchYahooTeamWeekTotals, loadYahooWeekScores } from "../infinidraft/yahoo/adjustments";
 
 // Every team's actual points per week, straight from the platform - the
 // raw input infiniyoffs' rules engine scores a custom format from. Past
@@ -29,24 +29,6 @@ async function sleeperWeek(leagueId: string, week: number): Promise<WeekPoints> 
   return Object.fromEntries((rows ?? []).map((row) => [String(row.roster_id), row.points ?? 0]));
 }
 
-// Each team's points for the week, matchup or not - the league's
-// teams/stats resource (documented Yahoo fields, NOT confirmed against a
-// live response - see YAHOO.md).
-async function yahooWeek(accessToken: string, leagueKey: string, week: number) {
-  const json = await fetchYahooApi<unknown>(
-    accessToken,
-    `/league/${leagueKey}/teams/stats;type=week;week=${week}`,
-  );
-  const points: WeekPoints = {};
-  for (const node of findNodesByKey(json, "team")) {
-    const fields = mergeYahooFields(node);
-    if (typeof fields.team_key !== "string") continue;
-    const total = Number(mergeYahooFields(fields.team_points).total);
-    if (Number.isFinite(total)) points[fields.team_key] = total;
-  }
-  return points;
-}
-
 interface EspnSide {
   teamId: number;
   pointsByScoringPeriod?: Record<string, number>;
@@ -68,7 +50,10 @@ async function espnWeeks(espnLeagueId: string, year: string): Promise<Record<num
   return byWeek;
 }
 
-// teamId -> week -> points, weeks 1 through `throughWeek`.
+// teamId -> week -> points, weeks 1 through `throughWeek`. Yahoo weeks
+// after `rawAfterWeek` (a custom format's playoffs) are the starters'
+// points alone - a commissioner's points added by hand in Yahoo would
+// double up the format's own bonuses.
 export async function loadWeeklyPoints(
   ctx: ActionCtx,
   season: Doc<"seasons">,
@@ -76,6 +61,7 @@ export async function loadWeeklyPoints(
   teams: Doc<"seasonTeams">[],
   currentWeek: number,
   throughWeek: number,
+  rawAfterWeek?: number,
 ): Promise<Record<string, Record<number, number>>> {
   const weeks = Array.from({ length: Math.max(throughWeek, 0) }, (_, i) => i + 1);
   const cacheMs = (week: number, liveMs: number) =>
@@ -102,13 +88,18 @@ export async function loadWeeklyPoints(
   } else if (season.yahooLeagueKey) {
     const leagueKey = season.yahooLeagueKey;
     const rows = await Promise.all(
-      weeks.map((week) =>
-        cachedYahoo(
-          ctx,
-          `yoffs:points:yahoo:${leagueKey}:${week}`,
-          cacheMs(week, YAHOO_LIVE_WEEK_CACHE_MS),
-          () => withYahooToken(ctx, league.ownerId, (token) => yahooWeek(token, leagueKey, week)),
-        ),
+      weeks.map(async (week) =>
+        rawAfterWeek !== undefined && week > rawAfterWeek && week <= currentWeek
+          ? (await loadYahooWeekScores(ctx, season, league, teams, week, currentWeek)).starters
+          : cachedYahoo(
+              ctx,
+              `yoffs:points:yahoo:${leagueKey}:${week}`,
+              cacheMs(week, YAHOO_LIVE_WEEK_CACHE_MS),
+              () =>
+                withYahooToken(ctx, league.ownerId, (token) =>
+                  fetchYahooTeamWeekTotals(token, leagueKey, week),
+                ),
+            ),
       ),
     );
     byWeek = Object.fromEntries(rows.map((points, i) => [weeks[i]!, points]));

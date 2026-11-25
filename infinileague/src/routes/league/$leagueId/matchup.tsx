@@ -6,7 +6,7 @@ import { Alert, Group, Select, Stack, Text, Title } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { getErrorMessage } from "@shared/errors";
 import { useGuillotineOpponent } from "../../../hooks/useGuillotineOpponent";
-import { useWeekBonuses } from "../../../hooks/useWeekBonuses";
+import { useWeekAdjustments } from "../../../hooks/useWeekAdjustments";
 import { useTeamRoster } from "@shared/league/hooks/useTeamRoster";
 import { WeekPicker } from "@shared/league/components/WeekPicker";
 import { GlassSegmented } from "@shared/glass/GlassSegmented";
@@ -284,10 +284,14 @@ function MatchupPage() {
   const liveProjFor = (row: TeamRosterRow) =>
     liveProjection(row, remainingFraction(row.team ? gamesByTeam.get(row.team) : undefined, now));
   const actualFor = (row: TeamRosterRow) => row.actualPoints ?? 0;
-  // A custom-playoffs league's stage bonuses (infiniyoffs) count too.
-  const bonuses = useWeekBonuses(leagueTypeKnown && !isGuillotine ? seasonId : null, week);
-  const bonusA = (teamAId !== null ? bonuses[teamAId] : undefined) ?? 0;
-  const bonusB = (teamBId !== null ? bonuses[teamBId] : undefined) ?? 0;
+  // Points a commissioner added by hand on the platform count too.
+  const adjustments = useWeekAdjustments(
+    leagueTypeKnown && !isGuillotine ? seasonId : null,
+    week,
+    refreshMs,
+  );
+  const bonusA = (teamAId !== null ? adjustments[teamAId] : undefined) ?? 0;
+  const bonusB = (teamBId !== null ? adjustments[teamBId] : undefined) ?? 0;
   const projA = sumStarterPoints(teamARoster.rows, liveProjFor) + bonusA;
   const actualA = sumStarterPoints(teamARoster.rows, actualFor) + bonusA;
   const projB = sumStarterPoints(teamBRoster.rows, liveProjFor) + bonusB;
@@ -374,7 +378,8 @@ function MatchupPage() {
   const opponentName = standings.find((row) => row.teamId === teamBId)?.name ?? "Opponent";
   const bonusNote =
     bonusA !== 0 || bonusB !== 0
-      ? `Includes the weekly bonus: ${selfTeamName} +${bonusA}, ${opponentName} +${bonusB}`
+      ? `Includes commissioner adjustments: ${selfTeamName} ${signed(bonusA)}, ` +
+        `${opponentName} ${signed(bonusB)}`
       : null;
 
   const teamBOptions = standings
@@ -497,4 +502,9 @@ function MatchupPage() {
       )}
     </Stack>
   );
+}
+
+// "+15", "-2.5", "+0".
+function signed(points: number): string {
+  return `${points < 0 ? "-" : "+"}${Math.abs(points)}`;
 }

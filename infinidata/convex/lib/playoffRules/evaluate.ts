@@ -11,7 +11,6 @@ import type {
   TeamSource,
   Tiebreaker,
 } from "./format";
-import { stageWeeks } from "./format";
 
 // Evaluates a PlayoffFormat against a season's scores. Pure and
 // deterministic: the caller decides which scores go in - final and live
@@ -309,7 +308,7 @@ function playGame(
 }
 
 function bonusFor(
-  ctx: Pick<Ctx, "tierOf">,
+  ctx: Ctx,
   bonus: Bonus | undefined,
   teamId: string | null,
   seed?: number,
@@ -916,52 +915,4 @@ function evaluateStage(ctx: Ctx, stage: Stage): StageResult {
     case "doubleElim":
       return evaluateDoubleElim(ctx, stage);
   }
-}
-
-// Each team's stage bonus for one week - what its score that week counts
-// on top of its points. Group and points stages give every entrant its
-// bonus whether or not its game is set (infinileague pairs off the
-// platform's schedule, which may carry a matchup draft never recorded
-// here); brackets give the teams in that week's games their per-week share.
-export function weekBonuses(
-  format: PlayoffFormat,
-  state: PlayoffState,
-  week: number,
-): Record<string, number> {
-  const tierOf = new Map(
-    state.standings.flatMap((row) => (row.tier !== null ? [[row.teamId, row.tier] as const] : [])),
-  );
-  const bonuses: Record<string, number> = {};
-  const add = (teamId: string | null, bonus: number) => {
-    if (teamId !== null && bonus !== 0) bonuses[teamId] = (bonuses[teamId] ?? 0) + bonus;
-  };
-  for (const stage of format.stages) {
-    const result = state.stages[stage.id];
-    if (!stage.bonus || !result?.entrants || !stageWeeks(stage).includes(week)) continue;
-    if (stage.kind === "groups" || stage.kind === "points") {
-      for (const teamId of result.entrants) {
-        add(
-          teamId,
-          stage.kind === "groups"
-            ? bonusFor({ tierOf }, stage.bonus, teamId)
-            : bonusFor({ tierOf }, stage.bonus, teamId, result.seeds[teamId], 1),
-        );
-      }
-      continue;
-    }
-    const de = result.doubleElim;
-    const games = de
-      ? [...de.weeks.flatMap((w) => [...w.winners, ...w.losers]), ...(de.final ? [de.final] : [])]
-      : (result.rounds ?? []).flatMap((round) => round.games);
-    for (const game of games) {
-      if (!game.weeks.includes(week)) continue;
-      game.teamIds.forEach((teamId, side) => add(teamId, game.bonus[side]! / game.weeks.length));
-    }
-    if (stage.kind === "doubleElim" && de?.rumble?.week === week) {
-      for (const { teamId } of de.rumble.entries) {
-        add(teamId, bonusFor({ tierOf }, stage.bonus, teamId, result.seeds[teamId], 1));
-      }
-    }
-  }
-  return bonuses;
 }
