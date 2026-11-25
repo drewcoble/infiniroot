@@ -155,28 +155,39 @@
       </section>
 
       <section class="how" id="how">
-        <div class="wrap">
-          <div class="section-head reveal">
+        <div class="wrap how-grid">
+          <div class="how-copy reveal">
             <p class="eyebrow">How it works</p>
-            <h2>Getting started is easy.</h2>
+            <h2>Connect once.<br />Use every app.</h2>
+            <p>
+              Link your league in about a minute. Your rosters, scoring and settings stay synced all
+              season, in every app.
+            </p>
           </div>
-          <ol class="steps">
-            <li class="reveal">
-              <span class="num mono">1</span>
-              <h3>Connect your league</h3>
-              <p>Works with Yahoo, Sleeper and ESPN. One account for every app.</p>
-            </li>
-            <li class="reveal">
-              <span class="num mono">2</span>
-              <h3>We do the homework</h3>
-              <p>Your rosters and scoring stay up to date all season.</p>
-            </li>
-            <li class="reveal">
-              <span class="num mono">3</span>
-              <h3>Make your move</h3>
-              <p>Get clear advice whenever you need it.</p>
-            </li>
-          </ol>
+
+          <!-- Platforms flow into one connection, which feeds every app. The SVG stretches to the
+               grid (non-scaling strokes), so the curves meet each pill at any width. -->
+          <figure class="flow reveal" aria-label="Yahoo, Sleeper and ESPN leagues connect once to every app">
+            <svg class="flow-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M38 16.7 C45 16.7 43 50 50 50" />
+              <path d="M38 50 L50 50" />
+              <path d="M38 83.3 C45 83.3 43 50 50 50" />
+              <path class="out" d="M50 50 C57 50 55 16.7 62 16.7" />
+              <path class="out" d="M50 50 L62 50" />
+              <path class="out" d="M50 50 C57 50 55 83.3 62 83.3" />
+            </svg>
+            <ul class="flow-col">
+              <li class="pill">Yahoo</li>
+              <li class="pill">Sleeper</li>
+              <li class="pill">ESPN</li>
+            </ul>
+            <div class="flow-hub"><img src="/logo.png" alt="" width="44" height="44" /></div>
+            <ul class="flow-col">
+              <li class="pill pill-app">infini<b>draft</b></li>
+              <li class="pill pill-app">infini<b>league</b></li>
+              <li class="pill pill-app">infini<b>yoffs</b></li>
+            </ul>
+          </figure>
         </div>
       </section>
 
