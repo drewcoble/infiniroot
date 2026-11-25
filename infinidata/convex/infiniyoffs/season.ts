@@ -112,7 +112,15 @@ export const getSeasonData = action({
     ];
 
     const [points, projected, platformPlayoffs] = await Promise.all([
-      loadWeeklyPoints(ctx, season, league, teams, currentWeek, Math.min(currentWeek, lastWeek)),
+      loadWeeklyPoints(
+        ctx,
+        season,
+        league,
+        teams,
+        currentWeek,
+        Math.min(currentWeek, lastWeek),
+        format?.regularSeasonEndWeek,
+      ),
       pastSeason ? Promise.resolve({}) : loadProjected(ctx, season),
       format ? Promise.resolve(null) : loadPlayoffs(ctx, season, league, teams, currentWeek),
     ]);

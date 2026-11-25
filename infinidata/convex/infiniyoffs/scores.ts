@@ -47,6 +47,29 @@ async function yahooWeek(accessToken: string, leagueKey: string, week: number) {
   return points;
 }
 
+// Not in the starting lineup.
+const YAHOO_NON_STARTER_POSITIONS = new Set(["BN", "IR", "IR+", "NA"]);
+
+// One team's starters' points for the week, summed from player_points -
+// the same roster request infinileague's lineups use (see teamRoster.ts),
+// NOT confirmed against a live response. Unlike the team's team_points,
+// this leaves out points a commissioner adds to a matchup by hand.
+async function yahooStarterPoints(accessToken: string, teamKey: string, week: number) {
+  const json = await fetchYahooApi<unknown>(
+    accessToken,
+    `/team/${teamKey}/roster;week=${week}/players/stats;type=week;week=${week}`,
+  );
+  let points = 0;
+  for (const node of findNodesByKey(json, "player")) {
+    const fields = mergeYahooFields(node);
+    const position = mergeYahooFields(fields.selected_position).position;
+    if (typeof position !== "string" || YAHOO_NON_STARTER_POSITIONS.has(position)) continue;
+    const total = Number(mergeYahooFields(fields.player_points).total);
+    if (Number.isFinite(total)) points += total;
+  }
+  return points;
+}
+
 interface EspnSide {
   teamId: number;
   pointsByScoringPeriod?: Record<string, number>;
@@ -68,7 +91,10 @@ async function espnWeeks(espnLeagueId: string, year: string): Promise<Record<num
   return byWeek;
 }
 
-// teamId -> week -> points, weeks 1 through `throughWeek`.
+// teamId -> week -> points, weeks 1 through `throughWeek`. Yahoo weeks
+// after `startersAfterWeek` (a custom format's playoffs) are the starters'
+// points alone: a commissioner's points added by hand in Yahoo, there or
+// supplied later, would double up the format's own bonuses.
 export async function loadWeeklyPoints(
   ctx: ActionCtx,
   season: Doc<"seasons">,
@@ -76,6 +102,7 @@ export async function loadWeeklyPoints(
   teams: Doc<"seasonTeams">[],
   currentWeek: number,
   throughWeek: number,
+  startersAfterWeek?: number,
 ): Promise<Record<string, Record<number, number>>> {
   const weeks = Array.from({ length: Math.max(throughWeek, 0) }, (_, i) => i + 1);
   const cacheMs = (week: number, liveMs: number) =>
@@ -105,9 +132,23 @@ export async function loadWeeklyPoints(
       weeks.map((week) =>
         cachedYahoo(
           ctx,
-          `yoffs:points:yahoo:${leagueKey}:${week}`,
+          startersAfterWeek !== undefined && week > startersAfterWeek
+            ? `yoffs:starters:yahoo:${leagueKey}:${week}`
+            : `yoffs:points:yahoo:${leagueKey}:${week}`,
           cacheMs(week, YAHOO_LIVE_WEEK_CACHE_MS),
-          () => withYahooToken(ctx, league.ownerId, (token) => yahooWeek(token, leagueKey, week)),
+          () =>
+            withYahooToken(ctx, league.ownerId, async (token) => {
+              if (startersAfterWeek === undefined || week <= startersAfterWeek) {
+                return await yahooWeek(token, leagueKey, week);
+              }
+              const teamKeys = teams.flatMap((team) =>
+                team.yahooTeamKey ? [team.yahooTeamKey] : [],
+              );
+              const points = await Promise.all(
+                teamKeys.map((teamKey) => yahooStarterPoints(token, teamKey, week)),
+              );
+              return Object.fromEntries(teamKeys.map((teamKey, i) => [teamKey, points[i]!]));
+            }),
         ),
       ),
     );
