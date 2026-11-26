@@ -217,15 +217,6 @@ export function GroupsEditor({
       ),
     );
 
-  const setHead = (g: number, teamId: string | null) =>
-    setForm(
-      form.map((group, i) =>
-        i !== g || !teamId
-          ? group
-          : { ...group, teamIds: [teamId, ...group.teamIds.filter((id) => id !== teamId)] },
-      ),
-    );
-
   const setSide = (g: number, week: number, row: number, side: 0 | 1, teamId: string | null) =>
     setForm(
       form.map((group, i) => {
@@ -264,16 +255,6 @@ export function GroupsEditor({
                 }))}
                 onChange={(teamIds) => setGroupTeams(g, teamIds)}
               />
-              {group.teamIds.length >= 2 && (
-                <Select
-                  size="xs"
-                  label="Heads the group"
-                  value={group.teamIds[0] ?? null}
-                  data={options}
-                  allowDeselect={false}
-                  onChange={(teamId) => setHead(g, teamId)}
-                />
-              )}
               {group.teamIds.length >= 2 &&
                 stage.weeks.map((week) => (
                   <Group key={week} gap={6} wrap="nowrap" align="center">

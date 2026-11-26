@@ -207,11 +207,10 @@ function GroupsView({
         </Stack>
       )}
       {groups.map((group, index) => {
-        const head = group.headId ? teams.get(group.headId)?.name : undefined;
         return (
           <GroupSection
-            key={group.headId ?? index}
-            title={head ? `${head}'s group` : `Group ${String.fromCharCode(65 + index)}`}
+            key={index}
+            title={`Group ${String.fromCharCode(65 + index)}`}
             group={group}
             // Hand-set groups have no open spots to draft.
             groupSize={result.manual ? group.teamIds.length : groupSize}
