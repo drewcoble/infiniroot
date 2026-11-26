@@ -195,6 +195,17 @@ export interface DraftState {
 
 export const EMPTY_DRAFT: DraftState = { slots: [], picks: [], rematches: [] };
 
+// A group stage's groups and games set by the commissioner, in place of
+// its formation (the draft or the serpentine deal) - the playoffManualGroups
+// row, minus ids. The first team listed heads its group. A week with no
+// pairs yet is still to be set.
+export interface ManualGroups {
+  groups: {
+    teamIds: string[];
+    pairs: { week: number; teamIds: [string, string] }[];
+  }[];
+}
+
 // Every week a stage plays.
 export function stageWeeks(stage: Stage): number[] {
   switch (stage.kind) {

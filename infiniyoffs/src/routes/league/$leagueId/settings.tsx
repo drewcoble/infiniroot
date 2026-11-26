@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { GenericId as Id } from "convex/values";
 import { Alert, Center, Loader, Stack, Text } from "@mantine/core";
 import glass from "@shared/glass/GlassMatchupCard.module.css";
+import { GroupsEditor } from "../../../components/GroupsEditor";
 import { RulesEditor } from "../../../components/RulesEditor";
 import { TeamInvitesCard } from "../../../components/TeamInvitesCard";
 import { useMyViewer } from "../../../hooks/useMyViewer";
@@ -13,8 +14,8 @@ export const Route = createFileRoute("/league/$leagueId/settings")({
 });
 
 // The league's playoff rules in plain words for everyone ("Rules" in the
-// tabs for members); the commissioner also gets the rules form and the
-// member invites.
+// tabs for members); the commissioner also gets the rules form, hand-set
+// groups and matchups for each group stage, and the member invites.
 function SettingsPage() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
@@ -31,6 +32,12 @@ function SettingsPage() {
   }
 
   const lines = format ? describeFormat(format) : [];
+  const groupStages =
+    isCustom && format ? format.stages.flatMap((s) => (s.kind === "groups" ? [s] : [])) : [];
+  const resets = [
+    rules.drafts.length > 0 && "the matchup draft",
+    rules.manualGroups.length > 0 && "the hand-set groups",
+  ].filter(Boolean);
   return (
     <Stack gap="md">
       <div className={glass.card}>
@@ -57,9 +64,21 @@ function SettingsPage() {
           seasonId={seasonId}
           data={data}
           saved={isCustom ? format : null}
-          hasDraft={rules.drafts.length > 0}
+          resets={resets.length > 0 ? resets.join(" and ") : null}
         />
       )}
+      {viewer?.isCommissioner &&
+        format &&
+        groupStages.map((stage) => (
+          <GroupsEditor
+            key={stage.id}
+            seasonId={seasonId}
+            stage={stage}
+            format={format}
+            data={data}
+            rules={rules}
+          />
+        ))}
       {viewer?.isCommissioner && <TeamInvitesCard seasonId={seasonId} />}
     </Stack>
   );

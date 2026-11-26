@@ -34,12 +34,13 @@ export function RulesEditor({
   seasonId,
   data,
   saved,
-  hasDraft,
+  resets,
 }: {
   seasonId: Id<"seasons">;
   data: SeasonData;
   saved: PlayoffFormat | null;
-  hasDraft: boolean;
+  // What saving throws away, e.g. "the matchup draft" - null for nothing.
+  resets: string | null;
 }) {
   const setFormat = useMutation(api.infiniyoffs.rules.setFormat);
   const teamCount = data.teams.length;
@@ -144,7 +145,7 @@ export function RulesEditor({
         )}
         <Group justify="space-between" wrap="nowrap">
           <Text size="xs" c="dimmed">
-            {hasDraft ? "Saving resets the matchup draft." : savedAt ? "Saved." : ""}
+            {resets ? `Saving resets ${resets}.` : savedAt ? "Saved." : ""}
           </Text>
           <Button onClick={() => void save()} loading={saving} disabled={problem !== null}>
             Save rules

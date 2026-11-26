@@ -209,7 +209,8 @@ function GroupsView({
             title={head ? `${head}'s group` : `Group ${String.fromCharCode(65 + index)}`}
             bonusLine={bonusLine}
             group={group}
-            groupSize={groupSize}
+            // Hand-set groups have no open spots to draft.
+            groupSize={result.manual ? group.teamIds.length : groupSize}
             weeks={stage.weeks}
             advancePerGroup={stage.advancePerGroup}
             teams={teams}
