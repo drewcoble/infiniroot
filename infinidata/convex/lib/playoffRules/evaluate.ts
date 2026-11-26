@@ -4,6 +4,7 @@ import type {
   DoubleElimStage,
   DraftState,
   GroupStage,
+  ManualGroups,
   MatchupDraftFormation,
   PlayoffFormat,
   PointsStage,
@@ -31,6 +32,9 @@ export interface SeasonInput {
   // Fill undecided draft and rematch picks with the drafter's weakest
   // option (lower strength = weaker) - simulations only.
   autoPick?: { strength: Record<string, number> } | undefined;
+  // Group stages the commissioner set by hand (stage id -> groups): these
+  // replace the stage's formation, and their teams are its entrants.
+  manualGroups?: Record<string, ManualGroups> | undefined;
 }
 
 export interface Standing {
@@ -102,6 +106,8 @@ export interface StageResult {
   // Stage seed per entrant (1-based).
   seeds: Record<string, number>;
   groups?: GroupResult[];
+  // Groups set by the commissioner rather than the formation.
+  manual?: boolean;
   draft?: DraftPhase;
   rounds?: RoundResult[];
   // Points stages: entrants ranked by stage points so far.
@@ -592,17 +598,42 @@ function rotate<T>(values: T[], by: number): T[] {
   return [...values.slice(values.length - k), ...values.slice(0, values.length - k)];
 }
 
+// The commissioner's groups as formed groups.
+function manualFormedGroups(manual: ManualGroups): FormedGroup[] {
+  return manual.groups.map((group) => {
+    const pairs = new Map<number, [string, string][]>();
+    for (const { week, teamIds } of group.pairs) {
+      pairs.set(week, [...(pairs.get(week) ?? []), teamIds]);
+    }
+    return { headId: group.teamIds[0] ?? null, teamIds: group.teamIds, pairs };
+  });
+}
+
 function evaluateGroups(ctx: Ctx, stage: GroupStage): StageResult {
-  const entrants = resolveEntrants(ctx, stage.entrants, true);
+  const manual = ctx.input.manualGroups?.[stage.id];
+  const entrants = manual
+    ? manual.groups
+        .flatMap((group) => group.teamIds)
+        .sort((a, b) => (ctx.seedOf.get(a) ?? 0) - (ctx.seedOf.get(b) ?? 0))
+    : resolveEntrants(ctx, stage.entrants, true);
   const seeds = Object.fromEntries((entrants ?? []).map((teamId, i) => [teamId, i + 1]));
   if (!entrants) return unsettled(stage.id, seeds);
 
-  const formed =
-    stage.formation.kind === "matchupDraft"
+  const formed = manual
+    ? { groups: manualFormedGroups(manual), draft: undefined }
+    : stage.formation.kind === "matchupDraft"
       ? matchupDraftGroups(ctx, stage.formation, entrants)
       : { groups: serpentineGroups(stage, entrants), draft: undefined };
 
   let settled = formed.draft === undefined || formed.draft.phase === "done";
+  // Hand-set groups aren't done while a week is still to be set.
+  if (manual) {
+    settled = formed.groups.every(
+      (group) =>
+        group.teamIds.length < 2 ||
+        stage.weeks.every((week) => (group.pairs.get(week)?.length ?? 0) > 0),
+    );
+  }
   const groups: GroupResult[] = formed.groups.map((group, g) => {
     const book = emptyBook();
     const games: GameResult[] = [];
@@ -653,6 +684,7 @@ function evaluateGroups(ctx: Ctx, stage: GroupStage): StageResult {
     eliminated: advancers && entrants.filter((teamId) => !advancers.includes(teamId)),
     seeds,
     groups,
+    ...(manual ? { manual: true } : {}),
     ...(formed.draft ? { draft: formed.draft } : {}),
   };
 }

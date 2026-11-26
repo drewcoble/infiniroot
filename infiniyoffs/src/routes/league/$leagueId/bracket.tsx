@@ -186,7 +186,7 @@ function GroupsView({
 }) {
   const groups = result.groups ?? [];
   const groupSize = Math.ceil((result.entrants?.length ?? 0) / Math.max(stage.groupCount, 1));
-  const note = draftNote(result.draft, teams);
+  const note = result.manual ? "Groups set by the commissioner" : draftNote(result.draft, teams);
   // In the format's tier order - the stored bonus map's key order isn't kept.
   const byTier = stage.bonus?.byTier ?? {};
   const bonuses = format.tiers.flatMap((tier) =>
@@ -209,7 +209,8 @@ function GroupsView({
             title={head ? `${head}'s group` : `Group ${String.fromCharCode(65 + index)}`}
             bonusLine={bonusLine}
             group={group}
-            groupSize={groupSize}
+            // Hand-set groups have no open spots to draft.
+            groupSize={result.manual ? group.teamIds.length : groupSize}
             weeks={stage.weeks}
             advancePerGroup={stage.advancePerGroup}
             teams={teams}

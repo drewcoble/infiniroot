@@ -2143,4 +2143,22 @@ export default defineSchema({
       }),
     ),
   }).index("by_season_stage", ["seasonId", "stageId"]),
+
+  // A group stage's groups and weekly games set by hand by the commissioner
+  // (convex/infiniyoffs/rules.ts's setManualGroups), in place of the
+  // stage's formation - team ids are seasonTeams ids, the first team in a
+  // group heads it, and each pair is two ids. One row per (season, stage);
+  // cleared with the rest when the format changes.
+  playoffManualGroups: defineTable({
+    seasonId: v.id("seasons"),
+    stageId: v.string(),
+    groups: v.array(
+      v.object({
+        teamIds: v.array(v.id("seasonTeams")),
+        pairs: v.array(v.object({ week: v.number(), teamIds: v.array(v.id("seasonTeams")) })),
+      }),
+    ),
+    updatedByUserId: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_season_stage", ["seasonId", "stageId"]),
 });
