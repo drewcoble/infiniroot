@@ -7,7 +7,7 @@ import { GlassSegmented } from "@shared/glass/GlassSegmented";
 import { TournamentBracket, type BracketTeam } from "@shared/glass/TournamentBracket";
 import bracketClasses from "@shared/glass/TournamentBracket.module.css";
 import { DoubleElimView } from "../../../components/DoubleElimView";
-import { GroupCard, type GroupTeam } from "../../../components/GroupCard";
+import { GroupSection, type GroupTeam } from "../../../components/GroupSection";
 import { TeamRow } from "../../../components/TeamRow";
 import { ifEndedTodayInput, stageTournament, stageWeeks } from "../../../lib/bracketView";
 import { currentInput } from "../../../lib/engineInput";
@@ -199,15 +199,19 @@ function GroupsView({
     return <div className={bracketClasses.note}>Groups are set when the regular season ends.</div>;
   }
   return (
-    <Stack gap="md">
-      {note && <div className={bracketClasses.note}>{note}</div>}
+    <Stack gap={20}>
+      {(note || bonusLine) && (
+        <Stack gap={4}>
+          {note && <div className={bracketClasses.note}>{note}</div>}
+          {bonusLine && <div className={bracketClasses.note}>{bonusLine}</div>}
+        </Stack>
+      )}
       {groups.map((group, index) => {
         const head = group.headId ? teams.get(group.headId)?.name : undefined;
         return (
-          <GroupCard
+          <GroupSection
             key={group.headId ?? index}
             title={head ? `${head}'s group` : `Group ${String.fromCharCode(65 + index)}`}
-            bonusLine={bonusLine}
             group={group}
             // Hand-set groups have no open spots to draft.
             groupSize={result.manual ? group.teamIds.length : groupSize}

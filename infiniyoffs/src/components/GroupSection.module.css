@@ -1,5 +1,17 @@
-/* A group-stage group: its table, then each week's games. Sits inside a
-   glass .card. */
+/* A group-stage group as a page section: header, table, then each week's
+   games. Sections after the first get a rule above. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.section + .section {
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
 
 .header {
   display: flex;
@@ -9,7 +21,7 @@
 }
 
 .title {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
 }
 
@@ -18,7 +30,7 @@
   grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   align-items: center;
   column-gap: 8px;
-  row-gap: 6px;
+  row-gap: 8px;
 }
 
 .position {
@@ -76,32 +88,33 @@
   color: rgba(248, 250, 252, 0.45);
 }
 
-.divider {
-  height: 1px;
-  margin: 4px 0;
-  background: rgba(255, 255, 255, 0.08);
-}
-
+/* Every week's games on one grid, so the scores line up down the group:
+   each week is its label, then a line per game. */
 .games {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.game {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: 8px;
-  font-size: 13px;
+  row-gap: 6px;
 }
 
-.week {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.5);
+.week,
+.game {
+  display: contents;
+}
+
+.weekLabel {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+}
+
+.week:first-child .weekLabel {
+  margin-top: 0;
+}
+
+.side,
+.score {
+  font-size: 14px;
 }
 
 .side {
@@ -132,12 +145,6 @@
   text-align: center;
 }
 
-.bonusLine {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(248, 250, 252, 0.55);
-}
-
 /* W-L / points headers over the last two table columns. */
 .columnLabel {
   text-align: right;
@@ -156,7 +163,8 @@
 }
 
 .pending {
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
+  font-size: 14px;
   font-style: italic;
   color: rgba(248, 250, 252, 0.45);
 }
