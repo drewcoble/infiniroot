@@ -973,9 +973,10 @@ h1,
   font-size: 10px;
 }
 
+/* Burlywood rather than the app's blue, to match the site's accent. */
 .gm-selected {
-  background: linear-gradient(150deg, rgba(96, 165, 250, 0.22) 0%, rgba(96, 165, 250, 0.08) 100%);
-  border-color: rgba(96, 165, 250, 0.55);
+  background: linear-gradient(150deg, rgba(222, 184, 135, 0.22) 0%, rgba(222, 184, 135, 0.08) 100%);
+  border-color: rgba(222, 184, 135, 0.6);
 }
 
 .gm-check {
@@ -992,8 +993,8 @@ h1,
 
 .gm-selected .gm-check {
   color: #f8fafc;
-  background: rgba(96, 165, 250, 0.85);
-  border-color: rgba(147, 197, 253, 0.95);
+  background: #b2792f;
+  border-color: #deb887;
 }
 
 .gm-trade-stats {
