@@ -28,9 +28,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Barlow:wght@600;700&family=Red+Hat+Mono:wght@600&display=swap"
       rel="stylesheet"
     />
+    <link rel="preload" href="/fonts/lumen-round-900.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
@@ -67,42 +68,115 @@
             </p>
           </div>
 
-          <!-- Illustrative only - a stylized take on infinileague's simple-mode waiver view. -->
-          <figure class="demo reveal" aria-label="Example waiver recommendation">
-            <div class="demo-card">
-              <div class="demo-head">
-                <span class="mono">Waivers · Week 12</span>
-                <span class="chip">Simple</span>
+          <!-- A static copy of infinileague's Matchup tab (GlassMatchupHeader + GlassMatchupCard),
+               styles lifted from shared/glass/GlassMatchupCard.module.css. Sample numbers only.
+               Meter widths are % of a 28-point scale, like the app's shared meterScaleMax. -->
+          <figure class="screen reveal" aria-label="Example infinileague matchup: Gridiron Gurus lead Mahomes Alone 112.46 to 98.72, with a 61% win probability">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#3</span>
+                      <span class="gm-logo">GG</span>
+                      <span class="gm-team-name">Gridiron Gurus</span>
+                    </div>
+                    <div class="gm-total">112<span class="gm-dec"><span class="gm-point">.</span>46</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 128.3</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>2</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>1</span>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#7</span>
+                      <span class="gm-logo">MA</span>
+                      <span class="gm-team-name">Mahomes Alone</span>
+                    </div>
+                    <div class="gm-total">98<span class="gm-dec"><span class="gm-point">.</span>72</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 121.9</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>1</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>3</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-win">
+                  <span>61%</span>
+                  <div class="gm-win-bar">
+                    <div class="gm-win-seg" style="width: 61%; --pill-tint: #4ade80"></div>
+                    <div class="gm-win-seg" style="width: 39%; --pill-tint: #f87171"></div>
+                  </div>
+                  <span>39%</span>
+                </div>
               </div>
-              <p class="demo-call">Bid <strong>$14</strong> on the WR.</p>
-              <p class="demo-sub">Best add for your roster this week.</p>
-              <ol class="demo-list">
-                <li>
-                  <span class="pos pos-wr">WR</span>
-                  <span class="bar"><span style="--v: 0.92"></span></span>
-                  <span class="mono">$14</span>
-                </li>
-                <li>
-                  <span class="pos pos-rb">RB</span>
-                  <span class="bar"><span style="--v: 0.64"></span></span>
-                  <span class="mono">$8</span>
-                </li>
-                <li>
-                  <span class="pos pos-te">TE</span>
-                  <span class="bar"><span style="--v: 0.41"></span></span>
-                  <span class="mono">$3</span>
-                </li>
-              </ol>
-              <div class="demo-foot">
-                <span class="mono">Budget left</span>
-                <span class="meter"><span style="--v: 0.58"></span></span>
-                <span class="mono">$58</span>
+
+              <div class="gm-row">
+                <div class="gm-card gm-live">
+                  <div class="gm-top">
+                    <span class="gm-pill gm-qb">QB2</span>
+                    <span class="gm-top-status"><span class="gm-clock">Q3 8:12</span><span class="gm-status"><span class="gm-dot"></span></span></span>
+                  </div>
+                  <div class="gm-name">Josh Allen</div>
+                  <div class="gm-game">vs. KC</div>
+                  <div class="gm-stats"><span class="gm-proj-small">Proj 27.9</span><span class="gm-points">19.86</span></div>
+                  <div class="gm-meter">
+                    <div class="gm-meter-ghost gm-ahead" style="left: 70.9%; width: 28.7%"></div>
+                    <div class="gm-meter-fill" style="width: 70.9%"></div>
+                    <div class="gm-meter-tick" style="left: 83.6%"></div>
+                  </div>
+                </div>
+                <span class="gm-pill gm-slot gm-qb">QB</span>
+                <div class="gm-card gm-live">
+                  <div class="gm-top">
+                    <span class="gm-pill gm-qb">QB14</span>
+                    <span class="gm-top-status"><span class="gm-clock">Q3 8:12</span><span class="gm-status"><span class="gm-dot"></span></span></span>
+                  </div>
+                  <div class="gm-name">P. Mahomes</div>
+                  <div class="gm-game">@ BUF</div>
+                  <div class="gm-stats"><span class="gm-proj-small">Proj 16.0</span><span class="gm-points">11.22</span></div>
+                  <div class="gm-meter">
+                    <div class="gm-meter-ghost gm-behind" style="left: 40.1%; width: 17%"></div>
+                    <div class="gm-meter-fill" style="width: 40.1%"></div>
+                    <div class="gm-meter-tick" style="left: 71.8%"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="gm-row">
+                <div class="gm-card gm-final">
+                  <div class="gm-top">
+                    <span class="gm-pill gm-rb">RB3</span>
+                    <span class="gm-top-status"><span class="gm-clock">FINAL</span></span>
+                  </div>
+                  <div class="gm-name">B. Robinson</div>
+                  <div class="gm-game">vs. TB</div>
+                  <div class="gm-stats"><span class="gm-proj-small">Proj 18.7</span><span class="gm-points">24.60</span></div>
+                  <div class="gm-meter">
+                    <div class="gm-meter-fill gm-final-ahead" style="width: 87.9%"></div>
+                    <div class="gm-meter-tick" style="left: 66.8%"></div>
+                  </div>
+                </div>
+                <span class="gm-pill gm-slot gm-rb">RB</span>
+                <div class="gm-card">
+                  <div class="gm-top">
+                    <span class="gm-pill gm-rb">RB</span>
+                    <span class="gm-top-status"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></span>
+                  </div>
+                  <div class="gm-name-row">
+                    <span class="gm-name">C. McCaffrey</span>
+                    <span class="gm-pill gm-injury">Q</span>
+                  </div>
+                  <div class="gm-game">@ LAR · Sun 4:25 PM</div>
+                  <div class="gm-stats"><span class="gm-proj-small">Proj 15.2</span></div>
+                  <div class="gm-meter">
+                    <div class="gm-meter-tick" style="left: 54.3%"></div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="demo-nerd" aria-hidden="true">
-              <span class="mono">Nerd mode</span>
-              <span class="grid-lines"></span>
-            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · Matchup</figcaption>
           </figure>
         </div>
       </section>
