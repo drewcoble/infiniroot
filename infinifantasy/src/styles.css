@@ -351,10 +351,12 @@ h1 {
 }
 
 .gm {
+  --gm-pad: 14px;
   display: grid;
   gap: 10px;
-  padding: 14px;
+  padding: var(--gm-pad);
   border-radius: 26px;
+  overflow: hidden;
   font-family: "Barlow", var(--font-body);
   color: #f8fafc;
   background:
@@ -703,9 +705,17 @@ h1 {
   min-width: 0;
 }
 
+/* Roster slot chips run off the screen's left edge, like the app's on mobile
+   (.rosterRow > .slotChip): pulled out past the panel padding by --chip-bleed and clipped by
+   .gm's overflow, with the label padded back in so it stays centered in the visible part. */
 .gm-roster-slot {
-  width: 54px;
-  padding: 0 6px;
+  --chip-bleed: calc(var(--gm-pad) + 24px);
+  width: calc(54px + var(--chip-bleed) - var(--gm-pad));
+  height: 42px;
+  margin-left: calc(-1 * var(--chip-bleed));
+  padding: 0 6px 0 calc(6px + var(--chip-bleed) - var(--gm-pad));
+  border-radius: 16px;
+  font-size: 13px;
 }
 
 .gm-wide {
@@ -834,7 +844,7 @@ h1 {
 
 @media (max-width: 400px) {
   .gm {
-    padding: 10px;
+    --gm-pad: 10px;
     gap: 8px;
   }
 
@@ -844,7 +854,7 @@ h1 {
   }
 
   .gm-roster-slot {
-    width: 44px;
+    width: calc(46px + var(--chip-bleed) - var(--gm-pad));
   }
 
   .gm-wide {
