@@ -1,6 +1,9 @@
 /* infinifantasy marketing site. Tokens mirror shared-core/colors.ts (darkSurfaces body,
-   paper/ink, burlywood primary, saddlebrown emblem, position colors) so the site reads as
-   the same family as the apps. Dark-first, with a paper light theme. */
+   paper/ink, burlywood + saddlebrown, position colors) so the site reads as the same family
+   as the apps. Dark-first, with a paper light theme.
+
+   Color roles follow the apps: burlywood (--accent) for links, highlights and data;
+   saddlebrown (--brown) for buttons, wordmark suffixes and selected/hover borders. */
 
 :root {
   --bg: #0c1310;
@@ -11,12 +14,13 @@
   --muted: #909296;
   --accent: #deb887;
   --accent-strong: #ca8d3e;
-  --accent-ink: #12161c;
+  --brown: #af591e;
+  --brown-fill: #8b4513;
+  --brown-fill-hover: #6a320c;
+  --on-brown: #f5f4ef;
   --glass: rgba(255, 255, 255, 0.04);
   --glow: rgba(222, 184, 135, 0.14);
-  --wr: #337de4;
-  --rb: #62b789;
-  --te: #a342d5;
+  --brown-glow: rgba(175, 89, 30, 0.22);
 
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;
@@ -34,11 +38,15 @@
     --line-strong: rgba(18, 22, 28, 0.16);
     --text: #12161c;
     --muted: #5c5f66;
-    --accent: #8b4513;
-    --accent-strong: #6a320c;
-    --accent-ink: #f5f4ef;
+    --accent: #9f6b27;
+    --accent-strong: #8b5c1b;
+    --brown: #8b4513;
+    --brown-fill: #af591e;
+    --brown-fill-hover: #8b4513;
+    --on-brown: #ffffff;
     --glass: rgba(255, 255, 255, 0.6);
-    --glow: rgba(139, 69, 19, 0.08);
+    --glow: rgba(159, 107, 39, 0.1);
+    --brown-glow: rgba(139, 69, 19, 0.1);
     color-scheme: light;
   }
 }
@@ -91,7 +99,7 @@ p {
 
 b {
   font-weight: 700;
-  color: var(--accent);
+  color: var(--brown);
 }
 
 .wrap {
@@ -144,8 +152,8 @@ b {
   height: 48px;
   padding: 0 22px;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--brown-fill);
+  color: var(--on-brown);
   font-weight: 600;
   font-size: 0.95rem;
   transition:
@@ -154,7 +162,7 @@ b {
 }
 
 .btn:hover {
-  background: var(--accent-strong);
+  background: var(--brown-fill-hover);
 }
 
 .btn:active {
@@ -253,6 +261,7 @@ b {
   z-index: -1;
   background:
     radial-gradient(600px 400px at 78% 30%, var(--glow), transparent 70%),
+    radial-gradient(500px 360px at 92% 70%, var(--brown-glow), transparent 70%),
     linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 64px 64px,
     linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 64px 64px;
   mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 30%, transparent 80%);
@@ -263,6 +272,12 @@ b {
   display: grid;
   gap: 56px;
   align-items: center;
+}
+
+/* Grid items default to min-width: auto, so the app screen's nowrap names would widen the
+   column past the viewport on phones. */
+.hero-grid > * {
+  min-width: 0;
 }
 
 @media (min-width: 960px) {
@@ -277,7 +292,7 @@ b {
 }
 
 h1 {
-  font-size: clamp(2.75rem, 7vw, 5rem);
+  font-size: clamp(2.75rem, 7vw, 4.5rem);
   font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 0.98;
@@ -320,192 +335,536 @@ h1 {
   background: var(--muted);
 }
 
-/* Hero demo card - a stylized simple-mode screen with a hint of nerd-mode tables behind it */
+/* Hero app screen - a static copy of infinileague's My Team page (GlassTeamHeader, the lineup
+   suggestion, GlassRosterCard rows). The .gm-* rules mirror shared/glass/GlassMatchupCard.module.css
+   and the app's fonts (Barlow numbers, Red Hat Mono badges). The screen stays dark in light mode
+   too, the same as the app. */
 
-.demo {
+.screen {
+  --gm-numeric: "Barlow", var(--font-body);
+  --gm-badge: "Red Hat Mono", var(--font-mono);
   position: relative;
   margin: 0;
-  max-width: 420px;
   width: 100%;
+  max-width: 440px;
   justify-self: center;
 }
 
-.demo-card {
-  position: relative;
-  z-index: 1;
-  padding: 24px;
-  border-radius: 20px;
+.gm {
+  --gm-pad: 14px;
+  display: grid;
+  gap: 10px;
+  padding: var(--gm-pad);
+  border-radius: 26px;
+  overflow: hidden;
+  font-family: "Barlow", var(--font-body);
+  color: #f8fafc;
   background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
-    var(--bg-raised);
-  border: 1px solid var(--line-strong);
+    radial-gradient(120% 80% at 100% 0%, rgba(175, 89, 30, 0.18), transparent 60%),
+    radial-gradient(90% 70% at 0% 100%, rgba(74, 222, 128, 0.06), transparent 60%),
+    #0c1310;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 30px 70px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.demo-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--muted);
+.gm > * {
+  min-width: 0;
 }
 
-.chip {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  padding: 3px 10px;
-  border-radius: 999px;
-  color: var(--accent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
-}
-
-.demo-call {
-  margin-top: 28px;
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-
-.demo-call strong {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.demo-sub {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.demo-list {
-  list-style: none;
-  margin: 28px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 14px;
-}
-
-.demo-list li {
-  display: grid;
-  grid-template-columns: 40px 1fr 36px;
-  align-items: center;
-  gap: 12px;
-}
-
-.demo-list .mono {
-  text-align: right;
-}
-
-.pos {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 500;
-  text-align: center;
-  padding: 3px 0;
-  border-radius: 6px;
-}
-
-.pos-wr {
-  color: var(--wr);
-  background: color-mix(in srgb, var(--wr) 16%, transparent);
-}
-
-.pos-rb {
-  color: var(--rb);
-  background: color-mix(in srgb, var(--rb) 16%, transparent);
-}
-
-.pos-te {
-  color: var(--te);
-  background: color-mix(in srgb, var(--te) 16%, transparent);
-}
-
-.bar,
-.meter {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--line);
-  overflow: hidden;
-}
-
-.bar > span,
-.meter > span {
+.screen-caption {
   display: block;
-  height: 100%;
-  width: calc(var(--v) * 100%);
-  border-radius: inherit;
-  background: var(--accent);
-  transform-origin: left;
-}
-
-.demo-list li:not(:first-child) .bar > span {
-  background: color-mix(in srgb, var(--text) 30%, transparent);
-}
-
-.demo-foot {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-  margin-top: 28px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  text-align: center;
   color: var(--muted);
+  font-size: 0.75rem;
 }
 
-.meter > span {
-  background: var(--rb);
+.screen-caption b {
+  font-weight: 500;
 }
 
-.demo-nerd {
-  position: absolute;
-  inset: 28px -12px -36px 28px;
-  border-radius: 20px;
-  border: 1px solid var(--line);
-  background: var(--bg-raised);
-  opacity: 0.6;
+.gm-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 16px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
   overflow: hidden;
 }
 
-@media (max-width: 480px) {
-  .demo-nerd {
-    inset: 20px 0 -28px 16px;
-  }
-
-  .demo-card {
-    margin-right: 12px;
-  }
-}
-
-.demo-nerd .mono {
+.gm-card::before {
+  content: "";
   position: absolute;
-  right: 16px;
-  bottom: 12px;
-  color: var(--muted);
-  font-size: 0.7rem;
+  inset: 0 0 auto 0;
+  height: 45%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
 }
 
-.grid-lines {
+.gm-card > * {
+  position: relative;
+}
+
+/* Pills: a small glass pane tinted by --pill-tint, near-white text. */
+.gm-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-family: var(--gm-badge);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--pill-text, #fff) 30%, #fff);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, var(--pill-tint) 38%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pill-tint) 50%, rgba(255, 255, 255, 0.15));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.gm-rb {
+  --pill-tint: #76c098;
+  --pill-text: #dbf1e5;
+}
+
+.gm-rank {
+  --pill-tint: #adb5bd;
+  height: 18px;
+  flex-shrink: 0;
+  font-family: var(--gm-numeric);
+}
+
+.gm-slot {
+  flex-shrink: 0;
+  align-self: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 32px;
+  border-radius: 12px;
+  letter-spacing: 0.04em;
+}
+
+.gm-logo {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.85);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* The sample team's made-up helmet logo (public/team-helmet.svg) brings its own tile. */
+.gm-logo-img {
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+}
+
+.gm-proj {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: rgba(248, 250, 252, 0.78);
+}
+
+.gm-count .gm-status {
+  width: 16px;
+  height: 16px;
+}
+
+.gm-count .gm-status svg {
+  width: 13px;
+  height: 13px;
+}
+
+.gm-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.gm-pre {
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gm-name {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-game {
+  font-size: 12px;
+  line-height: 1.25;
+  color: rgba(248, 250, 252, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Projection meter - before kickoff it's just the tick at the projection. */
+.gm-meter {
+  position: relative;
+  height: 5px;
+  margin: auto 0 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.gm-meter-tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: #d1d5db;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.gm-wr {
+  --pill-tint: #4f8fe8;
+  --pill-text: #d1e5ff;
+}
+
+.gm-pill.gm-name-badge {
+  height: 17px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.gm-bn {
+  --pill-tint: #9397a1;
+  --pill-text: #e4e7ec;
+}
+
+.gm-start {
+  --pill-tint: #85b899;
+  --pill-text: #e4ede8;
+}
+
+.gm-sit {
+  --pill-tint: #c16955;
+  --pill-text: #e5beb5;
+}
+
+/* My Team header, lineup suggestion, full-width roster cards. The app's suggestion card is plain
+   (not glass) and its roster cards carry no START/SIT badges - both are dressed up here. */
+
+.gm-team-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "logo name proj"
+    "logo season proj";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+}
+
+.gm-logo-large {
+  grid-area: logo;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+.gm-team-header-title {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gm-team-header-name {
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-team-header-season {
+  grid-area: season;
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-team-header-proj {
+  grid-area: proj;
+  justify-content: flex-end;
+}
+
+.gm-suggest {
+  gap: 8px;
+  padding: 12px 14px;
+  border-color: rgba(74, 222, 128, 0.35);
+  background: linear-gradient(150deg, rgba(74, 222, 128, 0.12) 0%, rgba(74, 222, 128, 0.03) 100%);
+}
+
+.gm-suggest-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.92);
+}
+
+.gm-suggest-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.gm-suggest-sit {
+  margin-left: 5px;
+}
+
+.gm-suggest-name {
+  font-weight: 700;
+}
+
+.gm-suggest-proj {
+  font-family: var(--gm-numeric);
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-suggest-delta {
+  margin-left: auto;
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  color: #4ade80;
+}
+
+.gm-roster-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-roster-row > .gm-card {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Roster slot chips run off the screen's left edge, like the app's on mobile
+   (.rosterRow > .slotChip): pulled out past the panel padding by --chip-bleed and clipped by
+   .gm's overflow, with the label padded back in so it stays centered in the visible part. */
+.gm-roster-slot {
+  --chip-bleed: calc(var(--gm-pad) + 24px);
+  width: calc(54px + var(--chip-bleed) - var(--gm-pad));
+  height: 42px;
+  margin-left: calc(-1 * var(--chip-bleed));
+  padding: 0 6px 0 calc(6px + var(--chip-bleed) - var(--gm-pad));
+  border-radius: 16px;
+  font-size: 13px;
+}
+
+.gm-wide {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "photo name points"
+    "photo detail proj"
+    "meter meter meter";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+}
+
+.gm-flag-start {
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
+.gm-flag-sit {
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.gm-headshot {
+  position: relative;
+  overflow: hidden;
+  grid-area: photo;
+  align-self: end;
+  display: grid;
+  place-items: center;
+  width: 53px;
+  height: 40px;
+  border-radius: 12px;
+  font-family: var(--gm-badge);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.55);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Sleeper headshots (transparent PNGs), cropped and scaled like the app's .headshotImg. */
+.gm-headshot:has(img) {
+  border: 0;
+}
+
+.gm-headshot:has(img)::after {
+  content: "";
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 22px,
-    linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 54px 100%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0) 60%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
-/* Bars grow in once the card is visible. */
-.demo.reveal .bar > span,
-.demo.reveal .meter > span {
-  transform: scaleX(0);
-  transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s;
+.gm-headshot img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transform: scale(1.2);
+  transform-origin: center 20%;
 }
 
-.demo.reveal.in .bar > span,
-.demo.reveal.in .meter > span {
-  transform: scaleX(1);
+.gm-wide-name {
+  grid-area: name;
+}
+
+.gm-wide-points {
+  grid-area: points;
+  justify-self: end;
+  display: flex;
+}
+
+.gm-wide-points .gm-status {
+  width: auto;
+  height: auto;
+}
+
+.gm-wide-detail {
+  grid-area: detail;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gm-wide-detail .gm-pill {
+  flex-shrink: 0;
+}
+
+.gm-wide-proj {
+  grid-area: proj;
+  justify-self: end;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-meter.gm-wide-meter {
+  grid-area: meter;
+  margin: 6px 0 2px;
+}
+
+.gm-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-divider span {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.22) 50%, rgba(255, 255, 255, 0) 100%);
+}
+
+@media (max-width: 400px) {
+  .gm {
+    --gm-pad: 10px;
+    gap: 8px;
+  }
+
+  .gm-slot {
+    min-width: 36px;
+    padding: 0 4px;
+  }
+
+  .gm-roster-slot {
+    width: calc(46px + var(--chip-bleed) - var(--gm-pad));
+  }
+
+  .gm-wide {
+    column-gap: 8px;
+  }
+
+  .gm-headshot {
+    width: 42px;
+    height: 34px;
+  }
 }
 
 /* Principles */
@@ -611,8 +970,8 @@ h1 {
 }
 
 .app a:hover {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  background: color-mix(in srgb, var(--accent) 5%, var(--glass));
+  border-color: color-mix(in srgb, var(--brown) 70%, transparent);
+  background: color-mix(in srgb, var(--brown) 6%, var(--glass));
   transform: translateY(-3px);
 }
 
@@ -661,44 +1020,141 @@ h1 {
   transform: translateX(4px);
 }
 
-/* How it works */
+/* How it works - one diagram instead of another row of columns */
 
-.steps {
+.how-grid {
+  display: grid;
+  gap: 48px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .how-grid {
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: 64px;
+  }
+}
+
+.how-copy h2 {
+  font-size: clamp(2rem, 4.5vw, 3rem);
+}
+
+.how-copy p:last-child {
+  margin-top: 20px;
+  max-width: 26em;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.flow {
+  position: relative;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 38fr 24fr 38fr;
+  align-items: center;
+  padding: 28px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--glass);
+}
+
+.flow-lines {
+  position: absolute;
+  inset: 28px 20px;
+  width: calc(100% - 40px);
+  height: calc(100% - 56px);
+  overflow: visible;
+}
+
+.flow-lines path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.flow-lines path.out {
+  stroke: color-mix(in srgb, var(--accent) 55%, transparent);
+  stroke-dasharray: 4 6;
+  animation: flow 1.2s linear infinite;
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.flow-col {
+  position: relative;
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 40px;
+  gap: 20px;
 }
 
-@media (min-width: 820px) {
-  .steps {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 32px;
-  }
+.pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
-.steps li {
-  padding-top: 24px;
-  border-top: 1px solid var(--line-strong);
+.pill-app {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  border-color: color-mix(in srgb, var(--brown) 55%, transparent);
 }
 
-.steps .num {
-  width: 32px;
-  height: 32px;
+.flow-hub {
+  position: relative;
+  justify-self: center;
   display: grid;
   place-items: center;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  background: var(--bg-raised);
+  border: 1px solid var(--brown);
+  box-shadow: 0 0 0 8px var(--brown-glow);
 }
 
-.steps h3 {
-  font-size: 1.25rem;
-}
+@media (max-width: 480px) {
+  .flow {
+    padding: 20px 12px;
+  }
 
-.steps p {
-  margin-top: 8px;
-  color: var(--muted);
+  .flow-lines {
+    inset: 20px 12px;
+    width: calc(100% - 24px);
+    height: calc(100% - 40px);
+  }
+
+  .pill {
+    height: 42px;
+    font-size: 0.85rem;
+  }
+
+  .pill-app {
+    font-size: 0.85rem;
+  }
+
+  .flow-hub {
+    width: 56px;
+    height: 56px;
+    box-shadow: 0 0 0 6px var(--brown-glow);
+  }
+
+  .flow-hub img {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 /* Closer */
@@ -775,9 +1231,11 @@ h1 {
     scroll-behavior: auto;
   }
 
-  .js .reveal,
-  .demo.reveal .bar > span,
-  .demo.reveal .meter > span {
+  .flow-lines path.out {
+    animation: none;
+  }
+
+  .js .reveal {
     opacity: 1;
     transform: none;
     transition: none;

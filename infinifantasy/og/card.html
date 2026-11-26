@@ -1,0 +1,116 @@
+<!doctype html>
+<!-- Source for public/og.png, the 1200x630 social share card. render.cjs drops the hero's app
+     screen (the <figure class="screen"> in ../index.html) into the placeholder below, so the card
+     always matches the page. Regenerate with `node og/render.cjs` after changing either. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Barlow:wght@600;700&family=Red+Hat+Mono:wght@600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../src/styles.css" />
+    <style>
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background: #0c1310;
+        color: #f5f4ef;
+        color-scheme: dark;
+      }
+
+      .card {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        padding: 64px 72px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(520px 380px at 86% 30%, rgba(222, 184, 135, 0.14), transparent 70%),
+          radial-gradient(460px 340px at 96% 85%, rgba(175, 89, 30, 0.24), transparent 70%),
+          linear-gradient(rgba(245, 244, 239, 0.07) 1px, transparent 1px) 0 0 / 60px 60px,
+          linear-gradient(90deg, rgba(245, 244, 239, 0.07) 1px, transparent 1px) 0 0 / 60px 60px;
+        mask-image: radial-gradient(ellipse 90% 90% at 60% 40%, #000 30%, transparent 85%);
+      }
+
+      .card > * {
+        position: relative;
+      }
+
+      .og-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 30px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+      }
+
+      .og-brand img {
+        width: 56px;
+        height: 56px;
+      }
+
+      .og-brand b {
+        color: #af591e;
+        font-weight: 600;
+      }
+
+      .og-title {
+        margin-top: auto;
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 80px;
+        font-weight: 600;
+        line-height: 0.98;
+        letter-spacing: -0.045em;
+      }
+
+      .og-title span {
+        color: #deb887;
+      }
+
+      .og-tags {
+        margin-top: 32px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 19px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #909296;
+      }
+
+      /* The hero's screen, pinned to the right and scaled to the card's height. */
+      .og-screen {
+        position: absolute;
+        right: 56px;
+        top: 50%;
+        width: 440px;
+        transform-origin: right center;
+      }
+
+      .og-screen .screen {
+        max-width: none;
+      }
+
+      .og-screen .screen-caption {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="og-brand"><img src="../public/logo.png" alt="" /><span>infini<b>fantasy</b></span></div>
+      <h1 class="og-title">Fantasy football<br /><span>made simple.</span></h1>
+      <p class="og-tags">Draft · Waivers · Trades · Playoffs</p>
+      <div class="og-screen"><!-- SCREEN --></div>
+    </div>
+  </body>
+</html>

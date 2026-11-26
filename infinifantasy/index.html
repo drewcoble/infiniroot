@@ -3,21 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>infinifantasy - fantasy football, simplified</title>
+    <title>infinifantasy - fantasy football made simple</title>
     <meta
       name="description"
-      content="Focused fantasy football tools for draft day, the waiver wire, and the playoffs. Connect your ESPN, Yahoo, or Sleeper league and get the call."
+      content="Focused fantasy football tools for draft day, the waiver wire, and the playoffs. Connect your Yahoo, Sleeper, or ESPN league and get the call."
     />
-    <meta property="og:title" content="infinifantasy" />
-    <meta property="og:description" content="Fantasy decisions, simplified." />
-    <meta property="og:image" content="/logo.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="infinifantasy" />
+    <meta property="og:url" content="https://infinifantasy.com/" />
+    <meta property="og:title" content="infinifantasy - fantasy football made simple" />
+    <meta
+      property="og:description"
+      content="Easy-to-use tools that help you draft smarter, work the waiver wire, and win your league."
+    />
+    <!-- Share card, rendered from og/card.html. Crawlers need an absolute URL here. -->
+    <meta property="og:image" content="https://infinifantasy.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="infinifantasy - Fantasy football made simple." />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#0c1310" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Barlow:wght@600;700&family=Red+Hat+Mono:wght@600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/styles.css" />
@@ -41,57 +52,108 @@
       <section class="hero">
         <div class="wrap hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow reveal">Fantasy football tools</p>
-            <h1 class="reveal">Fantasy decisions,<br /><span class="accent">simplified.</span></h1>
+            <p class="eyebrow reveal">Draft · Waivers · Trades · Playoffs</p>
+            <h1 class="reveal">Fantasy football<br /><span class="accent">made simple.</span></h1>
             <p class="lede reveal">
-              The same math the spreadsheet crowd uses, boiled down to the call. Less to read. Same
-              edge.
+              Easy-to-use tools that help you draft smarter, work the waiver wire, and win your
+              league.
             </p>
             <div class="hero-actions reveal">
               <a class="btn" href="#apps">Explore the apps</a>
               <a class="btn btn-ghost" href="#how">How it works</a>
             </div>
             <p class="platforms reveal">
-              <span>Works with</span> ESPN <i></i> Yahoo <i></i> Sleeper
+              <span>Works with</span> Yahoo <i></i> Sleeper <i></i> ESPN
             </p>
           </div>
 
-          <!-- Illustrative only - a stylized take on infinileague's simple-mode waiver view. -->
-          <figure class="demo reveal" aria-label="Example waiver recommendation">
-            <div class="demo-card">
-              <div class="demo-head">
-                <span class="mono">Waivers · Week 12</span>
-                <span class="chip">Simple</span>
+          <!-- A static copy of infinileague's My Team page (GlassTeamHeader, the lineup suggestions,
+               GlassRosterCard rows), styles lifted from shared/glass/GlassMatchupCard.module.css. The
+               app's suggestions card is plain (not glass) and its roster cards carry no START/SIT
+               badges - both are dressed up here. Sample numbers only; ticks on a 28-point scale. -->
+          <figure class="screen reveal" aria-label="Example infinileague lineup: start C. Skattebo over D. Swift for 3.7 more projected points">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-card gm-team-header">
+                <img class="gm-logo gm-logo-large gm-logo-img" src="/team-helmet.svg" alt="" width="46" height="46" />
+                <div class="gm-team-header-title">
+                  <span class="gm-pill gm-rank">#3</span>
+                  <span class="gm-team-header-name">Gridiron Gurus</span>
+                </div>
+                <div class="gm-team-header-season">8-3 · 118.4 PPG</div>
+                <div class="gm-proj gm-team-header-proj">
+                  <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>9</span>
+                  <span>Proj 126.8</span>
+                </div>
               </div>
-              <p class="demo-call">Bid <strong>$14</strong> on the WR.</p>
-              <p class="demo-sub">Best add for your roster this week.</p>
-              <ol class="demo-list">
-                <li>
-                  <span class="pos pos-wr">WR</span>
-                  <span class="bar"><span style="--v: 0.92"></span></span>
-                  <span class="mono">$14</span>
-                </li>
-                <li>
-                  <span class="pos pos-rb">RB</span>
-                  <span class="bar"><span style="--v: 0.64"></span></span>
-                  <span class="mono">$8</span>
-                </li>
-                <li>
-                  <span class="pos pos-te">TE</span>
-                  <span class="bar"><span style="--v: 0.41"></span></span>
-                  <span class="mono">$3</span>
-                </li>
-              </ol>
-              <div class="demo-foot">
-                <span class="mono">Budget left</span>
-                <span class="meter"><span style="--v: 0.58"></span></span>
-                <span class="mono">$58</span>
+
+              <div class="gm-card gm-suggest">
+                <div class="gm-suggest-title">Suggested lineup adjustment</div>
+                <div class="gm-suggest-line">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7" /><path d="M12 19V5" /></svg>
+                  <span class="gm-suggest-name">C. Skattebo</span>
+                  <span class="gm-suggest-proj">15.8</span>
+                  <span class="gm-suggest-delta">+3.7 pts</span>
+                </div>
+                <div class="gm-suggest-line gm-suggest-sit">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></svg>
+                  <span class="gm-suggest-name">D. Swift</span>
+                  <span class="gm-suggest-proj">12.1</span>
+                </div>
+              </div>
+
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rb">RB</span>
+                <div class="gm-card gm-wide gm-flag-sit">
+                  <span class="gm-headshot"><img src="/headshots/swift.png" alt="" width="350" height="254" /></span>
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">D. Swift</span>
+                    <span class="gm-pill gm-name-badge gm-sit">SIT</span>
+                  </div>
+                  <div class="gm-wide-points"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></div>
+                  <div class="gm-wide-detail">
+                    <span class="gm-pill gm-rb">RB</span>
+                    <span class="gm-game">@ MIN · Sun 1:00 PM</span>
+                  </div>
+                  <div class="gm-wide-proj">Proj 12.1</div>
+                  <div class="gm-meter gm-wide-meter"><div class="gm-meter-tick" style="left: 43.2%"></div></div>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-wr">WR</span>
+                <div class="gm-card gm-wide">
+                  <span class="gm-headshot"><img src="/headshots/st-brown.png" alt="" width="350" height="254" /></span>
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">A. St. Brown</span>
+                  </div>
+                  <div class="gm-wide-points"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></div>
+                  <div class="gm-wide-detail">
+                    <span class="gm-pill gm-wr">WR</span>
+                    <span class="gm-game">vs. GB · Sun 1:00 PM</span>
+                  </div>
+                  <div class="gm-wide-proj">Proj 16.2</div>
+                  <div class="gm-meter gm-wide-meter"><div class="gm-meter-tick" style="left: 57.9%"></div></div>
+                </div>
+              </div>
+              <div class="gm-divider"><span></span>Bench<span></span></div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-bn">BN</span>
+                <div class="gm-card gm-wide gm-flag-start">
+                  <span class="gm-headshot"><img src="/headshots/skattebo.png" alt="" width="350" height="254" /></span>
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">C. Skattebo</span>
+                    <span class="gm-pill gm-name-badge gm-start">START</span>
+                  </div>
+                  <div class="gm-wide-points"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></div>
+                  <div class="gm-wide-detail">
+                    <span class="gm-pill gm-rb">RB</span>
+                    <span class="gm-game">vs. NO · Sun 1:00 PM</span>
+                  </div>
+                  <div class="gm-wide-proj">Proj 15.8</div>
+                  <div class="gm-meter gm-wide-meter"><div class="gm-meter-tick" style="left: 56.4%"></div></div>
+                </div>
               </div>
             </div>
-            <div class="demo-nerd" aria-hidden="true">
-              <span class="mono">Nerd mode</span>
-              <span class="grid-lines"></span>
-            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · My Team</figcaption>
           </figure>
         </div>
       </section>
@@ -101,18 +163,18 @@
           <div class="principle-grid">
             <article class="reveal">
               <span class="num mono">01</span>
-              <h2>The answer first.</h2>
-              <p>Every screen leads with the call. The why is right underneath.</p>
+              <h2>Simple by design.</h2>
+              <p>Clean screens that show what matters, without the clutter.</p>
             </article>
             <article class="reveal">
               <span class="num mono">02</span>
-              <h2>Your league's rules.</h2>
-              <p>Scoring, rosters, keepers and budgets come straight from your league.</p>
+              <h2>Made for your league.</h2>
+              <p>Personalized recommendations based on your league's settings.</p>
             </article>
             <article class="reveal">
               <span class="num mono">03</span>
-              <h2>Nerd mode on tap.</h2>
-              <p>Want every number? The full tables are one toggle away.</p>
+              <h2>Dig in if you want.</h2>
+              <p>Love the numbers? Turn on Nerd Mode to see the full stats anytime.</p>
             </article>
           </div>
         </div>
@@ -122,7 +184,7 @@
         <div class="wrap">
           <div class="section-head reveal">
             <p class="eyebrow">The apps</p>
-            <h2>One for every part of the season.</h2>
+            <h2>Help from <span class="accent">draft day</span> to the <span class="accent">championship</span>.</h2>
           </div>
 
           <ol class="timeline">
@@ -130,7 +192,7 @@
               <a href="https://draft.infinifantasy.com">
                 <span class="when mono">Aug</span>
                 <h3>infini<b>draft</b></h3>
-                <p>Auction draft values built for your cap, keepers and league.</p>
+                <p>Know what every player is worth in your auction draft, keepers and all.</p>
                 <span class="go">Open <span aria-hidden="true">→</span></span>
               </a>
             </li>
@@ -138,7 +200,7 @@
               <a href="https://league.infinifantasy.com">
                 <span class="when mono">Sep – Dec</span>
                 <h3>infini<b>league</b></h3>
-                <p>Waiver picks, FAAB bids and trade checks, every week.</p>
+                <p>Find the best pickups, what to bid, and which trades help you.</p>
                 <span class="go">Open <span aria-hidden="true">→</span></span>
               </a>
             </li>
@@ -146,7 +208,7 @@
               <a href="https://yoffs.infinifantasy.com">
                 <span class="when mono">Dec – Jan</span>
                 <h3>infini<b>yoffs</b></h3>
-                <p>Custom playoff formats with live brackets and odds.</p>
+                <p>Run your league's playoffs your way, with live brackets and odds.</p>
                 <span class="go">Open <span aria-hidden="true">→</span></span>
               </a>
             </li>
@@ -155,36 +217,47 @@
       </section>
 
       <section class="how" id="how">
-        <div class="wrap">
-          <div class="section-head reveal">
+        <div class="wrap how-grid">
+          <div class="how-copy reveal">
             <p class="eyebrow">How it works</p>
-            <h2>Connect once. Decide fast.</h2>
+            <h2>Connect <span class="accent">once</span>.<br />Use every app.</h2>
+            <p>
+              Link your league in about a minute. Your rosters, scoring and settings stay synced all
+              season, in every app.
+            </p>
           </div>
-          <ol class="steps">
-            <li class="reveal">
-              <span class="num mono">1</span>
-              <h3>Connect your league</h3>
-              <p>ESPN, Yahoo or Sleeper. One sign-in covers every app.</p>
-            </li>
-            <li class="reveal">
-              <span class="num mono">2</span>
-              <h3>We sync the details</h3>
-              <p>Rosters, scoring and settings stay current all season.</p>
-            </li>
-            <li class="reveal">
-              <span class="num mono">3</span>
-              <h3>Make the call</h3>
-              <p>Clear recommendations, ready when you are.</p>
-            </li>
-          </ol>
+
+          <!-- Platforms flow into one connection, which feeds every app. The SVG stretches to the
+               grid (non-scaling strokes), so the curves meet each pill at any width. -->
+          <figure class="flow reveal" aria-label="Yahoo, Sleeper and ESPN leagues connect once to every app">
+            <svg class="flow-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M38 16.7 C45 16.7 43 50 50 50" />
+              <path d="M38 50 L50 50" />
+              <path d="M38 83.3 C45 83.3 43 50 50 50" />
+              <path class="out" d="M50 50 C57 50 55 16.7 62 16.7" />
+              <path class="out" d="M50 50 L62 50" />
+              <path class="out" d="M50 50 C57 50 55 83.3 62 83.3" />
+            </svg>
+            <ul class="flow-col">
+              <li class="pill">Yahoo</li>
+              <li class="pill">Sleeper</li>
+              <li class="pill">ESPN</li>
+            </ul>
+            <div class="flow-hub"><img src="/logo.png" alt="" width="44" height="44" /></div>
+            <ul class="flow-col">
+              <li class="pill pill-app">infini<b>draft</b></li>
+              <li class="pill pill-app">infini<b>league</b></li>
+              <li class="pill pill-app">infini<b>yoffs</b></li>
+            </ul>
+          </figure>
         </div>
       </section>
 
       <section class="closer">
         <div class="wrap closer-inner reveal">
           <img src="/logo.png" alt="" width="96" height="96" />
-          <h2>Less noise. Same edge.</h2>
-          <a class="btn" href="#apps">Pick an app</a>
+          <h2 class="accent">Ready to win?</h2>
+          <a class="btn" href="#apps">Get started</a>
         </div>
       </section>
     </main>

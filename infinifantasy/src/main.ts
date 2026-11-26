@@ -4,6 +4,20 @@ document.documentElement.classList.add("js");
 const year = document.getElementById("year");
 if (year) year.textContent = String(new Date().getFullYear());
 
+// The HTML links the production apps (draft.infinifantasy.com, ...). Anywhere other than the
+// production landing page - landing-dev, Vercel previews, local dev - point them at the matching
+// dev deployments (draft-dev.infinifantasy.com, ...) instead.
+const PROD_HOSTS = ["infinifantasy.com", "www.infinifantasy.com"];
+if (!PROD_HOSTS.includes(location.hostname)) {
+  for (const link of document.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+    const url = new URL(link.href);
+    const match = /^([a-z]+)\.infinifantasy\.com$/.exec(url.hostname);
+    if (!match || match[1] === "www") continue;
+    url.hostname = `${match[1]}-dev.infinifantasy.com`;
+    link.href = url.toString();
+  }
+}
+
 // Nav picks up its glass background once the page scrolls under it.
 const nav = document.querySelector<HTMLElement>(".nav");
 const onScroll = () => nav?.classList.toggle("scrolled", window.scrollY > 8);
