@@ -1020,6 +1020,234 @@ h1,
   color: rgba(248, 250, 252, 0.6);
 }
 
+/* My Team pieces (Option C): team header, lineup suggestion, full-width roster cards. */
+
+.gm-flex {
+  --pill-tint: #65c5d2;
+  --pill-text: #d5f2f7;
+}
+
+.gm-bn {
+  --pill-tint: #9397a1;
+  --pill-text: #e4e7ec;
+}
+
+.gm-start {
+  --pill-tint: #85b899;
+  --pill-text: #e4ede8;
+}
+
+.gm-sit {
+  --pill-tint: #c16955;
+  --pill-text: #e5beb5;
+}
+
+.gm-team-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "logo name proj"
+    "logo season proj";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+}
+
+.gm-logo-large {
+  grid-area: logo;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+.gm-team-header-title {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gm-team-header-name {
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-team-header-season {
+  grid-area: season;
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-team-header-proj {
+  grid-area: proj;
+  justify-content: flex-end;
+}
+
+.gm-suggest {
+  gap: 8px;
+  padding: 12px 14px;
+  border-color: rgba(74, 222, 128, 0.35);
+  background: linear-gradient(150deg, rgba(74, 222, 128, 0.12) 0%, rgba(74, 222, 128, 0.03) 100%);
+}
+
+.gm-suggest-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.92);
+}
+
+.gm-suggest-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.gm-suggest-sit {
+  margin-left: 5px;
+}
+
+.gm-suggest-name {
+  font-weight: 700;
+}
+
+.gm-suggest-proj {
+  font-family: var(--gm-numeric);
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-suggest-delta {
+  margin-left: auto;
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  color: #4ade80;
+}
+
+.gm-roster-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-roster-row > .gm-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.gm-roster-slot {
+  width: 54px;
+  padding: 0 6px;
+}
+
+.gm-wide {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "photo name points"
+    "photo detail proj"
+    "meter meter meter";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+}
+
+.gm-flag-start {
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
+.gm-flag-sit {
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.gm-headshot {
+  grid-area: photo;
+  align-self: end;
+  display: grid;
+  place-items: center;
+  width: 53px;
+  height: 40px;
+  border-radius: 12px;
+  font-family: var(--gm-badge);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.55);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.gm-wide-name {
+  grid-area: name;
+}
+
+.gm-wide-points {
+  grid-area: points;
+  justify-self: end;
+  display: flex;
+}
+
+.gm-wide-points .gm-status {
+  width: auto;
+  height: auto;
+}
+
+.gm-wide-detail {
+  grid-area: detail;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gm-wide-detail .gm-pill {
+  flex-shrink: 0;
+}
+
+.gm-wide-proj {
+  grid-area: proj;
+  justify-self: end;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-meter.gm-wide-meter {
+  grid-area: meter;
+  margin: 6px 0 2px;
+}
+
+.gm-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-divider span {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.22) 50%, rgba(255, 255, 255, 0) 100%);
+}
+
 /* Meters and the win bar grow in once the screen is visible. */
 .js .screen .gm-meter-fill,
 .js .screen .gm-meter-ghost,
@@ -1072,6 +1300,19 @@ h1,
 
   .gm-ros {
     font-size: 14px;
+  }
+
+  .gm-roster-slot {
+    width: 44px;
+  }
+
+  .gm-wide {
+    column-gap: 8px;
+  }
+
+  .gm-headshot {
+    width: 42px;
+    height: 34px;
   }
 
   .gm-header {

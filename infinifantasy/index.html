@@ -315,6 +315,117 @@
         </div>
       </section>
 
+      <!-- Option C, for comparing against the heroes above - keep one, delete the others. -->
+      <section class="hero hero-alt">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="compare-tag mono">Option C · Lineup</p>
+            <p class="eyebrow reveal">Draft · Waivers · Trades · Playoffs</p>
+            <h2 class="h1 reveal">Fantasy football<br /><span class="accent">made simple.</span></h2>
+            <p class="lede reveal">
+              Easy-to-use tools that help you draft smarter, work the waiver wire, and win your
+              league.
+            </p>
+            <div class="hero-actions reveal">
+              <a class="btn" href="#apps">Explore the apps</a>
+              <a class="btn btn-ghost" href="#how">How it works</a>
+            </div>
+            <p class="platforms reveal">
+              <span>Works with</span> Yahoo <i></i> Sleeper <i></i> ESPN
+            </p>
+          </div>
+
+          <!-- A static copy of infinileague's My Team page (GlassTeamHeader, the lineup suggestions,
+               GlassRosterCard rows), styles lifted from shared/glass/GlassMatchupCard.module.css. The
+               app's suggestions card is plain (not glass) and its roster cards carry no START/SIT
+               badges - both are dressed up here. Sample numbers only; ticks on a 28-point scale. -->
+          <figure class="screen reveal" aria-label="Example infinileague lineup: start J. Jennings over D. Moore for 4.4 more projected points">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-card gm-team-header">
+                <span class="gm-logo gm-logo-large">GG</span>
+                <div class="gm-team-header-title">
+                  <span class="gm-pill gm-rank">#3</span>
+                  <span class="gm-team-header-name">Gridiron Gurus</span>
+                </div>
+                <div class="gm-team-header-season">8-3 · 118.4 PPG</div>
+                <div class="gm-proj gm-team-header-proj">
+                  <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>9</span>
+                  <span>Proj 126.8</span>
+                </div>
+              </div>
+
+              <div class="gm-card gm-suggest">
+                <div class="gm-suggest-title">Suggested lineup adjustment</div>
+                <div class="gm-suggest-line">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7" /><path d="M12 19V5" /></svg>
+                  <span class="gm-suggest-name">J. Jennings</span>
+                  <span class="gm-suggest-proj">13.6</span>
+                  <span class="gm-suggest-delta">+4.4 pts</span>
+                </div>
+                <div class="gm-suggest-line gm-suggest-sit">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></svg>
+                  <span class="gm-suggest-name">D. Moore</span>
+                  <span class="gm-suggest-proj">9.2</span>
+                </div>
+              </div>
+
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-wr">WR</span>
+                <div class="gm-card gm-wide">
+                  <span class="gm-headshot">DET</span>
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">A. St. Brown</span>
+                  </div>
+                  <div class="gm-wide-points"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></div>
+                  <div class="gm-wide-detail">
+                    <span class="gm-pill gm-wr">WR</span>
+                    <span class="gm-game">vs. GB · Sun 1:00 PM</span>
+                  </div>
+                  <div class="gm-wide-proj">Proj 16.2</div>
+                  <div class="gm-meter gm-wide-meter"><div class="gm-meter-tick" style="left: 57.9%"></div></div>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-flex">FLEX</span>
+                <div class="gm-card gm-wide gm-flag-sit">
+                  <span class="gm-headshot">CHI</span>
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">D. Moore</span>
+                    <span class="gm-pill gm-name-badge gm-sit">SIT</span>
+                  </div>
+                  <div class="gm-wide-points"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></div>
+                  <div class="gm-wide-detail">
+                    <span class="gm-pill gm-wr">WR</span>
+                    <span class="gm-game">@ MIN · Sun 1:00 PM</span>
+                  </div>
+                  <div class="gm-wide-proj">Proj 9.2</div>
+                  <div class="gm-meter gm-wide-meter"><div class="gm-meter-tick" style="left: 32.9%"></div></div>
+                </div>
+              </div>
+              <div class="gm-divider"><span></span>Bench<span></span></div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-bn">BN</span>
+                <div class="gm-card gm-wide gm-flag-start">
+                  <span class="gm-headshot">SF</span>
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">J. Jennings</span>
+                    <span class="gm-pill gm-name-badge gm-start">START</span>
+                  </div>
+                  <div class="gm-wide-points"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></div>
+                  <div class="gm-wide-detail">
+                    <span class="gm-pill gm-wr">WR</span>
+                    <span class="gm-game">vs. DAL · Sun 4:25 PM</span>
+                  </div>
+                  <div class="gm-wide-proj">Proj 13.6</div>
+                  <div class="gm-meter gm-wide-meter"><div class="gm-meter-tick" style="left: 48.6%"></div></div>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · My Team</figcaption>
+          </figure>
+        </div>
+      </section>
+
       <section class="principles">
         <div class="wrap">
           <div class="principle-grid">
