@@ -53,6 +53,7 @@
       <section class="hero">
         <div class="wrap hero-grid">
           <div class="hero-copy">
+            <p class="compare-tag mono">Option A · Matchup</p>
             <p class="eyebrow reveal">Draft · Waivers · Trades · Playoffs</p>
             <h1 class="reveal">Fantasy football<br /><span class="accent">made simple.</span></h1>
             <p class="lede reveal">
@@ -177,6 +178,139 @@
               </div>
             </div>
             <figcaption class="screen-caption mono">infini<b>league</b> · Matchup</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- Option B, for comparing against the Matchup hero above - keep one, delete the other. -->
+      <section class="hero hero-alt">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="compare-tag mono">Option B · Trade analyzer</p>
+            <p class="eyebrow reveal">Draft · Waivers · Trades · Playoffs</p>
+            <h2 class="h1 reveal">Fantasy football<br /><span class="accent">made simple.</span></h2>
+            <p class="lede reveal">
+              Easy-to-use tools that help you draft smarter, work the waiver wire, and win your
+              league.
+            </p>
+            <div class="hero-actions reveal">
+              <a class="btn" href="#apps">Explore the apps</a>
+              <a class="btn btn-ghost" href="#how">How it works</a>
+            </div>
+            <p class="platforms reveal">
+              <span>Works with</span> Yahoo <i></i> Sleeper <i></i> ESPN
+            </p>
+          </div>
+
+          <!-- A static copy of infinileague's Trade tab analyzer (GlassSegmented + GlassTradeHeader +
+               GlassTradeCard), styles lifted from shared/glass/GlassMatchupCard.module.css. Sample
+               values only: Gurus send 6,540 + 520 2-for-1 adj. = 7,060 vs. 8,760, a 45/55 split. -->
+          <figure class="screen reveal" aria-label="Example infinileague trade: Gridiron Gurus send B. Robinson for A. St. Brown and S. LaPorta, and win the trade by 1,700 in value">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-segmented">
+                <span class="gm-segment gm-segment-selected">Value</span>
+                <span class="gm-segment">PPG</span>
+                <span class="gm-segment">Ranks</span>
+              </div>
+
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <span class="gm-logo">GG</span>
+                      <span class="gm-team-name">Gridiron Gurus</span>
+                    </div>
+                    <div class="gm-trade-total">7,060</div>
+                    <div class="gm-trade-players">
+                      <div class="gm-trade-entry">
+                        <span class="gm-pill gm-trade-badge gm-rb">RB</span>
+                        <span class="gm-trade-name">B. Robinson</span>
+                        <span class="gm-trade-numbers">6,540</span>
+                      </div>
+                      <div class="gm-trade-entry">
+                        <span class="gm-trade-badge"></span>
+                        <span class="gm-trade-name">2-for-1 adj.</span>
+                        <span class="gm-trade-numbers">+520</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-logo">MA</span>
+                      <span class="gm-team-name">Mahomes Alone</span>
+                      <span class="gm-chevron"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg></span>
+                    </div>
+                    <div class="gm-trade-total">8,760</div>
+                    <div class="gm-trade-players">
+                      <div class="gm-trade-entry">
+                        <span class="gm-pill gm-trade-badge gm-wr">WR</span>
+                        <span class="gm-trade-name">A. St. Brown</span>
+                        <span class="gm-trade-numbers">6,120</span>
+                      </div>
+                      <div class="gm-trade-entry">
+                        <span class="gm-pill gm-trade-badge gm-te">TE</span>
+                        <span class="gm-trade-name">S. LaPorta</span>
+                        <span class="gm-trade-numbers">2,640</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-verdict">
+                  <div class="gm-verdict-main">Gridiron Gurus wins by 1,700</div>
+                  <div class="gm-win-bar gm-balance-bar">
+                    <div class="gm-win-seg" style="width: 45%; --pill-tint: #4ade80"></div>
+                    <div class="gm-win-seg" style="width: 55%; --pill-tint: #f87171"></div>
+                    <div class="gm-fair-zone" style="left: 46%; width: 8%"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="gm-row">
+                <div class="gm-card gm-trade-card gm-selected">
+                  <div class="gm-top">
+                    <span class="gm-pills"><span class="gm-pill gm-rb">RB2</span></span>
+                    <span class="gm-check"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg></span>
+                  </div>
+                  <div class="gm-name">B. Robinson</div>
+                  <div class="gm-game">ATL</div>
+                  <div class="gm-stats gm-trade-stats"><span class="gm-proj-small">Mkt 6,900</span><span class="gm-ros"><span class="gm-ros-label">AVG</span>6,540</span></div>
+                </div>
+                <span class="gm-pill gm-slot gm-rb">RB</span>
+                <div class="gm-card gm-trade-card">
+                  <div class="gm-top">
+                    <span class="gm-pills"><span class="gm-pill gm-rb">RB4</span></span>
+                    <span class="gm-check"></span>
+                  </div>
+                  <div class="gm-name">J. Gibbs</div>
+                  <div class="gm-game">DET</div>
+                  <div class="gm-stats gm-trade-stats"><span class="gm-proj-small">Mkt 7,210</span><span class="gm-ros"><span class="gm-ros-label">AVG</span>6,980</span></div>
+                </div>
+              </div>
+
+              <div class="gm-row">
+                <div class="gm-card gm-trade-card">
+                  <div class="gm-top">
+                    <span class="gm-pills"><span class="gm-pill gm-wr">WR7</span></span>
+                    <span class="gm-check"></span>
+                  </div>
+                  <div class="gm-name">P. Nacua</div>
+                  <div class="gm-game">LAR</div>
+                  <div class="gm-stats gm-trade-stats"><span class="gm-proj-small">Mkt 5,450</span><span class="gm-ros"><span class="gm-ros-label">AVG</span>5,380</span></div>
+                </div>
+                <span class="gm-pill gm-slot gm-wr">WR</span>
+                <div class="gm-card gm-trade-card gm-selected">
+                  <div class="gm-top">
+                    <span class="gm-pills"><span class="gm-pill gm-wr">WR3</span>
+                    <span class="gm-pill gm-name-badge gm-buy">BUY</span></span>
+                    <span class="gm-check"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg></span>
+                  </div>
+                  <div class="gm-name">A. St. Brown</div>
+                  <div class="gm-game">DET</div>
+                  <div class="gm-stats gm-trade-stats"><span class="gm-proj-small">Mkt 5,800</span><span class="gm-ros"><span class="gm-ros-label">AVG</span>6,120</span></div>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · Trade</figcaption>
           </figure>
         </div>
       </section>
