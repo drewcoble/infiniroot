@@ -20,9 +20,10 @@ function Logo({ teamId, name, size }: { teamId: string; name: string; size: numb
   return <TeamLogo name={name} logoUrl={useTeamLogoUrl(teamId)} size={size} />;
 }
 
-// One group as a page section under its own header: the table (record,
-// then the season points that break a tied record), its open spots while
-// the draft runs, and every week's games - scores include the weekly bonus.
+// One group as a page section under its own header: the table in a card
+// (record, then the season points that break a tied record), its open
+// spots while the draft runs, and every week's games - scores include the
+// weekly bonus.
 export function GroupSection({
   title,
   group,
@@ -48,40 +49,42 @@ export function GroupSection({
         <span className={classes.title}>{title}</span>
         {settled && <span className={glass.sectionLabel}>Final</span>}
       </div>
-      <div className={classes.table}>
-        <span className={`${glass.sectionLabel} ${classes.columnLabel}`}>W-L</span>
-        <span className={`${glass.sectionLabel} ${classes.columnLabel}`}>
-          {group.table[0]?.tiebreakPoints !== null ? "Season pts" : "Pts"}
-        </span>
-        {group.table.map((row, index) => {
-          const team = teams.get(row.teamId);
-          const name = team?.name ?? "Unknown team";
-          const rowClass = [
-            settled && index < advancePerGroup && classes.advancing,
-            team?.isMine && classes.mine,
-          ]
-            .filter(Boolean)
-            .join(" ");
-          return (
-            <div key={row.teamId} className={rowClass} style={{ display: "contents" }}>
-              <span className={classes.position}>{index + 1}</span>
-              <Logo teamId={row.teamId} name={name} size={24} />
-              <span className={classes.team}>
-                <span className={classes.name}>{name}</span>
-                {team?.tier && <TierPill format={format} tier={team.tier} />}
-              </span>
-              <span className={classes.record}>{record(row)}</span>
-              <span className={classes.points}>
-                {(row.tiebreakPoints ?? row.points).toFixed(1)}
-              </span>
-            </div>
-          );
-        })}
-        {open > 0 && (
-          <span className={classes.open}>
-            {open} {open === 1 ? "spot" : "spots"} to draft
+      <div className={glass.card}>
+        <div className={classes.table}>
+          <span className={`${glass.sectionLabel} ${classes.columnLabel}`}>W-L</span>
+          <span className={`${glass.sectionLabel} ${classes.columnLabel}`}>
+            {group.table[0]?.tiebreakPoints !== null ? "Season pts" : "Pts"}
           </span>
-        )}
+          {group.table.map((row, index) => {
+            const team = teams.get(row.teamId);
+            const name = team?.name ?? "Unknown team";
+            const rowClass = [
+              settled && index < advancePerGroup && classes.advancing,
+              team?.isMine && classes.mine,
+            ]
+              .filter(Boolean)
+              .join(" ");
+            return (
+              <div key={row.teamId} className={rowClass} style={{ display: "contents" }}>
+                <span className={classes.position}>{index + 1}</span>
+                <Logo teamId={row.teamId} name={name} size={24} />
+                <span className={classes.team}>
+                  <span className={classes.name}>{name}</span>
+                  {team?.tier && <TierPill format={format} tier={team.tier} />}
+                </span>
+                <span className={classes.record}>{record(row)}</span>
+                <span className={classes.points}>
+                  {(row.tiebreakPoints ?? row.points).toFixed(1)}
+                </span>
+              </div>
+            );
+          })}
+          {open > 0 && (
+            <span className={classes.open}>
+              {open} {open === 1 ? "spot" : "spots"} to draft
+            </span>
+          )}
+        </div>
       </div>
       <div className={classes.games}>
         {weeks.map((week) => {
