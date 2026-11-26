@@ -975,8 +975,8 @@ h1,
 
 /* Saddlebrown rather than the app's blue, to match the site's accent. */
 .gm-selected {
-  background: linear-gradient(150deg, rgba(175, 89, 30, 0.3) 0%, rgba(175, 89, 30, 0.1) 100%);
-  border-color: rgba(196, 101, 36, 0.7);
+  background: linear-gradient(150deg, rgba(139, 69, 19, 0.34) 0%, rgba(139, 69, 19, 0.12) 100%);
+  border-color: rgba(175, 89, 30, 0.7);
 }
 
 .gm-check {
@@ -993,8 +993,8 @@ h1,
 
 .gm-selected .gm-check {
   color: #f8fafc;
-  background: #8b4513;
-  border-color: #c46524;
+  background: #6a320c;
+  border-color: #af591e;
 }
 
 .gm-trade-stats {
