@@ -4,7 +4,12 @@ import type { GenericId as Id } from "convex/values";
 import { Button, Group, MultiSelect, Select, Stack, Text } from "@mantine/core";
 import { api } from "@infinidata/api";
 import { evaluate } from "@playoffRules/evaluate";
-import type { GroupStage, ManualGroups, PlayoffFormat } from "@playoffRules/format";
+import {
+  stageWeeks,
+  type GroupStage,
+  type ManualGroups,
+  type PlayoffFormat,
+} from "@playoffRules/format";
 import { manualGroupsProblem } from "@playoffRules/validate";
 import { getErrorMessage } from "@shared/errors";
 import glass from "@shared/glass/GlassMatchupCard.module.css";
@@ -93,7 +98,7 @@ export function GroupsEditor({
 
   // The groups as they stand (the same picture the bracket page shows), and
   // who the rules alone would put in the stage.
-  const { current, ruleEntrants } = useMemo(() => {
+  const { input, current, ruleEntrants } = useMemo(() => {
     const input = ifEndedTodayInput(format, currentInput(data, format, rules));
     const shown = evaluate(format, input).stages[stage.id];
     const byRules = evaluate(format, { ...input, manualGroups: {} }).stages[stage.id];
@@ -107,8 +112,24 @@ export function GroupsEditor({
         }),
       })),
     };
-    return { current: groups, ruleEntrants: byRules?.entrants ?? null };
+    return { input, current: groups, ruleEntrants: byRules?.entrants ?? null };
   }, [data, format, rules, stage.id]);
+
+  // Teams in the form that would also play another stage in these weeks.
+  const clashes = useMemo(() => {
+    if (!form) return [];
+    const state = evaluate(format, {
+      ...input,
+      manualGroups: { ...input.manualGroups, [stage.id]: fromForm(form, stage) },
+    });
+    const placed = new Set(form.flatMap((group) => group.teamIds));
+    return format.stages.flatMap((other) => {
+      if (other.id === stage.id) return [];
+      if (!stageWeeks(other).some((week) => stage.weeks.includes(week))) return [];
+      const teamIds = (state.stages[other.id]?.entrants ?? []).filter((id) => placed.has(id));
+      return teamIds.length > 0 ? [{ stage: other.name, teamIds }] : [];
+    });
+  }, [form, format, input, stage]);
 
   const formation = stage.formation.kind === "matchupDraft" ? "matchup draft" : "seeding";
 
@@ -125,7 +146,7 @@ export function GroupsEditor({
             teamIds: group.teamIds as Id<"seasonTeams">[],
             pairs: group.pairs.map((pair) => ({
               week: pair.week,
-              teamIds: pair.teamIds as Id<"seasonTeams">[],
+              teamIds: pair.teamIds.map((id) => id as Id<"seasonTeams">),
             })),
           })),
       });
@@ -143,10 +164,7 @@ export function GroupsEditor({
         <Stack gap="sm" p={4}>
           <span className={glass.sectionLabel}>Groups & matchups · {stage.name}</span>
           <Text size="sm" c="dimmed">
-            {saved
-              ? `Set by hand - these groups and games replace the ${formation}.`
-              : `Set by the ${formation}. Set them by hand to override who's in each ` +
-                "group and who plays whom each week."}
+            {saved ? "Set by hand." : `Set by the ${formation}.`}
           </Text>
           {error && (
             <Text size="sm" c="red">
@@ -199,6 +217,15 @@ export function GroupsEditor({
       ),
     );
 
+  const setHead = (g: number, teamId: string | null) =>
+    setForm(
+      form.map((group, i) =>
+        i !== g || !teamId
+          ? group
+          : { ...group, teamIds: [teamId, ...group.teamIds.filter((id) => id !== teamId)] },
+      ),
+    );
+
   const setSide = (g: number, week: number, row: number, side: 0 | 1, teamId: string | null) =>
     setForm(
       form.map((group, i) => {
@@ -220,9 +247,6 @@ export function GroupsEditor({
     <div className={glass.card}>
       <Stack gap="md" p={4}>
         <span className={glass.sectionLabel}>Groups & matchups · {stage.name}</span>
-        <Text size="xs" c="dimmed">
-          The first team listed heads its group.
-        </Text>
         {form.map((group, g) => {
           const elsewhere = new Set(form.flatMap((other, i) => (i === g ? [] : other.teamIds)));
           const options = group.teamIds.map((id) => ({ value: id, label: nameOf.get(id) ?? "?" }));
@@ -240,6 +264,16 @@ export function GroupsEditor({
                 }))}
                 onChange={(teamIds) => setGroupTeams(g, teamIds)}
               />
+              {group.teamIds.length >= 2 && (
+                <Select
+                  size="xs"
+                  label="Heads the group"
+                  value={group.teamIds[0] ?? null}
+                  data={options}
+                  allowDeselect={false}
+                  onChange={(teamId) => setHead(g, teamId)}
+                />
+              )}
               {group.teamIds.length >= 2 &&
                 stage.weeks.map((week) => (
                   <Group key={week} gap={6} wrap="nowrap" align="center">
@@ -277,14 +311,18 @@ export function GroupsEditor({
         {(added.length > 0 || left.length > 0) && (
           <Text size="sm" c="yellow">
             {[
-              added.length > 0 && `Adds ${names(added)}`,
-              left.length > 0 && `leaves out ${names(left)}`,
+              added.length > 0 && `Added: ${names(added)}`,
+              left.length > 0 && `Left out: ${names(left)}`,
             ]
               .filter(Boolean)
-              .join("; ")}{" "}
-            - compared with who the rules put in {stage.name}.
+              .join(" · ")}
           </Text>
         )}
+        {clashes.map(({ stage: other, teamIds }) => (
+          <Text key={other} size="sm" c="yellow">
+            Also in {other} these weeks: {names(teamIds)}
+          </Text>
+        ))}
         {problem ? (
           <Text size="sm" c="red">
             {problem}
@@ -292,7 +330,7 @@ export function GroupsEditor({
         ) : (
           unset > 0 && (
             <Text size="xs" c="dimmed">
-              Games left blank show as not set yet.
+              Blank games show as not set.
             </Text>
           )
         )}

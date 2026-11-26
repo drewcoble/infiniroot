@@ -35,6 +35,11 @@ async function loadDraft(
     .unique();
   if (!draft) throw new Error("The draft opens once the regular season is final.");
   if (!draft.drafterIds.includes(drafterId)) throw new Error("That team isn't a drafter.");
+  const manual = await ctx.db
+    .query("playoffManualGroups")
+    .withIndex("by_season_stage", (q) => q.eq("seasonId", seasonId).eq("stageId", stageId))
+    .unique();
+  if (manual) throw new Error("The commissioner set these groups by hand.");
   return { draft, formation: stage.formation, userId };
 }
 

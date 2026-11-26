@@ -186,7 +186,7 @@ function GroupsView({
 }) {
   const groups = result.groups ?? [];
   const groupSize = Math.ceil((result.entrants?.length ?? 0) / Math.max(stage.groupCount, 1));
-  const note = result.manual ? "Groups set by the commissioner" : draftNote(result.draft, teams);
+  const note = draftNote(result.draft, teams);
   // In the format's tier order - the stored bonus map's key order isn't kept.
   const byTier = stage.bonus?.byTier ?? {};
   const bonuses = format.tiers.flatMap((tier) =>
