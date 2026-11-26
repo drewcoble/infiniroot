@@ -867,6 +867,589 @@ h1 {
   }
 }
 
+/* League, Players and Trade screens (league/index.html) - the rest of infinileague's pieces. */
+
+.gm-segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.gm-segment {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.62);
+}
+
+.gm-segment-selected {
+  color: #f8fafc;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.gm-segmented-compact .gm-segment {
+  height: 28px;
+  font-size: 13px;
+}
+
+.gm-label {
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* Power rankings: rank chip off the edge (yours in saddlebrown), then the team card. */
+.gm-rank-chip {
+  --pill-tint: #adb5bd;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+}
+
+.gm-rank-self {
+  --pill-tint: #8b4513;
+  --pill-text: #8b4513;
+}
+
+.gm-team-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "logo name chevron"
+    "logo line chevron";
+}
+
+.gm-team-card-logo {
+  grid-area: logo;
+  width: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+
+.gm-logo-img.gm-team-card-logo {
+  border-radius: 10px;
+}
+
+.gm-team-card-line {
+  grid-area: line;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-chevron-right {
+  grid-area: chevron;
+  font-size: 22px;
+  line-height: 1;
+  color: rgba(248, 250, 252, 0.5);
+}
+
+.gm-change {
+  flex-shrink: 0;
+  height: 18px;
+  padding: 0 6px;
+  font-family: var(--gm-numeric);
+}
+
+.gm-up {
+  --pill-tint: #85b899;
+  --pill-text: #e4ede8;
+}
+
+.gm-down {
+  --pill-tint: #c16955;
+  --pill-text: #e5beb5;
+}
+
+/* Player popover: header, Season/ROS table, weekly points chart. */
+.gm-player {
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.gm-player-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gm-headshot.gm-headshot-large {
+  flex-shrink: 0;
+  width: 75px;
+  height: 56px;
+}
+
+.gm-player-name {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+.gm-player-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  min-width: 0;
+}
+
+.gm-stat-table {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  row-gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-stat-col,
+.gm-stat-label {
+  font-family: "Barlow", var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+  align-self: center;
+}
+
+.gm-stat-label {
+  text-align: left;
+}
+
+.gm-chart-head {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-chart {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 130px;
+  padding-bottom: 18px;
+}
+
+.gm-chart-col {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.gm-chart-col span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -18px;
+  text-align: center;
+  font-family: var(--gm-numeric);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.5);
+}
+
+.gm-bar {
+  width: 100%;
+  border-radius: 7px 7px 3px 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, #deb887 38%, #121b17);
+  border: 1px solid color-mix(in srgb, #deb887 50%, rgba(255, 255, 255, 0.15));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.gm-bar-proj {
+  background: none;
+  border: 1.5px dashed rgba(248, 250, 252, 0.4);
+  box-shadow: none;
+}
+
+.gm-chart-avg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* --v is avg / scale max, measured up from the bars' baseline (above the week labels). */
+  bottom: calc(18px + (100% - 18px) * var(--v));
+  border-top: 1.5px dashed rgba(248, 250, 252, 0.45);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Trade: Buys cards, a suggestion, the analyzer header. */
+.gm-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.gm-row > .gm-card {
+  flex: 1;
+}
+
+.gm-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.gm-signal {
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gm-signal-up {
+  color: #4ade80;
+}
+
+.gm-inline {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.gm-headshot.gm-headshot-inline {
+  flex-shrink: 0;
+  width: 24px;
+  height: 18px;
+  margin-right: 5px;
+  border-radius: 5px;
+}
+
+.gm-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.gm-trade-stats {
+  margin-top: auto;
+}
+
+.gm-proj-small {
+  white-space: nowrap;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-ros {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-ros-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-grade {
+  --pill-tint: #85b899;
+  --pill-text: #e4ede8;
+  flex-shrink: 0;
+  font-family: var(--gm-numeric);
+}
+
+.gm-suggestion-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gm-suggestion-label {
+  flex-shrink: 0;
+  width: 34px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-header {
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.gm-teams {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 16px;
+}
+
+.gm-team {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  row-gap: 3px;
+}
+
+.gm-team-right {
+  justify-items: end;
+  text-align: right;
+}
+
+.gm-team-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.gm-team-right .gm-team-title {
+  justify-content: flex-end;
+}
+
+.gm-team-name {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-trade-total {
+  margin-top: 2px;
+  font-family: var(--gm-numeric);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-trade-players {
+  justify-self: stretch;
+  min-width: 0;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  text-align: left;
+}
+
+.gm-trade-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  align-items: center;
+}
+
+.gm-trade-badge {
+  grid-row: 1 / span 2;
+  width: 30px;
+}
+
+.gm-pill.gm-trade-badge {
+  justify-content: center;
+  height: 15px;
+  padding: 0;
+  font-size: 9px;
+}
+
+.gm-trade-name {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-trade-numbers {
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: rgba(248, 250, 252, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gm-verdict-main {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.92);
+}
+
+.gm-win-bar {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  height: 10px;
+}
+
+.gm-win-seg {
+  min-width: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, var(--pill-tint) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pill-tint) 75%, rgba(255, 255, 255, 0.35));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.gm-fair-zone {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* App detail pages (league/index.html) */
+
+.detail-hero {
+  padding-bottom: 40px;
+}
+
+.detail-hero .eyebrow a:hover {
+  color: var(--text);
+}
+
+.detail-hero h1 {
+  max-width: 12em;
+}
+
+.jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 40px;
+}
+
+.jump a {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+
+.jump a:hover {
+  color: var(--text);
+  background: var(--glass);
+}
+
+.feature {
+  padding: 96px 0;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 68px;
+}
+
+.feature-grid {
+  display: grid;
+  gap: 48px;
+  align-items: center;
+}
+
+.feature-grid > * {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .feature-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 72px;
+  }
+
+  .feature-flip .feature-copy {
+    order: 2;
+  }
+}
+
+.feature-copy h2 {
+  font-size: clamp(2rem, 4.5vw, 3rem);
+}
+
+.feature-copy p {
+  margin-top: 16px;
+  max-width: 26em;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-tags li {
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
 /* Principles */
 
 .principles {
@@ -953,7 +1536,7 @@ h1 {
   }
 }
 
-.app a {
+.app-card {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -965,14 +1548,12 @@ h1 {
   background: var(--glass);
   transition:
     border-color 0.25s,
-    background 0.25s,
-    transform 0.25s;
+    background 0.25s;
 }
 
-.app a:hover {
+.app-card:hover {
   border-color: color-mix(in srgb, var(--brown) 70%, transparent);
   background: color-mix(in srgb, var(--brown) 6%, var(--glass));
-  transform: translateY(-3px);
 }
 
 .when {
@@ -1003,9 +1584,34 @@ h1 {
   font-size: 0.95rem;
 }
 
-.go {
+/* Details (an app's page here, when it has one) and Open app (the app itself). */
+.app-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 36px;
   margin-top: auto;
   padding-top: 24px;
+  box-sizing: content-box;
+}
+
+.app-details {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  transition: background 0.2s;
+}
+
+.app-details:hover {
+  background: var(--glass);
+}
+
+.go {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--accent);
@@ -1016,8 +1622,8 @@ h1 {
   transition: transform 0.25s;
 }
 
-.app a:hover .go span {
-  transform: translateX(4px);
+.go:hover span {
+  transform: translate(2px, -2px);
 }
 
 /* How it works - one diagram instead of another row of columns */
