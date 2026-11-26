@@ -291,8 +291,7 @@ b {
   }
 }
 
-h1,
-.h1 {
+h1 {
   font-size: clamp(2.75rem, 7vw, 4.5rem);
   font-weight: 600;
   letter-spacing: -0.04em;
@@ -336,36 +335,14 @@ h1,
   background: var(--muted);
 }
 
-/* Temporary: labels the two hero options while they're being compared. */
-.hero-alt {
-  border-top: 1px dashed var(--line-strong);
-}
-
-.compare-tag {
-  display: inline-block;
-  margin-bottom: 16px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  color: var(--accent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
-}
-
-/* Hero app screen - a static copy of infinileague's Matchup tab. The .gm-* rules mirror
-   shared/glass/GlassMatchupCard.module.css (glass cards, pills, meters, win bar) and the app's
-   fonts (Barlow numbers, Red Hat Mono badges, Lumen Round scoreboard digits). The screen stays
-   dark in light mode too, the same as the app. */
-
-@font-face {
-  font-family: "Lumen Round";
-  font-weight: 900;
-  font-display: swap;
-  src: url("/fonts/lumen-round-900.woff2") format("woff2");
-}
+/* Hero app screen - a static copy of infinileague's My Team page (GlassTeamHeader, the lineup
+   suggestion, GlassRosterCard rows). The .gm-* rules mirror shared/glass/GlassMatchupCard.module.css
+   and the app's fonts (Barlow numbers, Red Hat Mono badges). The screen stays dark in light mode
+   too, the same as the app. */
 
 .screen {
   --gm-numeric: "Barlow", var(--font-body);
   --gm-badge: "Red Hat Mono", var(--font-mono);
-  --gm-scoreboard: "Lumen Round", "Barlow", var(--font-body);
   position: relative;
   margin: 0;
   width: 100%;
@@ -436,14 +413,6 @@ h1,
   position: relative;
 }
 
-.gm-live {
-  background: linear-gradient(150deg, rgba(74, 222, 128, 0.16) 0%, rgba(74, 222, 128, 0.06) 100%);
-}
-
-.gm-final {
-  opacity: 0.7;
-}
-
 /* Pills: a small glass pane tinted by --pill-tint, near-white text. */
 .gm-pill {
   display: inline-flex;
@@ -468,11 +437,6 @@ h1,
     0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
-.gm-qb {
-  --pill-tint: #eab84b;
-  --pill-text: #fceecf;
-}
-
 .gm-rb {
   --pill-tint: #76c098;
   --pill-text: #dbf1e5;
@@ -485,12 +449,6 @@ h1,
   font-family: var(--gm-numeric);
 }
 
-.gm-injury {
-  --pill-tint: #eab84b;
-  --pill-text: #fceecf;
-  flex-shrink: 0;
-}
-
 .gm-slot {
   flex-shrink: 0;
   align-self: center;
@@ -499,44 +457,6 @@ h1,
   height: 32px;
   border-radius: 12px;
   letter-spacing: 0.04em;
-}
-
-/* Header */
-
-.gm-header {
-  gap: 14px;
-  padding: 16px;
-  border-radius: 20px;
-}
-
-.gm-teams {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 16px;
-}
-
-.gm-team {
-  min-width: 0;
-  display: grid;
-  justify-items: start;
-  row-gap: 3px;
-}
-
-.gm-team-right {
-  justify-items: end;
-  text-align: right;
-}
-
-.gm-team-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.gm-team-right .gm-team-title {
-  justify-content: flex-end;
 }
 
 .gm-logo {
@@ -561,36 +481,6 @@ h1,
   background: none;
 }
 
-.gm-team-name {
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.gm-total {
-  margin-top: 2px;
-  font-family: var(--gm-scoreboard);
-  font-weight: 900;
-  font-size: 30px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.gm-dec {
-  font-size: 0.75em;
-  opacity: 0.75;
-  letter-spacing: -0.12em;
-}
-
-.gm-point {
-  margin-left: -0.25em;
-  margin-right: -0.1em;
-}
-
 .gm-proj {
   display: flex;
   flex-wrap: wrap;
@@ -601,10 +491,6 @@ h1,
   font-weight: 600;
   color: rgba(248, 250, 252, 0.68);
   font-variant-numeric: tabular-nums;
-}
-
-.gm-team-right .gm-proj {
-  justify-content: flex-end;
 }
 
 .gm-count {
@@ -624,69 +510,6 @@ h1,
   height: 13px;
 }
 
-.gm-win {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--gm-numeric);
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.gm-win-bar {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  gap: 2px;
-  height: 10px;
-}
-
-.gm-win-seg {
-  min-width: 4px;
-  border-radius: 999px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.02) 100%),
-    color-mix(in srgb, var(--pill-tint) 70%, transparent);
-  border: 1px solid color-mix(in srgb, var(--pill-tint) 75%, rgba(255, 255, 255, 0.35));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-/* Player cards, two per row around the slot chip */
-
-.gm-row {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-}
-
-.gm-row > .gm-card {
-  flex: 1;
-}
-
-.gm-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-height: 20px;
-}
-
-.gm-top-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.gm-clock {
-  font-family: var(--gm-scoreboard);
-  font-weight: 900;
-  font-size: 12px;
-  white-space: nowrap;
-  color: rgba(248, 250, 252, 0.85);
-}
-
 .gm-status {
   display: inline-flex;
   align-items: center;
@@ -698,30 +521,6 @@ h1,
 
 .gm-pre {
   color: rgba(248, 250, 252, 0.6);
-}
-
-.gm-dot {
-  display: block;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #4ade80;
-  animation: gm-pulse 1.6s ease-in-out infinite;
-}
-
-.gm-count .gm-dot {
-  width: 7px;
-  height: 7px;
-}
-
-@keyframes gm-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgba(74, 222, 128, 0);
-  }
 }
 
 .gm-name-row {
@@ -751,67 +550,13 @@ h1,
   text-overflow: ellipsis;
 }
 
-.gm-stats {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px;
-  margin-top: 2px;
-}
-
-.gm-proj-small {
-  white-space: nowrap;
-  font-family: var(--gm-numeric);
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(248, 250, 252, 0.68);
-  font-variant-numeric: tabular-nums;
-}
-
-.gm-points {
-  font-family: var(--gm-scoreboard);
-  font-weight: 900;
-  font-size: 15px;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Bullet meter: fill = actual, tick = pregame projection, ghost = on pace to finish. */
+/* Projection meter - before kickoff it's just the tick at the projection. */
 .gm-meter {
   position: relative;
   height: 5px;
   margin: auto 0 3px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
-}
-
-.gm-meter-fill,
-.gm-meter-ghost {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: 999px;
-}
-
-.gm-meter-fill {
-  left: 0;
-  background: #9ca3af;
-}
-
-.gm-meter-ghost {
-  background: rgba(248, 250, 252, 0.3);
-}
-
-.gm-ahead {
-  background: rgba(74, 222, 128, 0.6);
-}
-
-.gm-behind {
-  background: rgba(248, 113, 113, 0.65);
-}
-
-.gm-final-ahead {
-  background: rgba(74, 222, 128, 0.42);
 }
 
 .gm-meter-tick {
@@ -825,214 +570,15 @@ h1,
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
-/* Trade analyzer pieces (Option B): segmented switch, trade header, trade cards. */
-
-.gm-segmented {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(0, 0, 0, 0.3);
-  box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.45),
-    0 1px 0 rgba(255, 255, 255, 0.07);
-}
-
-.gm-segment {
-  flex: 1;
-  display: grid;
-  place-items: center;
-  height: 32px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(248, 250, 252, 0.62);
-}
-
-.gm-segment-selected {
-  color: #f8fafc;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 100%);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 2px 6px rgba(0, 0, 0, 0.25);
-}
-
 .gm-wr {
   --pill-tint: #4f8fe8;
   --pill-text: #d1e5ff;
-}
-
-.gm-te {
-  --pill-tint: #b15fdb;
-  --pill-text: #eed7fa;
-}
-
-.gm-buy {
-  --pill-tint: #85b899;
-  --pill-text: #e4ede8;
-}
-
-.gm-chevron {
-  display: inline-flex;
-  flex-shrink: 0;
-  color: rgba(248, 250, 252, 0.6);
-}
-
-.gm-trade-total {
-  margin-top: 2px;
-  font-family: var(--gm-numeric);
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
-
-.gm-trade-players {
-  justify-self: stretch;
-  min-width: 0;
-  margin-top: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  text-align: left;
-}
-
-.gm-trade-entry {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  column-gap: 6px;
-  align-items: center;
-}
-
-.gm-trade-badge {
-  grid-row: 1 / span 2;
-  width: 30px;
-}
-
-.gm-pill.gm-trade-badge {
-  justify-content: center;
-  height: 15px;
-  padding: 0;
-  font-size: 9px;
-}
-
-.gm-trade-name {
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.15;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.gm-trade-numbers {
-  font-family: var(--gm-numeric);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.15;
-  color: rgba(248, 250, 252, 0.6);
-  font-variant-numeric: tabular-nums;
-}
-
-.gm-verdict {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.gm-verdict-main {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: rgba(248, 250, 252, 0.92);
-}
-
-.gm-balance-bar {
-  position: relative;
-  flex: none;
-}
-
-.gm-fair-zone {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
-}
-
-.gm-pills {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
 }
 
 .gm-pill.gm-name-badge {
   height: 17px;
   padding: 0 6px;
   font-size: 10px;
-}
-
-/* Saddlebrown rather than the app's blue, to match the site's accent. */
-.gm-selected {
-  background: linear-gradient(150deg, rgba(139, 69, 19, 0.34) 0%, rgba(139, 69, 19, 0.12) 100%);
-  border-color: rgba(175, 89, 30, 0.7);
-}
-
-.gm-check {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(248, 250, 252, 0.4);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-}
-
-.gm-selected .gm-check {
-  color: #f8fafc;
-  background: #6a320c;
-  border-color: #af591e;
-}
-
-.gm-trade-stats {
-  margin-top: auto;
-}
-
-.gm-ros {
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  font-family: var(--gm-numeric);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-}
-
-.gm-ros-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: rgba(248, 250, 252, 0.6);
-}
-
-/* My Team pieces (Option C): team header, lineup suggestion, full-width roster cards. */
-
-.gm-flex {
-  --pill-tint: #65c5d2;
-  --pill-text: #d5f2f7;
 }
 
 .gm-bn {
@@ -1049,6 +595,9 @@ h1,
   --pill-tint: #c16955;
   --pill-text: #e5beb5;
 }
+
+/* My Team header, lineup suggestion, full-width roster cards. The app's suggestion card is plain
+   (not glass) and its roster cards carry no START/SIT badges - both are dressed up here. */
 
 .gm-team-header {
   display: grid;
@@ -1180,6 +729,8 @@ h1,
 }
 
 .gm-headshot {
+  position: relative;
+  overflow: hidden;
   grid-area: photo;
   align-self: end;
   display: grid;
@@ -1197,11 +748,6 @@ h1,
 }
 
 /* Sleeper headshots (transparent PNGs), cropped and scaled like the app's .headshotImg. */
-.gm-headshot {
-  position: relative;
-  overflow: hidden;
-}
-
 .gm-headshot:has(img) {
   border: 0;
 }
@@ -1286,58 +832,15 @@ h1,
   background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.22) 50%, rgba(255, 255, 255, 0) 100%);
 }
 
-/* Meters and the win bar grow in once the screen is visible. */
-.js .screen .gm-meter-fill,
-.js .screen .gm-meter-ghost,
-.js .screen .gm-win-seg {
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s;
-}
-
-.js .screen .gm-win-seg:last-child {
-  transform-origin: right;
-}
-
-.js .screen.in .gm-meter-fill,
-.js .screen.in .gm-meter-ghost,
-.js .screen.in .gm-win-seg {
-  transform: none;
-}
-
 @media (max-width: 400px) {
   .gm {
     padding: 10px;
     gap: 8px;
   }
 
-  .gm-row {
-    gap: 6px;
-  }
-
   .gm-slot {
     min-width: 36px;
     padding: 0 4px;
-  }
-
-  .gm-row > .gm-card {
-    padding: 8px;
-  }
-
-  .gm-top .gm-pill {
-    padding: 0 6px;
-  }
-
-  .gm-top-status {
-    gap: 3px;
-  }
-
-  .gm-top .gm-status {
-    width: 12px;
-  }
-
-  .gm-ros {
-    font-size: 14px;
   }
 
   .gm-roster-slot {
@@ -1351,14 +854,6 @@ h1,
   .gm-headshot {
     width: 42px;
     height: 34px;
-  }
-
-  .gm-header {
-    padding: 14px 12px;
-  }
-
-  .gm-total {
-    font-size: 26px;
   }
 }
 
@@ -1730,14 +1225,7 @@ h1,
     animation: none;
   }
 
-  .gm-dot {
-    animation: none;
-  }
-
-  .js .reveal,
-  .js .screen .gm-meter-fill,
-  .js .screen .gm-meter-ghost,
-  .js .screen .gm-win-seg {
+  .js .reveal {
     opacity: 1;
     transform: none;
     transition: none;

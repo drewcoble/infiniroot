@@ -1,26 +1,23 @@
 <!doctype html>
-<!-- Source for public/og.png, the 1200x630 social share card. Regenerate with
-     `node og/render.cjs` after editing (needs Playwright + Chromium installed locally). -->
+<!-- Source for public/og.png, the 1200x630 social share card. render.cjs drops the hero's app
+     screen (the <figure class="screen"> in ../index.html) into the placeholder below, so the card
+     always matches the page. Regenerate with `node og/render.cjs` after changing either. -->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Barlow:wght@600;700&family=Red+Hat+Mono:wght@600&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="../src/styles.css" />
     <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-      }
-
       body {
         width: 1200px;
         height: 630px;
         overflow: hidden;
         background: #0c1310;
         color: #f5f4ef;
-        font-family: Inter, sans-serif;
+        color-scheme: dark;
       }
 
       .card {
@@ -37,7 +34,7 @@
         position: absolute;
         inset: 0;
         background:
-          radial-gradient(520px 380px at 86% 30%, rgba(222, 184, 135, 0.16), transparent 70%),
+          radial-gradient(520px 380px at 86% 30%, rgba(222, 184, 135, 0.14), transparent 70%),
           radial-gradient(460px 340px at 96% 85%, rgba(175, 89, 30, 0.24), transparent 70%),
           linear-gradient(rgba(245, 244, 239, 0.07) 1px, transparent 1px) 0 0 / 60px 60px,
           linear-gradient(90deg, rgba(245, 244, 239, 0.07) 1px, transparent 1px) 0 0 / 60px 60px;
@@ -48,7 +45,7 @@
         position: relative;
       }
 
-      .brand {
+      .og-brand {
         display: flex;
         align-items: center;
         gap: 12px;
@@ -58,139 +55,62 @@
         letter-spacing: -0.02em;
       }
 
-      .brand img {
+      .og-brand img {
         width: 56px;
         height: 56px;
       }
 
-      .brand b {
+      .og-brand b {
         color: #af591e;
         font-weight: 600;
       }
 
-      h1 {
+      .og-title {
         margin-top: auto;
         font-family: "Space Grotesk", sans-serif;
-        font-size: 88px;
+        font-size: 80px;
         font-weight: 600;
         line-height: 0.98;
         letter-spacing: -0.045em;
       }
 
-      h1 span {
+      .og-title span {
         color: #deb887;
       }
 
-      .tags {
-        margin-top: 36px;
+      .og-tags {
+        margin-top: 32px;
         font-family: "IBM Plex Mono", monospace;
-        font-size: 20px;
+        font-size: 19px;
         letter-spacing: 0.14em;
         text-transform: uppercase;
         color: #909296;
       }
 
-      .demo {
+      /* The hero's screen, pinned to the right and scaled to the card's height. */
+      .og-screen {
         position: absolute;
-        right: 72px;
-        top: 80px;
-        width: 340px;
-        padding: 26px;
-        border-radius: 22px;
-        background:
-          linear-gradient(150deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)), #121b17;
-        border: 1px solid rgba(245, 244, 239, 0.16);
-        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+        right: 56px;
+        top: 50%;
+        width: 440px;
+        transform-origin: right center;
       }
 
-      .mono {
-        font-family: "IBM Plex Mono", monospace;
-        font-size: 14px;
-        color: #909296;
+      .og-screen .screen {
+        max-width: none;
       }
 
-      .call {
-        margin-top: 22px;
-        font-family: "Space Grotesk", sans-serif;
-        font-size: 32px;
-        font-weight: 500;
-        letter-spacing: -0.03em;
-      }
-
-      .call strong {
-        color: #deb887;
-        font-weight: 600;
-      }
-
-      .rows {
-        margin-top: 24px;
-        display: grid;
-        gap: 14px;
-      }
-
-      .row {
-        display: grid;
-        grid-template-columns: 42px 1fr 40px;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .pos {
-        font-family: "IBM Plex Mono", monospace;
-        font-size: 12px;
-        text-align: center;
-        padding: 3px 0;
-        border-radius: 6px;
-      }
-
-      .bar {
-        height: 7px;
-        border-radius: 99px;
-        background: rgba(245, 244, 239, 0.09);
-        overflow: hidden;
-      }
-
-      .bar span {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-        background: rgba(245, 244, 239, 0.3);
-      }
-
-      .row .mono {
-        color: #f5f4ef;
-        text-align: right;
+      .og-screen .screen-caption {
+        display: none;
       }
     </style>
   </head>
   <body>
     <div class="card">
-      <div class="brand"><img src="../public/logo.png" alt="" /><span>infini<b>fantasy</b></span></div>
-
-      <div class="demo">
-        <span class="mono">Waivers · Week 12</span>
-        <p class="call">Bid <strong>$14</strong> on the WR.</p>
-        <div class="rows">
-          <div class="row">
-            <span class="pos" style="color: #337de4; background: rgba(51, 125, 228, 0.16)">WR</span>
-            <span class="bar"><span style="width: 92%; background: #deb887"></span></span>
-            <span class="mono">$14</span>
-          </div>
-          <div class="row">
-            <span class="pos" style="color: #62b789; background: rgba(98, 183, 137, 0.16)">RB</span>
-            <span class="bar"><span style="width: 64%"></span></span>
-            <span class="mono">$8</span>
-          </div>
-          <div class="row">
-            <span class="pos" style="color: #a342d5; background: rgba(163, 66, 213, 0.16)">TE</span>
-            <span class="bar"><span style="width: 41%"></span></span>
-            <span class="mono">$3</span>
-          </div>
-        </div>
-      </div>
-
-      <h1>Fantasy football<br /><span>made simple.</span></h1>
-      <p class="tags">Draft · Waivers · Trades · Playoffs</p>
+      <div class="og-brand"><img src="../public/logo.png" alt="" /><span>infini<b>fantasy</b></span></div>
+      <h1 class="og-title">Fantasy football<br /><span>made simple.</span></h1>
+      <p class="og-tags">Draft · Waivers · Trades · Playoffs</p>
+      <div class="og-screen"><!-- SCREEN --></div>
     </div>
   </body>
 </html>
