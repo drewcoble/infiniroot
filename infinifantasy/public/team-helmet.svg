@@ -1,0 +1,22 @@
+<!-- Made-up team logo for the sample team (Gridiron Gurus) in the hero mockups. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22302a" />
+      <stop offset="1" stop-color="#101814" />
+    </linearGradient>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b8601f" />
+      <stop offset="1" stop-color="#6a320c" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#bg)" />
+  <g fill="none" stroke="#c9ccd1" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M45 33.5 L53.5 34 Q57 34.3 56.6 37.8 L55.6 44.5 Q55 48.6 50.6 48.6 L39 48.6" />
+    <path d="M42 41.2 L56 41.2" />
+  </g>
+  <path d="M8 36 C8 22 18 12 31 12 C43 12 51 19 52.5 29.5 Q53 32 50.5 32 H43 Q40 32 40 35 V45 Q40 50 35 50 H22 C14 50 8 44 8 36 Z" fill="url(#shell)" />
+  <path d="M17 18 C25 12 39 11.5 47 18.5" fill="none" stroke="#deb887" stroke-width="3.4" stroke-linecap="round" />
+  <circle cx="27" cy="37" r="3.4" fill="#3d1d07" />
+  <path d="M14 26 C15.5 22 18.5 19 22 17.5" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round" />
+</svg>

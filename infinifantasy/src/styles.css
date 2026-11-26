@@ -553,6 +553,14 @@ h1,
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+/* The sample team's made-up helmet logo (public/team-helmet.svg) brings its own tile. */
+.gm-logo-img {
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+}
+
 .gm-team-name {
   min-width: 0;
   font-size: 14px;
