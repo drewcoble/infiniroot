@@ -13,8 +13,8 @@ import {
   type BracketTeam,
 } from "@shared/glass/TournamentBracket";
 import { doubleElimBrackets } from "../lib/bracketView";
-import type { GroupTeam } from "./GroupCard";
-import classes from "./GroupCard.module.css";
+import type { GroupTeam } from "./GroupSection";
+import classes from "./GroupSection.module.css";
 
 function Logo({ teamId, name, size }: { teamId: string; name: string; size: number }) {
   return <TeamLogo name={name} logoUrl={useTeamLogoUrl(teamId)} size={size} />;

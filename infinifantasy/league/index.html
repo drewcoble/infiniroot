@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>infinileague - help every week of your fantasy season</title>
+    <script>
+      // Tag the tab title on local and dev copies so they're easy to tell from production:
+      // localhost / LAN / Tailscale addresses are "(local)", *-dev.infinifantasy.com (and the old
+      // develop.* hosts) are "(dev)".
+      (function () {
+        var host = window.location.hostname;
+        var local =
+          host === "localhost" ||
+          host.endsWith(".local") ||
+          /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(host);
+        var dev = host.indexOf("-dev.") !== -1 || host.startsWith("develop.");
+        if (local || dev) document.title += local ? " (local)" : " (dev)";
+      })();
+    </script>
+    <meta
+      name="description"
+      content="infinileague brings standings, power rankings, live matchups across all your leagues, lineup suggestions, player charts and trade advice to your Yahoo, Sleeper, or ESPN fantasy football league."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="infinifantasy" />
+    <meta property="og:url" content="https://infinifantasy.com/league/" />
+    <meta property="og:title" content="infinileague - help every week of your fantasy season" />
+    <meta
+      property="og:description"
+      content="Rankings, lineup help, player charts and trade advice, built on your league's own settings."
+    />
+    <meta property="og:image" content="https://infinifantasy.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="infinifantasy - Fantasy football made simple." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0c1310" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Barlow:wght@600;700&family=Red+Hat+Mono:wght@600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" href="/fonts/lumen-round-900.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="/" aria-label="infinifantasy home">
+          <img src="/logo.png" alt="" width="36" height="36" />
+          <span>infini<b>fantasy</b></span>
+        </a>
+        <nav class="nav-links" aria-label="Site">
+          <a href="/#apps">Apps</a>
+          <a href="/#how">How it works</a>
+        </nav>
+        <a class="btn btn-small" href="https://league.infinifantasy.com">Open infinileague</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero detail-hero">
+        <div class="wrap">
+          <p class="eyebrow reveal"><a href="/#apps">Apps</a> / infinileague</p>
+          <h1 class="reveal">Get help every week <span class="accent">of the season.</span></h1>
+          <p class="lede reveal">
+            Rankings, live matchups, lineup help, player charts and trade advice, all built on your
+            league's own settings.
+          </p>
+          <div class="hero-actions reveal">
+            <a class="btn" href="https://league.infinifantasy.com">Open infinileague</a>
+            <a class="btn btn-ghost" href="#league">See what's inside</a>
+          </div>
+          <nav class="jump reveal" aria-label="Features">
+            <a href="#league">League</a>
+            <a href="#matchups">Matchups</a>
+            <a href="#team">Team</a>
+            <a href="#players">Players</a>
+            <a href="#trade">Trade</a>
+          </nav>
+        </div>
+      </section>
+
+      <!-- Each feature pairs a line of copy with a static copy of the matching infinileague screen
+           (.gm-* styles in src/styles.css). Sample teams and numbers only. -->
+
+      <section class="feature" id="league">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">01 · League</span>
+            <h2>See where <span class="accent">everyone</span> stands.</h2>
+            <p>Standings, projected finishes and power rankings, updated all season.</p>
+            <ul class="feature-tags mono">
+              <li>Standings</li>
+              <li>Projections</li>
+              <li>Power rankings</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinileague power rankings">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-segmented">
+                <span class="gm-segment">Standings</span>
+                <span class="gm-segment">Projected</span>
+                <span class="gm-segment gm-segment-selected">Power</span>
+              </div>
+
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">1</span>
+                <div class="gm-card gm-wide gm-team-card">
+                  <span class="gm-logo gm-team-card-logo">MA</span>
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">Mahomes Alone</span>
+                    <span class="gm-pill gm-change gm-up">↑2</span>
+                  </div>
+                  <div class="gm-team-card-line">121.4 ROS PPG</div>
+                  <span class="gm-chevron-right">›</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip gm-rank-self">2</span>
+                <div class="gm-card gm-wide gm-team-card">
+                  <img class="gm-logo gm-logo-img gm-team-card-logo" src="/team-helmet.svg" alt="" width="40" height="40" />
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">Gridiron Gurus</span>
+                    <span class="gm-pill gm-change gm-up">↑1</span>
+                  </div>
+                  <div class="gm-team-card-line">119.8 ROS PPG</div>
+                  <span class="gm-chevron-right">›</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">3</span>
+                <div class="gm-card gm-wide gm-team-card">
+                  <span class="gm-logo gm-team-card-logo">TL</span>
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">Tua Lipa</span>
+                    <span class="gm-pill gm-change gm-down">↓2</span>
+                  </div>
+                  <div class="gm-team-card-line">117.2 ROS PPG</div>
+                  <span class="gm-chevron-right">›</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">4</span>
+                <div class="gm-card gm-wide gm-team-card">
+                  <span class="gm-logo gm-team-card-logo">BM</span>
+                  <div class="gm-name-row gm-wide-name">
+                    <span class="gm-name">Bijan Mustard</span>
+                  </div>
+                  <div class="gm-team-card-line">112.6 ROS PPG</div>
+                  <span class="gm-chevron-right">›</span>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · League</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature feature-flip" id="matchups">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">02 · Matchups</span>
+            <h2>See all your <span class="accent">matchups</span> in one place.</h2>
+            <p>Live scores, projections and win odds, with all your leagues' matchups at once.</p>
+            <ul class="feature-tags mono">
+              <li>Live scores</li>
+              <li>Win probability</li>
+              <li>All your leagues</li>
+            </ul>
+          </div>
+
+          <!-- infinileague's cross-league Matchups page: each league's name over its score header
+               (GlassMatchupHeader). Win odds use the app's curve, 1 / (1 + e^(-projection gap / 15)). -->
+          <figure class="screen reveal" aria-label="Example infinileague Matchups page: three leagues' matchups this week, with 61%, 65% and 35% win odds">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-league-name">Work League</div>
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#3</span>
+                      <img class="gm-logo gm-logo-img" src="/team-helmet.svg" alt="" width="22" height="22" />
+                      <span class="gm-team-name">Gridiron Gurus</span>
+                    </div>
+                    <div class="gm-total">112<span class="gm-dec"><span class="gm-point">.</span>46</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 128.3</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>2</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>1</span>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#7</span>
+                      <span class="gm-logo">MA</span>
+                      <span class="gm-team-name">Mahomes Alone</span>
+                    </div>
+                    <div class="gm-total">98<span class="gm-dec"><span class="gm-point">.</span>72</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 121.9</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>1</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>3</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-win">
+                  <span>61%</span>
+                  <div class="gm-win-bar">
+                    <div class="gm-win-seg" style="width: 61%; --pill-tint: #4ade80"></div>
+                    <div class="gm-win-seg" style="width: 39%; --pill-tint: #f87171"></div>
+                  </div>
+                  <span>39%</span>
+                </div>
+              </div>
+              <div class="gm-league-name">Family League</div>
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#1</span>
+                      <span class="gm-logo">TR</span>
+                      <span class="gm-team-name">The Replacements</span>
+                    </div>
+                    <div class="gm-total">87<span class="gm-dec"><span class="gm-point">.</span>30</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 118.6</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>3</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>2</span>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#5</span>
+                      <span class="gm-logo">HG</span>
+                      <span class="gm-team-name">Hurts So Good</span>
+                    </div>
+                    <div class="gm-total">91<span class="gm-dec"><span class="gm-point">.</span>04</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 109.2</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>2</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>2</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-win">
+                  <span>65%</span>
+                  <div class="gm-win-bar">
+                    <div class="gm-win-seg" style="width: 65%; --pill-tint: #4ade80"></div>
+                    <div class="gm-win-seg" style="width: 35%; --pill-tint: #f87171"></div>
+                  </div>
+                  <span>35%</span>
+                </div>
+              </div>
+              <div class="gm-league-name">College Buddies</div>
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#6</span>
+                      <span class="gm-logo">SS</span>
+                      <span class="gm-team-name">Sunday Scaries</span>
+                    </div>
+                    <div class="gm-total">64<span class="gm-dec"><span class="gm-point">.</span>12</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 101.4</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>1</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>4</span>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#2</span>
+                      <span class="gm-logo">WW</span>
+                      <span class="gm-team-name">Waiver Wizards</span>
+                    </div>
+                    <div class="gm-total">79<span class="gm-dec"><span class="gm-point">.</span>50</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 110.8</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>2</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>2</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-win">
+                  <span>35%</span>
+                  <div class="gm-win-bar">
+                    <div class="gm-win-seg" style="width: 35%; --pill-tint: #f87171"></div>
+                    <div class="gm-win-seg" style="width: 65%; --pill-tint: #4ade80"></div>
+                  </div>
+                  <span>65%</span>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · Matchups</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature" id="team">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">03 · Team</span>
+            <h2>Start the <span class="accent">right</span> players.</h2>
+            <p>Lineup suggestions from this week's projections, with the points each swap adds.</p>
+            <ul class="feature-tags mono">
+              <li>Lineup suggestions</li>
+              <li>Projections</li>
+              <li>Live scores</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinileague lineup: start G. Wilson over J. Jennings for 4.4 more projected points">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-card gm-suggest">
+                <div class="gm-suggest-title">Suggested lineup adjustment</div>
+                <div class="gm-suggest-line">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7" /><path d="M12 19V5" /></svg>
+                  <span class="gm-suggest-name">G. Wilson</span>
+                  <span class="gm-suggest-proj">13.8</span>
+                  <span class="gm-suggest-delta">+4.4 pts</span>
+                </div>
+                <div class="gm-suggest-line gm-suggest-sit">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></svg>
+                  <span class="gm-suggest-name">J. Jennings</span>
+                  <span class="gm-suggest-proj">9.4</span>
+                </div>
+              </div>
+
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-wr">WR</span>
+                <div class="gm-card gm-wide">
+                  <span class="gm-headshot"><img src="/headshots/nacua.png" alt="" width="350" height="254" /></span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">P. Nacua</span></div>
+                  <div class="gm-wide-points"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></div>
+                  <div class="gm-wide-detail"><span class="gm-pill gm-wr">WR</span><span class="gm-game">vs. SEA · Sun 4:05 PM</span></div>
+                  <div class="gm-wide-proj">Proj 16.2</div>
+                  <div class="gm-meter gm-wide-meter"><div class="gm-meter-tick" style="left: 57.9%"></div></div>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-wr">WR</span>
+                <div class="gm-card gm-wide gm-flag-sit">
+                  <span class="gm-headshot"><img src="/headshots/jennings.png" alt="" width="350" height="254" /></span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">J. Jennings</span><span class="gm-pill gm-name-badge gm-sit">SIT</span></div>
+                  <div class="gm-wide-points"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></div>
+                  <div class="gm-wide-detail"><span class="gm-pill gm-wr">WR</span><span class="gm-game">vs. CHI · Sun 1:00 PM</span></div>
+                  <div class="gm-wide-proj">Proj 9.4</div>
+                  <div class="gm-meter gm-wide-meter"><div class="gm-meter-tick" style="left: 33.6%"></div></div>
+                </div>
+              </div>
+              <div class="gm-divider"><span></span>Bench<span></span></div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-bn">BN</span>
+                <div class="gm-card gm-wide gm-flag-start">
+                  <span class="gm-headshot"><img src="/headshots/wilson.png" alt="" width="350" height="254" /></span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">G. Wilson</span><span class="gm-pill gm-name-badge gm-start">START</span></div>
+                  <div class="gm-wide-points"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span></div>
+                  <div class="gm-wide-detail"><span class="gm-pill gm-wr">WR</span><span class="gm-game">@ NE · Sun 1:00 PM</span></div>
+                  <div class="gm-wide-proj">Proj 13.8</div>
+                  <div class="gm-meter gm-wide-meter"><div class="gm-meter-tick" style="left: 49.3%"></div></div>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · My Team</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature feature-flip" id="players">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">04 · Players</span>
+            <h2>Get to know <span class="accent">every player</span>.</h2>
+            <p>Weekly points, usage and season vs. rest-of-season numbers, charted for any player.</p>
+            <ul class="feature-tags mono">
+              <li>Weekly points</li>
+              <li>Usage</li>
+              <li>Rankings</li>
+            </ul>
+          </div>
+
+          <!-- infinileague's player popover: header, StatGroups table, PlayerTrends' points chart
+               (bars on a 0-30 scale, the current week as a dashed projection). -->
+          <figure class="screen reveal" aria-label="Example infinileague player card for Bijan Robinson, averaging 20.2 points">
+            <div class="gm">
+              <div class="gm-card gm-player">
+                <div class="gm-player-static" aria-hidden="true">
+                <div class="gm-player-head">
+                  <span class="gm-headshot gm-headshot-large"><img src="/headshots/robinson.png" alt="" width="350" height="254" /></span>
+                  <div>
+                    <div class="gm-player-name">Bijan Robinson</div>
+                    <div class="gm-player-meta"><span class="gm-pill gm-rb">RB5</span><span class="gm-game">ATL · vs. NO · Sun 1:00 PM</span></div>
+                  </div>
+                </div>
+
+                <div class="gm-stat-table">
+                  <span></span><span class="gm-stat-col">Season</span><span class="gm-stat-col">ROS</span>
+                  <span class="gm-stat-label">PPG</span><span>20.2</span><span>18.6</span>
+                  <span class="gm-stat-label">Rank</span><span>RB5</span><span>RB4</span>
+                  <span class="gm-stat-label">Value</span><span>7,180</span><span>7,050</span>
+                </div>
+                </div>
+
+                <!-- A working switch (src/main.ts) - flips between the two panels below. -->
+                <div class="gm-segmented gm-segmented-compact" role="radiogroup" aria-label="Weekly chart" data-chart-switch>
+                  <button type="button" class="gm-segment gm-segment-selected" role="radio" aria-checked="true" data-chart="points">Points</button>
+                  <button type="button" class="gm-segment" role="radio" aria-checked="false" tabindex="-1" data-chart="usage">Usage</button>
+                </div>
+
+                <div class="gm-chart-panel" data-chart-panel="points" role="img" aria-label="Weekly points, weeks 7 to 11: 21.3, 15.8, 27.4, 12.6 and 23.9, averaging 20.2, with 19.1 projected for week 12">
+                  <div class="gm-chart-head"><span>Weeks 7-12</span><span>Avg. 20.2</span></div>
+                  <div class="gm-chart">
+                    <div class="gm-chart-avg" style="--v: 0.673"></div>
+                    <div class="gm-chart-col"><div class="gm-bar" style="height: 71.0%"></div><span>7</span></div>
+                    <div class="gm-chart-col"><div class="gm-bar" style="height: 52.7%"></div><span>8</span></div>
+                    <div class="gm-chart-col"><div class="gm-bar" style="height: 91.3%"></div><span>9</span></div>
+                    <div class="gm-chart-col"><div class="gm-bar" style="height: 42.0%"></div><span>10</span></div>
+                    <div class="gm-chart-col"><div class="gm-bar" style="height: 79.7%"></div><span>11</span></div>
+                    <div class="gm-chart-col"><div class="gm-bar gm-bar-proj" style="height: 63.7%"></div><span>12</span></div>
+                  </div>
+                </div>
+                <div class="gm-chart-panel" data-chart-panel="usage" role="img" aria-label="Usage score, weeks 7 to 11: 76, 66, 85, 56 and 77, averaging 72 out of 100, about two thirds from rushing and one third from receiving" hidden>
+                  <div class="gm-chart-head">
+                    <span class="gm-legend"><i class="gm-key-rush"></i>Rushing <i class="gm-key-rec"></i>Receiving</span>
+                    <span>Avg. 72</span>
+                  </div>
+                  <div class="gm-chart">
+                    <div class="gm-chart-avg" style="--v: 0.720"></div>
+                    <div class="gm-chart-col"><div class="gm-stack"><div class="gm-bar gm-bar-rush" style="height: 52%"></div><div class="gm-bar gm-bar-rec" style="height: 24%"></div></div><span>7</span></div>
+                    <div class="gm-chart-col"><div class="gm-stack"><div class="gm-bar gm-bar-rush" style="height: 48%"></div><div class="gm-bar gm-bar-rec" style="height: 18%"></div></div><span>8</span></div>
+                    <div class="gm-chart-col"><div class="gm-stack"><div class="gm-bar gm-bar-rush" style="height: 58%"></div><div class="gm-bar gm-bar-rec" style="height: 27%"></div></div><span>9</span></div>
+                    <div class="gm-chart-col"><div class="gm-stack"><div class="gm-bar gm-bar-rush" style="height: 41%"></div><div class="gm-bar gm-bar-rec" style="height: 15%"></div></div><span>10</span></div>
+                    <div class="gm-chart-col"><div class="gm-stack"><div class="gm-bar gm-bar-rush" style="height: 55%"></div><div class="gm-bar gm-bar-rec" style="height: 22%"></div></div><span>11</span></div>
+                    <div class="gm-chart-col"><span>12</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · Players</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature" id="trade">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">05 · Trade</span>
+            <h2>Make trades you <span class="accent">win</span>.</h2>
+            <p>Buys and sells against the market, suggested deals, and an analyzer to check any trade.</p>
+            <ul class="feature-tags mono">
+              <li>Buys &amp; sells</li>
+              <li>Suggestions</li>
+              <li>Analyzer</li>
+            </ul>
+          </div>
+
+          <!-- The Trade tab top to bottom: a Buys strip (GlassSignalCard), a suggestion
+               (GlassTradeSuggestionCard) and the analyzer's header (GlassTradeHeader). The analyzer
+               has the suggested trade loaded: Gurus send 3,950 for 4,980, a 44/56 split. -->
+          <figure class="screen reveal" aria-label="Example infinileague trade tab: buy T. McMillan, a suggested trade graded A- of B. Hall for D. London, loaded in the analyzer: Gridiron Gurus win by 1,030">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-label">Buys</div>
+              <div class="gm-row">
+                <div class="gm-card">
+                  <div class="gm-top">
+                    <span class="gm-pill gm-wr">WR14</span>
+                    <span class="gm-signal gm-signal-up">Mkt WR24</span>
+                  </div>
+                  <div class="gm-name">T. McMillan</div>
+                  <div class="gm-inline"><span class="gm-headshot gm-headshot-inline"><img src="/headshots/mcmillan.png" alt="" width="350" height="254" /></span><span class="gm-game">CAR · Tua Lipa</span></div>
+                  <div class="gm-stats gm-trade-stats"><span class="gm-proj-small">Mkt 3,410</span><span class="gm-ros"><span class="gm-ros-label">INFINI</span>4,980</span></div>
+                </div>
+                <div class="gm-card">
+                  <div class="gm-top">
+                    <span class="gm-pill gm-rb">RB10</span>
+                    <span class="gm-signal gm-signal-up">Mkt RB17</span>
+                  </div>
+                  <div class="gm-name">A. Jeanty</div>
+                  <div class="gm-inline"><span class="gm-headshot gm-headshot-inline"><img src="/headshots/jeanty.png" alt="" width="350" height="254" /></span><span class="gm-game">LV · Bijan Mustard</span></div>
+                  <div class="gm-stats gm-trade-stats"><span class="gm-proj-small">Mkt 3,880</span><span class="gm-ros"><span class="gm-ros-label">INFINI</span>5,120</span></div>
+                </div>
+              </div>
+
+              <div class="gm-label">Suggestions</div>
+              <div class="gm-card gm-suggestion">
+                <div class="gm-top">
+                  <span class="gm-team-title"><span class="gm-logo">TL</span><span class="gm-team-name">Tua Lipa</span></span>
+                  <span class="gm-pill gm-grade">A−</span>
+                </div>
+                <div class="gm-suggestion-line"><span class="gm-suggestion-label">Send</span><span class="gm-pill gm-rb">RB</span><span class="gm-trade-name">B. Hall</span></div>
+                <div class="gm-suggestion-line"><span class="gm-suggestion-label">Get</span><span class="gm-pill gm-wr">WR</span><span class="gm-trade-name">D. London</span></div>
+              </div>
+
+              <div class="gm-label">Analyzer</div>
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <img class="gm-logo gm-logo-img" src="/team-helmet.svg" alt="" width="22" height="22" />
+                      <span class="gm-team-name">Gridiron Gurus</span>
+                    </div>
+                    <div class="gm-trade-total">3,950</div>
+                    <div class="gm-trade-players">
+                      <div class="gm-trade-entry">
+                        <span class="gm-pill gm-trade-badge gm-rb">RB</span>
+                        <span class="gm-trade-name">B. Hall</span>
+                        <span class="gm-trade-numbers">3,950</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-logo">TL</span>
+                      <span class="gm-team-name">Tua Lipa</span>
+                    </div>
+                    <div class="gm-trade-total">4,980</div>
+                    <div class="gm-trade-players">
+                      <div class="gm-trade-entry">
+                        <span class="gm-pill gm-trade-badge gm-wr">WR</span>
+                        <span class="gm-trade-name">D. London</span>
+                        <span class="gm-trade-numbers">4,980</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-verdict">
+                  <div class="gm-verdict-main">Gridiron Gurus wins by 1,030</div>
+                  <div class="gm-win-bar gm-balance-bar">
+                    <div class="gm-win-seg" style="width: 44%; --pill-tint: #4ade80"></div>
+                    <div class="gm-win-seg" style="width: 56%; --pill-tint: #f87171"></div>
+                    <div class="gm-fair-zone" style="left: 46%; width: 8%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · Trade</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="closer">
+        <div class="wrap closer-inner reveal">
+          <img src="/logo.png" alt="" width="96" height="96" />
+          <h2 class="accent">Ready to win?</h2>
+          <a class="btn" href="https://league.infinifantasy.com">Open infinileague</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <a class="brand-small" href="/">infini<b>fantasy</b></a>
+        <nav aria-label="Footer">
+          <a href="https://draft.infinifantasy.com">draft</a>
+          <a href="https://league.infinifantasy.com">league</a>
+          <a href="https://yoffs.infinifantasy.com">yoffs</a>
+        </nav>
+        <span class="mono muted">© <span id="year">2026</span></span>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

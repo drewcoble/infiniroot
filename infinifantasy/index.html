@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>infinifantasy - fantasy football made simple</title>
+    <script>
+      // Tag the tab title on local and dev copies so they're easy to tell from production:
+      // localhost / LAN / Tailscale addresses are "(local)", *-dev.infinifantasy.com (and the old
+      // develop.* hosts) are "(dev)".
+      (function () {
+        var host = window.location.hostname;
+        var local =
+          host === "localhost" ||
+          host.endsWith(".local") ||
+          /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(host);
+        var dev = host.indexOf("-dev.") !== -1 || host.startsWith("develop.");
+        if (local || dev) document.title += local ? " (local)" : " (dev)";
+      })();
+    </script>
     <meta
       name="description"
       content="Focused fantasy football tools for draft day, the waiver wire, and the playoffs. Connect your Yahoo, Sleeper, or ESPN league and get the call."
@@ -163,12 +177,12 @@
           <div class="principle-grid">
             <article class="reveal">
               <span class="num mono">01</span>
-              <h2>Simple by design.</h2>
+              <h2>We keep it simple.</h2>
               <p>Clean screens that show what matters, without the clutter.</p>
             </article>
             <article class="reveal">
               <span class="num mono">02</span>
-              <h2>Made for your league.</h2>
+              <h2>It fits your league.</h2>
               <p>Personalized recommendations based on your league's settings.</p>
             </article>
             <article class="reveal">
@@ -189,28 +203,37 @@
 
           <ol class="timeline">
             <li class="app reveal">
-              <a href="https://draft.infinifantasy.com">
+              <div class="app-card">
                 <span class="when mono">Aug</span>
                 <h3>infini<b>draft</b></h3>
-                <p>Know what every player is worth in your auction draft, keepers and all.</p>
-                <span class="go">Open <span aria-hidden="true">→</span></span>
-              </a>
+                <p>Know what every player is worth in your draft, auction or snake.</p>
+                <div class="app-actions">
+                  <a class="app-details" href="/draft/">Details</a>
+                  <a class="go" href="https://draft.infinifantasy.com">Open app <span aria-hidden="true">↗</span></a>
+                </div>
+              </div>
             </li>
             <li class="app reveal">
-              <a href="https://league.infinifantasy.com">
+              <div class="app-card">
                 <span class="when mono">Sep – Dec</span>
                 <h3>infini<b>league</b></h3>
                 <p>Find the best pickups, what to bid, and which trades help you.</p>
-                <span class="go">Open <span aria-hidden="true">→</span></span>
-              </a>
+                <div class="app-actions">
+                  <a class="app-details" href="/league/">Details</a>
+                  <a class="go" href="https://league.infinifantasy.com">Open app <span aria-hidden="true">↗</span></a>
+                </div>
+              </div>
             </li>
             <li class="app reveal">
-              <a href="https://yoffs.infinifantasy.com">
+              <div class="app-card">
                 <span class="when mono">Dec – Jan</span>
                 <h3>infini<b>yoffs</b></h3>
                 <p>Run your league's playoffs your way, with live brackets and odds.</p>
-                <span class="go">Open <span aria-hidden="true">→</span></span>
-              </a>
+                <div class="app-actions">
+                  <a class="app-details" href="/yoffs/">Details</a>
+                  <a class="go" href="https://yoffs.infinifantasy.com">Open app <span aria-hidden="true">↗</span></a>
+                </div>
+              </div>
             </li>
           </ol>
         </div>
@@ -220,7 +243,7 @@
         <div class="wrap how-grid">
           <div class="how-copy reveal">
             <p class="eyebrow">How it works</p>
-            <h2>Connect <span class="accent">once</span>.<br />Use every app.</h2>
+            <h2>Connect your league <span class="accent">once</span>.</h2>
             <p>
               Link your league in about a minute. Your rosters, scoring and settings stay synced all
               season, in every app.

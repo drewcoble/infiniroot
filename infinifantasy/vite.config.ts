@@ -12,6 +12,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         home: path.resolve(__dirname, 'index.html'),
+        league: path.resolve(__dirname, 'league/index.html'),
+        draft: path.resolve(__dirname, 'draft/index.html'),
+        yoffs: path.resolve(__dirname, 'yoffs/index.html'),
       },
     },
   },

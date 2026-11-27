@@ -343,6 +343,7 @@ h1 {
 .screen {
   --gm-numeric: "Barlow", var(--font-body);
   --gm-badge: "Red Hat Mono", var(--font-mono);
+  --gm-scoreboard: "Lumen Round", "Barlow", var(--font-body);
   position: relative;
   margin: 0;
   width: 100%;
@@ -867,6 +868,1625 @@ h1 {
   }
 }
 
+/* League, Players and Trade screens (league/index.html) - the rest of infinileague's pieces. */
+
+.gm-segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.gm-segment {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.62);
+}
+
+.gm-segment-selected {
+  color: #f8fafc;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* The player card's Points / Usage switch is a real control (src/main.ts). */
+button.gm-segment {
+  cursor: pointer;
+  transition:
+    background 0.16s,
+    color 0.16s;
+}
+
+button.gm-segment:not(.gm-segment-selected):hover {
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.gm-segmented-compact .gm-segment {
+  height: 28px;
+  font-size: 13px;
+}
+
+.gm-label {
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* Power rankings: rank chip off the edge (yours in saddlebrown), then the team card. */
+.gm-rank-chip {
+  --pill-tint: #adb5bd;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+}
+
+.gm-rank-self {
+  --pill-tint: #8b4513;
+  --pill-text: #8b4513;
+}
+
+.gm-team-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "logo name chevron"
+    "logo line chevron";
+}
+
+.gm-team-card-logo {
+  grid-area: logo;
+  width: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+
+.gm-logo-img.gm-team-card-logo {
+  border-radius: 10px;
+}
+
+.gm-team-card-line {
+  grid-area: line;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-chevron-right {
+  grid-area: chevron;
+  font-size: 22px;
+  line-height: 1;
+  color: rgba(248, 250, 252, 0.5);
+}
+
+.gm-change {
+  flex-shrink: 0;
+  height: 18px;
+  padding: 0 6px;
+  font-family: var(--gm-numeric);
+}
+
+.gm-up {
+  --pill-tint: #85b899;
+  --pill-text: #e4ede8;
+}
+
+.gm-down {
+  --pill-tint: #c16955;
+  --pill-text: #e5beb5;
+}
+
+/* Player popover: header, Season/ROS table, weekly points chart. */
+.gm-player {
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.gm-player-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gm-headshot.gm-headshot-large {
+  flex-shrink: 0;
+  width: 75px;
+  height: 56px;
+}
+
+.gm-player-name {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+.gm-player-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  min-width: 0;
+}
+
+.gm-stat-table {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  row-gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-stat-col,
+.gm-stat-label {
+  font-family: "Barlow", var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+  align-self: center;
+}
+
+.gm-stat-label {
+  text-align: left;
+}
+
+.gm-player-static {
+  display: grid;
+  gap: 14px;
+}
+
+.gm-chart-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.gm-chart-panel[hidden] {
+  display: none;
+}
+
+.gm-chart-head {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-chart {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 130px;
+  padding-bottom: 18px;
+}
+
+.gm-chart-col {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.gm-chart-col span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -18px;
+  text-align: center;
+  font-family: var(--gm-numeric);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.5);
+}
+
+.gm-bar {
+  width: 100%;
+  border-radius: 7px 7px 3px 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, #deb887 38%, #121b17);
+  border: 1px solid color-mix(in srgb, #deb887 50%, rgba(255, 255, 255, 0.15));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.gm-bar-proj {
+  background: none;
+  border: 1.5px dashed rgba(248, 250, 252, 0.4);
+  box-shadow: none;
+}
+
+/* Usage: rushing under receiving, stacked from the bottom on a 0-100 scale, each part in its
+   position's badge color (the app's UsageChart). */
+.gm-stack {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+
+.gm-bar-rec,
+.gm-bar-rush {
+  flex-shrink: 0;
+  min-height: 3px;
+  border-radius: 4px;
+}
+
+.gm-stack > :last-child {
+  border-radius: 7px 7px 4px 4px;
+}
+
+.gm-bar-rec {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, #4f8fe8 38%, #121b17);
+  border-color: color-mix(in srgb, #4f8fe8 50%, rgba(255, 255, 255, 0.15));
+}
+
+.gm-bar-rush {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, #76c098 38%, #121b17);
+  border-color: color-mix(in srgb, #76c098 50%, rgba(255, 255, 255, 0.15));
+}
+
+.gm-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gm-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.gm-legend i + i {
+  margin-left: 6px;
+}
+
+.gm-key-rec {
+  background: #4f8fe8;
+}
+
+.gm-key-rush {
+  background: #76c098;
+}
+
+.gm-chart-avg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* --v is avg / scale max, measured up from the bars' baseline (above the week labels). */
+  bottom: calc(18px + (100% - 18px) * var(--v));
+  border-top: 1.5px dashed rgba(248, 250, 252, 0.45);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Trade: Buys cards, a suggestion, the analyzer header. */
+.gm-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.gm-row > .gm-card {
+  flex: 1;
+}
+
+.gm-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.gm-signal {
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gm-signal-up {
+  color: #4ade80;
+}
+
+.gm-inline {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.gm-headshot.gm-headshot-inline {
+  flex-shrink: 0;
+  width: 24px;
+  height: 18px;
+  margin-right: 5px;
+  border-radius: 5px;
+}
+
+.gm-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.gm-trade-stats {
+  margin-top: auto;
+}
+
+.gm-proj-small {
+  white-space: nowrap;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.68);
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-ros {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-ros-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-grade {
+  --pill-tint: #85b899;
+  --pill-text: #e4ede8;
+  flex-shrink: 0;
+  font-family: var(--gm-numeric);
+}
+
+.gm-suggestion-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gm-suggestion-label {
+  flex-shrink: 0;
+  width: 34px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-header {
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.gm-teams {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 16px;
+}
+
+.gm-team {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  row-gap: 3px;
+}
+
+.gm-team-right {
+  justify-items: end;
+  text-align: right;
+}
+
+.gm-team-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.gm-team-right .gm-team-title {
+  justify-content: flex-end;
+}
+
+.gm-team-name {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-trade-total {
+  margin-top: 2px;
+  font-family: var(--gm-numeric);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-trade-players {
+  justify-self: stretch;
+  min-width: 0;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  text-align: left;
+}
+
+.gm-trade-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  align-items: center;
+}
+
+.gm-trade-badge {
+  grid-row: 1 / span 2;
+  width: 30px;
+}
+
+.gm-pill.gm-trade-badge {
+  justify-content: center;
+  height: 15px;
+  padding: 0;
+  font-size: 9px;
+}
+
+.gm-trade-name {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-trade-numbers {
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: rgba(248, 250, 252, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gm-verdict-main {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.92);
+}
+
+.gm-win-bar {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  height: 10px;
+}
+
+.gm-win-seg {
+  min-width: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, var(--pill-tint) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pill-tint) 75%, rgba(255, 255, 255, 0.35));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.gm-fair-zone {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* Matchups screen: each league's name over its score header (GlassMatchupHeader), with the
+   dot-matrix Lumen Round scoreboard digits (OFL, public/fonts/). */
+
+@font-face {
+  font-family: "Lumen Round";
+  font-weight: 900;
+  font-display: swap;
+  src: url("/fonts/lumen-round-900.woff2") format("woff2");
+}
+
+.gm-league-name {
+  margin: 4px 0 -2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-total {
+  margin-top: 2px;
+  font-family: var(--gm-scoreboard);
+  font-weight: 900;
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-dec {
+  font-size: 0.75em;
+  opacity: 0.75;
+  letter-spacing: -0.12em;
+}
+
+.gm-point {
+  margin-left: -0.25em;
+  margin-right: -0.1em;
+}
+
+.gm-team-right .gm-proj {
+  justify-content: flex-end;
+}
+
+.gm-win {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-win .gm-win-bar {
+  flex: 1;
+  min-width: 0;
+}
+
+.gm-dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4ade80;
+  animation: gm-pulse 1.6s ease-in-out infinite;
+}
+
+.gm-count .gm-dot {
+  width: 7px;
+  height: 7px;
+}
+
+@keyframes gm-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(74, 222, 128, 0);
+  }
+}
+
+/* infinidraft screens (draft/index.html). infinidraft itself is mostly plain Mantine, not glass -
+   these draw its screens in the same glass as the infinileague ones so the pages read as a set. */
+
+.gm-qb {
+  --pill-tint: #eab84b;
+  --pill-text: #fceecf;
+}
+
+.gm-te {
+  --pill-tint: #b15fdb;
+  --pill-text: #eed7fa;
+}
+
+.gm-flex {
+  --pill-tint: #65c5d2;
+  --pill-text: #d5f2f7;
+}
+
+.gm-price-card {
+  grid-template-areas:
+    "photo name points"
+    "photo detail proj";
+}
+
+.gm-price {
+  font-family: var(--gm-numeric);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.gm-budget-head {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.gm-budget-total {
+  font-family: var(--gm-numeric);
+  font-size: 22px;
+  color: #deb887;
+}
+
+.gm-budget-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.gm-budget-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.gm-budget-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8b4513, #deb887);
+}
+
+.gm-budget-amt {
+  width: 40px;
+  text-align: right;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gm-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.gm-tile {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gm-tile span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-tile b {
+  color: #f8fafc;
+  font-family: var(--gm-numeric);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.gm-tile .gm-plus {
+  color: #4ade80;
+}
+
+.gm-block {
+  gap: 10px;
+  padding: 14px;
+  border-color: rgba(222, 184, 135, 0.4);
+  background: linear-gradient(150deg, rgba(222, 184, 135, 0.14) 0%, rgba(222, 184, 135, 0.03) 100%);
+}
+
+.gm-block-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #deb887;
+}
+
+.gm-block-by {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-block-player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.gm-block-player .gm-inline {
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.gm-block-bid {
+  display: grid;
+  justify-items: end;
+  font-family: var(--gm-scoreboard);
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.gm-block-bid span {
+  margin-bottom: 4px;
+  font-family: "Barlow", var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-block-advice {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4ade80;
+}
+
+.gm-reco {
+  gap: 4px;
+}
+
+.gm-reco-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-reco-price {
+  margin-left: auto;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.gm-reco-why {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-keeper-head,
+.gm-keeper {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 44px 44px 54px;
+  align-items: center;
+  column-gap: 10px;
+}
+
+.gm-keeper-head {
+  padding: 0 11px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-keeper-head span:first-child {
+  grid-column: 1 / span 2;
+}
+
+.gm-keeper-head span {
+  text-align: right;
+}
+
+.gm-keeper-head span:first-child {
+  text-align: left;
+}
+
+.gm-keeper .gm-inline {
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Headshots outside the wide cards' grid - drop its photo area. */
+.gm-block-player .gm-headshot,
+.gm-keeper .gm-headshot {
+  grid-area: auto;
+  align-self: center;
+}
+
+.gm-keeper-num {
+  text-align: right;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gm-keeper-gain {
+  justify-content: center;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+}
+
+.gm-report-summary {
+  gap: 6px;
+  padding: 14px;
+}
+
+.gm-report-summary .gm-label {
+  margin: 0;
+}
+
+.gm-report-summary p {
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(248, 250, 252, 0.75);
+}
+
+.gm-grade-pill {
+  grid-area: chevron;
+  justify-content: center;
+  min-width: 40px;
+  height: 28px;
+  border-radius: 10px;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+}
+
+.gm-grade-a {
+  --pill-tint: #85b899;
+  --pill-text: #e4ede8;
+}
+
+.gm-grade-b {
+  --pill-tint: #d0ae65;
+  --pill-text: #f6ecd5;
+}
+
+.gm-grade-c {
+  --pill-tint: #c16955;
+  --pill-text: #e5beb5;
+}
+
+/* infiniyoffs screens (yoffs/index.html). */
+
+.gm-tier {
+  flex-shrink: 0;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+}
+
+.gm-tier-s {
+  --pill-tint: #ffd43b;
+  --pill-text: #fff3bf;
+}
+
+.gm-tier-a {
+  --pill-tint: #38d9a9;
+  --pill-text: #c3fae8;
+}
+
+.gm-tier-b {
+  --pill-tint: #4dabf7;
+  --pill-text: #d0ebff;
+}
+
+.gm-tier-c {
+  --pill-tint: #ced4da;
+  --pill-text: #f1f3f5;
+}
+
+.gm-odds-card {
+  grid-template-areas:
+    "logo name odds"
+    "logo line odds";
+}
+
+.gm-odds {
+  grid-area: odds;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-odds b {
+  font-size: 15px;
+  color: #f8fafc;
+}
+
+.gm-rules {
+  gap: 12px;
+  padding: 16px;
+}
+
+.gm-rules .gm-label {
+  margin: 0;
+}
+
+.gm-rule {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.gm-rule-tiers {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.gm-rule-num {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 700;
+  color: #deb887;
+  box-shadow: inset 0 0 0 1px rgba(222, 184, 135, 0.45);
+}
+
+.gm-bracket {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+  align-items: center;
+}
+
+.gm-bround {
+  display: grid;
+  gap: 10px;
+}
+
+.gm-bround-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-bround-final {
+  align-self: center;
+}
+
+.gm-bgame {
+  gap: 8px;
+  padding: 10px;
+}
+
+.gm-bgame-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4ade80;
+}
+
+.gm-bteam {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-bwin {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.gm-bseed {
+  font-family: var(--gm-numeric);
+  font-size: 11px;
+  color: rgba(248, 250, 252, 0.5);
+}
+
+.gm-bname {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-bscore {
+  font-family: var(--gm-scoreboard);
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.gm-blines {
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  margin: 34px 0 10px;
+}
+
+.gm-blines span {
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-left: 0;
+}
+
+.gm-blines span:first-child {
+  margin-top: 25%;
+  border-bottom: 0;
+  border-radius: 0 8px 0 0;
+}
+
+.gm-blines span:last-child {
+  margin-bottom: 25%;
+  border-top: 0;
+  border-radius: 0 0 8px 0;
+}
+
+.gm-bonus {
+  font-size: 11px;
+  font-weight: 600;
+  color: #deb887;
+}
+
+.gm-group {
+  gap: 8px;
+  padding: 14px;
+}
+
+.gm-group-head,
+.gm-group-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px 56px;
+  align-items: center;
+  text-align: right;
+}
+
+.gm-group-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-group-head span:first-child,
+.gm-group-row span:first-child {
+  text-align: left;
+}
+
+.gm-group-row {
+  font-family: var(--gm-numeric);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gm-group-row span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-family: "Barlow", var(--font-body);
+  white-space: nowrap;
+}
+
+/* infinidraft's Auction / Snake switch. <html data-format> hides the other format's sections;
+   with no data-format (JS off) both show. */
+html[data-format="auction"] [data-only="snake"],
+html[data-format="snake"] [data-only="auction"] {
+  display: none !important;
+}
+
+.format-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 36px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+html:not([data-format]) .format-pick {
+  display: none;
+}
+
+.format-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.format-switch button {
+  height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.format-switch button:hover {
+  color: var(--text);
+}
+
+.format-switch button.on {
+  background: var(--brown-fill);
+  color: var(--on-brown);
+}
+
+/* Sections whose place differs by format: the report card's number, and which side its copy
+   sits on (it's 6th for auction, 5th for snake). */
+html:not([data-format]) .num [data-only="snake"] {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  html:not([data-format="snake"]) [data-flip="auction"] .feature-copy {
+    order: 2;
+  }
+}
+
+.format-pick + .jump {
+  margin-top: 20px;
+}
+
+/* Auction TV board: a card per team. */
+.gm-tvteams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gm-tvteam {
+  gap: 7px;
+  padding: 10px;
+}
+
+.gm-tvteam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.gm-nominating {
+  --pill-tint: #deb887;
+  --pill-text: #fff5e5;
+}
+
+.gm-tvteam-money {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-tvteam-money b {
+  color: #f8fafc;
+}
+
+.gm-tvteam-pick {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gm-tvteam-pick .gm-pill {
+  height: 17px;
+  padding: 0 5px;
+  font-size: 10px;
+}
+
+.gm-tvteam-pick span:nth-child(2) {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-tvteam-pick b {
+  color: #f8fafc;
+  font-family: var(--gm-numeric);
+}
+
+/* Snake screens: rankings vs. ADP, the TV board, the on-the-clock room. */
+.gm-rank-num {
+  font-family: var(--gm-numeric);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.gm-wide-proj .gm-change {
+  margin-left: 6px;
+}
+
+.gm-even {
+  --pill-tint: #9397a1;
+  --pill-text: #e4e7ec;
+}
+
+.gm-board {
+  display: grid;
+  grid-template-columns: 26px repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
+}
+
+.gm-board-team {
+  padding-bottom: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(248, 250, 252, 0.7);
+}
+
+.gm-board-self {
+  color: #deb887;
+}
+
+.gm-board-round {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-board-round i {
+  font-style: normal;
+  font-size: 12px;
+  color: #deb887;
+}
+
+.gm-board-pick {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 6px 7px;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, var(--pill-tint, #9397a1) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pill-tint, #9397a1) 45%, rgba(255, 255, 255, 0.12));
+}
+
+.gm-board-pick span {
+  font-family: var(--gm-numeric);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-board-pick b {
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-board-pick em {
+  font-family: var(--gm-badge);
+  font-size: 10px;
+  font-style: normal;
+  color: color-mix(in srgb, var(--pill-text, #fff) 70%, #fff);
+}
+
+.gm-board-empty {
+  background: rgba(255, 255, 255, 0.02);
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.gm-board-clock {
+  --pill-tint: #deb887;
+  align-content: center;
+  border-color: #deb887;
+  animation: gm-clock 1.6s ease-in-out infinite;
+}
+
+.gm-board-clock b {
+  white-space: normal;
+  color: #deb887;
+}
+
+@keyframes gm-clock {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(222, 184, 135, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(222, 184, 135, 0);
+  }
+}
+
+.gm-board-ticker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.75);
+}
+
+.gm-board-ticker span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4ade80;
+}
+
+.gm-board-ticker b {
+  color: #f8fafc;
+}
+
+.gm-avail,
+.gm-recent {
+  gap: 9px;
+  padding: 12px 14px;
+}
+
+.gm-avail-head,
+.gm-avail-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 40px 52px;
+  align-items: center;
+  gap: 8px;
+  text-align: right;
+}
+
+.gm-avail-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-avail-head span:nth-child(-n + 2),
+.gm-avail-row span:nth-child(-n + 2) {
+  text-align: left;
+}
+
+.gm-avail-row,
+.gm-recent-row {
+  font-family: var(--gm-numeric);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gm-avail-row > span:nth-child(2),
+.gm-recent-row > span:nth-child(2) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-family: "Barlow", var(--font-body);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.gm-signal-down {
+  color: #f87171;
+}
+
+.gm-recent-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-recent-row > span:first-child {
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-recent-row > span:last-child {
+  font-family: "Barlow", var(--font-body);
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+/* App detail pages (league/, draft/, yoffs/) */
+
+.detail-hero {
+  padding-bottom: 40px;
+}
+
+.detail-hero .eyebrow a:hover {
+  color: var(--text);
+}
+
+.detail-hero h1 {
+  max-width: 12em;
+}
+
+.jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 40px;
+}
+
+.jump a {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+
+.jump a:hover {
+  color: var(--text);
+  background: var(--glass);
+}
+
+.feature {
+  padding: 96px 0;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 68px;
+}
+
+.feature-grid {
+  display: grid;
+  gap: 48px;
+  align-items: center;
+}
+
+.feature-grid > * {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .feature-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 72px;
+  }
+
+  .feature-flip .feature-copy {
+    order: 2;
+  }
+}
+
+.feature-copy h2 {
+  font-size: clamp(2rem, 4.5vw, 3rem);
+}
+
+.feature-copy p {
+  margin-top: 16px;
+  max-width: 26em;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-tags li {
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
 /* Principles */
 
 .principles {
@@ -953,7 +2573,7 @@ h1 {
   }
 }
 
-.app a {
+.app-card {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -965,14 +2585,12 @@ h1 {
   background: var(--glass);
   transition:
     border-color 0.25s,
-    background 0.25s,
-    transform 0.25s;
+    background 0.25s;
 }
 
-.app a:hover {
+.app-card:hover {
   border-color: color-mix(in srgb, var(--brown) 70%, transparent);
   background: color-mix(in srgb, var(--brown) 6%, var(--glass));
-  transform: translateY(-3px);
 }
 
 .when {
@@ -1003,9 +2621,34 @@ h1 {
   font-size: 0.95rem;
 }
 
-.go {
+/* Details (an app's page here, when it has one) and Open app (the app itself). */
+.app-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 36px;
   margin-top: auto;
   padding-top: 24px;
+  box-sizing: content-box;
+}
+
+.app-details {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  transition: background 0.2s;
+}
+
+.app-details:hover {
+  background: var(--glass);
+}
+
+.go {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--accent);
@@ -1016,8 +2659,8 @@ h1 {
   transition: transform 0.25s;
 }
 
-.app a:hover .go span {
-  transform: translateX(4px);
+.go:hover span {
+  transform: translate(2px, -2px);
 }
 
 /* How it works - one diagram instead of another row of columns */
@@ -1232,6 +2875,11 @@ h1 {
   }
 
   .flow-lines path.out {
+    animation: none;
+  }
+
+  .gm-dot,
+  .gm-board-clock {
     animation: none;
   }
 

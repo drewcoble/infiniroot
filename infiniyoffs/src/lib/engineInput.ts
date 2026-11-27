@@ -3,6 +3,7 @@ import {
   EMPTY_DRAFT,
   stageWeeks,
   type DraftState,
+  type ManualGroups,
   type PlayoffFormat,
 } from "@playoffRules/format";
 import type { PlayoffRules, SeasonData } from "./seasonData";
@@ -25,6 +26,26 @@ export function draftState(format: PlayoffFormat, rules: PlayoffRules | undefine
   };
 }
 
+// The commissioner's hand-set groups, by stage id.
+export function manualGroupsByStage(
+  rules: PlayoffRules | undefined,
+): Record<string, ManualGroups> {
+  return Object.fromEntries(
+    (rules?.manualGroups ?? []).map((row) => [
+      row.stageId,
+      {
+        groups: row.groups.map((group) => ({
+          teamIds: group.teamIds,
+          pairs: group.pairs.map((pair) => ({
+            week: pair.week,
+            teamIds: [pair.teamIds[0]!, pair.teamIds[1]!] as [string, string],
+          })),
+        })),
+      },
+    ]),
+  );
+}
+
 // Where things stand: final weeks count, this week's live points show.
 export function currentInput(
   data: SeasonData,
@@ -38,6 +59,7 @@ export function currentInput(
     points: data.points,
     finalThroughWeek: data.finalThroughWeek,
     draft: draftState(format, rules),
+    manualGroups: manualGroupsByStage(rules),
   };
 }
 

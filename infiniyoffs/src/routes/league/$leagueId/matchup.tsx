@@ -286,9 +286,11 @@ function MatchupPage() {
     rows: TeamRosterRow[] | undefined,
     actual: number,
     proj: number,
+    bonus: number,
   ): MatchupHeaderTeam => {
     const standing = standings?.find((row) => row.teamId === teamId);
-    return matchupHeaderTeam(
+    const optimal = isFutureWeek && rows ? optimalProjectedPoints(rows) : undefined;
+    const team = matchupHeaderTeam(
       name,
       rows,
       actual,
@@ -296,8 +298,13 @@ function MatchupPage() {
       (row) => toCardData(row).gameState,
       standing,
       standing?.logoUrl,
-      isFutureWeek && rows ? optimalProjectedPoints(rows) : undefined,
+      optimal !== null && optimal !== undefined ? optimal + bonus : undefined,
     );
+    // actual and proj already carry the bonus; the pregame projection is
+    // summed from the roster, so it needs it too.
+    return team.pregameProjectedPoints === undefined
+      ? team
+      : { ...team, pregameProjectedPoints: team.pregameProjectedPoints + bonus };
   };
 
   if (error) return <Alert color="red">{error}</Alert>;
@@ -429,13 +436,13 @@ function MatchupPage() {
             teamA={
               teamARoster.rows === undefined
                 ? "loading"
-                : headerTeam(teamAId, teamAName, teamARoster.rows, actualA, projA)
+                : headerTeam(teamAId, teamAName, teamARoster.rows, actualA, projA, bonusA)
             }
             teamB={
               opponentPending || (teamBId !== null && teamBRoster.rows === undefined)
                 ? "loading"
                 : teamBId !== null
-                  ? headerTeam(teamBId, opponentName, teamBRoster.rows, actualB, projB)
+                  ? headerTeam(teamBId, opponentName, teamBRoster.rows, actualB, projB, bonusB)
                   : null
             }
             winProbA={matchupReady ? winProbA : null}
