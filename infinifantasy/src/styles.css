@@ -2100,8 +2100,88 @@ html:not([data-format]) .format-pick {
   color: var(--on-brown);
 }
 
+/* Sections whose place differs by format: the report card's number, and which side its copy
+   sits on (it's 6th for auction, 5th for snake). */
+html:not([data-format]) .num [data-only="snake"] {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  html:not([data-format="snake"]) [data-flip="auction"] .feature-copy {
+    order: 2;
+  }
+}
+
 .format-pick + .jump {
   margin-top: 20px;
+}
+
+/* Auction TV board: a card per team. */
+.gm-tvteams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gm-tvteam {
+  gap: 7px;
+  padding: 10px;
+}
+
+.gm-tvteam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.gm-nominating {
+  --pill-tint: #deb887;
+  --pill-text: #fff5e5;
+}
+
+.gm-tvteam-money {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-tvteam-money b {
+  color: #f8fafc;
+}
+
+.gm-tvteam-pick {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gm-tvteam-pick .gm-pill {
+  height: 17px;
+  padding: 0 5px;
+  font-size: 10px;
+}
+
+.gm-tvteam-pick span:nth-child(2) {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-tvteam-pick b {
+  color: #f8fafc;
+  font-family: var(--gm-numeric);
 }
 
 /* Snake screens: rankings vs. ADP, the TV board, the on-the-clock room. */

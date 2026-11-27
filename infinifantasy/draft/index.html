@@ -80,6 +80,7 @@
             <a href="#values" data-only="auction">Values</a>
             <a href="#budget" data-only="auction">Budget</a>
             <a href="#room" data-only="auction">Draft room</a>
+            <a href="#auction-board" data-only="auction">Draft board</a>
             <a href="#keepers" data-only="auction">Keepers</a>
             <a href="#snake-values" data-only="snake">Values</a>
             <a href="#board" data-only="snake">Draft board</a>
@@ -275,11 +276,11 @@
           <div class="feature-copy reveal">
             <span class="num mono">02 · Draft board</span>
             <h2>Put the draft on the <span class="accent">big screen</span>.</h2>
-            <p>Show the board on a TV so the whole room can follow every pick as it happens.</p>
+            <p>Put the board on a TV or send everyone the link, so the whole league can follow every pick as it happens.</p>
             <ul class="feature-tags mono">
               <li>TV board</li>
+              <li>Shareable link</li>
               <li>Snake order</li>
-              <li>Just drafted</li>
             </ul>
           </div>
 
@@ -321,11 +322,11 @@
           <div class="feature-copy reveal">
             <span class="num mono">03 · Draft room</span>
             <h2>Get help with <span class="accent">every bid</span>.</h2>
-            <p>See who's up, how high you can go, and who to put up next, all on one screen.</p>
+            <p>See who's up, how high you can go, and who to put up next. Drafting on Sleeper? Every bid and pick comes in on its own.</p>
             <ul class="feature-tags mono">
               <li>Max bid</li>
-              <li>Budget check</li>
               <li>Who to nominate</li>
+              <li>Live Sleeper sync</li>
             </ul>
           </div>
 
@@ -375,11 +376,11 @@
           <div class="feature-copy reveal">
             <span class="num mono">03 · Draft room</span>
             <h2>Know who to take <span class="accent">when you're up</span>.</h2>
-            <p>When it's your turn, see the best players left for your league and every pick so far.</p>
+            <p>When it's your turn, see the best players left for your league. Drafting on Sleeper? Every pick comes in on its own.</p>
             <ul class="feature-tags mono">
               <li>Best available</li>
-              <li>Ranked vs. ADP</li>
               <li>Recent picks</li>
+              <li>Live Sleeper sync</li>
             </ul>
           </div>
 
@@ -413,10 +414,60 @@
       </section>
 
 
-      <section class="feature feature-flip" id="keepers" data-only="auction">
+      <section class="feature feature-flip" id="auction-board" data-only="auction">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
-            <span class="num mono">04 · Keepers</span>
+            <span class="num mono">04 · Draft board</span>
+            <h2>Put the draft on the <span class="accent">big screen</span>.</h2>
+            <p>Put the board on a TV or send everyone the link, so the whole league can see every team's players and money left as the bids come in.</p>
+            <ul class="feature-tags mono">
+              <li>TV board</li>
+              <li>Shareable link</li>
+              <li>Money left</li>
+            </ul>
+          </div>
+
+          <!-- The auction TV board (DraftBoard.tsx): a card per team with its players, prices paid,
+               money left and max bid - only what's public in a live auction. -->
+          <figure class="screen reveal" aria-label="Example infinidraft auction board: four teams with their players, money left and max bids, and C. Olave just won by Bijan Mustard for $24">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-tvteams">
+                <div class="gm-card gm-tvteam">
+                  <div class="gm-tvteam-head"><span class="gm-board-self">Gurus</span></div>
+                  <div class="gm-tvteam-money"><span>Left <b>$142</b></span><span>Max <b>$134</b></span></div>
+                    <div class="gm-tvteam-pick"><span class="gm-pill gm-wr">WR</span><span>T. McLaurin</span><b>$21</b></div>
+                    <div class="gm-tvteam-pick"><span class="gm-pill gm-rb">RB</span><span>R. Stevenson</span><b>$14</b></div>
+                </div>
+                <div class="gm-card gm-tvteam">
+                  <div class="gm-tvteam-head"><span class="">Tua Lipa</span></div>
+                  <div class="gm-tvteam-money"><span>Left <b>$109</b></span><span>Max <b>$101</b></span></div>
+                    <div class="gm-tvteam-pick"><span class="gm-pill gm-rb">RB</span><span>J. Jacobs</span><b>$38</b></div>
+                    <div class="gm-tvteam-pick"><span class="gm-pill gm-wr">WR</span><span>D. Adams</span><b>$19</b></div>
+                </div>
+                <div class="gm-card gm-tvteam">
+                  <div class="gm-tvteam-head"><span class="">Mahomes</span><span class="gm-pill gm-name-badge gm-nominating">UP</span></div>
+                  <div class="gm-tvteam-money"><span>Left <b>$133</b></span><span>Max <b>$126</b></span></div>
+                    <div class="gm-tvteam-pick"><span class="gm-pill gm-rb">RB</span><span>A. Kamara</span><b>$16</b></div>
+                    <div class="gm-tvteam-pick"><span class="gm-pill gm-wr">WR</span><span>K. Allen</span><b>$12</b></div>
+                </div>
+                <div class="gm-card gm-tvteam">
+                  <div class="gm-tvteam-head"><span class="">Bijan M.</span></div>
+                  <div class="gm-tvteam-money"><span>Left <b>$128</b></span><span>Max <b>$121</b></span></div>
+                    <div class="gm-tvteam-pick"><span class="gm-pill gm-wr">WR</span><span>C. Olave</span><b>$24</b></div>
+                    <div class="gm-tvteam-pick"><span class="gm-pill gm-te">TE</span><span>D. Kincaid</span><b>$9</b></div>
+                </div>
+              </div>
+              <div class="gm-board-ticker"><span>Just won</span><b>C. Olave</b> to Bijan Mustard for $24</div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Draft board</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature" id="keepers" data-only="auction">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">05 · Keepers</span>
             <h2>Keep the <span class="accent">right</span> players.</h2>
             <p>See what each keeper costs next to what he's worth, so you know who to hold on to.</p>
             <ul class="feature-tags mono">
@@ -498,10 +549,10 @@
       </section>
 
 
-      <section class="feature" id="report">
+      <section class="feature" id="report" data-flip="auction">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
-            <span class="num mono">05 · Report card</span>
+            <span class="num mono"><span data-only="auction">06</span><span data-only="snake">05</span> · Report card</span>
             <h2>See how <span class="accent">everyone</span> drafted.</h2>
             <p>Grades for every team once the draft's done, with the steals called out. Share it with the league.</p>
             <ul class="feature-tags mono">
