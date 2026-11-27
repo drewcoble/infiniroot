@@ -6,7 +6,7 @@
     <title>infinileague - your fantasy league, week to week</title>
     <meta
       name="description"
-      content="infinileague brings standings, power rankings, lineup suggestions, player charts and trade advice to your Yahoo, Sleeper, or ESPN fantasy football league."
+      content="infinileague brings standings, power rankings, live matchups across all your leagues, lineup suggestions, player charts and trade advice to your Yahoo, Sleeper, or ESPN fantasy football league."
     />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="infinifantasy" />
@@ -30,6 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Barlow:wght@600;700&family=Red+Hat+Mono:wght@600&display=swap"
       rel="stylesheet"
     />
+    <link rel="preload" href="/fonts/lumen-round-900.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
@@ -53,8 +54,8 @@
           <p class="eyebrow reveal"><a href="/#apps">Apps</a> / infinileague</p>
           <h1 class="reveal">Your league,<br /><span class="accent">week to week.</span></h1>
           <p class="lede reveal">
-            Rankings, lineup help, player charts and trade advice, all built on your league's own
-            settings.
+            Rankings, live matchups, lineup help, player charts and trade advice, all built on your
+            league's own settings.
           </p>
           <div class="hero-actions reveal">
             <a class="btn" href="https://league.infinifantasy.com">Open infinileague</a>
@@ -62,6 +63,7 @@
           </div>
           <nav class="jump reveal" aria-label="Features">
             <a href="#league">League</a>
+            <a href="#matchups">Matchups</a>
             <a href="#team">Team</a>
             <a href="#players">Players</a>
             <a href="#trade">Trade</a>
@@ -146,10 +148,150 @@
         </div>
       </section>
 
-      <section class="feature feature-flip" id="team">
+      <section class="feature feature-flip" id="matchups">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
-            <span class="num mono">02 · Team</span>
+            <span class="num mono">02 · Matchups</span>
+            <h2>Every matchup, <span class="accent">one screen</span>.</h2>
+            <p>Live scores, projections and win odds, with all your leagues' matchups at once.</p>
+            <ul class="feature-tags mono">
+              <li>Live scores</li>
+              <li>Win probability</li>
+              <li>All your leagues</li>
+            </ul>
+          </div>
+
+          <!-- infinileague's cross-league Matchups page: each league's name over its score header
+               (GlassMatchupHeader). Win odds use the app's curve, 1 / (1 + e^(-projection gap / 15)). -->
+          <figure class="screen reveal" aria-label="Example infinileague Matchups page: three leagues' matchups this week, with 61%, 65% and 35% win odds">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-league-name">Work League</div>
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#3</span>
+                      <img class="gm-logo gm-logo-img" src="/team-helmet.svg" alt="" width="22" height="22" />
+                      <span class="gm-team-name">Gridiron Gurus</span>
+                    </div>
+                    <div class="gm-total">112<span class="gm-dec"><span class="gm-point">.</span>46</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 128.3</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>2</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>1</span>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#7</span>
+                      <span class="gm-logo">MA</span>
+                      <span class="gm-team-name">Mahomes Alone</span>
+                    </div>
+                    <div class="gm-total">98<span class="gm-dec"><span class="gm-point">.</span>72</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 121.9</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>1</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>3</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-win">
+                  <span>61%</span>
+                  <div class="gm-win-bar">
+                    <div class="gm-win-seg" style="width: 61%; --pill-tint: #4ade80"></div>
+                    <div class="gm-win-seg" style="width: 39%; --pill-tint: #f87171"></div>
+                  </div>
+                  <span>39%</span>
+                </div>
+              </div>
+              <div class="gm-league-name">Family League</div>
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#1</span>
+                      <span class="gm-logo">TR</span>
+                      <span class="gm-team-name">The Replacements</span>
+                    </div>
+                    <div class="gm-total">87<span class="gm-dec"><span class="gm-point">.</span>30</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 118.6</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>3</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>2</span>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#5</span>
+                      <span class="gm-logo">HG</span>
+                      <span class="gm-team-name">Hurts So Good</span>
+                    </div>
+                    <div class="gm-total">91<span class="gm-dec"><span class="gm-point">.</span>04</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 109.2</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>2</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>2</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-win">
+                  <span>65%</span>
+                  <div class="gm-win-bar">
+                    <div class="gm-win-seg" style="width: 65%; --pill-tint: #4ade80"></div>
+                    <div class="gm-win-seg" style="width: 35%; --pill-tint: #f87171"></div>
+                  </div>
+                  <span>35%</span>
+                </div>
+              </div>
+              <div class="gm-league-name">College Buddies</div>
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#6</span>
+                      <span class="gm-logo">SS</span>
+                      <span class="gm-team-name">Sunday Scaries</span>
+                    </div>
+                    <div class="gm-total">64<span class="gm-dec"><span class="gm-point">.</span>12</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 101.4</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>1</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>4</span>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-rank">#2</span>
+                      <span class="gm-logo">WW</span>
+                      <span class="gm-team-name">Waiver Wizards</span>
+                    </div>
+                    <div class="gm-total">79<span class="gm-dec"><span class="gm-point">.</span>50</span></div>
+                    <div class="gm-proj">
+                      <span>Proj 110.8</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>2</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>2</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-win">
+                  <span>35%</span>
+                  <div class="gm-win-bar">
+                    <div class="gm-win-seg" style="width: 35%; --pill-tint: #f87171"></div>
+                    <div class="gm-win-seg" style="width: 65%; --pill-tint: #4ade80"></div>
+                  </div>
+                  <span>65%</span>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>league</b> · Matchups</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature" id="team">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">03 · Team</span>
             <h2>Start the <span class="accent">right</span> players.</h2>
             <p>Lineup suggestions from this week's projections, with the points each swap adds.</p>
             <ul class="feature-tags mono">
@@ -216,10 +358,10 @@
         </div>
       </section>
 
-      <section class="feature" id="players">
+      <section class="feature feature-flip" id="players">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
-            <span class="num mono">03 · Players</span>
+            <span class="num mono">04 · Players</span>
             <h2>Every player, <span class="accent">at a glance</span>.</h2>
             <p>Weekly points, usage and season vs. rest-of-season numbers, charted for any player.</p>
             <ul class="feature-tags mono">
@@ -271,10 +413,10 @@
         </div>
       </section>
 
-      <section class="feature feature-flip" id="trade">
+      <section class="feature" id="trade">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
-            <span class="num mono">04 · Trade</span>
+            <span class="num mono">05 · Trade</span>
             <h2>Make trades you <span class="accent">win</span>.</h2>
             <p>Buys and sells against the market, suggested deals, and an analyzer to check any trade.</p>
             <ul class="feature-tags mono">

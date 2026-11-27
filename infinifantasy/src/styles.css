@@ -343,6 +343,7 @@ h1 {
 .screen {
   --gm-numeric: "Barlow", var(--font-body);
   --gm-badge: "Red Hat Mono", var(--font-mono);
+  --gm-scoreboard: "Lumen Round", "Barlow", var(--font-body);
   position: relative;
   margin: 0;
   width: 100%;
@@ -1358,6 +1359,86 @@ h1 {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
+/* Matchups screen: each league's name over its score header (GlassMatchupHeader), with the
+   dot-matrix Lumen Round scoreboard digits (OFL, public/fonts/). */
+
+@font-face {
+  font-family: "Lumen Round";
+  font-weight: 900;
+  font-display: swap;
+  src: url("/fonts/lumen-round-900.woff2") format("woff2");
+}
+
+.gm-league-name {
+  margin: 4px 0 -2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-total {
+  margin-top: 2px;
+  font-family: var(--gm-scoreboard);
+  font-weight: 900;
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-dec {
+  font-size: 0.75em;
+  opacity: 0.75;
+  letter-spacing: -0.12em;
+}
+
+.gm-point {
+  margin-left: -0.25em;
+  margin-right: -0.1em;
+}
+
+.gm-team-right .gm-proj {
+  justify-content: flex-end;
+}
+
+.gm-win {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-win .gm-win-bar {
+  flex: 1;
+  min-width: 0;
+}
+
+.gm-dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4ade80;
+  animation: gm-pulse 1.6s ease-in-out infinite;
+}
+
+.gm-count .gm-dot {
+  width: 7px;
+  height: 7px;
+}
+
+@keyframes gm-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(74, 222, 128, 0);
+  }
+}
+
 /* App detail pages (league/index.html) */
 
 .detail-hero {
@@ -1838,6 +1919,10 @@ h1 {
   }
 
   .flow-lines path.out {
+    animation: none;
+  }
+
+  .gm-dot {
     animation: none;
   }
 
