@@ -12,11 +12,15 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       // with a different case than you signed up with just fails to match.
       // `profile` runs for every flow (signUp/signIn/reset/etc - see this
       // provider's own JSDoc), so this is the one place that normalizes
-      // both directions. Mirrors defaultProfile's shape (email only - name
-      // is deliberately never stored on `users` here, see convex/users.ts's
-      // ensureCurrentUser, which falls back to email itself).
+      // both directions. Only signUp writes the profile to `users`, so the
+      // name the sign-up form sends is stored then (trimmed, capped) - what
+      // commissioners see for each member (convex/infiniyoffs/members.ts).
       profile(params) {
-        return { email: String(params.email ?? "").trim().toLowerCase() };
+        const email = String(params.email ?? "").trim().toLowerCase();
+        const name = String(params.name ?? "").trim().slice(0, 40);
+        const profile: { email: string; name?: string } = { email };
+        if (params.flow === "signUp" && name && name !== email) profile.name = name;
+        return profile as { email: string };
       },
     }),
   ],

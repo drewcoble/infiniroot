@@ -1153,6 +1153,32 @@ export default defineSchema({
     .index("by_season_user", ["seasonId", "userId"])
     .index("by_user", ["userId"]),
 
+  // infiniyoffs' one shareable link per season (convex/infiniyoffs/
+  // members.ts): whoever opens it picks their team, or just watches. Same
+  // regenerate-revokes-the-old-row convention as leagueTeamInvites.
+  yoffsLeagueInvites: defineTable({
+    seasonId: v.id("seasons"),
+    token: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_token", ["token"])
+    .index("by_season", ["seasonId"]),
+
+  // One row per (season, person) who joined infiniyoffs through the league
+  // link - teamId absent = watching. infiniyoffs-only on purpose: unlike
+  // leagueTeamMembers, a self-claimed team grants nothing in infinifaab.
+  yoffsMembers: defineTable({
+    seasonId: v.id("seasons"),
+    userId: v.id("users"),
+    teamId: v.optional(v.id("seasonTeams")),
+    joinedAt: v.number(),
+  })
+    .index("by_season_user", ["seasonId", "userId"])
+    .index("by_season", ["seasonId"])
+    .index("by_user", ["userId"]),
+
   // A shareable link the league owner hands to a co-manager - infinidraft's
   // "invite a co-manager" feature (convex/infinidraft/sharing/invites.ts).
   // Whole-league in scope (unlike leagueTeamInvites above, which is scoped

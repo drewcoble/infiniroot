@@ -49,8 +49,9 @@ async function leagueSeasons(ctx: QueryCtx, leagueId: Id<"leagues">) {
 }
 
 // infiniyoffs' dashboard and league switcher: every provider-linked season
-// the caller commissions (owner or co-manager) or holds a team membership
-// in - the same people requireSeasonViewer lets in.
+// the caller commissions (owner or co-manager), holds a team membership
+// in, or joined through the league link - the same people
+// requireSeasonViewer lets in.
 export const listMySeasons = query({
   args: {},
   handler: async (ctx): Promise<YoffsSeason[]> => {
@@ -89,6 +90,15 @@ export const listMySeasons = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
     for (const { seasonId } of memberships) {
+      const season = await ctx.db.get(seasonId);
+      const league = season ? await ctx.db.get(season.leagueId) : null;
+      if (season && league) add(season, league, false);
+    }
+    const yoffsMemberships = await ctx.db
+      .query("yoffsMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const { seasonId } of yoffsMemberships) {
       const season = await ctx.db.get(seasonId);
       const league = season ? await ctx.db.get(season.leagueId) : null;
       if (season && league) add(season, league, false);

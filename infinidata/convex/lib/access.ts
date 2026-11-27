@@ -247,9 +247,10 @@ export async function requireTeamAccess(
 }
 
 // infiniyoffs' access boundary - read-only, league-wide. The commissioner
-// (owner or leagueCollaborators co-manager) and anyone holding a
-// leagueTeamMembers row for this season may view - the same team invites
-// infinifaab hands out, so one link onboards a member to both apps.
+// (owner or leagueCollaborators co-manager), anyone holding a
+// leagueTeamMembers row for this season (infinifaab's per-team invites),
+// and anyone who joined through infiniyoffs' league link (yoffsMembers,
+// with a team or just watching) may view.
 // teamIds is the viewer's own team(s), for "my team" highlighting: the
 // commissioner's seasonTeams.isSelf team, else their membership rows.
 export async function requireSeasonViewer(
@@ -297,14 +298,18 @@ export async function requireSeasonViewer(
       q.eq("seasonId", seasonId).eq("userId", userId),
     )
     .collect();
-  if (memberships.length === 0) {
+  const yoffsMember = await ctx.db
+    .query("yoffsMembers")
+    .withIndex("by_season_user", (q) =>
+      q.eq("seasonId", seasonId).eq("userId", userId),
+    )
+    .unique();
+  if (memberships.length === 0 && !yoffsMember) {
     throw new Error("You don't have access to this league.");
   }
-  return {
-    season,
-    league,
-    userId,
-    isCommissioner: false,
-    teamIds: memberships.map((m) => m.teamId),
-  };
+  const teamIds = memberships.map((m) => m.teamId);
+  if (yoffsMember?.teamId && !teamIds.includes(yoffsMember.teamId)) {
+    teamIds.push(yoffsMember.teamId);
+  }
+  return { season, league, userId, isCommissioner: false, teamIds };
 }

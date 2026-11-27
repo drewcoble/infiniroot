@@ -9,7 +9,7 @@ import glass from "@shared/glass/GlassMatchupCard.module.css";
 import { FormatPreview } from "../../../components/FormatPreview";
 import { GroupsEditor } from "../../../components/GroupsEditor";
 import { PlayoffTypeCard, PresetCards } from "../../../components/RulesEditor";
-import { TeamInvitesCard } from "../../../components/TeamInvitesCard";
+import { LeagueInviteCard } from "../../../components/LeagueInviteCard";
 import { useMyViewer } from "../../../hooks/useMyViewer";
 import { describeFormat } from "../../../lib/describeFormat";
 import { platformFormat } from "../../../lib/platformFormat";
@@ -151,7 +151,7 @@ function CommissionerSettings({
             rules={rules}
           />
         ))}
-      <TeamInvitesCard seasonId={seasonId} />
+      <LeagueInviteCard seasonId={seasonId} data={data} />
       <FormatPreview format={shown} teamCount={teamCount} unsaved={!sameFormat(shown, format)} />
     </Stack>
   );

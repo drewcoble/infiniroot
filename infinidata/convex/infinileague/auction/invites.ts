@@ -46,7 +46,7 @@ export const listTeamInvites = query({
       const members = [];
       for (const membership of memberships) {
         const user = await ctx.db.get(membership.userId);
-        members.push({ userId: membership.userId, name: user?.name ?? null });
+        members.push({ userId: membership.userId, name: user?.name || user?.email || null });
       }
 
       result.push({

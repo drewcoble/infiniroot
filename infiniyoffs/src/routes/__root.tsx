@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { Center, Loader, Stack, Text } from "@mantine/core";
 // convex/react's useConvexAuth, not @convex-dev/auth/react's - same reason
 // as the other apps' __root.tsx: this one waits for server confirmation
@@ -18,6 +18,8 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  // Invite links mostly bring new people - show them sign-up first.
+  const invited = /^\/(invite|join)\//.test(useLocation().pathname);
   // Upserts the shared userProfiles row on sign-in - same call the other
   // apps' __root.tsx make.
   const ensureUser = useMutation(api.users.ensureCurrentUser);
@@ -50,7 +52,10 @@ function RootComponent() {
               Sign in with your infinidraft/infinileague/infinifaab account to
               continue - infiniyoffs shares the same login.
             </Text>
-            <AuthPanel existingAccountHint="if you already have an infinidraft/infinileague/infinifaab account, use that same email and password here." />
+            <AuthPanel
+              initialMode={invited ? "signUp" : "signIn"}
+              existingAccountHint="if you already have an infinidraft/infinileague/infinifaab account, use that same email and password here."
+            />
           </Stack>
         </Stack>
       </PageContainer>

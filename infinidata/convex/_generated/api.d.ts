@@ -96,6 +96,7 @@ import type * as infinileague_season_weekInjuries from "../infinileague/season/w
 import type * as infiniyoffs_access from "../infiniyoffs/access.js";
 import type * as infiniyoffs_draft from "../infiniyoffs/draft.js";
 import type * as infiniyoffs_leagues from "../infiniyoffs/leagues.js";
+import type * as infiniyoffs_members from "../infiniyoffs/members.js";
 import type * as infiniyoffs_reads from "../infiniyoffs/reads.js";
 import type * as infiniyoffs_refresh from "../infiniyoffs/refresh.js";
 import type * as infiniyoffs_rules from "../infiniyoffs/rules.js";
@@ -121,6 +122,7 @@ import type * as lib_matchupDifficulty from "../lib/matchupDifficulty.js";
 import type * as lib_platformPosition from "../lib/platformPosition.js";
 import type * as lib_playerValue from "../lib/playerValue.js";
 import type * as lib_playoffRules_bracketMath from "../lib/playoffRules/bracketMath.js";
+import type * as lib_playoffRules_carryOver from "../lib/playoffRules/carryOver.js";
 import type * as lib_playoffRules_evaluate from "../lib/playoffRules/evaluate.js";
 import type * as lib_playoffRules_format from "../lib/playoffRules/format.js";
 import type * as lib_playoffRules_presets from "../lib/playoffRules/presets.js";
@@ -266,6 +268,7 @@ declare const fullApi: ApiFromModules<{
   "infiniyoffs/access": typeof infiniyoffs_access;
   "infiniyoffs/draft": typeof infiniyoffs_draft;
   "infiniyoffs/leagues": typeof infiniyoffs_leagues;
+  "infiniyoffs/members": typeof infiniyoffs_members;
   "infiniyoffs/reads": typeof infiniyoffs_reads;
   "infiniyoffs/refresh": typeof infiniyoffs_refresh;
   "infiniyoffs/rules": typeof infiniyoffs_rules;
@@ -291,6 +294,7 @@ declare const fullApi: ApiFromModules<{
   "lib/platformPosition": typeof lib_platformPosition;
   "lib/playerValue": typeof lib_playerValue;
   "lib/playoffRules/bracketMath": typeof lib_playoffRules_bracketMath;
+  "lib/playoffRules/carryOver": typeof lib_playoffRules_carryOver;
   "lib/playoffRules/evaluate": typeof lib_playoffRules_evaluate;
   "lib/playoffRules/format": typeof lib_playoffRules_format;
   "lib/playoffRules/presets": typeof lib_playoffRules_presets;

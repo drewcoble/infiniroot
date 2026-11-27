@@ -44,6 +44,9 @@ interface AuthPanelProps {
   // route happened to still be in the address bar; infinifaab/infinileague
   // don't navigate at all, so they omit it.
   afterAuthChange?: () => void;
+  // Which form shows first - "signUp" on invite links, where most visitors
+  // are new.
+  initialMode?: "signIn" | "signUp";
   // Appended to the "couldn't create an account" message when sign-up hits
   // an existing-account error - infinifaab/infinileague use this to point
   // the user at their shared-Convex-deployment sibling apps (each app names
@@ -54,10 +57,11 @@ interface AuthPanelProps {
 export function AuthPanel({
   afterAuthChange,
   existingAccountHint,
+  initialMode = "signIn",
 }: AuthPanelProps = {}) {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { signIn, signOut } = useAuthActions();
-  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
+  const [mode, setMode] = useState<"signIn" | "signUp">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -85,6 +89,11 @@ export function AuthPanel({
 
   const handleSubmit = async () => {
     setStatus(null);
+    // The name is what commissioners see for each member.
+    if (mode === "signUp" && !name.trim()) {
+      setStatus({ kind: "error", message: "Enter your name." });
+      return;
+    }
 
     // Also normalized server-side (convex/auth.ts's Password profile
     // callback) - doing it here too keeps what's displayed/retried
@@ -96,7 +105,7 @@ export function AuthPanel({
         flow: mode === "signIn" ? "signIn" : "signUp",
         email: normalizedEmail,
         password,
-        name: name || normalizedEmail,
+        ...(mode === "signUp" ? { name: name.trim() } : {}),
       });
       setStatus({ kind: "success", message: `${title} succeeded.` });
       afterAuthChange?.();
@@ -145,7 +154,10 @@ export function AuthPanel({
       {mode === "signUp" && (
         <TextInput
           label="Name"
+          description="Shown to your league's commissioner"
           placeholder="Your name"
+          required
+          maxLength={40}
           value={name}
           onChange={(event) => setName(event.currentTarget.value)}
         />
