@@ -1123,7 +1123,7 @@ button.gm-segment:not(.gm-segment-selected):hover {
   box-shadow: none;
 }
 
-/* Usage: receiving over rushing, stacked from the bottom on a 0-100 scale, each part in its
+/* Usage: rushing under receiving, stacked from the bottom on a 0-100 scale, each part in its
    position's badge color (the app's UsageChart). */
 .gm-stack {
   width: 100%;
@@ -1170,8 +1170,7 @@ button.gm-segment:not(.gm-segment-selected):hover {
   border-radius: 3px;
 }
 
-.gm-legend i + i,
-.gm-key-rush {
+.gm-legend i + i {
   margin-left: 6px;
 }
 
