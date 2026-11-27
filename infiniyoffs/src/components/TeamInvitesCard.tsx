@@ -22,7 +22,7 @@ export function TeamInvitesCard({ seasonId }: { seasonId: Id<"seasons"> }) {
       <Stack gap="sm">
         <Title order={5}>Invite league members</Title>
         <Text size="sm" c="dimmed">
-          One link per team - also works in infinifaab.
+          One link per team.
         </Text>
         {invites === undefined ? (
           <Center py="md">
