@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>infinifaab</title>
+    <script>
+      // Tag the tab title on local and dev copies so they're easy to tell from production:
+      // localhost / LAN / Tailscale addresses are "(local)", *-dev.infinifantasy.com (and the old
+      // develop.* hosts) are "(dev)".
+      (function () {
+        var host = window.location.hostname;
+        var local =
+          host === "localhost" ||
+          host.endsWith(".local") ||
+          /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(host);
+        var dev = host.indexOf("-dev.") !== -1 || host.startsWith("develop.");
+        if (local || dev) document.title += local ? " (local)" : " (dev)";
+      })();
+    </script>
     <meta
       name="description"
       content="infinifaab runs weekly silent-auction free agency bidding for your fantasy football league - invite your league mates, place proxy max bids on waiver-eligible players, and let the commissioner close the auction on a schedule."
