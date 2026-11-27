@@ -3,18 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>infinidraft - auction draft help for your league</title>
+    <title>infinidraft - draft help for your league</title>
     <meta
       name="description"
-      content="infinidraft helps you win your fantasy football auction draft: player prices made for your league, a budget plan, live bid help, keeper values and a report card."
+      content="infinidraft helps you win your fantasy football draft, auction or snake: rankings and prices made for your league, live help when you're up, keeper values and a report card."
     />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="infinifantasy" />
     <meta property="og:url" content="https://infinifantasy.com/draft/" />
-    <meta property="og:title" content="infinidraft - auction draft help for your league" />
+    <meta property="og:title" content="infinidraft - draft help for your league" />
     <meta
       property="og:description"
-      content="Know what every player is worth in your league, plan your budget, and get help with every bid."
+      content="Whether your league runs an auction or a snake draft, know what every player is worth and get help with every pick."
     />
     <meta property="og:image" content="https://infinifantasy.com/og.png" />
     <meta property="og:image:width" content="1200" />
@@ -32,6 +32,12 @@
     />
     <link rel="preload" href="/fonts/lumen-round-900.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/styles.css" />
+    <!-- Pick the draft type before first paint so the other format's sections never flash
+         (src/main.ts takes over from here). -->
+    <script>
+      document.documentElement.dataset.format =
+        new URLSearchParams(location.search).get("type") === "snake" ? "snake" : "auction";
+    </script>
   </head>
   <body>
     <header class="nav">
@@ -54,18 +60,31 @@
           <p class="eyebrow reveal"><a href="/#apps">Apps</a> / infinidraft</p>
           <h1 class="reveal">Walk into your draft <span class="accent">ready to win.</span></h1>
           <p class="lede reveal">
-            Know what every player is worth in your league, plan your budget, and get help with
-            every bid.
+            Whether your league runs an auction or a snake draft, you'll know what every player is
+            worth and get help with every pick.
           </p>
           <div class="hero-actions reveal">
             <a class="btn" href="https://draft.infinifantasy.com">Open infinidraft</a>
-            <a class="btn btn-ghost" href="#values">See what's inside</a>
+            <a class="btn btn-ghost" href="#values" data-see-inside>See what's inside</a>
+          </div>
+          <!-- Draft type switch (src/main.ts): shows the auction or snake version of the sections
+               below and keeps the choice in the URL (?type=snake). Without JS both show. -->
+          <div class="format-pick reveal">
+            <span>Your league drafts by</span>
+            <div class="format-switch" role="radiogroup" aria-label="Draft type" data-format-switch>
+              <button type="button" role="radio" aria-checked="true" data-format="auction">Auction</button>
+              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-format="snake">Snake</button>
+            </div>
           </div>
           <nav class="jump reveal" aria-label="Features">
-            <a href="#values">Values</a>
-            <a href="#budget">Budget</a>
-            <a href="#room">Draft room</a>
-            <a href="#keepers">Keepers</a>
+            <a href="#values" data-only="auction">Values</a>
+            <a href="#budget" data-only="auction">Budget</a>
+            <a href="#room" data-only="auction">Draft room</a>
+            <a href="#keepers" data-only="auction">Keepers</a>
+            <a href="#snake-values" data-only="snake">Values</a>
+            <a href="#board" data-only="snake">Draft board</a>
+            <a href="#snake-room" data-only="snake">Draft room</a>
+            <a href="#snake-keepers" data-only="snake">Keepers</a>
             <a href="#report">Report card</a>
           </nav>
         </div>
@@ -74,7 +93,7 @@
       <!-- Each feature pairs a line of copy with an illustration of the matching infinidraft screen
            in the site's glass style (.gm-* in src/styles.css). Sample teams and numbers only. -->
 
-      <section class="feature" id="values">
+      <section class="feature" id="values" data-only="auction">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
             <span class="num mono">01 · Values</span>
@@ -129,7 +148,56 @@
         </div>
       </section>
 
-      <section class="feature feature-flip" id="budget">
+      <section class="feature" id="snake-values" data-only="snake">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">01 · Values</span>
+            <h2>Know who's a <span class="accent">steal</span> at every pick.</h2>
+            <p>Rankings made for your league's scoring, right next to where players usually go.</p>
+            <ul class="feature-tags mono">
+              <li>Your rankings</li>
+              <li>ADP</li>
+              <li>Value picks</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinidraft snake rankings: S. Barkley ranked 6th but usually goes 12th">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-segmented">
+                <span class="gm-segment gm-segment-selected">All</span>
+                <span class="gm-segment">RB</span>
+                <span class="gm-segment">WR</span>
+                <span class="gm-segment">TE</span>
+              </div>
+              <div class="gm-card gm-wide gm-price-card">
+                <span class="gm-headshot"><img src="/headshots/lamb.png" alt="" width="350" height="254" /></span>
+                <div class="gm-name-row gm-wide-name"><span class="gm-name">C. Lamb</span></div>
+                <div class="gm-wide-points gm-rank-num">#8</div>
+                <div class="gm-wide-detail"><span class="gm-pill gm-wr">WR</span><span class="gm-game">DAL</span></div>
+                <div class="gm-wide-proj">ADP 7 <span class="gm-pill gm-change gm-down">−1</span></div>
+              </div>
+              <div class="gm-card gm-wide gm-price-card">
+                <span class="gm-headshot"><img src="/headshots/barkley.png" alt="" width="350" height="254" /></span>
+                <div class="gm-name-row gm-wide-name"><span class="gm-name">S. Barkley</span><span class="gm-pill gm-name-badge gm-start">VALUE</span></div>
+                <div class="gm-wide-points gm-rank-num">#6</div>
+                <div class="gm-wide-detail"><span class="gm-pill gm-rb">RB</span><span class="gm-game">PHI</span></div>
+                <div class="gm-wide-proj">ADP 12 <span class="gm-pill gm-change gm-up">+6</span></div>
+              </div>
+              <div class="gm-card gm-wide gm-price-card">
+                <span class="gm-headshot"><img src="/headshots/mccaffrey.png" alt="" width="350" height="254" /></span>
+                <div class="gm-name-row gm-wide-name"><span class="gm-name">C. McCaffrey</span><span class="gm-pill gm-name-badge gm-sit">REACH</span></div>
+                <div class="gm-wide-points gm-rank-num">#19</div>
+                <div class="gm-wide-detail"><span class="gm-pill gm-rb">RB</span><span class="gm-game">SF</span></div>
+                <div class="gm-wide-proj">ADP 11 <span class="gm-pill gm-change gm-down">−8</span></div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Players</figcaption>
+          </figure>
+        </div>
+      </section>
+
+
+      <section class="feature feature-flip" id="budget" data-only="auction">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
             <span class="num mono">02 · Budget</span>
@@ -202,7 +270,53 @@
         </div>
       </section>
 
-      <section class="feature" id="room">
+      <section class="feature feature-flip" id="board" data-only="snake">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">02 · Draft board</span>
+            <h2>Put the draft on the <span class="accent">big screen</span>.</h2>
+            <p>Show the board on a TV so the whole room can follow every pick as it happens.</p>
+            <ul class="feature-tags mono">
+              <li>TV board</li>
+              <li>Snake order</li>
+              <li>Just drafted</li>
+            </ul>
+          </div>
+
+          <!-- SnakeDraftBoard: one column per team, one row per round, the order bouncing back each round. -->
+          <figure class="screen reveal" aria-label="Example infinidraft TV draft board: three rounds for four teams, with Mahomes Alone on the clock">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-board">
+                <span></span>
+                <span class="gm-board-team gm-board-self">Gurus</span>
+                <span class="gm-board-team">Tua Lipa</span>
+                <span class="gm-board-team">Mahomes</span>
+                <span class="gm-board-team">Bijan M.</span>
+                <span class="gm-board-round">1<i>→</i></span>
+                <div class="gm-board-pick gm-wr"><span>1.01</span><b>J. Chase</b><em>WR</em></div>
+                <div class="gm-board-pick gm-wr"><span>1.02</span><b>J. Jefferson</b><em>WR</em></div>
+                <div class="gm-board-pick gm-rb"><span>1.03</span><b>D. Henry</b><em>RB</em></div>
+                <div class="gm-board-pick gm-wr"><span>1.04</span><b>A. Brown</b><em>WR</em></div>
+                <span class="gm-board-round">2<i>←</i></span>
+                <div class="gm-board-pick gm-qb"><span>2.04</span><b>J. Allen</b><em>QB</em></div>
+                <div class="gm-board-pick gm-rb"><span>2.03</span><b>K. Walker</b><em>RB</em></div>
+                <div class="gm-board-pick gm-wr"><span>2.02</span><b>M. Evans</b><em>WR</em></div>
+                <div class="gm-board-pick gm-te"><span>2.01</span><b>T. Kelce</b><em>TE</em></div>
+                <span class="gm-board-round">3<i>→</i></span>
+                <div class="gm-board-pick gm-te"><span>3.01</span><b>G. Kittle</b><em>TE</em></div>
+                <div class="gm-board-pick gm-qb"><span>3.02</span><b>L. Jackson</b><em>QB</em></div>
+                <div class="gm-board-pick gm-board-clock"><span>3.03</span><b>On the clock</b></div>
+                <div class="gm-board-pick gm-board-empty"><span>3.04</span></div>
+              </div>
+              <div class="gm-board-ticker"><span>Just drafted</span><b>L. Jackson</b> to Tua Lipa</div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Draft board</figcaption>
+          </figure>
+        </div>
+      </section>
+
+
+      <section class="feature" id="room" data-only="auction">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
             <span class="num mono">03 · Draft room</span>
@@ -256,7 +370,50 @@
         </div>
       </section>
 
-      <section class="feature feature-flip" id="keepers">
+      <section class="feature" id="snake-room" data-only="snake">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">03 · Draft room</span>
+            <h2>Know who to take <span class="accent">when you're up</span>.</h2>
+            <p>When it's your turn, see the best players left for your league and every pick so far.</p>
+            <ul class="feature-tags mono">
+              <li>Best available</li>
+              <li>Ranked vs. ADP</li>
+              <li>Recent picks</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinidraft snake draft room: you're on the clock at pick 4.04, with D. Smith the best player left">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-card gm-block">
+                <div class="gm-top">
+                  <span class="gm-block-label">You're on the clock</span>
+                  <span class="gm-block-by">Round 4 · Pick 4</span>
+                </div>
+                <div class="gm-block-advice">You pick again right after this, at 5.01.</div>
+              </div>
+
+              <div class="gm-label">Best available</div>
+              <div class="gm-card gm-avail">
+                <div class="gm-avail-head"><span>Rank</span><span>Player</span><span>ADP</span><span>vs ADP</span></div>
+                <div class="gm-avail-row"><span>38</span><span><span class="gm-pill gm-wr">WR</span>D. Smith</span><span>44</span><span class="gm-signal-up">+6</span></div>
+                <div class="gm-avail-row"><span>39</span><span><span class="gm-pill gm-te">TE</span>S. LaPorta</span><span>51</span><span class="gm-signal-up">+12</span></div>
+                <div class="gm-avail-row"><span>41</span><span><span class="gm-pill gm-rb">RB</span>K. Williams</span><span>37</span><span class="gm-signal-down">−4</span></div>
+              </div>
+
+              <div class="gm-label">Recent picks</div>
+              <div class="gm-card gm-recent">
+                <div class="gm-recent-row"><span>4.03</span><span><span class="gm-pill gm-wr">WR</span>Z. Flowers</span><span>Tua Lipa</span></div>
+                <div class="gm-recent-row"><span>4.02</span><span><span class="gm-pill gm-qb">QB</span>J. Burrow</span><span>Mahomes Alone</span></div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Draft room</figcaption>
+          </figure>
+        </div>
+      </section>
+
+
+      <section class="feature feature-flip" id="keepers" data-only="auction">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
             <span class="num mono">04 · Keepers</span>
@@ -298,6 +455,49 @@
         </div>
       </section>
 
+      <section class="feature feature-flip" id="snake-keepers" data-only="snake">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">04 · Keepers</span>
+            <h2>Keep the <span class="accent">right</span> players.</h2>
+            <p>See which round each keeper costs next to where he'd really go, so you keep the best bargains.</p>
+            <ul class="feature-tags mono">
+              <li>Keeper rounds</li>
+              <li>Keeper value</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinidraft snake keepers: L. McConkey costs a 10th round pick but goes in round 4">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-keeper-head"><span>Keeper</span><span>Costs</span><span>Goes</span><span></span></div>
+              <div class="gm-card gm-keeper">
+                <span class="gm-headshot"><img src="/headshots/mcconkey.png" alt="" width="350" height="254" /></span>
+                <div><div class="gm-name">L. McConkey</div><div class="gm-inline"><span class="gm-pill gm-wr">WR</span><span class="gm-game">LAC</span></div></div>
+                <span class="gm-keeper-num">Rd 10</span>
+                <span class="gm-keeper-num">Rd 4</span>
+                <span class="gm-pill gm-keeper-gain gm-start">+6 rds</span>
+              </div>
+              <div class="gm-card gm-keeper">
+                <span class="gm-headshot"><img src="/headshots/jameson-williams.png" alt="" width="350" height="254" /></span>
+                <div><div class="gm-name">J. Williams</div><div class="gm-inline"><span class="gm-pill gm-wr">WR</span><span class="gm-game">DET</span></div></div>
+                <span class="gm-keeper-num">Rd 12</span>
+                <span class="gm-keeper-num">Rd 7</span>
+                <span class="gm-pill gm-keeper-gain gm-start">+5 rds</span>
+              </div>
+              <div class="gm-card gm-keeper">
+                <span class="gm-headshot"><img src="/headshots/pickens.png" alt="" width="350" height="254" /></span>
+                <div><div class="gm-name">G. Pickens</div><div class="gm-inline"><span class="gm-pill gm-wr">WR</span><span class="gm-game">DAL</span></div></div>
+                <span class="gm-keeper-num">Rd 5</span>
+                <span class="gm-keeper-num">Rd 6</span>
+                <span class="gm-pill gm-keeper-gain gm-sit">−1 rd</span>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Keepers</figcaption>
+          </figure>
+        </div>
+      </section>
+
+
       <section class="feature" id="report">
         <div class="wrap feature-grid">
           <div class="feature-copy reveal">
@@ -322,7 +522,7 @@
                 <div class="gm-card gm-wide gm-team-card gm-grade-card">
                   <img class="gm-logo gm-logo-img gm-team-card-logo" src="/team-helmet.svg" alt="" width="40" height="40" />
                   <div class="gm-name-row gm-wide-name"><span class="gm-name">Gridiron Gurus</span></div>
-                  <div class="gm-team-card-line">3 bargains · $2 left</div>
+                  <div class="gm-team-card-line">3 big bargains</div>
                   <span class="gm-pill gm-grade-pill gm-grade-a">A</span>
                 </div>
               </div>
@@ -340,7 +540,7 @@
                 <div class="gm-card gm-wide gm-team-card gm-grade-card">
                   <span class="gm-logo gm-team-card-logo">MA</span>
                   <div class="gm-name-row gm-wide-name"><span class="gm-name">Mahomes Alone</span></div>
-                  <div class="gm-team-card-line">Paid up at QB</div>
+                  <div class="gm-team-card-line">Went big at QB</div>
                   <span class="gm-pill gm-grade-pill gm-grade-b">B−</span>
                 </div>
               </div>
@@ -349,7 +549,7 @@
                 <div class="gm-card gm-wide gm-team-card gm-grade-card">
                   <span class="gm-logo gm-team-card-logo">BM</span>
                   <div class="gm-name-row gm-wide-name"><span class="gm-name">Bijan Mustard</span></div>
-                  <div class="gm-team-card-line">$31 over value</div>
+                  <div class="gm-team-card-line">Reached early and often</div>
                   <span class="gm-pill gm-grade-pill gm-grade-c">C</span>
                 </div>
               </div>

@@ -2047,6 +2047,274 @@ button.gm-segment:not(.gm-segment-selected):hover {
   white-space: nowrap;
 }
 
+/* infinidraft's Auction / Snake switch. <html data-format> hides the other format's sections;
+   with no data-format (JS off) both show. */
+html[data-format="auction"] [data-only="snake"],
+html[data-format="snake"] [data-only="auction"] {
+  display: none !important;
+}
+
+.format-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 36px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+html:not([data-format]) .format-pick {
+  display: none;
+}
+
+.format-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.format-switch button {
+  height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.format-switch button:hover {
+  color: var(--text);
+}
+
+.format-switch button.on {
+  background: var(--brown-fill);
+  color: var(--on-brown);
+}
+
+.format-pick + .jump {
+  margin-top: 20px;
+}
+
+/* Snake screens: rankings vs. ADP, the TV board, the on-the-clock room. */
+.gm-rank-num {
+  font-family: var(--gm-numeric);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.gm-wide-proj .gm-change {
+  margin-left: 6px;
+}
+
+.gm-even {
+  --pill-tint: #9397a1;
+  --pill-text: #e4e7ec;
+}
+
+.gm-board {
+  display: grid;
+  grid-template-columns: 26px repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
+}
+
+.gm-board-team {
+  padding-bottom: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(248, 250, 252, 0.7);
+}
+
+.gm-board-self {
+  color: #deb887;
+}
+
+.gm-board-round {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  font-family: var(--gm-numeric);
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-board-round i {
+  font-style: normal;
+  font-size: 12px;
+  color: #deb887;
+}
+
+.gm-board-pick {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 6px 7px;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, var(--pill-tint, #9397a1) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pill-tint, #9397a1) 45%, rgba(255, 255, 255, 0.12));
+}
+
+.gm-board-pick span {
+  font-family: var(--gm-numeric);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-board-pick b {
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-board-pick em {
+  font-family: var(--gm-badge);
+  font-size: 10px;
+  font-style: normal;
+  color: color-mix(in srgb, var(--pill-text, #fff) 70%, #fff);
+}
+
+.gm-board-empty {
+  background: rgba(255, 255, 255, 0.02);
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.gm-board-clock {
+  --pill-tint: #deb887;
+  align-content: center;
+  border-color: #deb887;
+  animation: gm-clock 1.6s ease-in-out infinite;
+}
+
+.gm-board-clock b {
+  white-space: normal;
+  color: #deb887;
+}
+
+@keyframes gm-clock {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(222, 184, 135, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(222, 184, 135, 0);
+  }
+}
+
+.gm-board-ticker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.75);
+}
+
+.gm-board-ticker span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4ade80;
+}
+
+.gm-board-ticker b {
+  color: #f8fafc;
+}
+
+.gm-avail,
+.gm-recent {
+  gap: 9px;
+  padding: 12px 14px;
+}
+
+.gm-avail-head,
+.gm-avail-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 40px 52px;
+  align-items: center;
+  gap: 8px;
+  text-align: right;
+}
+
+.gm-avail-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-avail-head span:nth-child(-n + 2),
+.gm-avail-row span:nth-child(-n + 2) {
+  text-align: left;
+}
+
+.gm-avail-row,
+.gm-recent-row {
+  font-family: var(--gm-numeric);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gm-avail-row > span:nth-child(2),
+.gm-recent-row > span:nth-child(2) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-family: "Barlow", var(--font-body);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.gm-signal-down {
+  color: #f87171;
+}
+
+.gm-recent-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-recent-row > span:first-child {
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-recent-row > span:last-child {
+  font-family: "Barlow", var(--font-body);
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.6);
+}
+
 /* App detail pages (league/, draft/, yoffs/) */
 
 .detail-hero {
@@ -2530,7 +2798,8 @@ button.gm-segment:not(.gm-segment-selected):hover {
     animation: none;
   }
 
-  .gm-dot {
+  .gm-dot,
+  .gm-board-clock {
     animation: none;
   }
 

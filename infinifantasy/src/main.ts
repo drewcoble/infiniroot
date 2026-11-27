@@ -42,21 +42,22 @@ const observer = new IntersectionObserver(
 );
 revealed.forEach((el) => observer.observe(el));
 
-// Chart switches (the infinileague page's player card): a radio group of buttons, each showing
-// the panel with the matching data-chart-panel in the same card. Arrow keys move the choice.
-for (const group of document.querySelectorAll<HTMLElement>("[data-chart-switch]")) {
-  const buttons = [...group.querySelectorAll<HTMLButtonElement>("button[data-chart]")];
-  const card = group.parentElement;
+// A radio group of buttons (role="radio"): click to pick, arrow keys to move the pick. `onSelect`
+// runs for the starting pick too, so the page matches it from the start.
+function radioGroup(
+  buttons: HTMLButtonElement[],
+  selectedClass: string,
+  onSelect: (button: HTMLButtonElement) => void,
+  start = buttons[0],
+) {
   const select = (button: HTMLButtonElement) => {
     for (const other of buttons) {
       const on = other === button;
-      other.classList.toggle("gm-segment-selected", on);
+      other.classList.toggle(selectedClass, on);
       other.setAttribute("aria-checked", String(on));
       other.tabIndex = on ? 0 : -1;
     }
-    for (const panel of card?.querySelectorAll<HTMLElement>("[data-chart-panel]") ?? []) {
-      panel.hidden = panel.dataset.chartPanel !== button.dataset.chart;
-    }
+    onSelect(button);
   };
   buttons.forEach((button, index) => {
     button.addEventListener("click", () => select(button));
@@ -70,4 +71,42 @@ for (const group of document.querySelectorAll<HTMLElement>("[data-chart-switch]"
       next.focus();
     });
   });
+  if (start) select(start);
+}
+
+// Chart switches (the infinileague page's player card): each button shows the panel with the
+// matching data-chart-panel in the same card.
+for (const group of document.querySelectorAll<HTMLElement>("[data-chart-switch]")) {
+  const card = group.parentElement;
+  radioGroup(
+    [...group.querySelectorAll<HTMLButtonElement>("button[data-chart]")],
+    "gm-segment-selected",
+    (button) => {
+      for (const panel of card?.querySelectorAll<HTMLElement>("[data-chart-panel]") ?? []) {
+        panel.hidden = panel.dataset.chartPanel !== button.dataset.chart;
+      }
+    },
+  );
+}
+
+// Draft type switch (the infinidraft page): sets <html data-format>, which hides the other
+// format's data-only sections (see styles.css), and keeps the pick in the URL as ?type=snake.
+for (const group of document.querySelectorAll<HTMLElement>("[data-format-switch]")) {
+  const buttons = [...group.querySelectorAll<HTMLButtonElement>("button[data-format]")];
+  const seeInside = document.querySelector<HTMLAnchorElement>("[data-see-inside]");
+  const fromUrl = new URLSearchParams(location.search).get("type");
+  radioGroup(
+    buttons,
+    "on",
+    (button) => {
+      const format = button.dataset.format ?? "auction";
+      document.documentElement.dataset.format = format;
+      if (seeInside) seeInside.hash = format === "snake" ? "#snake-values" : "#values";
+      const url = new URL(location.href);
+      if (format === "auction") url.searchParams.delete("type");
+      else url.searchParams.set("type", format);
+      history.replaceState(null, "", url);
+    },
+    buttons.find((button) => button.dataset.format === fromUrl),
+  );
 }
