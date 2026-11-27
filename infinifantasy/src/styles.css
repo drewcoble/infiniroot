@@ -1448,7 +1448,8 @@ button.gm-segment:not(.gm-segment-selected):hover {
 }
 
 /* Matchups screen: each league's name over its score header (GlassMatchupHeader), with the
-   dot-matrix Lumen Round scoreboard digits (OFL, public/fonts/). */
+   dot-matrix Lumen Round scoreboard digits (OFL, public/fonts/). Lumen is for scoreboard numbers
+   only - game clocks, team scores, player scores - never prices or ranks. */
 
 @font-face {
   font-family: "Lumen Round";
@@ -1673,9 +1674,9 @@ button.gm-segment:not(.gm-segment-selected):hover {
 .gm-block-bid {
   display: grid;
   justify-items: end;
-  font-family: var(--gm-scoreboard);
+  font-family: var(--gm-numeric);
   font-size: 30px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
