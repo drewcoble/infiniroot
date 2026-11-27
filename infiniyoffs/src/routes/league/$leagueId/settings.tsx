@@ -44,7 +44,9 @@ function SettingsPage() {
     <div className={glass.card}>
       <Stack gap={6} p={4}>
         <span className={glass.sectionLabel}>
-          {isCustom ? "Playoff rules" : "Playoff rules · the platform's"}
+          {isCustom
+            ? "Playoff rules"
+            : `Playoff rules · ${data.platformName ? `${data.platformName}'s` : "the platform's"}`}
         </span>
         {format === null ? (
           <Text size="sm">This league doesn't have playoffs.</Text>

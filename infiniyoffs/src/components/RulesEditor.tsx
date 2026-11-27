@@ -96,10 +96,14 @@ function useSaveFormat(seasonId: Id<"seasons">, rules: PlayoffRules) {
   return { save, saving, error, dialog };
 }
 
-const TYPE_INFO: { kind: Kind; label: string; about: (data: SeasonData) => string }[] = [
+const TYPE_INFO: {
+  kind: Kind;
+  label: (data: SeasonData) => string;
+  about: (data: SeasonData) => string;
+}[] = [
   {
     kind: "platform",
-    label: "Platform",
+    label: (data) => `Follow ${data.platformName ?? "the platform"}`,
     about: (data) =>
       data.platformPlayoffs?.hasPlayoffs
         ? `Your league's own bracket: ${data.platformPlayoffs.playoffTeamCount} teams from ` +
@@ -108,22 +112,22 @@ const TYPE_INFO: { kind: Kind; label: string; about: (data: SeasonData) => strin
   },
   {
     kind: "standard",
-    label: "Bracket",
+    label: () => "Single elimination",
     about: () => "Single elimination, with byes for the top seeds.",
   },
   {
     kind: "doubleElim",
-    label: "Double elimination",
+    label: () => "Double elimination",
     about: () => "Two losses and you're out, then a Royal Rumble for everyone left.",
   },
   {
     kind: "worldCup",
-    label: "World Cup",
+    label: () => "World Cup",
     about: () =>
       "Top seeds draft groups of four; group winners and a wildcard play a knockout. " +
       "12 teams only.",
   },
-  { kind: "custom", label: "Custom", about: () => "Rules set up by hand." },
+  { kind: "custom", label: () => "Custom", about: () => "Rules set up by hand." },
 ];
 
 // The playoff type on its own card: each type explained in an accordion,
@@ -165,7 +169,7 @@ export function PlayoffTypeCard({
               <Accordion.Control px={4}>
                 <Group gap={8} wrap="nowrap">
                   <Text size="sm" fw={600} {...(allowed(type.kind) ? {} : { c: "dimmed" })}>
-                    {type.label}
+                    {type.label(data)}
                   </Text>
                   {type.kind === current && (
                     <Badge size="xs" variant="light">
@@ -190,7 +194,7 @@ export function PlayoffTypeCard({
             allowDeselect={false}
             data={types.map((type) => ({
               value: type.kind,
-              label: type.label,
+              label: type.label(data),
               disabled: !allowed(type.kind),
             }))}
             onChange={(value) => {

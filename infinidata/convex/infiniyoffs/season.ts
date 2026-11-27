@@ -28,6 +28,8 @@ export interface SeasonData {
   currentWeek: number;
   // Weeks through here are final.
   finalThroughWeek: number;
+  // The league's platform by name ("ESPN"), null if unlinked.
+  platformName: string | null;
   // The platform's own settings - the default when no custom format is set.
   platformRegularSeasonEndWeek: number;
   medianGame: boolean;
@@ -146,6 +148,13 @@ export const getSeasonData = action({
       isCommissioner,
       currentWeek,
       finalThroughWeek,
+      platformName: season.sleeperLeagueId
+        ? "Sleeper"
+        : season.yahooLeagueKey
+          ? "Yahoo"
+          : season.espnLeagueId
+            ? "ESPN"
+            : null,
       platformRegularSeasonEndWeek: upcoming.regularSeasonEndWeek,
       medianGame: upcoming.medianGame,
       schedule,
