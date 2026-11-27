@@ -1,21 +1,29 @@
+import { useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import type { GenericId as Id } from "convex/values";
 import { Alert, Center, Loader, Stack, Text } from "@mantine/core";
+import { sameFormat } from "@playoffRules/carryOver";
+import type { PlayoffFormat, PresetConfig } from "@playoffRules/format";
+import { presetFormat } from "@playoffRules/presets";
 import glass from "@shared/glass/GlassMatchupCard.module.css";
+import { FormatPreview } from "../../../components/FormatPreview";
 import { GroupsEditor } from "../../../components/GroupsEditor";
-import { RulesEditor } from "../../../components/RulesEditor";
+import { PlayoffTypeCard, PresetCards } from "../../../components/RulesEditor";
 import { TeamInvitesCard } from "../../../components/TeamInvitesCard";
 import { useMyViewer } from "../../../hooks/useMyViewer";
 import { describeFormat } from "../../../lib/describeFormat";
-import { useSeasonData } from "../../../lib/seasonData";
+import { platformFormat } from "../../../lib/platformFormat";
+import { savedKind, typeFormat } from "../../../lib/rulesConfig";
+import { useSeasonData, type PlayoffRules, type SeasonData } from "../../../lib/seasonData";
 
 export const Route = createFileRoute("/league/$leagueId/settings")({
   component: SettingsPage,
 });
 
 // The league's playoff rules in plain words for everyone ("Rules" in the
-// tabs for members); the commissioner also gets the rules form, hand-set
-// groups and matchups for each group stage, and the member invites.
+// tabs for members); the commissioner also gets the playoff type, its
+// settings card by card, hand-set groups and matchups for each group
+// stage, and the member invites. A bracket preview sits at the bottom.
 function SettingsPage() {
   const { leagueId } = Route.useParams();
   const seasonId = leagueId as Id<"seasons">;
@@ -32,54 +40,117 @@ function SettingsPage() {
   }
 
   const lines = format ? describeFormat(format) : [];
-  const groupStages =
-    isCustom && format ? format.stages.flatMap((s) => (s.kind === "groups" ? [s] : [])) : [];
-  const resets = [
-    rules.drafts.length > 0 && "the matchup draft",
-    rules.manualGroups.length > 0 && "the hand-set groups",
-  ].filter(Boolean);
+  const summary = (
+    <div className={glass.card}>
+      <Stack gap={6} p={4}>
+        <span className={glass.sectionLabel}>
+          {isCustom ? "Playoff rules" : "Playoff rules · the platform's"}
+        </span>
+        {format === null ? (
+          <Text size="sm">This league doesn't have playoffs.</Text>
+        ) : (
+          lines.map((line) => (
+            <Text key={line} size="sm">
+              {line}
+            </Text>
+          ))
+        )}
+      </Stack>
+    </div>
+  );
+
+  if (!viewer?.isCommissioner) {
+    return (
+      <Stack gap="md">
+        {summary}
+        <FormatPreview format={format} teamCount={data.teams.length} unsaved={false} />
+      </Stack>
+    );
+  }
+  return (
+    <CommissionerSettings
+      seasonId={seasonId}
+      data={data}
+      rules={rules}
+      format={format}
+      saved={isCustom ? format : null}
+      summary={summary}
+    />
+  );
+}
+
+function CommissionerSettings({
+  seasonId,
+  data,
+  rules,
+  format,
+  saved,
+  summary,
+}: {
+  seasonId: Id<"seasons">;
+  data: SeasonData;
+  rules: PlayoffRules;
+  // The rules in effect - the saved ones, else the platform's.
+  format: PlayoffFormat | null;
+  // The commissioner's saved rules - null for the platform's.
+  saved: PlayoffFormat | null;
+  summary: ReactNode;
+}) {
+  const current = savedKind(saved);
+  // The picked type and the preset's edits, unsaved until their card saves.
+  const [kind, setKind] = useState(current);
+  const [pending, setPending] = useState<PresetConfig | null>(saved?.preset ?? null);
+  // A saved type change starts the settings cards over from it.
+  const [syncedKind, setSyncedKind] = useState(current);
+  if (syncedKind !== current) {
+    setSyncedKind(current);
+    setKind(current);
+    setPending(saved?.preset ?? null);
+  }
+
+  const teamCount = data.teams.length;
+  const shown =
+    kind !== current
+      ? (typeFormat(kind, data, saved) ?? platformFormat(data))
+      : pending
+        ? presetFormat(pending, teamCount)
+        : format;
+  const groupStages = saved ? saved.stages.flatMap((s) => (s.kind === "groups" ? [s] : [])) : [];
+
   return (
     <Stack gap="md">
-      <div className={glass.card}>
-        <Stack gap={6} p={4}>
-          <span className={glass.sectionLabel}>
-            {isCustom ? "Playoff rules" : "Playoff rules · the platform's"}
-          </span>
-          {format === null ? (
-            <Text size="sm">This league doesn't have playoffs.</Text>
-          ) : (
-            lines.map((line) => (
-              <Text key={line} size="sm">
-                {line}
-              </Text>
-            ))
-          )}
-        </Stack>
-      </div>
-      {viewer?.isCommissioner && (
-        <RulesEditor
-          // Remounted when the saved rules change, so the form starts from
-          // them.
-          key={rules.updatedAt ?? 0}
+      {summary}
+      <PlayoffTypeCard
+        seasonId={seasonId}
+        data={data}
+        rules={rules}
+        saved={saved}
+        kind={kind}
+        onKindChange={setKind}
+      />
+      {saved?.preset && pending && pending.kind === saved.preset.kind && (
+        <PresetCards
           seasonId={seasonId}
           data={data}
-          saved={isCustom ? format : null}
-          resets={resets.length > 0 ? resets.join(" and ") : null}
+          rules={rules}
+          saved={saved.preset}
+          pending={pending}
+          onPendingChange={setPending}
         />
       )}
-      {viewer?.isCommissioner &&
-        format &&
+      {saved &&
         groupStages.map((stage) => (
           <GroupsEditor
             key={stage.id}
             seasonId={seasonId}
             stage={stage}
-            format={format}
+            format={saved}
             data={data}
             rules={rules}
           />
         ))}
-      {viewer?.isCommissioner && <TeamInvitesCard seasonId={seasonId} />}
+      <TeamInvitesCard seasonId={seasonId} />
+      <FormatPreview format={shown} teamCount={teamCount} unsaved={!sameFormat(shown, format)} />
     </Stack>
   );
 }

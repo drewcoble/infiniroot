@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { requireSeasonViewer } from "../lib/access";
+import { keepsDraft, keepsManualGroups, sameFormat } from "../lib/playoffRules/carryOver";
 import type { ManualGroups, PlayoffFormat } from "../lib/playoffRules/format";
 import { formatProblem, manualGroupsProblem } from "../lib/playoffRules/validate";
 
@@ -44,9 +45,10 @@ export const getRules = query({
   },
 });
 
-// Commissioner only. Null goes back to the platform's playoffs. A changed
-// format discards any draft already under way and any hand-set groups,
-// since their drafters, weeks or teams may no longer hold.
+// Commissioner only. Null goes back to the platform's playoffs. Saving the
+// same format changes nothing; otherwise a draft under way or hand-set
+// groups are discarded only when the change moves their group stage (see
+// lib/playoffRules/carryOver.ts).
 export const setFormat = mutation({
   args: { seasonId: v.id("seasons"), format: v.union(v.any(), v.null()) },
   handler: async (ctx, args): Promise<void> => {
@@ -61,6 +63,8 @@ export const setFormat = mutation({
       .query("playoffSettings")
       .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
       .unique();
+    const prev = (settings?.format as PlayoffFormat | undefined) ?? null;
+    if (sameFormat(prev, format)) return;
     const patch = { format: format ?? undefined, formatUpdatedAt: Date.now() };
     if (settings) await ctx.db.patch(settings._id, patch);
     else await ctx.db.insert("playoffSettings", { seasonId: args.seasonId, ...patch });
@@ -69,12 +73,16 @@ export const setFormat = mutation({
       .query("playoffDrafts")
       .withIndex("by_season_stage", (q) => q.eq("seasonId", args.seasonId))
       .collect();
-    for (const draft of drafts) await ctx.db.delete(draft._id);
+    for (const draft of drafts) {
+      if (!keepsDraft(prev, format, draft.stageId)) await ctx.db.delete(draft._id);
+    }
     const manualGroups = await ctx.db
       .query("playoffManualGroups")
       .withIndex("by_season_stage", (q) => q.eq("seasonId", args.seasonId))
       .collect();
-    for (const row of manualGroups) await ctx.db.delete(row._id);
+    for (const row of manualGroups) {
+      if (!keepsManualGroups(prev, format, row.stageId)) await ctx.db.delete(row._id);
+    }
   },
 });
 

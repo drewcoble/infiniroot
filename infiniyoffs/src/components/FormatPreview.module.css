@@ -1,0 +1,93 @@
+/* The settings page's bracket sketch: a glass card stuck to the bottom of
+   the viewport (above the mobile bottom nav) while the settings scroll
+   under it, settling at the end of the page. */
+
+.dock {
+  position: sticky;
+  bottom: calc(58px + 7px + 8px + env(safe-area-inset-bottom));
+  z-index: 150;
+  background: color-mix(in srgb, var(--mantine-color-body) 85%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+@media (min-width: 48em) {
+  .dock {
+    bottom: 16px;
+  }
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 38vh;
+  overflow-y: auto;
+}
+
+.stageName {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.8);
+}
+
+.columns {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-width: 72px;
+}
+
+.week {
+  font-family: var(--font-numeric);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.round {
+  font-size: 10px;
+  color: rgba(248, 250, 252, 0.55);
+  white-space: nowrap;
+}
+
+.game {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: var(--font-numeric);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bye {
+  color: rgba(248, 250, 252, 0.5);
+}
+
+.note {
+  font-size: 11px;
+  color: rgba(248, 250, 252, 0.6);
+  max-width: 120px;
+}
