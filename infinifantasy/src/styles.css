@@ -887,8 +887,11 @@ h1 {
   display: grid;
   place-items: center;
   height: 32px;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 12px;
+  background: transparent;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   color: rgba(248, 250, 252, 0.62);
@@ -901,6 +904,18 @@ h1 {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* The player card's Points / Usage switch is a real control (src/main.ts). */
+button.gm-segment {
+  cursor: pointer;
+  transition:
+    background 0.16s,
+    color 0.16s;
+}
+
+button.gm-segment:not(.gm-segment-selected):hover {
+  color: rgba(248, 250, 252, 0.85);
 }
 
 .gm-segmented-compact .gm-segment {
@@ -1040,6 +1055,20 @@ h1 {
   text-align: left;
 }
 
+.gm-player-static {
+  display: grid;
+  gap: 14px;
+}
+
+.gm-chart-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.gm-chart-panel[hidden] {
+  display: none;
+}
+
 .gm-chart-head {
   display: flex;
   justify-content: space-between;
@@ -1092,6 +1121,66 @@ h1 {
   background: none;
   border: 1.5px dashed rgba(248, 250, 252, 0.4);
   box-shadow: none;
+}
+
+/* Usage: receiving over rushing, stacked from the bottom on a 0-100 scale, each part in its
+   position's badge color (the app's UsageChart). */
+.gm-stack {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+
+.gm-bar-rec,
+.gm-bar-rush {
+  flex-shrink: 0;
+  min-height: 3px;
+  border-radius: 4px;
+}
+
+.gm-stack > :last-child {
+  border-radius: 7px 7px 4px 4px;
+}
+
+.gm-bar-rec {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, #4f8fe8 38%, #121b17);
+  border-color: color-mix(in srgb, #4f8fe8 50%, rgba(255, 255, 255, 0.15));
+}
+
+.gm-bar-rush {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 100%),
+    color-mix(in srgb, #76c098 38%, #121b17);
+  border-color: color-mix(in srgb, #76c098 50%, rgba(255, 255, 255, 0.15));
+}
+
+.gm-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gm-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.gm-legend i + i,
+.gm-key-rush {
+  margin-left: 6px;
+}
+
+.gm-key-rec {
+  background: #4f8fe8;
+}
+
+.gm-key-rush {
+  background: #76c098;
 }
 
 .gm-chart-avg {

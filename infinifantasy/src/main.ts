@@ -41,3 +41,33 @@ const observer = new IntersectionObserver(
   { rootMargin: "0px 0px -8% 0px" },
 );
 revealed.forEach((el) => observer.observe(el));
+
+// Chart switches (the infinileague page's player card): a radio group of buttons, each showing
+// the panel with the matching data-chart-panel in the same card. Arrow keys move the choice.
+for (const group of document.querySelectorAll<HTMLElement>("[data-chart-switch]")) {
+  const buttons = [...group.querySelectorAll<HTMLButtonElement>("button[data-chart]")];
+  const card = group.parentElement;
+  const select = (button: HTMLButtonElement) => {
+    for (const other of buttons) {
+      const on = other === button;
+      other.classList.toggle("gm-segment-selected", on);
+      other.setAttribute("aria-checked", String(on));
+      other.tabIndex = on ? 0 : -1;
+    }
+    for (const panel of card?.querySelectorAll<HTMLElement>("[data-chart-panel]") ?? []) {
+      panel.hidden = panel.dataset.chartPanel !== button.dataset.chart;
+    }
+  };
+  buttons.forEach((button, index) => {
+    button.addEventListener("click", () => select(button));
+    button.addEventListener("keydown", (event) => {
+      const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+      if (!step) return;
+      event.preventDefault();
+      const next = buttons[(index + step + buttons.length) % buttons.length];
+      if (!next) return;
+      select(next);
+      next.focus();
+    });
+  });
+}
