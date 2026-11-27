@@ -1439,7 +1439,527 @@ h1 {
   }
 }
 
-/* App detail pages (league/index.html) */
+/* infinidraft screens (draft/index.html). infinidraft itself is mostly plain Mantine, not glass -
+   these draw its screens in the same glass as the infinileague ones so the pages read as a set. */
+
+.gm-qb {
+  --pill-tint: #eab84b;
+  --pill-text: #fceecf;
+}
+
+.gm-te {
+  --pill-tint: #b15fdb;
+  --pill-text: #eed7fa;
+}
+
+.gm-flex {
+  --pill-tint: #65c5d2;
+  --pill-text: #d5f2f7;
+}
+
+.gm-price-card {
+  grid-template-areas:
+    "photo name points"
+    "photo detail proj";
+}
+
+.gm-price {
+  font-family: var(--gm-numeric);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.gm-budget-head {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.gm-budget-total {
+  font-family: var(--gm-numeric);
+  font-size: 22px;
+  color: #deb887;
+}
+
+.gm-budget-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.gm-budget-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.gm-budget-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8b4513, #deb887);
+}
+
+.gm-budget-amt {
+  width: 40px;
+  text-align: right;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gm-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.gm-tile {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gm-tile span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-tile b {
+  color: #f8fafc;
+  font-family: var(--gm-numeric);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.gm-tile .gm-plus {
+  color: #4ade80;
+}
+
+.gm-block {
+  gap: 10px;
+  padding: 14px;
+  border-color: rgba(222, 184, 135, 0.4);
+  background: linear-gradient(150deg, rgba(222, 184, 135, 0.14) 0%, rgba(222, 184, 135, 0.03) 100%);
+}
+
+.gm-block-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #deb887;
+}
+
+.gm-block-by {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-block-player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.gm-block-player .gm-inline {
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.gm-block-bid {
+  display: grid;
+  justify-items: end;
+  font-family: var(--gm-scoreboard);
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.gm-block-bid span {
+  margin-bottom: 4px;
+  font-family: "Barlow", var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-block-advice {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4ade80;
+}
+
+.gm-reco {
+  gap: 4px;
+}
+
+.gm-reco-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-reco-price {
+  margin-left: auto;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.gm-reco-why {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.gm-keeper-head,
+.gm-keeper {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 44px 44px 54px;
+  align-items: center;
+  column-gap: 10px;
+}
+
+.gm-keeper-head {
+  padding: 0 11px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-keeper-head span:first-child {
+  grid-column: 1 / span 2;
+}
+
+.gm-keeper-head span {
+  text-align: right;
+}
+
+.gm-keeper-head span:first-child {
+  text-align: left;
+}
+
+.gm-keeper .gm-inline {
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Headshots outside the wide cards' grid - drop its photo area. */
+.gm-block-player .gm-headshot,
+.gm-keeper .gm-headshot {
+  grid-area: auto;
+  align-self: center;
+}
+
+.gm-keeper-num {
+  text-align: right;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gm-keeper-gain {
+  justify-content: center;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+}
+
+.gm-report-summary {
+  gap: 6px;
+  padding: 14px;
+}
+
+.gm-report-summary .gm-label {
+  margin: 0;
+}
+
+.gm-report-summary p {
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(248, 250, 252, 0.75);
+}
+
+.gm-grade-pill {
+  grid-area: chevron;
+  justify-content: center;
+  min-width: 40px;
+  height: 28px;
+  border-radius: 10px;
+  font-family: var(--gm-numeric);
+  font-size: 15px;
+}
+
+.gm-grade-a {
+  --pill-tint: #85b899;
+  --pill-text: #e4ede8;
+}
+
+.gm-grade-b {
+  --pill-tint: #d0ae65;
+  --pill-text: #f6ecd5;
+}
+
+.gm-grade-c {
+  --pill-tint: #c16955;
+  --pill-text: #e5beb5;
+}
+
+/* infiniyoffs screens (yoffs/index.html). */
+
+.gm-tier {
+  flex-shrink: 0;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+}
+
+.gm-tier-s {
+  --pill-tint: #ffd43b;
+  --pill-text: #fff3bf;
+}
+
+.gm-tier-a {
+  --pill-tint: #38d9a9;
+  --pill-text: #c3fae8;
+}
+
+.gm-tier-b {
+  --pill-tint: #4dabf7;
+  --pill-text: #d0ebff;
+}
+
+.gm-tier-c {
+  --pill-tint: #ced4da;
+  --pill-text: #f1f3f5;
+}
+
+.gm-odds-card {
+  grid-template-areas:
+    "logo name odds"
+    "logo line odds";
+}
+
+.gm-odds {
+  grid-area: odds;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-odds b {
+  font-size: 15px;
+  color: #f8fafc;
+}
+
+.gm-rules {
+  gap: 12px;
+  padding: 16px;
+}
+
+.gm-rules .gm-label {
+  margin: 0;
+}
+
+.gm-rule {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.gm-rule-tiers {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.gm-rule-num {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-family: var(--gm-numeric);
+  font-size: 12px;
+  font-weight: 700;
+  color: #deb887;
+  box-shadow: inset 0 0 0 1px rgba(222, 184, 135, 0.45);
+}
+
+.gm-bracket {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+  align-items: center;
+}
+
+.gm-bround {
+  display: grid;
+  gap: 10px;
+}
+
+.gm-bround-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-bround-final {
+  align-self: center;
+}
+
+.gm-bgame {
+  gap: 8px;
+  padding: 10px;
+}
+
+.gm-bgame-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4ade80;
+}
+
+.gm-bteam {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+.gm-bwin {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.gm-bseed {
+  font-family: var(--gm-numeric);
+  font-size: 11px;
+  color: rgba(248, 250, 252, 0.5);
+}
+
+.gm-bname {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-bscore {
+  font-family: var(--gm-scoreboard);
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.gm-blines {
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  margin: 34px 0 10px;
+}
+
+.gm-blines span {
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-left: 0;
+}
+
+.gm-blines span:first-child {
+  margin-top: 25%;
+  border-bottom: 0;
+  border-radius: 0 8px 0 0;
+}
+
+.gm-blines span:last-child {
+  margin-bottom: 25%;
+  border-top: 0;
+  border-radius: 0 0 8px 0;
+}
+
+.gm-bonus {
+  font-size: 11px;
+  font-weight: 600;
+  color: #deb887;
+}
+
+.gm-group {
+  gap: 8px;
+  padding: 14px;
+}
+
+.gm-group-head,
+.gm-group-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px 56px;
+  align-items: center;
+  text-align: right;
+}
+
+.gm-group-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.gm-group-head span:first-child,
+.gm-group-row span:first-child {
+  text-align: left;
+}
+
+.gm-group-row {
+  font-family: var(--gm-numeric);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gm-group-row span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-family: "Barlow", var(--font-body);
+  white-space: nowrap;
+}
+
+/* App detail pages (league/, draft/, yoffs/) */
 
 .detail-hero {
   padding-bottom: 40px;

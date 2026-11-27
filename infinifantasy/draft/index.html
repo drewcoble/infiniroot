@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>infinidraft - auction draft help for your league</title>
+    <meta
+      name="description"
+      content="infinidraft helps you win your fantasy football auction draft: player prices made for your league, a budget plan, live bid help, keeper values and a report card."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="infinifantasy" />
+    <meta property="og:url" content="https://infinifantasy.com/draft/" />
+    <meta property="og:title" content="infinidraft - auction draft help for your league" />
+    <meta
+      property="og:description"
+      content="Know what every player is worth in your league, plan your budget, and get help with every bid."
+    />
+    <meta property="og:image" content="https://infinifantasy.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="infinifantasy - Fantasy football made simple." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0c1310" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Barlow:wght@600;700&family=Red+Hat+Mono:wght@600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" href="/fonts/lumen-round-900.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="/" aria-label="infinifantasy home">
+          <img src="/logo.png" alt="" width="36" height="36" />
+          <span>infini<b>fantasy</b></span>
+        </a>
+        <nav class="nav-links" aria-label="Site">
+          <a href="/#apps">Apps</a>
+          <a href="/#how">How it works</a>
+        </nav>
+        <a class="btn btn-small" href="https://draft.infinifantasy.com">Open infinidraft</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero detail-hero">
+        <div class="wrap">
+          <p class="eyebrow reveal"><a href="/#apps">Apps</a> / infinidraft</p>
+          <h1 class="reveal">Draft day,<br /><span class="accent">handled.</span></h1>
+          <p class="lede reveal">
+            Know what every player is worth in your league, plan your budget, and get help with
+            every bid.
+          </p>
+          <div class="hero-actions reveal">
+            <a class="btn" href="https://draft.infinifantasy.com">Open infinidraft</a>
+            <a class="btn btn-ghost" href="#values">See what's inside</a>
+          </div>
+          <nav class="jump reveal" aria-label="Features">
+            <a href="#values">Values</a>
+            <a href="#budget">Budget</a>
+            <a href="#room">Draft room</a>
+            <a href="#keepers">Keepers</a>
+            <a href="#report">Report card</a>
+          </nav>
+        </div>
+      </section>
+
+      <!-- Each feature pairs a line of copy with an illustration of the matching infinidraft screen
+           in the site's glass style (.gm-* in src/styles.css). Sample teams and numbers only. -->
+
+      <section class="feature" id="values">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">01 · Values</span>
+            <h2>Know what every player is <span class="accent">worth</span>.</h2>
+            <p>Prices made for your league's budget, scoring and keepers, so you can spot a steal.</p>
+            <ul class="feature-tags mono">
+              <li>Player prices</li>
+              <li>Bargains</li>
+              <li>Your scoring</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinidraft player prices: B. Irving worth $44 to you against a $36 market price">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-segmented">
+                <span class="gm-segment gm-segment-selected">All</span>
+                <span class="gm-segment">RB</span>
+                <span class="gm-segment">WR</span>
+                <span class="gm-segment">TE</span>
+              </div>
+              <div class="gm-card gm-wide gm-price-card">
+                <span class="gm-headshot"><img src="/headshots/st-brown.png" alt="" width="350" height="254" /></span>
+                <div class="gm-name-row gm-wide-name"><span class="gm-name">A. St. Brown</span></div>
+                <div class="gm-wide-points gm-price">$48</div>
+                <div class="gm-wide-detail"><span class="gm-pill gm-wr">WR</span><span class="gm-game">DET</span></div>
+                <div class="gm-wide-proj">Market $51</div>
+              </div>
+              <div class="gm-card gm-wide gm-price-card">
+                <span class="gm-headshot"><img src="/headshots/irving.png" alt="" width="350" height="254" /></span>
+                <div class="gm-name-row gm-wide-name"><span class="gm-name">B. Irving</span><span class="gm-pill gm-name-badge gm-start">BARGAIN</span></div>
+                <div class="gm-wide-points gm-price">$44</div>
+                <div class="gm-wide-detail"><span class="gm-pill gm-rb">RB</span><span class="gm-game">TB</span></div>
+                <div class="gm-wide-proj">Market $36</div>
+              </div>
+              <div class="gm-card gm-wide gm-price-card">
+                <span class="gm-headshot"><img src="/headshots/smith-njigba.png" alt="" width="350" height="254" /></span>
+                <div class="gm-name-row gm-wide-name"><span class="gm-name">J. Smith-Njigba</span></div>
+                <div class="gm-wide-points gm-price">$41</div>
+                <div class="gm-wide-detail"><span class="gm-pill gm-wr">WR</span><span class="gm-game">SEA</span></div>
+                <div class="gm-wide-proj">Market $39</div>
+              </div>
+              <div class="gm-card gm-wide gm-price-card">
+                <span class="gm-headshot"><img src="/headshots/swift.png" alt="" width="350" height="254" /></span>
+                <div class="gm-name-row gm-wide-name"><span class="gm-name">D. Swift</span><span class="gm-pill gm-name-badge gm-sit">PRICEY</span></div>
+                <div class="gm-wide-points gm-price">$22</div>
+                <div class="gm-wide-detail"><span class="gm-pill gm-rb">RB</span><span class="gm-game">CHI</span></div>
+                <div class="gm-wide-proj">Market $29</div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Players</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature feature-flip" id="budget">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">02 · Budget</span>
+            <h2>Plan your <span class="accent">spending</span>.</h2>
+            <p>Split your budget across your lineup before the draft. It adjusts as you buy.</p>
+            <ul class="feature-tags mono">
+              <li>Budget plan</li>
+              <li>Every roster spot</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinidraft budget plan: $200 split across QB, RB, WR, TE and FLEX">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-card gm-budget-head">
+                <span>Budget plan</span>
+                <span class="gm-budget-total">$200</span>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-qb">QB</span>
+                <div class="gm-card gm-budget-card">
+                  <div class="gm-budget-bar"><div class="gm-budget-fill" style="width: 13.3%"></div></div>
+                  <span class="gm-budget-amt">$8</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rb">RB</span>
+                <div class="gm-card gm-budget-card">
+                  <div class="gm-budget-bar"><div class="gm-budget-fill" style="width: 86.7%"></div></div>
+                  <span class="gm-budget-amt">$52</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rb">RB</span>
+                <div class="gm-card gm-budget-card">
+                  <div class="gm-budget-bar"><div class="gm-budget-fill" style="width: 50.0%"></div></div>
+                  <span class="gm-budget-amt">$30</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-wr">WR</span>
+                <div class="gm-card gm-budget-card">
+                  <div class="gm-budget-bar"><div class="gm-budget-fill" style="width: 80.0%"></div></div>
+                  <span class="gm-budget-amt">$48</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-wr">WR</span>
+                <div class="gm-card gm-budget-card">
+                  <div class="gm-budget-bar"><div class="gm-budget-fill" style="width: 53.3%"></div></div>
+                  <span class="gm-budget-amt">$32</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-te">TE</span>
+                <div class="gm-card gm-budget-card">
+                  <div class="gm-budget-bar"><div class="gm-budget-fill" style="width: 20.0%"></div></div>
+                  <span class="gm-budget-amt">$12</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-flex">FLEX</span>
+                <div class="gm-card gm-budget-card">
+                  <div class="gm-budget-bar"><div class="gm-budget-fill" style="width: 23.3%"></div></div>
+                  <span class="gm-budget-amt">$14</span>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Budget</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature" id="room">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">03 · Draft room</span>
+            <h2>Help with <span class="accent">every bid</span>.</h2>
+            <p>See who's up, how high you can go, and who to put up next, all on one screen.</p>
+            <ul class="feature-tags mono">
+              <li>Max bid</li>
+              <li>Budget check</li>
+              <li>Who to nominate</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinidraft draft room: B. Irving on the block at $38, worth $44 to you">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-tiles">
+                <div class="gm-tile"><span>Remaining</span><b>$142</b></div>
+                <div class="gm-tile"><span>Max bid</span><b>$134</b></div>
+                <div class="gm-tile"><span>Budget +/-</span><b class="gm-plus">+$6</b></div>
+                <div class="gm-tile"><span>Open</span><b>9</b></div>
+              </div>
+
+              <div class="gm-card gm-block">
+                <div class="gm-top">
+                  <span class="gm-block-label">On the block</span>
+                  <span class="gm-block-by">Nominated by Tua Lipa</span>
+                </div>
+                <div class="gm-block-player">
+                  <span class="gm-headshot"><img src="/headshots/irving.png" alt="" width="350" height="254" /></span>
+                  <div>
+                    <div class="gm-name">B. Irving</div>
+                    <div class="gm-inline"><span class="gm-pill gm-rb">RB</span><span class="gm-game">TB</span></div>
+                  </div>
+                  <div class="gm-block-bid"><span>Bid</span>$38</div>
+                </div>
+                <div class="gm-block-advice">Worth $44 to you. You can go up to $44.</div>
+              </div>
+
+              <div class="gm-label">Who to nominate</div>
+              <div class="gm-segmented gm-segmented-compact">
+                <span class="gm-segment gm-segment-selected">High demand</span>
+                <span class="gm-segment">Act now</span>
+                <span class="gm-segment">Don't need</span>
+              </div>
+              <div class="gm-card gm-reco">
+                <div class="gm-reco-line"><span class="gm-pill gm-te">TE</span><span class="gm-name">T. McBride</span><span class="gm-reco-price">$21</span></div>
+                <div class="gm-reco-why">4 teams still need a TE and can afford him.</div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Draft room</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature feature-flip" id="keepers">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">04 · Keepers</span>
+            <h2>Keep the <span class="accent">right</span> players.</h2>
+            <p>See what each keeper costs next to what he's worth, so you know who to hold on to.</p>
+            <ul class="feature-tags mono">
+              <li>Keeper costs</li>
+              <li>Keeper value</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinidraft keepers: C. Skattebo costs $9 and is worth $25">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-keeper-head"><span>Keeper</span><span>Cost</span><span>Worth</span><span></span></div>
+              <div class="gm-card gm-keeper">
+                <span class="gm-headshot"><img src="/headshots/skattebo.png" alt="" width="350" height="254" /></span>
+                <div><div class="gm-name">C. Skattebo</div><div class="gm-inline"><span class="gm-pill gm-rb">RB</span><span class="gm-game">NYG</span></div></div>
+                <span class="gm-keeper-num">$9</span>
+                <span class="gm-keeper-num">$25</span>
+                <span class="gm-pill gm-keeper-gain gm-start">+$16</span>
+              </div>
+              <div class="gm-card gm-keeper">
+                <span class="gm-headshot"><img src="/headshots/jennings.png" alt="" width="350" height="254" /></span>
+                <div><div class="gm-name">J. Jennings</div><div class="gm-inline"><span class="gm-pill gm-wr">WR</span><span class="gm-game">MIN</span></div></div>
+                <span class="gm-keeper-num">$3</span>
+                <span class="gm-keeper-num">$11</span>
+                <span class="gm-pill gm-keeper-gain gm-start">+$8</span>
+              </div>
+              <div class="gm-card gm-keeper">
+                <span class="gm-headshot"><img src="/headshots/swift.png" alt="" width="350" height="254" /></span>
+                <div><div class="gm-name">D. Swift</div><div class="gm-inline"><span class="gm-pill gm-rb">RB</span><span class="gm-game">CHI</span></div></div>
+                <span class="gm-keeper-num">$31</span>
+                <span class="gm-keeper-num">$22</span>
+                <span class="gm-pill gm-keeper-gain gm-sit">−$9</span>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Keepers</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature" id="report">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">05 · Report card</span>
+            <h2>See how <span class="accent">everyone</span> drafted.</h2>
+            <p>Grades for every team once the draft's done, with the steals called out. Share it with the league.</p>
+            <ul class="feature-tags mono">
+              <li>Team grades</li>
+              <li>Steals</li>
+              <li>Shareable</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infinidraft report card: Gridiron Gurus get an A">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-card gm-report-summary">
+                <div class="gm-label">Draft report card</div>
+                <p>Gridiron Gurus take the top grade. Steal of the draft: B. Irving at $36.</p>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip gm-rank-self">1</span>
+                <div class="gm-card gm-wide gm-team-card gm-grade-card">
+                  <img class="gm-logo gm-logo-img gm-team-card-logo" src="/team-helmet.svg" alt="" width="40" height="40" />
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">Gridiron Gurus</span></div>
+                  <div class="gm-team-card-line">3 bargains · $2 left</div>
+                  <span class="gm-pill gm-grade-pill gm-grade-a">A</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">2</span>
+                <div class="gm-card gm-wide gm-team-card gm-grade-card">
+                  <span class="gm-logo gm-team-card-logo">TL</span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">Tua Lipa</span></div>
+                  <div class="gm-team-card-line">Strong RB room</div>
+                  <span class="gm-pill gm-grade-pill gm-grade-a">B+</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">3</span>
+                <div class="gm-card gm-wide gm-team-card gm-grade-card">
+                  <span class="gm-logo gm-team-card-logo">MA</span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">Mahomes Alone</span></div>
+                  <div class="gm-team-card-line">Paid up at QB</div>
+                  <span class="gm-pill gm-grade-pill gm-grade-b">B−</span>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">4</span>
+                <div class="gm-card gm-wide gm-team-card gm-grade-card">
+                  <span class="gm-logo gm-team-card-logo">BM</span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">Bijan Mustard</span></div>
+                  <div class="gm-team-card-line">$31 over value</div>
+                  <span class="gm-pill gm-grade-pill gm-grade-c">C</span>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>draft</b> · Report card</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="closer">
+        <div class="wrap closer-inner reveal">
+          <img src="/logo.png" alt="" width="96" height="96" />
+          <h2 class="accent">Ready to draft?</h2>
+          <a class="btn" href="https://draft.infinifantasy.com">Open infinidraft</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <a class="brand-small" href="/">infini<b>fantasy</b></a>
+        <nav aria-label="Footer">
+          <a href="https://draft.infinifantasy.com">draft</a>
+          <a href="https://league.infinifantasy.com">league</a>
+          <a href="https://yoffs.infinifantasy.com">yoffs</a>
+        </nav>
+        <span class="mono muted">© <span id="year">2026</span></span>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

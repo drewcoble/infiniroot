@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>infiniyoffs - fantasy football playoffs your way</title>
+    <meta
+      name="description"
+      content="infiniyoffs runs your fantasy football league's playoffs any way you like: playoff odds, custom formats, live brackets and every game with bonus points counted."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="infinifantasy" />
+    <meta property="og:url" content="https://infinifantasy.com/yoffs/" />
+    <meta property="og:title" content="infiniyoffs - fantasy football playoffs your way" />
+    <meta
+      property="og:description"
+      content="Set up any playoff format your league can dream up, then follow the race, the brackets and every game together."
+    />
+    <meta property="og:image" content="https://infinifantasy.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="infinifantasy - Fantasy football made simple." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0c1310" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Barlow:wght@600;700&family=Red+Hat+Mono:wght@600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" href="/fonts/lumen-round-900.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="/" aria-label="infinifantasy home">
+          <img src="/logo.png" alt="" width="36" height="36" />
+          <span>infini<b>fantasy</b></span>
+        </a>
+        <nav class="nav-links" aria-label="Site">
+          <a href="/#apps">Apps</a>
+          <a href="/#how">How it works</a>
+        </nav>
+        <a class="btn btn-small" href="https://yoffs.infinifantasy.com">Open infiniyoffs</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero detail-hero">
+        <div class="wrap">
+          <p class="eyebrow reveal"><a href="/#apps">Apps</a> / infiniyoffs</p>
+          <h1 class="reveal">Playoffs,<br /><span class="accent">your way.</span></h1>
+          <p class="lede reveal">
+            Set up any playoff format your league can dream up, then follow the race, the brackets and
+            every game together.
+          </p>
+          <div class="hero-actions reveal">
+            <a class="btn" href="https://yoffs.infinifantasy.com">Open infiniyoffs</a>
+            <a class="btn btn-ghost" href="#picture">See what's inside</a>
+          </div>
+          <nav class="jump reveal" aria-label="Features">
+            <a href="#picture">Playoff race</a>
+            <a href="#formats">Formats</a>
+            <a href="#brackets">Brackets</a>
+            <a href="#games">Games</a>
+          </nav>
+        </div>
+      </section>
+
+      <!-- Each feature pairs a line of copy with an illustration of the matching infiniyoffs screen
+           in the site's glass style (.gm-* in src/styles.css). Sample teams and numbers only. -->
+
+      <section class="feature" id="picture">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">01 · Playoff race</span>
+            <h2>Who's <span class="accent">in</span>, who's out.</h2>
+            <p>See everyone's chances to make the playoffs and win it all, now or by season's end.</p>
+            <ul class="feature-tags mono">
+              <li>Playoff odds</li>
+              <li>Title odds</li>
+              <li>Projected standings</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infiniyoffs playoff race: Gridiron Gurus at 97% to make the playoffs and 24% to win the title">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-segmented">
+                <span class="gm-segment">Now</span>
+                <span class="gm-segment gm-segment-selected">Projected</span>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">1</span>
+                <div class="gm-card gm-wide gm-team-card gm-odds-card">
+                  <span class="gm-logo gm-team-card-logo">MA</span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">Mahomes Alone</span></div>
+                  <div class="gm-team-card-line">10-3</div>
+                  <div class="gm-odds"><span><b>99%</b> playoffs</span><span><b>31%</b> title</span></div>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip gm-rank-self">2</span>
+                <div class="gm-card gm-wide gm-team-card gm-odds-card">
+                  <img class="gm-logo gm-logo-img gm-team-card-logo" src="/team-helmet.svg" alt="" width="40" height="40" />
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">Gridiron Gurus</span></div>
+                  <div class="gm-team-card-line">9-4</div>
+                  <div class="gm-odds"><span><b>97%</b> playoffs</span><span><b>24%</b> title</span></div>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">3</span>
+                <div class="gm-card gm-wide gm-team-card gm-odds-card">
+                  <span class="gm-logo gm-team-card-logo">TL</span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">Tua Lipa</span></div>
+                  <div class="gm-team-card-line">8-5</div>
+                  <div class="gm-odds"><span><b>81%</b> playoffs</span><span><b>14%</b> title</span></div>
+                </div>
+              </div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">4</span>
+                <div class="gm-card gm-wide gm-team-card gm-odds-card">
+                  <span class="gm-logo gm-team-card-logo">BM</span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">Bijan Mustard</span></div>
+                  <div class="gm-team-card-line">7-6</div>
+                  <div class="gm-odds"><span><b>58%</b> playoffs</span><span><b>9%</b> title</span></div>
+                </div>
+              </div>
+              <div class="gm-divider"><span></span>Playoff line<span></span></div>
+              <div class="gm-roster-row">
+                <span class="gm-pill gm-slot gm-roster-slot gm-rank-chip">5</span>
+                <div class="gm-card gm-wide gm-team-card gm-odds-card">
+                  <span class="gm-logo gm-team-card-logo">HG</span>
+                  <div class="gm-name-row gm-wide-name"><span class="gm-name">Hurts So Good</span></div>
+                  <div class="gm-team-card-line">7-6</div>
+                  <div class="gm-odds"><span><b>46%</b> playoffs</span><span><b>6%</b> title</span></div>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>yoffs</b> · Standings</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature feature-flip" id="formats">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">02 · Formats</span>
+            <h2>Any format, <span class="accent">no spreadsheet</span>.</h2>
+            <p>Pick a ready-made format or make your own, from tiers and groups to bonus points and double elimination. Set it up once and the whole league can follow along.</p>
+            <ul class="feature-tags mono">
+              <li>Brackets</li>
+              <li>Groups</li>
+              <li>Bonus points</li>
+              <li>Side brackets</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infiniyoffs rules for a World Cup style format with tiers, a group draft and bonus points">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-segmented gm-segmented-compact">
+                <span class="gm-segment">Bracket</span>
+                <span class="gm-segment">Double elim</span>
+                <span class="gm-segment gm-segment-selected">World Cup</span>
+                <span class="gm-segment">Custom</span>
+              </div>
+              <div class="gm-card gm-rules">
+                <div class="gm-label">How our playoffs work</div>
+                <div class="gm-rule"><span class="gm-rule-tiers"><span class="gm-pill gm-tier gm-tier-s">S</span><span class="gm-pill gm-tier gm-tier-a">A</span><span class="gm-pill gm-tier gm-tier-b">B</span><span class="gm-pill gm-tier gm-tier-c">C</span></span><span>Teams split into tiers by final standing, three per tier.</span></div>
+                <div class="gm-rule"><span class="gm-rule-num">1</span><span>S teams pick their opponents for weeks 12-14 in a mini draft.</span></div>
+                <div class="gm-rule"><span class="gm-rule-num">2</span><span>Bonus points every group week: S +15, A +10, B +5.</span></div>
+                <div class="gm-rule"><span class="gm-rule-num">3</span><span>Group winners and one wildcard make the semifinals.</span></div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>yoffs</b> · Rules</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature" id="brackets">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">03 · Brackets</span>
+            <h2>Brackets that <span class="accent">fill in</span> as you play.</h2>
+            <p>Every round updates as games finish, all the way to the championship.</p>
+            <ul class="feature-tags mono">
+              <li>Live brackets</li>
+              <li>Seeds</li>
+              <li>Every round</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infiniyoffs bracket: Mahomes Alone and Gridiron Gurus win their semifinals and meet in the final">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-bracket">
+                <div class="gm-bround">
+                  <div class="gm-bround-label">Semifinals · Wk 16</div>
+                  <div class="gm-card gm-bgame">
+                    <div class="gm-bteam gm-bwin"><span class="gm-bseed">1</span><span class="gm-bname">Mahomes Alone</span><span class="gm-bscore">131<span class="gm-dec"><span class="gm-point">.</span>22</span></span></div>
+                    <div class="gm-bteam"><span class="gm-bseed">4</span><span class="gm-bname">Hurts So Good</span><span class="gm-bscore">118<span class="gm-dec"><span class="gm-point">.</span>06</span></span></div>
+                  </div>
+                  <div class="gm-card gm-bgame">
+                    <div class="gm-bteam gm-bwin"><span class="gm-bseed">2</span><span class="gm-bname">Gridiron Gurus</span><span class="gm-bscore">126<span class="gm-dec"><span class="gm-point">.</span>40</span></span></div>
+                    <div class="gm-bteam"><span class="gm-bseed">3</span><span class="gm-bname">Tua Lipa</span><span class="gm-bscore">124<span class="gm-dec"><span class="gm-point">.</span>88</span></span></div>
+                  </div>
+                </div>
+                <div class="gm-blines" aria-hidden="true"><span></span><span></span></div>
+                <div class="gm-bround gm-bround-final">
+                  <div class="gm-bround-label">Final · Wk 17</div>
+                  <div class="gm-card gm-bgame gm-live">
+                    <div class="gm-bgame-status"><span>Live</span><span class="gm-status"><span class="gm-dot"></span></span></div>
+                    <div class="gm-bteam"><span class="gm-bseed">1</span><span class="gm-bname">Mahomes Alone</span><span class="gm-bscore">74<span class="gm-dec"><span class="gm-point">.</span>18</span></span></div>
+                    <div class="gm-bteam"><span class="gm-bseed">2</span><span class="gm-bname">Gridiron Gurus</span><span class="gm-bscore">81<span class="gm-dec"><span class="gm-point">.</span>52</span></span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>yoffs</b> · Bracket</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="feature feature-flip" id="games">
+        <div class="wrap feature-grid">
+          <div class="feature-copy reveal">
+            <span class="num mono">04 · Games</span>
+            <h2>Every game, <span class="accent">bonuses included</span>.</h2>
+            <p>Live scores and win odds for every playoff game, with any bonus points already added in.</p>
+            <ul class="feature-tags mono">
+              <li>Live scores</li>
+              <li>Win odds</li>
+              <li>Group tables</li>
+            </ul>
+          </div>
+
+          <figure class="screen reveal" aria-label="Example infiniyoffs group game: Gridiron Gurus lead with a 15 point tier bonus included">
+            <div class="gm" aria-hidden="true">
+              <div class="gm-league-name">Group S · Week 13</div>
+              <div class="gm-card gm-header">
+                <div class="gm-teams">
+                  <div class="gm-team">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-tier gm-tier-s">S</span>
+                      <img class="gm-logo gm-logo-img" src="/team-helmet.svg" alt="" width="22" height="22" />
+                      <span class="gm-team-name">Gridiron Gurus</span>
+                    </div>
+                    <div class="gm-total">121<span class="gm-dec"><span class="gm-point">.</span>46</span></div>
+                    <div class="gm-bonus">Includes +15 tier bonus</div>
+                    <div class="gm-proj">
+                      <span>Proj 138.3</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>2</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>1</span>
+                    </div>
+                  </div>
+                  <div class="gm-team gm-team-right">
+                    <div class="gm-team-title">
+                      <span class="gm-pill gm-tier gm-tier-b">B</span>
+                      <span class="gm-logo">HG</span>
+                      <span class="gm-team-name">Hurts So Good</span>
+                    </div>
+                    <div class="gm-total">96<span class="gm-dec"><span class="gm-point">.</span>72</span></div>
+                    <div class="gm-bonus">Includes +5 tier bonus</div>
+                    <div class="gm-proj">
+                      <span>Proj 116.9</span>
+                      <span class="gm-count"><span class="gm-status"><span class="gm-dot"></span></span>1</span>
+                      <span class="gm-count"><span class="gm-status gm-pre"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg></span>2</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="gm-win">
+                  <span>80%</span>
+                  <div class="gm-win-bar">
+                    <div class="gm-win-seg" style="width: 80%; --pill-tint: #4ade80"></div>
+                    <div class="gm-win-seg" style="width: 20%; --pill-tint: #f87171"></div>
+                  </div>
+                  <span>20%</span>
+                </div>
+              </div>
+              <div class="gm-card gm-group">
+                <div class="gm-group-head"><span>Group S</span><span>W-L</span><span>Pts</span></div>
+                <div class="gm-group-row"><span><span class="gm-pill gm-tier gm-tier-s">S</span>Gridiron Gurus</span><span>1-0</span><span>134.1</span></div>
+                <div class="gm-group-row"><span><span class="gm-pill gm-tier gm-tier-a">A</span>Tua Lipa</span><span>1-0</span><span>128.7</span></div>
+                <div class="gm-group-row"><span><span class="gm-pill gm-tier gm-tier-b">B</span>Hurts So Good</span><span>0-1</span><span>109.4</span></div>
+                <div class="gm-group-row"><span><span class="gm-pill gm-tier gm-tier-c">C</span>Sunday Scaries</span><span>0-1</span><span>98.2</span></div>
+              </div>
+            </div>
+            <figcaption class="screen-caption mono">infini<b>yoffs</b> · Matchup</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="closer">
+        <div class="wrap closer-inner reveal">
+          <img src="/logo.png" alt="" width="96" height="96" />
+          <h2 class="accent">Ready for the playoffs?</h2>
+          <a class="btn" href="https://yoffs.infinifantasy.com">Open infiniyoffs</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <a class="brand-small" href="/">infini<b>fantasy</b></a>
+        <nav aria-label="Footer">
+          <a href="https://draft.infinifantasy.com">draft</a>
+          <a href="https://league.infinifantasy.com">league</a>
+          <a href="https://yoffs.infinifantasy.com">yoffs</a>
+        </nav>
+        <span class="mono muted">© <span id="year">2026</span></span>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
