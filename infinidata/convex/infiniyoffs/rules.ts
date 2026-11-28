@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { mutation, query, type MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { requireSeasonViewer } from "../lib/access";
 import { keepsDraft, keepsManualGroups, sameFormat } from "../lib/playoffRules/carryOver";
@@ -45,44 +45,53 @@ export const getRules = query({
   },
 });
 
-// Commissioner only. Null goes back to the platform's playoffs. Saving the
-// same format changes nothing; otherwise a draft under way or hand-set
-// groups are discarded only when the change moves their group stage (see
-// lib/playoffRules/carryOver.ts).
+// Saves the league's format. Null goes back to the platform's playoffs.
+// Saving the same format changes nothing; otherwise a draft under way or
+// hand-set groups are discarded only when the change moves their group
+// stage (see lib/playoffRules/carryOver.ts). The caller checks the
+// commissioner.
+export async function applyFormat(
+  ctx: MutationCtx,
+  season: Doc<"seasons">,
+  format: PlayoffFormat | null,
+): Promise<void> {
+  if (format) {
+    const problem = formatProblem(format, season.teamCount);
+    if (problem) throw new Error(problem);
+  }
+  const settings = await ctx.db
+    .query("playoffSettings")
+    .withIndex("by_season", (q) => q.eq("seasonId", season._id))
+    .unique();
+  const prev = (settings?.format as PlayoffFormat | undefined) ?? null;
+  if (sameFormat(prev, format)) return;
+  const patch = { format: format ?? undefined, formatUpdatedAt: Date.now() };
+  if (settings) await ctx.db.patch(settings._id, patch);
+  else await ctx.db.insert("playoffSettings", { seasonId: season._id, ...patch });
+
+  const drafts = await ctx.db
+    .query("playoffDrafts")
+    .withIndex("by_season_stage", (q) => q.eq("seasonId", season._id))
+    .collect();
+  for (const draft of drafts) {
+    if (!keepsDraft(prev, format, draft.stageId)) await ctx.db.delete(draft._id);
+  }
+  const manualGroups = await ctx.db
+    .query("playoffManualGroups")
+    .withIndex("by_season_stage", (q) => q.eq("seasonId", season._id))
+    .collect();
+  for (const row of manualGroups) {
+    if (!keepsManualGroups(prev, format, row.stageId)) await ctx.db.delete(row._id);
+  }
+}
+
+// Commissioner only - see applyFormat.
 export const setFormat = mutation({
   args: { seasonId: v.id("seasons"), format: v.union(v.any(), v.null()) },
   handler: async (ctx, args): Promise<void> => {
     const { season, isCommissioner } = await requireSeasonViewer(ctx, args.seasonId);
     if (!isCommissioner) throw new Error("Only the commissioner can change the playoff rules.");
-    const format = args.format as PlayoffFormat | null;
-    if (format) {
-      const problem = formatProblem(format, season.teamCount);
-      if (problem) throw new Error(problem);
-    }
-    const settings = await ctx.db
-      .query("playoffSettings")
-      .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
-      .unique();
-    const prev = (settings?.format as PlayoffFormat | undefined) ?? null;
-    if (sameFormat(prev, format)) return;
-    const patch = { format: format ?? undefined, formatUpdatedAt: Date.now() };
-    if (settings) await ctx.db.patch(settings._id, patch);
-    else await ctx.db.insert("playoffSettings", { seasonId: args.seasonId, ...patch });
-
-    const drafts = await ctx.db
-      .query("playoffDrafts")
-      .withIndex("by_season_stage", (q) => q.eq("seasonId", args.seasonId))
-      .collect();
-    for (const draft of drafts) {
-      if (!keepsDraft(prev, format, draft.stageId)) await ctx.db.delete(draft._id);
-    }
-    const manualGroups = await ctx.db
-      .query("playoffManualGroups")
-      .withIndex("by_season_stage", (q) => q.eq("seasonId", args.seasonId))
-      .collect();
-    for (const row of manualGroups) {
-      if (!keepsManualGroups(prev, format, row.stageId)) await ctx.db.delete(row._id);
-    }
+    await applyFormat(ctx, season, args.format as PlayoffFormat | null);
   },
 });
 

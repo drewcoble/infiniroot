@@ -5,6 +5,7 @@ import {
   defaultStandard,
   defaultWorldCup,
   presetFormat,
+  WORLD_CUP_TEAMS,
 } from "@playoffRules/presets";
 import type { PlayoffRules, SeasonData } from "./seasonData";
 
@@ -74,4 +75,46 @@ export function typeFormat(
   if (kind === "custom") return saved;
   if (saved?.preset?.kind === kind) return saved;
   return presetFormat(defaultConfig(kind, data, saved), data.teams.length);
+}
+
+// Each playoff type in a line, for the type pickers.
+export const PLAYOFF_TYPES: {
+  kind: Kind;
+  label: (data: SeasonData) => string;
+  about: (data: SeasonData) => string;
+}[] = [
+  {
+    kind: "platform",
+    label: (data) => `Follow ${data.platformName ?? "the platform"}`,
+    about: (data) =>
+      data.platformPlayoffs?.hasPlayoffs
+        ? `Your league's own bracket: ${data.platformPlayoffs.playoffTeamCount} teams from ` +
+          `week ${data.platformPlayoffs.regularSeasonEndWeek + 1}.`
+        : "Your league's own playoffs, as set on its platform.",
+  },
+  {
+    kind: "standard",
+    label: () => "Single elimination",
+    about: () => "Single elimination, with byes for the top seeds.",
+  },
+  {
+    kind: "doubleElim",
+    label: () => "Double elimination",
+    about: () => "Two losses and you're out, then a Royal Rumble for everyone left.",
+  },
+  {
+    kind: "worldCup",
+    label: () => "World Cup",
+    about: () =>
+      "Top seeds draft groups of four; group winners and a wildcard play a knockout. " +
+      "12 teams only.",
+  },
+  { kind: "custom", label: () => "Custom", about: () => "Rules set up by hand." },
+];
+
+// Whether a type can be picked: World Cup needs twelve teams; custom only
+// stays as an option for rules already set up by hand.
+export function typeAllowed(kind: Kind, teamCount: number, current: Kind): boolean {
+  if (kind === "custom") return current === "custom";
+  return kind !== "worldCup" || teamCount === WORLD_CUP_TEAMS;
 }

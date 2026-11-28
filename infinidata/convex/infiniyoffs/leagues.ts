@@ -19,20 +19,30 @@ export interface YoffsSeason {
   // Put on infiniyoffs by its commissioner (see inYoffs below) - the home
   // screen lists these, and offers the commissioner's others to connect.
   inYoffs: boolean;
+  // On infiniyoffs but its setup flow isn't finished - members don't see
+  // it yet, and the commissioner is sent back to setup.
+  needsSetup: boolean;
 }
 
 // The commissioner's say, else on if it has custom rules or anyone joined
-// through its league link.
-async function seasonInYoffs(
+// through its league link. Setting up: put on infiniyoffs, no rules saved
+// and setup not finished.
+async function yoffsState(
   ctx: QueryCtx,
   seasonId: Id<"seasons">,
   joinedHere: boolean,
-): Promise<boolean> {
+): Promise<{ inYoffs: boolean; needsSetup: boolean }> {
   const settings = await ctx.db
     .query("playoffSettings")
     .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
     .unique();
-  return settings?.inYoffs ?? (joinedHere || settings?.format !== undefined);
+  return {
+    inYoffs: settings?.inYoffs ?? (joinedHere || settings?.format !== undefined),
+    needsSetup:
+      settings?.inYoffs === true &&
+      settings.format === undefined &&
+      settings.setupCompletedAt === undefined,
+  };
 }
 
 function provider(season: Doc<"seasons">): YoffsSeason["provider"] | null {
@@ -46,7 +56,7 @@ function toYoffsSeason(
   season: Doc<"seasons">,
   league: Doc<"leagues">,
   isCommissioner: boolean,
-  inYoffs: boolean,
+  state: { inYoffs: boolean; needsSetup: boolean },
 ): YoffsSeason | null {
   const linked = provider(season);
   if (linked === null) return null;
@@ -60,7 +70,7 @@ function toYoffsSeason(
     scoring: season.scoring,
     provider: linked,
     isCommissioner,
-    inYoffs,
+    ...state,
   };
 }
 
@@ -93,11 +103,11 @@ export const listMySeasons = query({
       joinedHere = false,
     ) => {
       if (seen.has(season._id)) return;
-      const inYoffs = await seasonInYoffs(ctx, season._id, joinedHere);
-      if (!isCommissioner && !inYoffs) return;
+      const state = await yoffsState(ctx, season._id, joinedHere);
+      if (!isCommissioner && (!state.inYoffs || state.needsSetup)) return;
       // A guillotine league has no playoffs to customize - never offered.
-      if (!inYoffs && resolveLeagueType(season) === "guillotine") return;
-      const row = toYoffsSeason(season, league, isCommissioner, inYoffs);
+      if (!state.inYoffs && resolveLeagueType(season) === "guillotine") return;
+      const row = toYoffsSeason(season, league, isCommissioner, state);
       if (!row) return;
       seen.add(season._id);
       result.push(row);

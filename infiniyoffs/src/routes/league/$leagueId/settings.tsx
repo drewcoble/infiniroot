@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { Alert, Button, Center, Group, Loader, Stack, Text } from "@mantine/core";
@@ -124,6 +124,18 @@ function CommissionerSettings({
   return (
     <Stack gap="md">
       {summary}
+      <div className={glass.card}>
+        <Group justify="space-between" wrap="nowrap" p={4}>
+          <Text size="sm" c="dimmed">
+            Change the rules step by step.
+          </Text>
+          <Link to="/league/$leagueId/setup" params={{ leagueId: seasonId }}>
+            <Button component="span" variant="light" size="xs">
+              Run setup
+            </Button>
+          </Link>
+        </Group>
+      </div>
       <PlayoffTypeCard
         seasonId={seasonId}
         data={data}

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Center, Loader, Stack, Tabs } from "@mantine/core";
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, Outlet, useLocation } from "@tanstack/react-router";
 import type { GenericId as Id } from "convex/values";
 import type { LucideIcon } from "lucide-react";
 import { GitFork, Settings, Ticket, Trophy } from "lucide-react";
@@ -8,6 +8,7 @@ import { AppHeader } from "../../../components/AppHeader";
 import { BottomNav } from "@shared/BottomNav";
 import { PageContainer } from "@shared/PageContainer";
 import { useMyViewer } from "../../../hooks/useMyViewer";
+import { useMySeasons } from "../../../hooks/useMySeasons";
 import { SeasonDataProvider, useSeasonData } from "../../../lib/seasonData";
 import { TeamLogosProvider } from "@shared/glass/TeamLogo";
 import { LeagueApiProvider, type LeagueApi } from "@shared/league/LeagueApi";
@@ -50,6 +51,7 @@ function LeagueLayout() {
   const seasonId = leagueId as Id<"seasons">;
   const location = useLocation();
   const viewer = useMyViewer(seasonId);
+  const needsSetup = useMySeasons()?.find((s) => s._id === leagueId)?.needsSetup ?? false;
 
   const tabs: TabItem[] = [
     {
@@ -85,12 +87,18 @@ function LeagueLayout() {
   const leaf = location.pathname.replace(`/league/${leagueId}`, "").replace(/^\/|\/$/g, "");
   const activeValue: TabValue | undefined =
     leaf === "" ? "picture" : tabs.find((tab) => tab.value === leaf)?.value;
+  // The setup flow takes the whole page - no tabs - and a league still
+  // being set up opens on it.
+  const inSetup = leaf === "setup";
+  if (needsSetup && !inSetup && viewer?.isCommissioner) {
+    return <Navigate to="/league/$leagueId/setup" params={{ leagueId }} replace />;
+  }
 
   return (
     <PageContainer pb={{ base: "calc(100px + env(safe-area-inset-bottom))", sm: "xl" }}>
       <Stack gap="md">
         <AppHeader />
-        <Box visibleFrom="sm">
+        <Box visibleFrom="sm" hidden={inSetup}>
           <Tabs value={activeValue ?? null}>
             <Tabs.List>
               {tabs.map((tab) => (
@@ -121,7 +129,7 @@ function LeagueLayout() {
           </LeagueApiProvider>
         )}
       </Stack>
-      <BottomNav glass items={tabs} activeValue={activeValue} />
+      {!inSetup && <BottomNav glass items={tabs} activeValue={activeValue} />}
     </PageContainer>
   );
 }

@@ -102,6 +102,7 @@ import type * as infiniyoffs_refresh from "../infiniyoffs/refresh.js";
 import type * as infiniyoffs_rules from "../infiniyoffs/rules.js";
 import type * as infiniyoffs_scores from "../infiniyoffs/scores.js";
 import type * as infiniyoffs_season from "../infiniyoffs/season.js";
+import type * as infiniyoffs_setup from "../infiniyoffs/setup.js";
 import type * as injuries from "../injuries.js";
 import type * as injurySnapshots from "../injurySnapshots.js";
 import type * as jev_client from "../jev/client.js";
@@ -274,6 +275,7 @@ declare const fullApi: ApiFromModules<{
   "infiniyoffs/rules": typeof infiniyoffs_rules;
   "infiniyoffs/scores": typeof infiniyoffs_scores;
   "infiniyoffs/season": typeof infiniyoffs_season;
+  "infiniyoffs/setup": typeof infiniyoffs_setup;
   injuries: typeof injuries;
   injurySnapshots: typeof injurySnapshots;
   "jev/client": typeof jev_client;

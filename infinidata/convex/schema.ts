@@ -2136,6 +2136,12 @@ export default defineSchema({
     // Whether the commissioner put this league on infiniyoffs (its home
     // screen lists only these). Absent = on if it has custom rules.
     inYoffs: v.optional(v.boolean()),
+    // The setup flow (convex/infiniyoffs/setup.ts): the commissioner's
+    // choices so far, kept between steps and devices until Review saves
+    // them, and when that happened. A league put on infiniyoffs with no
+    // rules and no setupCompletedAt still needs setting up.
+    setupDraft: v.optional(v.any()),
+    setupCompletedAt: v.optional(v.number()),
     format: v.optional(v.any()),
     formatUpdatedAt: v.optional(v.number()),
     refreshStartedAt: v.optional(v.number()),

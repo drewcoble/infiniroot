@@ -18,6 +18,7 @@ import { Route as LeagueLeagueIdIndexRouteImport } from './routes/league/$league
 import { Route as LeagueLeagueIdBracketRouteImport } from './routes/league/$leagueId/bracket'
 import { Route as LeagueLeagueIdMatchupRouteImport } from './routes/league/$leagueId/matchup'
 import { Route as LeagueLeagueIdSettingsRouteImport } from './routes/league/$leagueId/settings'
+import { Route as LeagueLeagueIdSetupRouteImport } from './routes/league/$leagueId/setup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,6 +65,11 @@ const LeagueLeagueIdSettingsRoute = LeagueLeagueIdSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LeagueLeagueIdRouteRoute,
 } as any)
+const LeagueLeagueIdSetupRoute = LeagueLeagueIdSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => LeagueLeagueIdRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/league/$leagueId/bracket': typeof LeagueLeagueIdBracketRoute
   '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
   '/league/$leagueId/settings': typeof LeagueLeagueIdSettingsRoute
+  '/league/$leagueId/setup': typeof LeagueLeagueIdSetupRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/league/$leagueId/bracket': typeof LeagueLeagueIdBracketRoute
   '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
   '/league/$leagueId/settings': typeof LeagueLeagueIdSettingsRoute
+  '/league/$leagueId/setup': typeof LeagueLeagueIdSetupRoute
   '/league/$leagueId': typeof LeagueLeagueIdIndexRoute
 }
 export interface FileRoutesById {
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/league/$leagueId/bracket': typeof LeagueLeagueIdBracketRoute
   '/league/$leagueId/matchup': typeof LeagueLeagueIdMatchupRoute
   '/league/$leagueId/settings': typeof LeagueLeagueIdSettingsRoute
+  '/league/$leagueId/setup': typeof LeagueLeagueIdSetupRoute
   '/league/$leagueId/': typeof LeagueLeagueIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId/bracket'
     | '/league/$leagueId/matchup'
     | '/league/$leagueId/settings'
+    | '/league/$leagueId/setup'
     | '/league/$leagueId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId/bracket'
     | '/league/$leagueId/matchup'
     | '/league/$leagueId/settings'
+    | '/league/$leagueId/setup'
     | '/league/$leagueId'
   id:
     | '__root__'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/league/$leagueId/bracket'
     | '/league/$leagueId/matchup'
     | '/league/$leagueId/settings'
+    | '/league/$leagueId/setup'
     | '/league/$leagueId/'
   fileRoutesById: FileRoutesById
 }
@@ -206,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeagueLeagueIdSettingsRouteImport
       parentRoute: typeof LeagueLeagueIdRouteRoute
     }
+    '/league/$leagueId/setup': {
+      id: '/league/$leagueId/setup'
+      path: '/setup'
+      fullPath: '/league/$leagueId/setup'
+      preLoaderRoute: typeof LeagueLeagueIdSetupRouteImport
+      parentRoute: typeof LeagueLeagueIdRouteRoute
+    }
   }
 }
 
@@ -213,6 +232,7 @@ interface LeagueLeagueIdRouteRouteChildren {
   LeagueLeagueIdBracketRoute: typeof LeagueLeagueIdBracketRoute
   LeagueLeagueIdMatchupRoute: typeof LeagueLeagueIdMatchupRoute
   LeagueLeagueIdSettingsRoute: typeof LeagueLeagueIdSettingsRoute
+  LeagueLeagueIdSetupRoute: typeof LeagueLeagueIdSetupRoute
   LeagueLeagueIdIndexRoute: typeof LeagueLeagueIdIndexRoute
 }
 
@@ -220,6 +240,7 @@ const LeagueLeagueIdRouteRouteChildren: LeagueLeagueIdRouteRouteChildren = {
   LeagueLeagueIdBracketRoute: LeagueLeagueIdBracketRoute,
   LeagueLeagueIdMatchupRoute: LeagueLeagueIdMatchupRoute,
   LeagueLeagueIdSettingsRoute: LeagueLeagueIdSettingsRoute,
+  LeagueLeagueIdSetupRoute: LeagueLeagueIdSetupRoute,
   LeagueLeagueIdIndexRoute: LeagueLeagueIdIndexRoute,
 }
 

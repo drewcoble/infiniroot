@@ -61,7 +61,7 @@ function Dashboard() {
     setConnecting(season._id);
     try {
       await setInYoffs({ seasonId: season._id as Id<"seasons">, inYoffs: true });
-      await navigate({ to: "/league/$leagueId/settings", params: { leagueId: season._id } });
+      await navigate({ to: "/league/$leagueId/setup", params: { leagueId: season._id } });
     } finally {
       setConnecting(null);
     }
@@ -95,7 +95,7 @@ function Dashboard() {
               {onYoffs.map(({ latest }) => (
                 <Link
                   key={latest.leagueId}
-                  to="/league/$leagueId"
+                  to={latest.needsSetup ? "/league/$leagueId/setup" : "/league/$leagueId"}
                   params={{ leagueId: latest._id }}
                   className={`${glass.card} ${glass.wide} ${glass.teamCard}`}
                 >
@@ -103,9 +103,13 @@ function Dashboard() {
                   {latest.isCommissioner && (
                     <span
                       className={glass.pill}
-                      style={{ ...pillStyle("gray"), gridArea: "points", gridRowEnd: "span 2" }}
+                      style={{
+                        ...pillStyle(latest.needsSetup ? "yellow" : "gray"),
+                        gridArea: "points",
+                        gridRowEnd: "span 2",
+                      }}
                     >
-                      Commish
+                      {latest.needsSetup ? "Finish setup" : "Commish"}
                     </span>
                   )}
                   <ChevronRight

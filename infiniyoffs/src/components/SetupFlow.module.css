@@ -1,0 +1,42 @@
+/* The setup flow's step bar and type options. */
+
+.steps {
+  display: flex;
+  gap: 4px;
+}
+
+.stepSegment {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.stepDone {
+  background: color-mix(in srgb, var(--mantine-primary-color-4) 70%, transparent);
+}
+
+.stepCurrent {
+  background: var(--mantine-primary-color-4);
+}
+
+/* A type to pick: a glass card as a radio. */
+.option {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.selected {
+  border-color: color-mix(in srgb, var(--mantine-primary-color-4) 80%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--mantine-primary-color-4) 60%, transparent),
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}

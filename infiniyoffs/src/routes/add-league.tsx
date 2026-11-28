@@ -26,7 +26,7 @@ export const Route = createFileRoute("/add-league")({
 // A league connected here is an ordinary createLeague/initializeSeasonTeams
 // season row, so the other apps pick it up automatically (same leagues/
 // seasons tables) - see @shared/AddLeague for the provider wizards. It
-// goes on infiniyoffs straight away and opens on its settings - unless it
+// goes on infiniyoffs straight away and opens the setup flow - unless it
 // can't (a guillotine league), which says so instead. It stays connected
 // for the other apps either way.
 function AddLeaguePage() {
@@ -61,7 +61,7 @@ function AddLeaguePage() {
                   return;
                 }
                 await navigate({
-                  to: "/league/$leagueId/settings",
+                  to: "/league/$leagueId/setup",
                   params: { leagueId: seasonId },
                 });
               })()
