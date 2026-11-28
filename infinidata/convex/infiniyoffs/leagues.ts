@@ -10,6 +10,8 @@ export interface YoffsSeason {
   leagueId: Id<"leagues">;
   year: string;
   name: string;
+  // The league's image on its platform - absent shows its initials.
+  logoUrl?: string;
   teamCount: number;
   scoring: Doc<"seasons">["scoring"];
   provider: "sleeper" | "yahoo" | "espn";
@@ -53,6 +55,7 @@ function toYoffsSeason(
     leagueId: league._id,
     year: season.year,
     name: league.name,
+    ...(season.logoUrl ? { logoUrl: season.logoUrl } : {}),
     teamCount: season.teamCount,
     scoring: season.scoring,
     provider: linked,

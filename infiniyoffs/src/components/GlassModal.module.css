@@ -1,0 +1,28 @@
+/* A Mantine Modal as a glass pane - the cards' gradient and edge light
+   over the page color, so it reads as one of them floating above. */
+
+.content {
+  color: #f8fafc;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%),
+    var(--mantine-color-body);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.header {
+  background: transparent;
+}
+
+.title {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.overlay {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
