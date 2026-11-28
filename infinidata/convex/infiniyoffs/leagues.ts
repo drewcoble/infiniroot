@@ -154,11 +154,14 @@ export const getMyViewer = query({
 });
 
 // Commissioner only: puts the league on infiniyoffs or takes it off (its
-// rules and groups are kept either way).
+// rules and groups are kept either way). Never a guillotine league.
 export const setInYoffs = mutation({
   args: { seasonId: v.id("seasons"), inYoffs: v.boolean() },
   handler: async (ctx, args): Promise<void> => {
-    await requireSeasonOwner(ctx, args.seasonId);
+    const { season } = await requireSeasonOwner(ctx, args.seasonId);
+    if (args.inYoffs && resolveLeagueType(season) === "guillotine") {
+      throw new Error("Guillotine leagues don't have playoffs to customize.");
+    }
     const settings = await ctx.db
       .query("playoffSettings")
       .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))

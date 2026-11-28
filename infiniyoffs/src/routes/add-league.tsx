@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import type { GenericId as Id } from "convex/values";
 import { api } from "@infinidata/api";
-import { Stack } from "@mantine/core";
+import { getErrorMessage } from "@shared/errors";
+import { useState } from "react";
+import { Alert, Button, Stack } from "@mantine/core";
 import { AppHeader } from "../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
 import { AddLeague, type LeagueProvider } from "@shared/AddLeague";
@@ -24,27 +26,49 @@ export const Route = createFileRoute("/add-league")({
 // A league connected here is an ordinary createLeague/initializeSeasonTeams
 // season row, so the other apps pick it up automatically (same leagues/
 // seasons tables) - see @shared/AddLeague for the provider wizards. It
-// goes on infiniyoffs straight away and opens on its settings.
+// goes on infiniyoffs straight away and opens on its settings - unless it
+// can't (a guillotine league), which says so instead. It stays connected
+// for the other apps either way.
 function AddLeaguePage() {
   const navigate = useNavigate();
   const setInYoffs = useMutation(api.infiniyoffs.leagues.setInYoffs);
   const { provider } = Route.useSearch();
+  const [refused, setRefused] = useState<string | null>(null);
 
   return (
     <PageContainer>
       <Stack gap="lg">
         <AppHeader />
-        <AddLeague
-          app="infiniyoffs"
-          initialProvider={provider}
-          onConnected={(seasonId) =>
-            void (async () => {
-              await setInYoffs({ seasonId: seasonId as Id<"seasons">, inYoffs: true });
-              await navigate({ to: "/league/$leagueId/settings", params: { leagueId: seasonId } });
-            })()
-          }
-          onCancel={() => void navigate({ to: "/" })}
-        />
+        {refused ? (
+          <Stack gap="md" maw={420} mx="auto">
+            <Alert color="yellow" title="Can't use this league on yoffs">
+              {refused}
+            </Alert>
+            <Button variant="default" onClick={() => void navigate({ to: "/" })}>
+              Back to leagues
+            </Button>
+          </Stack>
+        ) : (
+          <AddLeague
+            app="infiniyoffs"
+            initialProvider={provider}
+            onConnected={(seasonId) =>
+              void (async () => {
+                try {
+                  await setInYoffs({ seasonId: seasonId as Id<"seasons">, inYoffs: true });
+                } catch (err) {
+                  setRefused(getErrorMessage(err, "This league can't go on yoffs."));
+                  return;
+                }
+                await navigate({
+                  to: "/league/$leagueId/settings",
+                  params: { leagueId: seasonId },
+                });
+              })()
+            }
+            onCancel={() => void navigate({ to: "/" })}
+          />
+        )}
       </Stack>
     </PageContainer>
   );
