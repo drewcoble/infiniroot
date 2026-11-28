@@ -3,6 +3,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireSeasonOwner, requireSeasonViewer } from "../lib/access";
+import { resolveLeagueType } from "../leagueType";
 
 export interface YoffsSeason {
   _id: Id<"seasons">;
@@ -91,6 +92,8 @@ export const listMySeasons = query({
       if (seen.has(season._id)) return;
       const inYoffs = await seasonInYoffs(ctx, season._id, joinedHere);
       if (!isCommissioner && !inYoffs) return;
+      // A guillotine league has no playoffs to customize - never offered.
+      if (!inYoffs && resolveLeagueType(season) === "guillotine") return;
       const row = toYoffsSeason(season, league, isCommissioner, inYoffs);
       if (!row) return;
       seen.add(season._id);
