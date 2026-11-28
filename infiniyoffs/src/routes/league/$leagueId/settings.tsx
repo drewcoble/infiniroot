@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
 import type { GenericId as Id } from "convex/values";
-import { Alert, Center, Loader, Stack, Text } from "@mantine/core";
+import { Alert, Button, Center, Group, Loader, Stack, Text } from "@mantine/core";
+import { api } from "@infinidata/api";
 import { sameFormat } from "@playoffRules/carryOver";
 import type { PlayoffFormat, PresetConfig } from "@playoffRules/format";
 import { presetFormat } from "@playoffRules/presets";
@@ -152,7 +154,37 @@ function CommissionerSettings({
           />
         ))}
       <LeagueInviteCard seasonId={seasonId} data={data} />
+      <TakeOffCard seasonId={seasonId} />
       <FormatPreview format={shown} teamCount={teamCount} unsaved={!sameFormat(shown, format)} />
     </Stack>
+  );
+}
+
+// Hides the league from infiniyoffs' home screen and members' lists; its
+// rules and groups stay for whenever it's set up again.
+function TakeOffCard({ seasonId }: { seasonId: Id<"seasons"> }) {
+  const navigate = useNavigate();
+  const setInYoffs = useMutation(api.infiniyoffs.leagues.setInYoffs);
+  const [saving, setSaving] = useState(false);
+  const takeOff = async () => {
+    setSaving(true);
+    try {
+      await setInYoffs({ seasonId, inYoffs: false });
+      await navigate({ to: "/" });
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className={glass.card}>
+      <Group justify="space-between" wrap="nowrap" p={4}>
+        <Text size="sm" c="dimmed">
+          Take this league off yoffs. Its rules are kept.
+        </Text>
+        <Button variant="subtle" color="red" loading={saving} onClick={() => void takeOff()}>
+          Take off
+        </Button>
+      </Group>
+    </div>
   );
 }

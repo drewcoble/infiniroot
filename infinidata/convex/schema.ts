@@ -2133,6 +2133,9 @@ export default defineSchema({
   // member-triggered roster syncs (convex/infiniyoffs/refresh.ts).
   playoffSettings: defineTable({
     seasonId: v.id("seasons"),
+    // Whether the commissioner put this league on infiniyoffs (its home
+    // screen lists only these). Absent = on if it has custom rules.
+    inYoffs: v.optional(v.boolean()),
     format: v.optional(v.any()),
     formatUpdatedAt: v.optional(v.number()),
     refreshStartedAt: v.optional(v.number()),

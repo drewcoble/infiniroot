@@ -1,4 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
+import type { GenericId as Id } from "convex/values";
+import { api } from "@infinidata/api";
 import { Stack } from "@mantine/core";
 import { AppHeader } from "../components/AppHeader";
 import { PageContainer } from "@shared/PageContainer";
@@ -20,9 +23,11 @@ export const Route = createFileRoute("/add-league")({
 
 // A league connected here is an ordinary createLeague/initializeSeasonTeams
 // season row, so the other apps pick it up automatically (same leagues/
-// seasons tables) - see @shared/AddLeague for the provider wizards.
+// seasons tables) - see @shared/AddLeague for the provider wizards. It
+// goes on infiniyoffs straight away and opens on its settings.
 function AddLeaguePage() {
   const navigate = useNavigate();
+  const setInYoffs = useMutation(api.infiniyoffs.leagues.setInYoffs);
   const { provider } = Route.useSearch();
 
   return (
@@ -33,7 +38,10 @@ function AddLeaguePage() {
           app="infiniyoffs"
           initialProvider={provider}
           onConnected={(seasonId) =>
-            void navigate({ to: "/league/$leagueId", params: { leagueId: seasonId } })
+            void (async () => {
+              await setInYoffs({ seasonId: seasonId as Id<"seasons">, inYoffs: true });
+              await navigate({ to: "/league/$leagueId/settings", params: { leagueId: seasonId } });
+            })()
           }
           onCancel={() => void navigate({ to: "/" })}
         />

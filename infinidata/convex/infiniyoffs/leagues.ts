@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { query, type QueryCtx } from "../_generated/server";
+import { mutation, query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
-import { requireSeasonViewer } from "../lib/access";
+import { requireSeasonOwner, requireSeasonViewer } from "../lib/access";
 
 export interface YoffsSeason {
   _id: Id<"seasons">;
@@ -13,6 +13,23 @@ export interface YoffsSeason {
   scoring: Doc<"seasons">["scoring"];
   provider: "sleeper" | "yahoo" | "espn";
   isCommissioner: boolean;
+  // Put on infiniyoffs by its commissioner (see inYoffs below) - the home
+  // screen lists these, and offers the commissioner's others to connect.
+  inYoffs: boolean;
+}
+
+// The commissioner's say, else on if it has custom rules or anyone joined
+// through its league link.
+async function seasonInYoffs(
+  ctx: QueryCtx,
+  seasonId: Id<"seasons">,
+  joinedHere: boolean,
+): Promise<boolean> {
+  const settings = await ctx.db
+    .query("playoffSettings")
+    .withIndex("by_season", (q) => q.eq("seasonId", seasonId))
+    .unique();
+  return settings?.inYoffs ?? (joinedHere || settings?.format !== undefined);
 }
 
 function provider(season: Doc<"seasons">): YoffsSeason["provider"] | null {
@@ -26,6 +43,7 @@ function toYoffsSeason(
   season: Doc<"seasons">,
   league: Doc<"leagues">,
   isCommissioner: boolean,
+  inYoffs: boolean,
 ): YoffsSeason | null {
   const linked = provider(season);
   if (linked === null) return null;
@@ -38,6 +56,7 @@ function toYoffsSeason(
     scoring: season.scoring,
     provider: linked,
     isCommissioner,
+    inYoffs,
   };
 }
 
@@ -61,9 +80,18 @@ export const listMySeasons = query({
     }
     const result: YoffsSeason[] = [];
     const seen = new Set<Id<"seasons">>();
-    const add = (season: Doc<"seasons">, league: Doc<"leagues">, isCommissioner: boolean) => {
+    // A member only sees leagues on infiniyoffs; the commissioner sees all
+    // of theirs, to connect the rest. joinedHere: through the league link.
+    const add = async (
+      season: Doc<"seasons">,
+      league: Doc<"leagues">,
+      isCommissioner: boolean,
+      joinedHere = false,
+    ) => {
       if (seen.has(season._id)) return;
-      const row = toYoffsSeason(season, league, isCommissioner);
+      const inYoffs = await seasonInYoffs(ctx, season._id, joinedHere);
+      if (!isCommissioner && !inYoffs) return;
+      const row = toYoffsSeason(season, league, isCommissioner, inYoffs);
       if (!row) return;
       seen.add(season._id);
       result.push(row);
@@ -74,7 +102,7 @@ export const listMySeasons = query({
       .withIndex("by_owner", (q) => q.eq("ownerId", userId))
       .collect();
     for (const league of owned) {
-      for (const season of await leagueSeasons(ctx, league._id)) add(season, league, true);
+      for (const season of await leagueSeasons(ctx, league._id)) await add(season, league, true);
     }
     const collaborations = await ctx.db
       .query("leagueCollaborators")
@@ -83,7 +111,7 @@ export const listMySeasons = query({
     for (const { leagueId } of collaborations) {
       const league = await ctx.db.get(leagueId);
       if (!league) continue;
-      for (const season of await leagueSeasons(ctx, league._id)) add(season, league, true);
+      for (const season of await leagueSeasons(ctx, league._id)) await add(season, league, true);
     }
     const memberships = await ctx.db
       .query("leagueTeamMembers")
@@ -92,7 +120,7 @@ export const listMySeasons = query({
     for (const { seasonId } of memberships) {
       const season = await ctx.db.get(seasonId);
       const league = season ? await ctx.db.get(season.leagueId) : null;
-      if (season && league) add(season, league, false);
+      if (season && league) await add(season, league, false);
     }
     const yoffsMemberships = await ctx.db
       .query("yoffsMembers")
@@ -101,7 +129,7 @@ export const listMySeasons = query({
     for (const { seasonId } of yoffsMemberships) {
       const season = await ctx.db.get(seasonId);
       const league = season ? await ctx.db.get(season.leagueId) : null;
-      if (season && league) add(season, league, false);
+      if (season && league) await add(season, league, false, true);
     }
     return result;
   },
@@ -119,5 +147,20 @@ export const getMyViewer = query({
   handler: async (ctx, args): Promise<YoffsViewer> => {
     const { isCommissioner, teamIds } = await requireSeasonViewer(ctx, args.seasonId);
     return { isCommissioner, teamIds };
+  },
+});
+
+// Commissioner only: puts the league on infiniyoffs or takes it off (its
+// rules and groups are kept either way).
+export const setInYoffs = mutation({
+  args: { seasonId: v.id("seasons"), inYoffs: v.boolean() },
+  handler: async (ctx, args): Promise<void> => {
+    await requireSeasonOwner(ctx, args.seasonId);
+    const settings = await ctx.db
+      .query("playoffSettings")
+      .withIndex("by_season", (q) => q.eq("seasonId", args.seasonId))
+      .unique();
+    if (settings) await ctx.db.patch(settings._id, { inYoffs: args.inYoffs });
+    else await ctx.db.insert("playoffSettings", { seasonId: args.seasonId, inYoffs: args.inYoffs });
   },
 });

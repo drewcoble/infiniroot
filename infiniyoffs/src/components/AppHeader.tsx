@@ -15,7 +15,11 @@ export function AppHeader() {
   const seasonsList = useMySeasons();
 
   const selectedLeague = seasonsList?.find((s) => s._id === leagueId);
-  const leagueGroups = useMemo(() => groupSeasonsByLeague(seasonsList ?? []), [seasonsList]);
+  // Only leagues on infiniyoffs - the rest are a "Connect a league" away.
+  const leagueGroups = useMemo(
+    () => groupSeasonsByLeague((seasonsList ?? []).filter((s) => s.inYoffs)),
+    [seasonsList],
+  );
 
   return (
     <SharedAppHeader
@@ -39,9 +43,9 @@ export function AppHeader() {
           <Menu.Divider />
           <Menu.Item
             leftSection={<Plus size={16} />}
-            onClick={() => void navigate({ to: "/add-league" })}
+            onClick={() => void navigate({ to: "/", search: { connect: true } })}
           >
-            Add League
+            Connect a league
           </Menu.Item>
         </>
       }
